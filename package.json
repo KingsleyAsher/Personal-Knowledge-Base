@@ -1,0 +1,30 @@
+{
+  "name": "@local/dsh-knowledge-base",
+  "version": "0.1.0-p8",
+  "description": "个人知识库产品 P0 骨架：目录绑定、幂等初始化、条目写入（entryId + revision）、索引检索、状态展示。host 侧只依赖 ctx 服务，不 import @deepseek-ai/*。",
+  "type": "module",
+  "main": "./src/host/index.js",
+  "exports": {
+    ".": "./src/host/index.js",
+    "./package.json": "./package.json",
+    "./client": "./src/client/index.js"
+  },
+  "files": [
+    "src",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "slots"
+      ],
+      "platform": "web"
+    }
+  },
+  "license": "MIT",
+  "private": true
+}

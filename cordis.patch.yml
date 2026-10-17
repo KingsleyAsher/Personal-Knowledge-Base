@@ -1,0 +1,59 @@
+# dsh-knowledge-base bundle patch（0.1.0-p8）
+#
+# 这一行只在 **加载本插件的那个 profile** 里生效。
+# 0.1.0-p7 起：默认值不再写死开发者机器上的绝对路径（审查意见 §四 第 5 条）：
+#   · stateDir 留空 → 按 profile 自动隔离：<profile>/kb-state
+#       （装在 profile 里时用该 profile 目录；否则用 <DSH_HOME>/profiles/<profile>）
+#   · kbPath 留空 → 首次使用走「设置 → 个人知识库」：
+#       「选择知识库文件夹」→「自动建库 / 识别」。
+#       空目录新建标准库；已有的本插件库直接接入；普通资料夹识别结构后分类导入。
+#       默认候选 = <DSH 安装目录>\KnowledgeBase（不可写时提示另选）。
+#       **已绑定过的用户不受影响**：stateDir/config.json 一旦存在，绑定以它为准。
+#
+# 注意：stateDir/config.json 生成后**优先于**这里的默认值；
+# 之后要改 kbPath / excludeFromSearch 请用设置页 / kb_bind / kb_check，或改 config.json 后重启。
+- insert:
+    - id: kb-core
+      name: '@local/dsh-knowledge-base'
+      config:
+        # 知识库根目录。留空 = 未绑定，由设置页的两个主动作决定（不会自动迁库）。
+        kbPath: ''
+        # 插件状态目录。留空 = 按 profile 自动隔离（<profile>/kb-state）。
+        stateDir: ''
+        # 默认分类（可配置；初始化只建这些，不建空壳文件）
+        categories:
+          - 00-画像
+          - 10-项目
+          - 20-知识笔记
+          - 30-人物关系
+          - 40-素材资源
+          - 90-收件箱
+        # 隐私分区：清单/地图只给数量、不列文件名
+        # （按规范化后的每条返回路径做路径段前缀判断，"全部"、子范围、筛选、分页都绕不过）
+        privateDirs:
+          - 00-画像
+          - 30-人物关系
+        # 不参与检索的目录。必须与库的检索层规则一致：
+        #   .kb/.kbmeta/.kb-state      工具与元数据
+        #   00-知识库请求通道          跨 agent 入口（不是条目）
+        #   50-底稿                    库自用加工件（OCR 全文、页码索引、生成脚本）
+        #   _archive/_工具             历史快照与工具
+        #   知识库地图                 生成物目录
+        # 另在代码里跳过根目录的 AGENTS.md / README.md / INDEX.md / 知识库清单.md，
+        # 且 INDEX.md 在任何层级都跳过。
+        excludeFromSearch:
+          - .kb
+          - .kbmeta
+          - .kb-state
+          - 00-知识库请求通道
+          - 50-底稿
+          - _archive
+          - _工具
+          - 知识库地图
+        # P1-A 链接策略：false = 库内链接/重解析点一律拒绝写入（默认）；
+        # true = 仅允许指向库内的链接，指向库外仍然拒绝。
+        # 知识库**根目录本身**允许是链接，解析 realpath 后作为权威路径。
+        # R5：没有 mapRoot —— 顶栏页签扫描的根 = 当前绑定的 kbPath（与工具同源）。
+        followLinks: false
+        # 日志级别：debug | info | warn（正式环境用 info）
+        logLevel: info
