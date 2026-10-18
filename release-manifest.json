@@ -1,0 +1,103 @@
+{
+  "package": "@local/dsh-knowledge-base",
+  "version": "1.0.2",
+  "buildId": "b1469b08580ee88b",
+  "tgz": "local-dsh-knowledge-base-1.0.2.tgz",
+  "bytes": 213957,
+  "sha256": "3b6bc1bf62702bdedf8e578cbf412eb9206abdadc10ece7c7102b89bc292bc43",
+  "packageFileCount": 18,
+  "buildFileCount": 13,
+  "files": [
+    {
+      "path": "cordis.patch.yml",
+      "bytes": 5103,
+      "sha256": "09a804359c23e7a6a59ad53bb6e571c388fac411a0dc79a57c09dc97597eddc9"
+    },
+    {
+      "path": "package.json",
+      "bytes": 883,
+      "sha256": "e12de7f742b402b242c00b0425d6e3746689288d31aa1961d6f6a7254918824f"
+    },
+    {
+      "path": "presets/01-knowledge-agent.patch.yml",
+      "bytes": 22178,
+      "sha256": "1af66282d277e27ed6c1664c57e51f2dbc1a966f87fb4aa4c9f90ff03fb0c421"
+    },
+    {
+      "path": "README.md",
+      "bytes": 1875,
+      "sha256": "c5bf332d51807cf8c7743b4ef8c6ac4a40a78a263ecb36e5b6c44e6146afdec0"
+    },
+    {
+      "path": "skills/personal-knowledge-base/SKILL.md",
+      "bytes": 19406,
+      "sha256": "59b5f2089f7265663a11f707d56c51d829539590c0e4c78a9234a4e4a8c4644b"
+    },
+    {
+      "path": "src/client/index.js",
+      "bytes": 113829,
+      "sha256": "da49ed550f3a54f7b89c75ea59e3ede9aa69615f10bbe7aa16d5df7a685e4fa3"
+    },
+    {
+      "path": "src/host/flows.js",
+      "bytes": 49816,
+      "sha256": "c76485592136972d95411d79e68428b5195c8588cddcd0674109f2a72a2d4eb4"
+    },
+    {
+      "path": "src/host/fsindex.js",
+      "bytes": 12110,
+      "sha256": "2f895c8886c76669f6618322057fde27ec46e3e77f3fc6add60e7284623b1755"
+    },
+    {
+      "path": "src/host/gateway.js",
+      "bytes": 45979,
+      "sha256": "ff22900da56c419ebd79d17af74eae4006aff064ed9f83e2c36049c87a9525a1"
+    },
+    {
+      "path": "src/host/import-service.js",
+      "bytes": 25939,
+      "sha256": "e7ff5cdc470930c5b9db01c8b46c45248f1530c097c78d0f280c769462168e5d"
+    },
+    {
+      "path": "src/host/importer.js",
+      "bytes": 44510,
+      "sha256": "fd1124c8433f3b0e7b0d2cfdec4fb8d58f59614a9dac57fa7714e9d159b89ba8"
+    },
+    {
+      "path": "src/host/index.js",
+      "bytes": 116792,
+      "sha256": "a6e4aebe680d67aefef17e4f93841c71ddd67545a38f3dea2672dc033c329fb0"
+    },
+    {
+      "path": "src/host/kbcore.js",
+      "bytes": 108627,
+      "sha256": "7f8d50da2ff42ef9b30e402fdd90c1165d6f4f21ff62cbf4742f133111a862b2"
+    },
+    {
+      "path": "src/host/map.js",
+      "bytes": 6409,
+      "sha256": "10789a57bcbc973563e59795698cb7dd5c4b5efa6e450bc1354192514fa9e34e"
+    },
+    {
+      "path": "src/host/parsing.js",
+      "bytes": 85907,
+      "sha256": "2c9d91c09c6fb3d7d03b61661abef8876b670d423f25ad1e684a90ed6787467e"
+    },
+    {
+      "path": "src/host/selftest.js",
+      "bytes": 47863,
+      "sha256": "0c100a1ef98999ae77766b154f4ef6ebbbe7eb6ea40efb63e51717270963e92f"
+    },
+    {
+      "path": "tools/kb-pdf-pages.py",
+      "bytes": 2445,
+      "sha256": "74537a3c9e9295387fb7b416912681f164d89d34799c46d48ff5a72e2f7a037e"
+    },
+    {
+      "path": "tools/migrate-gateway-config.mjs",
+      "bytes": 2267,
+      "sha256": "6f1115561fe00f6319ef4ec250a61d13e5da8ca448f7af80d61116e9c3b7fa59"
+    }
+  ],
+  "integrity": "sha512-6gaUpdS2snp3Zeq6ChWTN0HBi8pGwq7/Jqb/1So/LgRfds28PMqdYhQAabqIjyFRQZYFwqWf7554OnqmZccNow=="
+}
