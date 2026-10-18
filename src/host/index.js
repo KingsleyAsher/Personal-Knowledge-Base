@@ -12,19 +12,95 @@ import { fileURLToPath } from 'node:url'
 import crypto from 'node:crypto'
 import { existsSync as fsExists, statSync as fsStat } from 'node:fs'
 import path from 'node:path'
-import { mkdir, writeFile, readFile, stat, realpath, access } from 'node:fs/promises'
+import { mkdir, writeFile, readFile, stat, realpath, access, copyFile, readdir } from 'node:fs/promises'
 import { constants as fsConstants } from 'node:fs'
 import { createCore, VERSION } from './kbcore.js'
+import { apply as gatewayApply, createDelegate as createGatewayDelegate, isLiveKnowledgeGrant } from './gateway.js'
+import { createFlowEngine } from './flows.js'
 import { runSelftest } from './selftest.js'
 import { walkTree, privateRootOf, normSegs, toPosix as toPosixFile, DEFAULT_PRIVATE_DIRS, readImportSources, derivedPrivatePartitions, effectivePrivateDirs, knowledgeCount } from './fsindex.js'
 import { createImportService } from './import-service.js'
 import { inspectFolder } from './importer.js'
+import { createParsingService } from './parsing.js'
 
 export const name = 'kb-core'
 // 版本单一来源：kbcore 的 VERSION（package.json 必须与之一致）
 export const PLUGIN_VERSION = VERSION
 
 const text = (t) => [{ type: 'text', text: t }]
+// 管理面解析动作：**模型侧一律拒绝**。这些动作会写"执行哪个程序 / 把正文发到哪个地址 /
+// 读哪个环境变量当凭据 / 是否允许出网"，只能由用户在设置页改（2026-10-18 定向审查缺口 2）。
+const PARSE_ADMIN_ACTIONS = new Set(['save-provider', 'delete-provider', 'default', 'policy', 'set-provider', 'provider-save', 'provider-delete'])
+
+/** 模型侧是否想碰管理面动作（导出以便离线自证"伪造 action 也会被拒"）。 */
+export function parseAdminActionOf(action) {
+  return PARSE_ADMIN_ACTIONS.has(String(action ?? '').trim())
+}
+
+/**
+ * 解析入口的调用方闸门（可作为纯函数自证）。
+ * @param getService (name) => 服务对象或 null（ctx.get 的包装；属性访问不能直接写，会抛）
+ * @param config     插件配置（只有 `parse.allowWithoutIsolation === true` 才算显式授权）
+ */
+export function createParseCaller(getService, config) {
+  const parseCfg = config !== null && typeof config === 'object' && config.parse !== null && typeof config.parse === 'object'
+    ? config.parse
+    : {}
+  const allowWithoutIsolation = parseCfg.allowWithoutIsolation === true
+  return (exec) => {
+    const deny = (reason, detail) => ({ ok: false, reason, detail })
+    const agent = exec && exec.agent ? exec.agent : null
+    if (agent === null) {
+      return deny('PARSE_CALLER_UNVERIFIED', '解析需要可核验的调用方身份：没有调用方 agent，无法判定它是不是知识库子代理')
+    }
+    if (exec && exec.signal && exec.signal.aborted === true) {
+      return deny('PARSE_CANCELED', '调用方已取消：不启动解析')
+    }
+    // ① 活对象身份（宿主注册表同一对象）。拿不到 agents 服务就不猜、不放行。
+    const agentsService = getService('agents')
+    if (agentsService === null || agentsService === undefined || typeof agentsService.get !== 'function') {
+      return deny('PARSE_CALLER_UNVERIFIED', '宿主没有提供 agents 服务：无法核验调用方是否为存活 Agent')
+    }
+    if (agentsService.get(agent.id) !== agent) {
+      return deny('PARSE_CALLER_UNVERIFIED', '调用方不是宿主当前存活的 Agent（身份对象与注册表不一致）')
+    }
+    const h1 = getService('h1Isolation')
+    if (h1 === null || h1 === undefined) {
+      if (allowWithoutIsolation === true) {
+        const header = agent.session && agent.session.header ? agent.session.header : {}
+        const knowledgeRoot = header.agentPreset === 'knowledge' && header.origin !== 'subagent' && !header.parentSession
+        if (!isLiveKnowledgeGrant(agent, agentsService) && !knowledgeRoot) {
+          return deny('PARSE_DELEGATION_REQUIRED', '兼容模式仍需知识库授权：请用 agent_call(target="knowledge") 委派解析')
+        }
+        return { ok: true, via: 'non-h1-explicit', isolation: 'none', authorization: knowledgeRoot ? 'knowledge-root' : 'knowledge-subagent' }
+      }
+      return deny(
+        'H1_REQUIRED',
+        '本 profile 没有启用隔离后端（H1），解析入口默认关闭。管理员若明确接受无隔离运行，可在插件配置里写 parse.allowWithoutIsolation: true；'
+          + '否则请装到启用 H1 的 profile，并用 agent_call(target="knowledge") 委派。',
+      )
+    }
+    // ③ 隔离后端必须就绪：不就绪就拒绝，绝不退回宿主执行。
+    let status = null
+    try {
+      status = typeof h1.getStatus === 'function' ? h1.getStatus() : null
+    } catch {
+      status = null
+    }
+    if (status === null || status.ready !== true) {
+      return deny('H1_BACKEND_NOT_READY', `隔离后端未就绪（${status && status.code ? status.code : 'UNKNOWN'}）：解析不执行，也不退回宿主`)
+    }
+    // ② 实时 knowledge 授权（授予/撤销同源台账 + 活对象身份）。
+    if (isLiveKnowledgeGrant(agent, agentsService)) return { ok: true, via: 'knowledge-subagent' }
+    const header = agent.session && agent.session.header ? agent.session.header : {}
+    // 根级知识库会话：宿主/界面选定的预设是宿主持久元数据，不是模型自报（与 H1 的
+    // agent/created 判据一致）。仍然要求上面 ①②③ 全部成立，所以伪造会话头没有用。
+    if (header.agentPreset === 'knowledge' && header.origin !== 'subagent' && !header.parentSession) {
+      return { ok: true, via: 'knowledge-root' }
+    }
+    return deny('PARSE_DELEGATION_REQUIRED', '这条会话没有实时的知识库授权：解析只能由知识库子代理执行（请用 agent_call(target="knowledge") 委派）')
+  }
+}
 const kv = (prefix, v, fields) =>
   text(prefix + ' ' + fields.filter((f) => v[f] !== undefined && v[f] !== null).map((f) => `${f}=${typeof v[f] === 'object' ? JSON.stringify(v[f]) : v[f]}`).join(' '))
 
@@ -66,6 +142,80 @@ export function resolveStateDir(config, pkgRoot) {
   return { stateDir, source, profileDir }
 }
 
+/**
+ * 把随包分发的 skills/ 铺到预设技能目录。
+ * 背景：0.1.7 起预设是 profile 组合里的声明行，`customSkillDirs` 只能写绝对路径；
+ * 若不铺过去，换台机器上「技能随包分发」实际为 0 个技能。
+ * 目标目录与预设里 customSkillDirs 保持一致：<DSH_HOME>/.agent-presets/knowledge/skills
+ *
+ * 2026-10-18 修订（预设接管前的必要加固）：原实现「只补缺失文件」有两个后果——
+ *   ① 插件升级后技能内容永远停在第一次铺开的那版（实测本机文件停在 2026-10-01）；
+ *   ② 想更新就只能手删目录，而手删又会连用户改动一起丢。
+ * 现改为**托管清单**：`<target>/.kb-managed.json` 记录「上次是我们写进去的」每个文件的 sha256。
+ *   · 缺失 → 写入；内容相同 → 跳过；
+ *   · 内容不同且**与我们上次写入的哈希一致**（说明用户没改过）→ 覆盖为新版；
+ *   · 内容不同且与上次哈希不一致（用户自己改过）→ **保留用户版本**并告警，不覆盖。
+ */
+export async function bootstrapSkills(pkgRoot, log) {
+  try {
+    const from = path.join(pkgRoot, 'skills')
+    if (!fsExists(from)) return { copied: 0, skipped: 0, target: null, reason: 'no-bundled-skills' }
+    const home = process.env.DSH_HOME || path.join(process.env.USERPROFILE || os.homedir(), '.dsh')
+    const target = path.join(home, '.agent-presets', 'knowledge', 'skills')
+    const manifestPath = path.join(target, '.kb-managed.json')
+    let previous = {}
+    try {
+      previous = JSON.parse(await readFile(manifestPath, 'utf8'))
+      if (previous === null || typeof previous !== 'object') previous = {}
+    } catch {
+      previous = {}
+    }
+    const next = {}
+    let copied = 0
+    let refreshed = 0
+    let skipped = 0
+    let kept = 0
+    const hashOf = (buf) => crypto.createHash('sha256').update(buf).digest('hex')
+    const walk = async (dir, rel) => {
+      const entries = await readdir(dir, { withFileTypes: true })
+      for (const e of entries) {
+        const r = rel ? path.join(rel, e.name) : e.name
+        if (e.isDirectory()) { await walk(path.join(dir, e.name), r); continue }
+        const srcBuf = await readFile(path.join(dir, e.name))
+        const want = hashOf(srcBuf)
+        next[r] = want
+        const dst = path.join(target, r)
+        if (!fsExists(dst)) {
+          await mkdir(path.dirname(dst), { recursive: true })
+          await writeFile(dst, srcBuf)
+          copied += 1
+          continue
+        }
+        const curBuf = await readFile(dst)
+        const cur = hashOf(curBuf)
+        if (cur === want) { skipped += 1; continue }
+        if (previous[r] === cur) {
+          await writeFile(dst, srcBuf)
+          refreshed += 1
+          continue
+        }
+        kept += 1
+        log('warn', `技能 ${r} 有本地改动，保留本地版本（随包版本未覆盖）`)
+      }
+    }
+    await walk(from, '')
+    await mkdir(target, { recursive: true })
+    await writeFile(manifestPath, JSON.stringify(next, null, 2) + '\n')
+    if (copied > 0 || refreshed > 0) {
+      log('info', `已铺开随包技能 新增 ${copied} / 更新 ${refreshed} / 一致 ${skipped} / 保留本地 ${kept} → ${target}`)
+    }
+    return { copied, refreshed, skipped, kept, target }
+  } catch (error) {
+    log('warn', '技能铺开失败（不影响工具）：' + String(error && error.message ? error.message : error))
+    return { copied: 0, skipped: 0, target: null, reason: 'error' }
+  }
+}
+
 export function apply(ctx, config) {
   const startedAt = new Date().toISOString()
   const pkgRootForState = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
@@ -77,6 +227,8 @@ export function apply(ctx, config) {
   let core = null
   // R1：UI 与工具共用的导入服务。在 install() 里创建（要等 core 就绪后才拿得到配置）。
   let importService = null
+// 第二轮：解析服务（OCR/ASR）。工具、设置页、导入与流程**共用这一个实例**。
+let parsingService = null
 
   const log = (level, message) => {
     const line = `[kb-core] ${level} ${message}`
@@ -89,9 +241,13 @@ export function apply(ctx, config) {
    * 同名同版本号的不同构建 → buildId 必然不同，运行态可核对，不再靠"版本号自称"。
    */
   const pkgRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
+  // 随包技能：只补缺失文件，失败只告警、不影响工具注册。
+  void bootstrapSkills(pkgRoot, log)
   const buildInfo = { version: PLUGIN_VERSION, buildId: null, files: [], stateDirSource: stateResolved.source, profile: stateResolved.profileDir }
   const buildPromise = (async () => {
-    const list = ['package.json', 'cordis.patch.yml', 'src/host/index.js', 'src/host/kbcore.js', 'src/host/fsindex.js', 'src/host/importer.js', 'src/host/import-service.js', 'src/host/map.js', 'src/host/selftest.js', 'src/client/index.js']
+    // 2026-10-18：新增 gateway.js / flows.js 两个**装载文件** —— buildId 必须覆盖它们，
+    // 否则改了流程实现而 buildId 不变，"构建=版本/buildId"这条唯一硬判据就失效了。
+    const list = ['package.json', 'cordis.patch.yml', 'src/host/index.js', 'src/host/kbcore.js', 'src/host/fsindex.js', 'src/host/importer.js', 'src/host/import-service.js', 'src/host/map.js', 'src/host/selftest.js', 'src/host/gateway.js', 'src/host/flows.js', 'src/host/parsing.js', 'src/client/index.js']
     const whole = crypto.createHash('sha256')
     for (const rel of list) {
       try {
@@ -172,6 +328,434 @@ export function apply(ctx, config) {
     }
     evidence.layers.L2_runtime = { ...seen, at: new Date().toISOString() }
     return seen
+  }
+
+  // ── 自定义流程（2026-10-18）───────────────────────────────────────────────
+  // 定义与运行记录按 kbId 落 <stateDir>/flows/<kbId>/；执行走 gateway 的**同一条**委派内核
+  // （不新建 Agent 运行时）。模型工具、设置页与「立即运行」按钮共用这一个引擎实例。
+  // ── 第二轮：解析（OCR/ASR）的宿主侧闸门与流程步骤执行体 ───────────────────
+  /**
+   * 谁能调用解析工具。
+   *
+   * 2026-10-18 定向审查缺口 3 的修复：**不再靠会话头里的 agentPreset 字符串**。
+   * 现在的判据是三件事同时成立：
+   *   ① **活的身份**：`agents.get(agent.id) === agent`（宿主注册表里的同一个对象，
+   *      与 H1 authority 的 live() 完全一致）；没有 agents 服务 → 直接拒。
+   *   ② **此刻仍有效的 knowledge 授权**：来自 gateway 的实时台账（授予时记、撤销时划掉），
+   *      即 `agent_call(target=knowledge)` 真的创建并授权过的那个子代理；已被 revoke /
+   *      委派结束 / 会话销毁 → 立刻失效。
+   *   ③ **隔离后端就绪**：H1 profile 下 `getStatus().ready !== true` → 拒，且**不退回宿主执行**。
+   * 只有根级知识库会话（宿主/界面选择的预设，属宿主自己的持久元数据，与 H1 的
+   * agent/created 判据同款）例外 —— 它同样要满足 ①②③。
+   *
+   * 非 H1 profile：默认**拒绝**（fail closed）。要用只能在插件配置里显式写
+   * `parse.allowWithoutIsolation: true`（那是管理员改 profile 配置，不是模型能碰的），
+   * 且返回值会明确标注 `via: 'non-h1-explicit'`，不得当作严格隔离交付。
+   *
+   * 抽成模块级工厂是为了**可被离线自证**：传桩服务就能复现"伪造会话头被拒 / 撤权后失效 /
+   * 后端不就绪被拒"，不必起真宿主（2026-10-18 审查方就是这样复现旧缺口的）。
+   */
+  const kbParseCaller = createParseCaller((serviceName) => {
+    try {
+      return ctx.get(serviceName)
+    } catch {
+      return null
+    }
+  }, config)
+  const kbParseWait = async (jobId, { signal = null, timeoutMs = 600_000 } = {}) => {
+    const deadline = Date.now() + timeoutMs
+    while (Date.now() < deadline) {
+      if (signal && signal.aborted) return { ok: false, reason: 'canceled', detail: '已取消' }
+      const j = await parsingService.readJob(jobId)
+      if (j && ['succeeded', 'partial', 'failed', 'canceled'].includes(j.status)) {
+        return { ok: j.status === 'succeeded' || j.status === 'partial', status: j.status, job: j }
+      }
+      await new Promise((resolve) => setTimeout(resolve, 400))
+    }
+    return { ok: false, reason: 'timeout-waiting', detail: '等待解析超过上限（任务仍在后台，可稍后查看任务列表）' }
+  }
+  /** 流程的解析能力步骤：参数里必须有 source（库内相对路径）。缺依赖就明确说未启用。 */
+  const kbRunParseStep = async ({ kind, params, signal }) => {
+    if (parsingService === null) return { ok: false, reason: 'PARSE_NOT_ENABLED', detail: '解析服务未就绪（本插件未接入解析能力）' }
+    const src = String((params && (params.source ?? params.Source ?? params.sourceRel)) ?? '').trim()
+    if (src === '') return { ok: false, reason: 'missing-param', detail: '解析步骤需要流程参数 source（库内相对路径，如 90-收件箱/原件归档/x.pdf）' }
+    const providerId = String((params && params.provider) ?? '').trim()
+    const submitted = await parsingService.submit(
+      { sourceRel: src, kind: kind ?? undefined, providerId: providerId === '' ? undefined : providerId, purpose: 'flow-step' },
+      { requestedBy: { via: 'flow' } },
+    )
+    if (!submitted.ok) return { ok: false, reason: submitted.reason, detail: submitted.detail }
+    const waited = await kbParseWait(submitted.jobId, { signal, timeoutMs: 15 * 60_000 })
+    if (!waited.ok) return { ok: false, reason: waited.reason, detail: waited.detail, jobId: submitted.jobId }
+    const job = waited.job
+    const preview = String(job.result?.text ?? '').slice(0, 1200)
+    const answer = [
+      `解析任务 ${job.jobId}（${job.kind}）status=${job.status}`,
+      `提供方 ${job.provider.id} / ${job.provider.protocol} / ${job.provider.locality}；原件 ${job.source.relPath}`,
+      `结果字符数 ${job.result?.textChars ?? 0}${job.partial ? `；部分失败 ${(job.partial.failedUnits ?? []).length} 处` : ''}`,
+      '',
+      preview,
+    ].join('\n')
+    return { ok: true, jobId: job.jobId, status: job.status, answer }
+  }
+
+  let flowEngine = null
+  let flowEngineCwd = null
+  const ensureFlowEngine = async () => {
+    const st = core === null ? null : await core.status().catch(() => null)
+    const kbPath = st && st.kbPath ? String(st.kbPath) : ''
+    if (flowEngine !== null && flowEngineCwd === kbPath) return flowEngine
+    const gcfg = config.gateway !== undefined && config.gateway !== null && typeof config.gateway === 'object' ? config.gateway : {}
+    const dcfg = Object.assign({}, gcfg)
+    const preset = typeof gcfg.flowPreset === 'string' && gcfg.flowPreset !== '' ? gcfg.flowPreset : 'knowledge'
+    const brief = typeof gcfg.flowBrief === 'string' && gcfg.flowBrief !== ''
+      ? gcfg.flowBrief
+      : '按流程步骤逐条执行：只做本步，产出写清楚供后续步骤引用；不要调用其它子代理。'
+    // cwd 跟随**当前绑定**：换库后重建实例，流程步骤始终跑在该库目录里（不串库）
+    dcfg.targets = [{ id: 'knowledge', preset: preset, cwd: kbPath, describe: '知识库管家（本插件自带，读取与改写个人知识库）', brief: brief, toolName: '' }]
+    const inst = createGatewayDelegate(ctx, dcfg)
+    flowEngine = createFlowEngine({
+      stateDir: stateDir,
+      core: core,
+      targetId: 'knowledge',
+      log: log,
+      delegate: async (req) => inst.delegateTo(req.targetId, req.task, req.kind, req.context, { agent: req.parentAgent ?? null, signal: req.signal ?? null }, req.label),
+      // 第二轮：流程里的 OCR/ASR 能力步骤由**同一个任务服务**执行（不另开捷径）。
+      parseStep: async (req) => kbRunParseStep(req),
+    })
+    flowEngineCwd = kbPath
+    log('info', `流程引擎就绪：stateDir=${stateDir} 委派目标=knowledge（cwd=${kbPath === '' ? '(未绑定→回退调用方 cwd)' : kbPath}）`)
+    return flowEngine
+  }
+
+  /** kb_parse：解析（OCR / 语音转写）的唯一模型入口。普通 Agent 必须委派知识库子代理。 */
+  const parseToolDefs = () => {
+    const tool = {
+      name: 'kb_parse',
+      description:
+        '解析（OCR / 语音转写）：只能用**管理员已在设置页配好的**提供方，任务固定源原件（库内相对路径）+ 提供方/配置版本，支持进度、超时、取消、有限重试与重启恢复；解析成功与落库成功分开记录；结果只落隔离的底稿区，落库时按来源映射写入知识库。'
+        + 'action：providers（列出提供方与默认/策略）/ test-connection（只验地址或程序通不通）/ test-parse（真实小样本解析，与连接测试分开）/ submit / jobs / job / result（有界读取，可只取某几页或某几段）/ cancel / retry（解析失败重试；解析成功但落库失败只重试落库）/ land（把底稿按来源落成条目）。'
+        + '⚠️ 提供方的新增/修改/删除、程序与参数、凭据引用、外发策略都属**管理面**，只能由用户在「设置 → 个人知识库 → 解析」里改；模型调用这些动作会得到 ADMIN_ONLY。',
+      parameters: {
+        type: 'object',
+        additionalProperties: false,
+        properties: {
+          action: {
+            type: 'string',
+            enum: ['providers', 'test-connection', 'test-parse', 'submit', 'jobs', 'job', 'result', 'cancel', 'retry', 'land'],
+            description: '要执行的动作（管理面动作不在模型侧提供）',
+          },
+          // 保留这两个字段：即使有人伪造出管理面 action，也要在 execute 里被 ADMIN_ONLY 挡住，
+          // 而不是靠"schema 里没有这个字段"来挡（见 2026-10-18 定向审查 §最小修复）。
+          provider: { type: 'object', additionalProperties: true, description: '（管理面，模型侧会被拒）提供方定义' },
+          providerId: { type: 'string' },
+          kind: { type: 'string', enum: ['ocr', 'asr'] },
+          externalPolicy: { type: 'string', enum: ['local-only', 'allow-configured'], description: '（管理面，模型侧会被拒）' },
+          sourceRel: { type: 'string', description: '库内相对路径（不能是绝对路径或含 ..）' },
+          purpose: { type: 'string' },
+          jobId: { type: 'string' },
+          limit: { type: 'number' },
+          offset: { type: 'number' },
+          pages: { type: 'array', items: { type: 'number' }, description: 'result：只要这些页（OCR）' },
+          segments: { type: 'array', items: { type: 'number' }, description: 'result：只要这些段（ASR）' },
+          status: { type: 'string' },
+          title: { type: 'string' },
+          tags: { type: 'array', items: { type: 'string' } },
+          entryId: { type: 'string', description: 'land：更新已有条目时给出（必须同时给 expectedRevision）' },
+          expectedRevision: { type: 'string' },
+        },
+        required: ['action'],
+      },
+      output: {
+        schema: {
+          type: 'object',
+          additionalProperties: true,
+          properties: {
+            ok: { type: 'boolean' },
+            action: { type: 'string' },
+            reason: { type: 'string' },
+            detail: { type: 'string' },
+            jobId: { type: 'string' },
+            status: { type: 'string' },
+          },
+        },
+        render(_args, v) {
+          if (!v || v.ok !== true) return text(`解析操作未完成：${(v && (v.reason || v.detail)) || '未知原因'}`)
+          const act = String(v.action ?? '')
+          if (act === 'providers') {
+            const list = (v.providers ?? []).map((p) => `  · ${p.id} [${p.kind}/${p.protocol}/${p.locality}] ${p.enabled ? '启用' : '停用'}${p.model ? ' model=' + p.model : ''}`)
+            return text([`策略 ${v.externalPolicy}；默认 OCR=${v.defaultOcr ?? '未设'} / ASR=${v.defaultAsr ?? '未设'}`, list.length ? '提供方：\n' + list.join('\n') : '（还没有配置任何提供方）'].join('\n'))
+          }
+          if (act === 'jobs') {
+            const rows = (v.jobs ?? []).map((j) => `  · ${j.jobId} ${j.kind} ${j.status} ← ${j.source.relPath}${j.result ? `（${j.result.textChars} 字）` : ''}`)
+            return text(rows.length ? `任务（共 ${v.total}）：\n${rows.join('\n')}` : '没有解析任务')
+          }
+          if (act === 'result') {
+            return text(`任务 ${v.jobId} status=${v.status}；本次返回 ${v.returned}/${v.textChars} 字${v.truncated ? '（还有更多，用 offset 续读）' : ''}\n\n${v.text}`)
+          }
+          if (act === 'job') {
+            const j = v.job ?? {}
+            return text(`任务 ${j.jobId}：${j.status}/${j.stage}；提供方 ${j.provider?.id ?? '-'}；进度 页 ${j.progress?.pagesDone ?? 0}/${j.progress?.pagesTotal ?? '-'} 段 ${j.progress?.segmentsDone ?? 0}/${j.progress?.segmentsTotal ?? '-'}；落库 ${j.land?.status ?? 'none'}；诊断 ${(j.diagnostics ?? []).length} 条`)
+          }
+          if (act === 'land') return text(`已落库：${v.land?.entryId ?? v.entryId ?? '-'}（任务 ${v.jobId}）`)
+          if (act === 'test-connection') return text(`连接测试：${v.detail ?? '通过'}（延迟 ${v.latencyMs ?? '-'}ms${v.modelPresent === false ? '；模型不在列表' : ''}）—— 这只证明地址/程序通，不证明解析可用`)
+          if (act === 'test-parse') return text(`真实小样本解析：${v.status}，${v.textChars ?? 0} 字；预览：${String(v.preview ?? '').slice(0, 120)}`)
+          return text(JSON.stringify(v).slice(0, 3000))
+        },
+      },
+      isConcurrencySafe: () => false,
+      async execute(args, exec) {
+        const action = String(args?.action ?? '').trim()
+        // 管理面动作**先**拒：即便有人绕过 schema 的枚举（伪造 action / 直接调 execute），
+        // 这里也不会把 program/args/credentialRef/externalPolicy 写进配置。
+        if (PARSE_ADMIN_ACTIONS.has(action)) {
+          return {
+            ok: false,
+            action,
+            reason: 'ADMIN_ONLY',
+            detail: `${action} 属管理面（提供方程序/地址/凭据引用/外发策略）：只能在「设置 → 个人知识库 → 解析」里由用户改。模型侧请使用一个已配置好的提供方（providerId）提交解析。`,
+          }
+        }
+        const gate = kbParseCaller(exec)
+        if (!gate.ok) return { ok: false, action, reason: gate.reason, detail: gate.detail }
+        if (parsingService === null) return { ok: false, action, reason: 'PARSE_NOT_READY', detail: '解析服务尚未就绪（core 未安装完成）' }
+        const requestedBy = { via: 'tool', gate: gate.via, session: exec?.agent?.session?.header?.id ?? null }
+        try {
+          switch (action) {
+            case 'providers':
+              return { ...(await parsingService.providersPublic()), action }
+            case 'test-connection':
+              return { ...(await parsingService.testConnection(String(args?.providerId ?? ''))), action }
+            case 'test-parse':
+              return {
+                ...(await parsingService.testParse(
+                  { providerId: String(args?.providerId ?? ''), sourceRel: String(args?.sourceRel ?? ''), kind: args?.kind },
+                  { requestedBy },
+                )),
+                action,
+              }
+            case 'submit':
+              return {
+                ...(await parsingService.submit(
+                  { sourceRel: String(args?.sourceRel ?? ''), kind: args?.kind, providerId: args?.providerId, purpose: args?.purpose },
+                  { requestedBy },
+                )),
+                action,
+              }
+            case 'jobs':
+              return { ...(await parsingService.listJobs({ limit: args?.limit, kind: args?.kind ?? null, status: args?.status ?? null })), action }
+            case 'job': {
+              const job = await parsingService.readJob(String(args?.jobId ?? ''))
+              if (!job) return { ok: false, action, reason: 'not-found', detail: '没有这个任务' }
+              return { ok: true, action, job: parsingService.publicJob(job) }
+            }
+            case 'result':
+              return {
+                ...(await parsingService.readResult(String(args?.jobId ?? ''), {
+                  offset: args?.offset,
+                  limit: args?.limit,
+                  pages: Array.isArray(args?.pages) ? args.pages.map(Number) : null,
+                  segments: Array.isArray(args?.segments) ? args.segments.map(Number) : null,
+                })),
+                action,
+              }
+            case 'cancel':
+              return { ...(await parsingService.cancel(String(args?.jobId ?? ''), { by: requestedBy })), action }
+            case 'retry':
+              return { ...(await parsingService.retry(String(args?.jobId ?? ''), { reason: '工具重试' })), action }
+            case 'land':
+              return {
+                ...(await parsingService.land(String(args?.jobId ?? ''), {
+                  title: args?.title,
+                  kind: args?.kind,
+                  tags: args?.tags,
+                  entryId: args?.entryId,
+                  expectedRevision: args?.expectedRevision,
+                })),
+                action,
+              }
+            default:
+              return { ok: false, action, reason: 'unknown-action', detail: '未知 action：' + action + '（模型侧可用：providers / test-connection / test-parse / submit / jobs / job / result / cancel / retry / land；提供方管理在设置页）' }
+          }
+        } catch (error) {
+          return { ok: false, action, reason: 'parse-op-failed', detail: String((error && error.message) ?? error) }
+        }
+      },
+    }
+    return [tool]
+  }
+
+  /** kb_flow / kb_flow_resolve 的工具定义（与 flowEngine 共用同一份状态） */
+  const flowToolDefs = () => {
+    const flowTool = {
+      name: 'kb_flow',
+      description: '自定义流程：把用户固化的固定步骤存成有版本的定义并执行。action=list 紧凑索引（id/名称/触发语/用途/启用/最近运行，不含步骤正文）/ get 取完整定义 / save 新建或更新（更新必须带 expectedRevision；不符返回 conflict 且**不改盘**）/ set-enabled 启用或停用 / run 立即运行（用 id 或一句能命中触发语的话；固定 kbId+flowRevision+params+runId，同一 runId 不重复执行；同一流程不允许并发）/ runs 运行记录 / cancel 取消（真中断，不是隐藏界面）/ archive 软删除（可恢复，运行记录保留）。执行通过已安装宿主的委派能力把每一步交给知识库子代理完成；成功才按 outputRules 落库，失败或取消绝不记为成功。',
+      parameters: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['action'],
+        properties: {
+          action: { type: 'string', enum: ['list', 'get', 'save', 'set-enabled', 'run', 'runs', 'cancel', 'archive'] },
+          id: { type: 'string', description: '流程 id（get / save 更新 / set-enabled / run / archive 用）' },
+          text: { type: 'string', description: '用户原话：run 时可用它替代 id（按触发语解析命中哪条流程）' },
+          flow: { type: 'object', additionalProperties: true, description: 'save 的完整定义（省略 id = 新建）：name/triggers/description/params/steps/capabilities/outputRules/enabled' },
+          expectedRevision: { type: 'number', description: '更新必填：先 list 或 get 取当前 revision' },
+          enabled: { type: 'boolean', description: 'set-enabled 的目标状态' },
+          restored: { type: 'boolean', description: 'archive 传 true = 取消归档（恢复）' },
+          includeArchived: { type: 'boolean', description: 'list 是否包含已归档（默认不含）' },
+          params: { type: 'object', additionalProperties: true, description: 'run 的参数值（缺省用定义里的 default）' },
+          runId: { type: 'string', description: 'run 的幂等键：重试请复用同一个值（同一 runId 直接返回既有记录）' },
+          limit: { type: 'number', description: 'runs 返回条数（默认 20）' },
+        },
+      },
+      output: {
+        schema: {
+          type: 'object',
+          additionalProperties: true,
+          properties: {
+            ok: { type: 'boolean' },
+            action: { type: 'string' },
+            reason: { type: 'string' },
+            error: { type: 'string' },
+            kbId: { type: 'string' },
+            flow: { type: 'object', additionalProperties: true },
+            flows: { type: 'array', items: { type: 'object', additionalProperties: true } },
+            run: { type: 'object', additionalProperties: true },
+            runId: { type: 'string' },
+            runs: { type: 'array', items: { type: 'object', additionalProperties: true } },
+            deduplicated: { type: 'boolean' },
+          },
+          required: ['ok', 'action'],
+        },
+        render(_args, v) {
+          const head = `流程 ${v.action ?? '-'}：${v.ok ? 'OK' : '失败'}${v.reason ? '（' + v.reason + '）' : ''}`
+          const lines = [head]
+          if (v.error) lines.push('  原因：' + v.error)
+          if (Array.isArray(v.flows)) {
+            lines.push(`  共 ${v.flows.length} 条（kbId=${String(v.kbId ?? '-').slice(0, 8)}）`)
+            for (const f of v.flows) {
+              const last = f.lastRun ? `最近 ${f.lastRun.startedAt ?? '-'} → ${f.lastRun.status}` : '尚未运行'
+              lines.push(`  · ${f.name} [${f.id}] v${f.revision} ${f.enabled ? '启用' : '停用'}${f.archived ? '（已归档）' : ''}｜触发语：${(f.triggers ?? []).join('/')}｜${last}`)
+            }
+          }
+          if (v.flow && v.flow.steps) {
+            lines.push(`  ${v.flow.name} [${v.flow.id}] v${v.flow.revision} ${v.flow.enabled ? '启用' : '停用'}｜触发语：${(v.flow.triggers ?? []).join('/')}`)
+            lines.push(`  用途：${v.flow.description || '（未写）'}`)
+            for (const [i, s] of v.flow.steps.entries()) lines.push(`  ${i + 1}. ${s.title}${s.capability ? '（' + s.capability + '）' : ''}：${String(s.instruction ?? '').slice(0, 60)}`)
+            const r = v.flow.outputRules ?? {}
+            lines.push(`  输出规则：落库=${r.land ? '是' : '否'} 类型=${r.kind} 时区=${r.tz} 窗口=${r.windowDays} 天`)
+          }
+          if (v.flow && !v.flow.steps && v.flow.name) lines.push(`  ${v.flow.name} [${v.flow.id}] v${v.flow.revision}`)
+          if (v.run && v.run.status) {
+            lines.push(`  运行 ${v.run.runId}：${v.run.status}${v.deduplicated ? '（同一 runId 已有记录，未重复执行）' : ''}`)
+            for (const [i, s] of (v.run.steps ?? []).entries()) lines.push(`   ${i + 1}. ${s.title} — ${s.status}${s.error ? '：' + s.error : ''}`)
+            if (v.run.landedEntryId) lines.push('  已落库：entryId=' + v.run.landedEntryId + (v.run.landedPath ? ' path=' + v.run.landedPath : ''))
+            if (v.run.error) lines.push('  失败原因：' + v.run.error)
+          }
+          if (v.runId && (!v.run || !v.run.status)) lines.push('  runId=' + v.runId)
+          if (Array.isArray(v.runs)) {
+            lines.push(`  共 ${v.runs.length} 条运行记录`)
+            for (const r of v.runs) lines.push(`  · ${r.runId} ${r.flowName ?? ''} → ${r.status}（${r.startedAt ?? '-'}，步骤 ${r.stepDone ?? 0}/${r.stepTotal ?? 0}）${r.landedEntryId ? ' 落库=' + r.landedEntryId : ''}${r.error ? ' 原因=' + r.error : ''}`)
+          }
+          return text(lines.join('\n'))
+        },
+      },
+      isConcurrencySafe() {
+        return false
+      },
+      async execute(args, exec) {
+        const action = String(args?.action ?? '')
+        let engine
+        try {
+          engine = await ensureFlowEngine()
+        } catch (error) {
+          return { ok: false, action: action, reason: 'engine-unavailable', error: String((error && error.message) ?? error) }
+        }
+        try {
+          if (action === 'list') return Object.assign({ action: action }, await engine.list({ includeArchived: args?.includeArchived === true }))
+          if (action === 'get') return Object.assign({ action: action }, await engine.get(args?.id))
+          if (action === 'save') return Object.assign({ action: action }, await engine.save({ flow: args?.flow, expectedRevision: args?.expectedRevision }))
+          if (action === 'set-enabled') return Object.assign({ action: action }, await engine.setEnabled(args?.id, args?.enabled === true))
+          if (action === 'archive') return Object.assign({ action: action }, await engine.archive(args?.id, args?.restored === true))
+          if (action === 'run') {
+            // 工具路径**继承了调用方的模型路由**（gateway 的父级分支），不需要借路由
+            const res = await engine.run({
+              id: args?.id,
+              text: args?.text,
+              params: args?.params,
+              runId: args?.runId,
+              parentAgent: exec !== undefined && exec !== null ? (exec.agent ?? null) : null,
+              signal: exec !== undefined && exec !== null ? (exec.signal ?? null) : null,
+            })
+            evidence.layers.L3_operation['kb_flow_run'] = { at: new Date().toISOString(), ok: res.ok === true, status: res.status ?? null, reason: res.reason ?? null }
+            await flushEvidence()
+            return Object.assign({ action: action }, res)
+          }
+          if (action === 'runs') return Object.assign({ action: action }, await engine.runs({ flowId: args?.id, runId: args?.runId, limit: args?.limit }))
+          if (action === 'cancel') return Object.assign({ action: action }, await engine.cancel(args?.runId ?? args?.id))
+          return { ok: false, action: action, reason: 'bad-action', error: 'action 只支持 list / get / save / set-enabled / run / runs / cancel / archive' }
+        } catch (error) {
+          return { ok: false, action: action, reason: 'runner-error', error: String((error && error.message) ?? error) }
+        }
+      },
+    }
+    const resolveTool = {
+      name: 'kb_flow_resolve',
+      description: '把一段用户原话拿去比对**已启用且未归档**流程的触发语，返回 hit（唯一命中，并说明命中的是哪条 trigger）/ ambiguous（多个流程都命中，列出候选让用户选）/ miss（没有命中）。同时标出"像是提及而不是命令"的情况（否定句、假设句、文档引用式措辞），那种情况不要直接运行，先问用户。',
+      parameters: {
+        type: 'object',
+        additionalProperties: false,
+        required: ['text'],
+        properties: { text: { type: 'string', description: '用户原话（整句，不要只截触发语）' } },
+      },
+      output: {
+        schema: {
+          type: 'object',
+          additionalProperties: true,
+          properties: {
+            ok: { type: 'boolean' },
+            status: { type: 'string' },
+            matched: { type: 'array', items: { type: 'object', additionalProperties: true } },
+            guarded: { type: 'boolean' },
+            guardReasons: { type: 'array', items: { type: 'string' } },
+            coverage: { type: 'object', additionalProperties: true },
+          },
+          required: ['ok', 'status'],
+        },
+        render(_args, v) {
+          if (!v.ok) return text('解析失败：' + (v.error ?? v.reason ?? '-'))
+          if (v.status === 'miss') return text(`未命中任何启用中的流程（比对范围：${v.coverage?.flows ?? 0} 条流程）。可以说流程名，或先 kb_flow(list) 看有哪些。`)
+          const lines = [v.status === 'hit' ? '命中 1 条流程：' : '命中多条（需要用户选一条）：']
+          for (const m of v.matched ?? []) lines.push(`  · ${m.name} [${m.flowId}] ← 触发语「${m.trigger}」`)
+          if (v.guarded) {
+            lines.push('注意：这更像"提到"而不是"要求执行"，不要直接运行：')
+            for (const r of v.guardReasons ?? []) lines.push('  - ' + r)
+          }
+          return text(lines.join('\n'))
+        },
+      },
+      isConcurrencySafe() {
+        return true
+      },
+      async execute(args) {
+        try {
+          const engine = await ensureFlowEngine()
+          return await engine.resolve(args?.text)
+        } catch (error) {
+          return { ok: false, status: 'error', reason: 'engine-unavailable', error: String((error && error.message) ?? error) }
+        }
+      },
+    }
+    // HTTP/落盘记录保留 null；工具契约的顶层 reason/error 声明为 string。
+    // 在统一返回边界归一化，覆盖成功、失败、去重、取消等所有 action。
+    const executeFlow = flowTool.execute
+    flowTool.execute = async (args, exec) => {
+      const result = await executeFlow(args, exec)
+      const value = { ...result }
+      for (const key of ['reason', 'error']) if (value[key] === null) value[key] = ''
+      return value
+    }
+    return [flowTool, resolveTool]
   }
 
   function toolDefs() {
@@ -353,16 +937,19 @@ export function apply(ctx, config) {
       },
       {
         name: 'kb_import',
-        description: '导入异构资料 / 旧库，与设置页共用同一后端流程。action=plan：只读冻结源清单（含逐文件 sha256、跳过目录、截断情况），不写任何东西；action=run：按清单执行（可中断、可重试、同一文件不重复建条目）；action=status：看阶段与成功/待处理/失败计数；action=cancel：中止。mode=attach 接入原目录（原件留原位）/ copy 复制导入（原件进 90-收件箱）。',
+        description: '导入异构资料 / 旧库，与设置页共用同一后端流程。action=plan：只读冻结源清单（含逐文件 sha256、跳过目录、截断情况），不写任何东西；action=run：按清单执行（可中断、可重试、同一文件不重复建条目）；action=status：看阶段与成功/待处理/失败计数；action=cancel：中止；action=waiting：列出该导入任务里"待解析/待识别"的项（含建议的解析类型与是否可解析）；action=parse：把其中一项交给解析服务（只解析、不自动落库，落库用 kb_parse action=land）。mode=attach 接入原目录（原件留原位）/ copy 复制导入（原件进 90-收件箱）。',
         parameters: {
           type: 'object',
           additionalProperties: false,
           required: ['action'],
           properties: {
-            action: { type: 'string', enum: ['plan', 'run', 'status', 'cancel'] },
+            action: { type: 'string', enum: ['plan', 'run', 'status', 'cancel', 'waiting', 'parse'] },
             source: { type: 'string', description: '源文件夹绝对路径（plan 必填）' },
             mode: { type: 'string', enum: ['attach', 'copy'], description: '默认 attach' },
-            importId: { type: 'string', description: 'run/status/cancel 必填（plan 会返回）' },
+            importId: { type: 'string', description: 'run/status/cancel/waiting/parse 必填（plan 会返回）' },
+            rel: { type: 'string', description: 'parse：导入清单里的相对路径' },
+            kind: { type: 'string', enum: ['ocr', 'asr'], description: 'parse：解析类型（不填按扩展名推断）' },
+            providerId: { type: 'string', description: 'parse：指定提供方（不填用默认）' },
           },
         },
         output: {
@@ -443,6 +1030,17 @@ export function apply(ctx, config) {
             if (!r.ok) return { ok: false, error: r.error ?? r.reason, reason: r.reason ?? null, importId }
             return { ok: true, importId: r.importId, stage: r.stage }
           }
+          if (action === 'waiting') {
+            const importId = String(args?.importId ?? '')
+            if (importId === '') return { ok: false, error: 'waiting 需要 importId' }
+            return await importService.waiting({ importId })
+          }
+          if (action === 'parse') {
+            const importId = String(args?.importId ?? '')
+            if (importId === '') return { ok: false, error: 'parse 需要 importId' }
+            if (String(args?.rel ?? '').trim() === '') return { ok: false, error: 'parse 需要 rel（导入清单里的相对路径）' }
+            return await importService.parseItem({ importId, rel: String(args.rel), kind: args?.kind, providerId: args?.providerId })
+          }
           return { ok: false, error: '未知 action：' + action }
         },
       },
@@ -461,6 +1059,7 @@ export function apply(ctx, config) {
       getBaseConfig: () => core.getConfig(),
       getCurrentCore: () => core,
       log,
+      getParsingService: () => parsingService,
       commitBinding: async (target, opts = {}) => {
         // F4：把"预期当前绑定 / 配置 revision / 目标 kbId"交给 core.bind 的原子提交入口。
         // 前置检查与写入在同一个跨实例临界区（stateDir/config.lock）内；拒绝时 config 与 binding 均不变。
@@ -479,11 +1078,34 @@ export function apply(ctx, config) {
       },
     })
 
-    const defs = toolDefs()
+    // 第二轮：解析服务（OCR/ASR）—— 与工具、设置页、导入、流程共用同一个实例
+    parsingService = createParsingService({
+      stateDir,
+      log,
+      getCore: () => core,
+      getBinding: async () => {
+        const st = core === null ? null : await core.status().catch(() => null)
+        if (!st || st.bound !== true || !st.kbId || !st.kbPath) return null
+        return { kbPath: st.kbPath, kbId: st.kbId }
+      },
+    })
+    log('info', '解析服务已就绪（OCR/ASR 任务与设置页共用同一实例）')
+    void parsingService
+      .recover()
+      .then((r) => {
+        if (r && r.recovered > 0) log('warn', `解析任务恢复：处理 ${r.recovered} 条中断记录（扫描 ${r.scanned} 条）`)
+      })
+      .catch((error) => log('warn', '解析任务恢复失败（不影响新任务）：' + String((error && error.message) ?? error)))
+    // 流程工具与既有 7 个工具走**同一条**注册路径（失败项同样单列，不静默丢）
+    const defs = toolDefs().concat(flowToolDefs()).concat(parseToolDefs())
     for (const entry of defs) {
       evidence.registration.attempted.push(entry.name)
       try {
         ctx.effect(() => tools.register(entry), 'kb-core: ' + entry.name)
+        if (['kb_status', 'kb_flow', 'kb_flow_resolve', 'kb_parse'].includes(entry.name)) {
+          ctx.get('h1Isolation')?.registerGateway(entry)
+          ctx.inject(['h1Isolation'], scope => scope.get('h1Isolation').registerGateway(entry))
+        }
         evidence.registration.registered.push(entry.name) // B：只记真正成功的
         log('info', '已注册工具 ' + entry.name)
       } catch (error) {
@@ -492,11 +1114,90 @@ export function apply(ctx, config) {
         log('error', '注册工具 ' + entry.name + ' 失败：' + detail)
       }
     }
+
+    // ── 轻量入口规则：让**任何** Agent 知道"本机有自定义流程、先查再跑" ─────────────
+    // 只写入口与边界，**不写流程正文**（正文按需求不塞进常驻提示词）。
+    // 注册在 contexts 层（systemPrompt.context），不是 sections；顺序 600 排在工具清单之后。
+    try {
+      const sp = ctx.get('systemPrompt')
+      if (sp !== undefined && sp !== null && typeof sp.context === 'function') {
+        ctx.effect(() => {
+          const dispose = sp.context({
+            name: 'kb:flows',
+            order: 600,
+            interpolate: false,
+            text: [
+              '本机知识库提供「自定义流程」：用户把一串固定步骤固化后，说流程名或触发语即可运行。',
+              '用户提到流程名/触发语时：先 kb_flow(action="list") 看有没有，再用 kb_flow_resolve(text) 判断命中/歧义/未命中；命中才 kb_flow(action="run")，歧义先让用户选。',
+              '不要凭流程名自己编造步骤，也不要不查就跑——步骤只来自定义本身。',
+              '普通提及、否定句（如"今天不用发每周信息"）、假设句不是运行命令；停用或已删除的流程不会被命中。',
+              '新建或修改流程用 kb_flow(action="save")（更新必须带 expectedRevision）；运行中可用 runs 看进度、cancel 取消。',
+            ].join('\n'),
+          })
+          return () => {
+            try {
+              if (typeof dispose === 'function') dispose()
+            } catch (error) {
+              console.error('[kb-core] 撤销流程入口提示失败：' + String(error))
+            }
+          }
+        }, 'kb-core: flow hint')
+        log('info', '已注册流程入口提示：systemPrompt.context kb:flows（order=600，5 行）')
+      } else {
+        log('warn', '宿主未提供 systemPrompt.context：流程入口提示未注册（工具与界面不受影响）')
+      }
+    } catch (error) {
+      log('warn', '流程入口提示注册失败（不影响工具）：' + String((error && error.message) ?? error))
+    }
     probeServices()
     await flushEvidence()
     // B：ready 只说真实情况
     const okCount = evidence.registration.registered.length
     log(okCount === defs.length ? 'info' : 'error', `ready：${okCount}/${defs.length} 个工具注册成功${evidence.registration.failed.length ? '；失败：' + evidence.registration.failed.map((f) => f.name).join(',') : ''}`)
+
+    // ── 合并旧委派插件（@local/dsh-agent-gateway 0.2.0，2026-10-18）──
+    // 工具名不变（agent_call / knowledge_request）→ 旧会话、技能、文档都不用改。
+    // 默认只有一个自带知识库目标；cwd 跟随已绑定的 kbPath（未绑定则用调用方工作目录）。
+    try {
+      // 双注册防护：若同一个 profile 的组合里仍挂着旧委派插件，就不再合并注册。
+      // 判据取自 profile 自己的 package.json（dsh.profile.bundles），不猜、不依赖服务名。
+      let legacyPresent = false
+      try {
+        const pkgText = await readFile(path.join(stateResolved.profileDir, 'package.json'), 'utf8')
+        const pkgJson = JSON.parse(pkgText)
+        const bundles = (pkgJson && pkgJson.dsh && pkgJson.dsh.profile && Array.isArray(pkgJson.dsh.profile.bundles)) ? pkgJson.dsh.profile.bundles : []
+        legacyPresent = bundles.includes('@local/dsh-agent-gateway')
+      } catch (error) {
+        log('debug', '读取 profile 组合失败（按"无旧插件"处理）：' + String(error && error.message ? error.message : error))
+      }
+      if (legacyPresent) {
+        log('warn', '检测到旧委派插件仍在组合里（@local/dsh-agent-gateway）→ 本次跳过合并注册，避免 agent_call 双注册；迁移时请从 profile 的 bundles 里移除它')
+        throw Object.assign(new Error('legacy-gateway-present'), { code: 'LEGACY_GATEWAY_PRESENT' })
+      }
+      const kbPathResolved = typeof config.kbPath === 'string' ? config.kbPath.trim() : ''
+      const gcfg = Object.assign({}, config.gateway && typeof config.gateway === 'object' ? config.gateway : {})
+      // Resolve the binding at call time, never the empty bundle default or a
+      // stale startup path. This function is host-owned, not a tool argument.
+      gcfg.resolveTarget = async target => {
+        if (target.id !== 'knowledge') return target
+        const st = await core.status()
+        if (!st?.bound || !st.kbId || !st.kbPath) throw new Error('知识库未绑定或未初始化，拒绝回退到调用方目录')
+        return { ...target, preset: 'knowledge', cwd: st.kbPath }
+      }
+      if (!Array.isArray(gcfg.targets) || gcfg.targets.length === 0) {
+        gcfg.targets = [{
+          id: 'knowledge',
+          preset: 'knowledge',
+          cwd: kbPathResolved,
+          describe: '知识库管家（本插件自带，读取与改写个人知识库）',
+          toolName: 'knowledge_request',
+        }]
+      }
+      gatewayApply(ctx, gcfg)
+      log('info', '委派工具已合并注册：' + gcfg.targets.map((t) => t.id).join(', '))
+    } catch (error) {
+      log('warn', '委派工具未注册（可能已被旧插件占用，本次不重复注册）：' + String(error && error.message ? error.message : error))
+    }
 
   // ── P1-G：设置分区的同源接口（与工具共用同一个 core，不重复实现）──
   const SETTINGS_API = '/kb-core/api'
@@ -633,7 +1334,7 @@ export function apply(ctx, config) {
           issues.push({ kind: 'kb-unhealthy', label: '库结构不健康：' + (st.healthReason ?? '未知'), detail: st.healthDetail || '库元数据/分类目录不完整，写入会被拒绝；请先修复或用 kb_init 补齐。' })
         }
         if (st.index && st.index.fresh !== true) {
-          issues.push({ kind: 'index-stale', label: '索引需重建（' + (st.index.reason || '未知') + '）', detail: '检索会自动回退扫描磁盘，结果不会漏；要重建请用 kb_check(rebuild=true)。' })
+          issues.push({ kind: 'index-stale', label: '索引需重建（' + (st.index.reason || '未知') + '）', detail: '检索会自动回退扫描磁盘，结果不会漏；点上方「重建索引」按钮即可重建（等价于 kb_check(rebuild=true)）。' })
         }
         const recoverTodo = await kbCountRecoverTodo(st.kbPath)
         if (recoverTodo > 0) {
@@ -824,6 +1525,55 @@ export function apply(ctx, config) {
     return await importService.setupFolder(folderRaw, modeIn)
   }
   const webServer = ctx.get('webServer')
+  // #region kbSummarizeRebuild
+  /**
+   * 把 core.checkEntry({ rebuild: true }) 的返回映射成界面按钮的结论（纯函数，便于用虚构样本验证）。
+   *
+   * 语义要点（2026-10-18 复核指出、本版修正）：checkEntry 在**扫描不完整**时故意返回
+   * ok:true + execution:'partial' + indexWritten:false —— 意思是「检查跑完了，但旧索引被保留」，
+   * 绝不能算重建成功。成功必须三个条件同时成立：ok===true、execution==='ok'、indexWritten===true。
+   * 另外 counts 里**没有** indexState 字段（恒 undefined），所以这里不产出任何「索引状态」，
+   * 免得界面凭空显示「索引 ok」。
+   */
+  const kbSummarizeRebuild = (checkRes, elapsedMs) => {
+    const r = checkRes && typeof checkRes === 'object' ? checkRes : null
+    const counts = r && r.counts && typeof r.counts === 'object' ? r.counts : {}
+    const execution = r ? r.execution ?? null : null
+    const indexWritten = r ? r.indexWritten === true : false
+    const scanErrors = typeof counts.scanErrors === 'number' ? counts.scanErrors : null
+    const entries = typeof counts.entries === 'number' ? counts.entries : null
+    const diff = r && r.diff && typeof r.diff === 'object' ? r.diff : {}
+    const len = (v) => (Array.isArray(v) ? v.length : null)
+    const ok = !!(r && r.ok === true && execution === 'ok' && indexWritten === true)
+    let reason = null
+    if (!ok) {
+      if (!r) reason = '宿主没有返回检查结果'
+      else if (r.ok === false) reason = String(r.reason ?? r.detail ?? '前置条件拒绝，未执行重建')
+      else if (execution === 'partial') reason = '扫描不完整' + (scanErrors !== null ? `（${scanErrors} 处错误）` : '') + '，旧索引已保留'
+      else if (execution === 'error') reason = String(r.reason ?? r.detail ?? '检查阶段报错，未重建索引')
+      else if (!indexWritten) reason = '本次未写入索引，旧索引已保留'
+      else reason = '重建未成功'
+    }
+    return {
+      ok,
+      reason,
+      execution,
+      indexWritten,
+      scanErrors,
+      quality: r ? r.quality ?? null : null,
+      healthy: r ? r.healthy ?? null : null,
+      entries,
+      defects: r ? len(r.defects) : null,
+      added: len(diff.added),
+      removed: len(diff.removed),
+      changed: len(diff.changed),
+      rebuiltAt: r && r.rebuiltAt ? String(r.rebuiltAt) : null,
+      indexFreshBefore: r && r.index ? r.index.fresh ?? null : null,
+      elapsedMs: typeof elapsedMs === 'number' ? elapsedMs : null,
+    }
+  }
+  // #endregion kbSummarizeRebuild
+
   if (webServer && typeof webServer.register === 'function') {
     ctx.effect(
       () =>
@@ -838,6 +1588,20 @@ export function apply(ctx, config) {
               if (req.method !== 'POST') return kbSendJson(res, 405, { ok: false, error: 'method not allowed' })
               const body = JSON.parse((await kbReadBody(req)) || '{}')
               if (body.op === 'status') return kbSendJson(res, 200, { ok: true, status: { ...(await current.status()), build: buildInfo } })
+              if (body.op === 'index-rebuild') {
+                // 界面「重建索引」按钮的唯一入口：与模型工具 kb_check(rebuild=true) 走同一条路径，
+                // 不另写一套扫描逻辑，避免「按钮」与「工具」两种语义漂移。
+                const t0 = Date.now()
+                const checkRes = await current.checkEntry({ rebuild: true })
+                const summary = kbSummarizeRebuild(checkRes, Date.now() - t0)
+                // ok 只代表「索引确实重建了」：partial / 拒绝 / 空返回都是 ok:false + 可读 reason。
+                // 仍然回 200 —— 请求本身处理成功，结论是「没重建成功」，前端据此报原因。
+                return kbSendJson(res, 200, {
+                  ok: summary.ok,
+                  error: summary.ok ? undefined : (summary.reason ?? '重建未成功'),
+                  result: summary,
+                })
+              }
               if (body.op === 'map') {
                 // R5：扫描根 = **当前绑定的库**（与 kb_status/工具同源）。
                 // 要看别的库必须显式传 viewRoot，并在返回里标 readOnly —— 不静默混用"观察库"与"读写库"。
@@ -959,9 +1723,97 @@ export function apply(ctx, config) {
                 const r = await importService.cancel({ importId: String(body.importId) })
                 const bad = r.reason === 'bad-import-id' || r.reason === 'import-dir-escape' || r.reason === 'import-dir-escape-real'
                 return kbSendJson(res, bad ? 400 : 200, r)
-              }              if (body.op === 'bind') {
+                            }
+              // ── 第二轮：待解析项（设置页「待解析/待识别」列表与单项解析）──
+              if (body.op === 'import-waiting') {
+                if (importService === null) return kbSendJson(res, 503, { ok: false, error: '导入服务尚未就绪' })
+                if (String(body.importId ?? '') === '') return kbSendJson(res, 400, { ok: false, error: '缺少 importId' })
+                const r = await importService.waiting({ importId: String(body.importId) })
+                const bad = r.reason === 'bad-import-id' || r.reason === 'import-dir-escape' || r.reason === 'import-dir-escape-real'
+                return kbSendJson(res, bad ? 400 : 200, r)
+              }
+              if (body.op === 'import-parse') {
+                if (importService === null) return kbSendJson(res, 503, { ok: false, error: '导入服务尚未就绪' })
+                if (String(body.importId ?? '') === '' || String(body.rel ?? '') === '') return kbSendJson(res, 400, { ok: false, error: '缺少 importId 或 rel' })
+                const r = await importService.parseItem({ importId: String(body.importId), rel: String(body.rel), kind: body.kind, providerId: body.providerId })
+                const hardFail = r.ok === false && ['PARSE_TARGET_NOT_BOUND', 'PARSE_NOT_ENABLED', 'item-not-found', 'LOCAL_ONLY_BLOCKED', 'UNSUPPORTED_FORMAT', 'SOURCE_ESCAPE'].includes(r.reason)
+                return kbSendJson(res, hardFail ? 400 : 200, r)
+              }
+              // ── 自定义流程 API（op 名冻结，见 FLOWS-REPORT.md；界面与端到端验收共用这几个）──
+              //   flows.list   {includeArchived?}          → {ok,kbId,count,flows[]}
+              //   flows.get    {id}                        → {ok,flow}
+              //   flows.save   {flow, expectedRevision?}   → {ok,flow,created,revision} | conflict
+              //   flows.enable {id, enabled}               → {ok,id,enabled,revision}
+              //   flows.archive{id, restored?}             → {ok,id,archived,restored}
+              //   flows.resolve{text}                      → {ok,status,matched,guarded}
+              //   flows.run    {id?, text?, params?, runId?} → {ok,runId,run}（立即返回，后台执行）
+              //   flows.runs   {flowId?, runId?, limit?}   → {ok,runs[]} | {ok,run}
+              //   flows.cancel {runId}                     → {ok,canceling}
+              if (String(body.op).startsWith('flows.')) {
+                let engine
+                try {
+                  engine = await ensureFlowEngine()
+                } catch (error) {
+                  return kbSendJson(res, 503, { ok: false, error: '流程引擎不可用：' + String((error && error.message) ?? error) })
+                }
+                const sub = String(body.op).slice('flows.'.length)
+                let out
+                try {
+                  if (sub === 'list') out = await engine.list({ includeArchived: body.includeArchived === true })
+                  else if (sub === 'get') out = await engine.get(body.id)
+                  else if (sub === 'save') out = await engine.save({ flow: body.flow, expectedRevision: body.expectedRevision })
+                  else if (sub === 'enable') out = await engine.setEnabled(body.id, body.enabled === true)
+                  else if (sub === 'archive') out = await engine.archive(body.id, body.restored === true)
+                  else if (sub === 'resolve') out = await engine.resolve(body.text)
+                  else if (sub === 'run') {
+                    // 界面触发**没有调用方 agent** → gateway 走根级分支（借用存活会话的模型路由）
+                    out = await engine.start({ id: body.id, text: body.text, params: body.params, runId: body.runId, parentAgent: null, signal: null })
+                    if (out && out.ok === true && out.run && out.run.promise) delete out.run.promise
+                  } else if (sub === 'runs') out = await engine.runs({ flowId: body.flowId ?? body.id, runId: body.runId, limit: body.limit })
+                  else if (sub === 'cancel') out = await engine.cancel(body.runId ?? body.id)
+                  else return kbSendJson(res, 400, { ok: false, error: 'unknown flows op: ' + sub })
+                } catch (error) {
+                  return kbSendJson(res, 500, { ok: false, error: String((error && error.message) ?? error) })
+                }
+                const bad = out && (out.reason === 'bad-import-id' || out.reason === 'invalid-flow')
+                return kbSendJson(res, bad ? 400 : 200, out)
+              }
+              if (body.op === 'bind') {
                 const result = await current.bind(String(body.kbPath ?? ''), { confirmInit: body.confirmInit === true })
                 return kbSendJson(res, 200, { ok: result.ok !== false, result })
+              }
+              // ── 第二轮：解析服务（OCR/ASR）—— 设置页与工具共用同一个任务服务 ──
+              if (typeof body.op === 'string' && body.op.startsWith('parse.')) {
+                if (parsingService === null) return kbSendJson(res, 503, { ok: false, error: '解析服务尚未就绪' })
+                const sub = String(body.op).slice('parse.'.length)
+                const uiCaller = { via: 'ui', gate: 'settings-api' }
+                // 管理面写操作的唯一入口：设置页这条已鉴权的 HTTP 路由。
+                // 服务层还会再要一次 viaAdmin（防止将来别处误用），不只依赖这一处布尔。
+                const admin = { viaAdmin: true }
+                try {
+                  let out
+                  if (sub === 'providers') out = await parsingService.providersPublic()
+                  else if (sub === 'provider.save') out = await parsingService.saveProvider(body.provider, admin)
+                  else if (sub === 'provider.delete') out = await parsingService.deleteProvider(String(body.providerId ?? ''), admin)
+                  else if (sub === 'default') out = await parsingService.setDefaults({ kind: String(body.kind ?? ''), id: String(body.providerId ?? '') }, admin)
+                  else if (sub === 'policy') out = await parsingService.setPolicy(String(body.externalPolicy ?? ''), admin)
+                  else if (sub === 'test-connection') out = await parsingService.testConnection(String(body.providerId ?? ''))
+                  else if (sub === 'test-parse') out = await parsingService.testParse({ providerId: body.providerId, sourceRel: body.sourceRel, kind: body.kind }, { requestedBy: uiCaller })
+                  else if (sub === 'submit') out = await parsingService.submit({ sourceRel: body.sourceRel, kind: body.kind, providerId: body.providerId, purpose: body.purpose }, { requestedBy: uiCaller })
+                  else if (sub === 'jobs') out = await parsingService.listJobs({ limit: body.limit, kind: body.kind ?? null, status: body.status ?? null })
+                  else if (sub === 'job') {
+                    const job = await parsingService.readJob(String(body.jobId ?? ''))
+                    out = job ? { ok: true, job: parsingService.publicJob(job) } : { ok: false, reason: 'not-found' }
+                  } else if (sub === 'result') out = await parsingService.readResult(String(body.jobId ?? ''), { offset: body.offset, limit: body.limit, pages: Array.isArray(body.pages) ? body.pages.map(Number) : null })
+                  else if (sub === 'cancel') out = await parsingService.cancel(String(body.jobId ?? ''), { by: uiCaller })
+                  else if (sub === 'retry') out = await parsingService.retry(String(body.jobId ?? ''), { reason: '界面重试' })
+                  else if (sub === 'land') out = await parsingService.land(String(body.jobId ?? ''), { title: body.title, kind: body.kind, tags: body.tags, entryId: body.entryId, expectedRevision: body.expectedRevision })
+                  else return kbSendJson(res, 400, { ok: false, error: 'unknown parse op: ' + sub })
+                  const hardFail = out && out.ok === false && ['SOURCE_ESCAPE', 'SOURCE_MISSING', 'UNSUPPORTED_FORMAT', 'FILE_TOO_LARGE', 'BAD_KIND', 'LOCAL_ONLY_BLOCKED', 'LOCAL_ONLY_DESTINATION_BLOCKED', 'LOCALITY_MISMATCH', 'ADMIN_ONLY', 'invalid-provider', 'BAD_ARGS', 'BAD_COMMAND'].includes(out.reason)
+                  return kbSendJson(res, hardFail ? 400 : 200, out)
+                } catch (error) {
+                  return kbSendJson(res, 500, { ok: false, error: String((error && error.message) ?? error) })
+                }
               }
               return kbSendJson(res, 400, { ok: false, error: `unknown op: ${String(body.op)}` })
             } catch (error) {
@@ -1024,6 +1876,16 @@ export function apply(ctx, config) {
       // stateDir 解析结果必须注入 core 的配置：否则 config.stateDir='' 时 `path.resolve('')` 会落到宿主 cwd，
       // 使 config.json/binding.json/kb.log 写进进程工作目录（而不是 <profile>/kb-state）。
       core = createCore({ ...config, stateDir }, log)
+      // A live switch must not introduce an unprotected vault while ordinary
+      // workers still hold permissions. This strict release requires a stopped
+      // host + reprovision before changing the protected vault.
+      const bindBeforeH1 = core.bind.bind(core)
+      core.bind = async (target, opts = {}) => {
+        // Legacy bind also switches an existing library without commit=true.
+        // Check every entry before it can inspect or mutate another root.
+        await ctx.get('h1Isolation')?.assertBindingTarget(target)
+        return bindBeforeH1(target, opts)
+      }
       try {
         const conf = await core.loadConfig()
         evidence.config = { file: core.paths.configFile, revision: conf.revision, kbPath: conf.kbPath, degraded: Boolean(conf.degraded) }

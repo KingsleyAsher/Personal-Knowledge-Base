@@ -1,4 +1,4 @@
-# dsh-knowledge-base bundle patch（0.2.0-rc2）
+# dsh-knowledge-base bundle patch（1.0.2）
 #
 # 这一行只在 **加载本插件的那个 profile** 里生效。
 # 0.1.0-p7 起：默认值不再写死开发者机器上的绝对路径（审查意见 §四 第 5 条）：
@@ -57,3 +57,29 @@
         followLinks: false
         # 日志级别：debug | info | warn（正式环境用 info）
         logLevel: info
+
+        # ── 第二轮：解析（OCR/ASR）的入口闸门（2026-10-18 定向修复新增）──
+        # parse.allowWithoutIsolation 默认 false：**没有启用 H1 隔离后端的 profile 上，
+        # kb_parse 一律拒绝**（fail closed，返回 H1_REQUIRED），并且不会退回宿主执行。
+        # 只有管理员明确接受"无隔离运行"时才在这个 profile 里显式打开；打开后工具返回的
+        # gate 字段会写成 non-h1-explicit，便于事后区分——这种部署不得当作严格隔离交付。
+        #
+        # parse:
+        #   allowWithoutIsolation: true
+        # 开启后仍要求知识库根会话或实时委派授权；gate.isolation=none，不提供系统级读隔离。
+
+        # ── 合并后的委派工具（原 @local/dsh-agent-gateway 的配置在此）──
+        # 不写 targets 时，自动用一个自带的知识库目标：
+        #   id=knowledge / preset=knowledge / cwd=上面的 kbPath（未绑定则用调用方工作目录）
+        #   toolName=knowledge_request（旧入口名，保持不变）
+        # 如需额外目标（例如写作 agent），在 targets 里显式列；名称不要重复。
+        gateway:
+          # 同一调用方同时在跑的委派上限（不是插件生命周期累计次数）
+          maxCalls: 5
+          # 单次委派最长等待（毫秒）；超时请求停止子代理，清理另有5秒上限
+          timeoutMs: 300000
+          # 委派深度上限（父 delegationDepth + 1 超过即拒绝）
+          maxDepth: 3
+          # descriptor 版本：0.1.5/0.2.x 宿主 = 3；旧 vendor 0.1.1 宿主 = 2
+          descriptorVersion: 3
+          # 旧版插件是否仍在组合里由代码检测（检测到就跳过合并注册，避免双注册）

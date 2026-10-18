@@ -16,7 +16,7 @@ import { inspectFolder, planImport, runImport, readManifest, saveManifest, cance
 export const TERMINAL_STAGES = new Set(['done', 'partial', 'failed', 'canceled', 'conflict'])
 const norm = (p) => String(p ?? '').replace(/\\/g, '/').toLowerCase()
 
-export function createImportService({ stateDir, getBaseConfig, getCurrentCore = null, log = () => {}, coreFactory = createCore, commitBinding = null }) {
+export function createImportService({ stateDir, getBaseConfig, getCurrentCore = null, log = () => {}, coreFactory = createCore, commitBinding = null, getParsingService = null }) {
   const jobs = new Map()
   const taskStateDirOf = (importId) => path.join(stateDir, 'imports', importId, 'core-state')
   const isActive = (importId) => Boolean(jobs.get(importId) && jobs.get(importId).running)
@@ -289,6 +289,77 @@ export function createImportService({ stateDir, getBaseConfig, getCurrentCore = 
     return await cancelImport(stateDir, importId)
   }
 
+  // ── 第二轮：待解析项 → 解析任务（与工具/设置页/流程同一个任务服务）───────────
+  /** 列出导入清单里"待解析/待识别"的项，并标出解析是否可用。 */
+  async function waiting({ importId } = {}) {
+    const dirError = await taskDirError(importId)
+    if (dirError) return { ok: false, ...dirError }
+    const manifest = await readManifest(stateDir, importId)
+    if (!manifest) return { ok: false, reason: 'not-found', error: '没有这个导入任务' }
+    const cur = await currentStatus()
+    const sameKb = Boolean(cur && cur.kbId && manifest.targetKbId && cur.kbId === manifest.targetKbId)
+    const parsing = typeof getParsingService === 'function' ? getParsingService() : null
+    const items = (manifest.items ?? [])
+      .filter((it) => ['doc', 'media', 'other'].includes(it.class))
+      .slice(0, 200)
+      .map((it) => ({
+        rel: it.rel,
+        class: it.class,
+        bytes: it.bytes,
+        suggestedKind: suggestParseKind(it),
+        parseJobId: it.parseJobId ?? null,
+        parseStatus: it.parseStatus ?? null,
+        entryId: it.entryId ?? null,
+      }))
+    return {
+      ok: true,
+      importId,
+      stage: manifest.stage,
+      targetKbId: manifest.targetKbId ?? null,
+      currentKbId: (cur && cur.kbId) || null,
+      parseAvailable: Boolean(parsing) && sameKb,
+      note: sameKb
+        ? parsing
+          ? '可以解析：解析结果落隔离底稿，落库另一步'
+          : '解析服务未就绪'
+        : '该导入任务的目标库不是当前绑定的库：解析只对当前绑定库内的原件开放（不提供任意路径解析）',
+      items,
+    }
+  }
+
+  /** 把一个待解析项交给解析服务（不直接落库；落库仍是显式一步）。 */
+  async function parseItem({ importId, rel, kind, providerId } = {}) {
+    const dirError = await taskDirError(importId)
+    if (dirError) return { ok: false, ...dirError }
+    const manifest = await readManifest(stateDir, importId)
+    if (!manifest) return { ok: false, reason: 'not-found', error: '没有这个导入任务' }
+    const item = (manifest.items ?? []).find((it) => norm(it.rel) === norm(rel))
+    if (!item) return { ok: false, reason: 'item-not-found', error: '导入清单里没有这一项：' + String(rel) }
+    const cur = await currentStatus()
+    if (!cur || !cur.kbId || !manifest.targetKbId || cur.kbId !== manifest.targetKbId) {
+      return { ok: false, reason: 'PARSE_TARGET_NOT_BOUND', error: '该导入任务的目标库不是当前绑定的库：拒绝对非当前绑定库的路径发起解析' }
+    }
+    const parsing = typeof getParsingService === 'function' ? getParsingService() : null
+    if (!parsing) return { ok: false, reason: 'PARSE_NOT_ENABLED', error: '解析服务未就绪' }
+    const sourceRel = String(item.originalPath || item.rel)
+    const kindUse = kind || suggestParseKind(item)
+    const submitted = await parsing.submit(
+      { sourceRel, kind: kindUse, providerId, purpose: 'import-item' },
+      { requestedBy: { via: 'import', importId } },
+    )
+    if (submitted.ok !== true) return { ...submitted, rel: item.rel }
+    item.parseJobId = submitted.jobId
+    item.parseStatus = submitted.status
+    await saveManifest(stateDir, manifest)
+    return { ok: true, importId, rel: item.rel, kind: kindUse, sourceRel, jobId: submitted.jobId, status: submitted.status, deduped: submitted.deduped === true }
+  }
+
+  function suggestParseKind(item) {
+    const ext = String(item.rel ?? '').split('.').pop().toLowerCase()
+    if (['wav', 'mp3', 'm4a', 'flac', 'ogg', 'aac', 'mp4'].includes(ext)) return 'asr'
+    return 'ocr'
+  }
+
   /**
    * 「自动建库 / 识别」一次点击（S4 的两个主动作之二）。
    * R3 的关键顺序：**先冻结清单，再建标准结构**；R1：导入完成并通过核验后才切换当前库。
@@ -391,5 +462,5 @@ export function createImportService({ stateDir, getBaseConfig, getCurrentCore = 
     }
   }
 
-  return { plan, start, status, cancel, setupFolder, isActive, jobs }
+  return { plan, start, status, cancel, setupFolder, isActive, jobs, waiting, parseItem }
 }

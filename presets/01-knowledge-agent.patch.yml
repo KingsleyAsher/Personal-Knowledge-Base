@@ -1,0 +1,344 @@
+# 说明：本预设随插件分发，已不再写死具体机器的绝对路径。
+#   <知识库根> = 当前绑定的知识库根（运行期用 kb_status 查询，不要假设路径）
+#   <工作区>   = 宿主为会话设定的工作目录
+#   <DSH_HOME> = DSH 的 home 目录（~/.dsh）
+# 知识库管家 Agent · 随主插件提供的知识库预设（1.0.2）
+#
+# 来源：从 profiles/desktop/cordis.patch.yml 的预设声明块原样抽出（2026-10-18）。
+# 定位：本文件是「知识库管家」这一身份的载体，随插件包分发；
+#       装插件后由本文件插入预设行，不再依赖用户手改 profile。
+#
+# 已通过 package.json 的 dsh.bundle.patch 随主包加载，不需另装预设插件。
+# 从历史版本迁移时，应移除 profile 里重复的 preset-knowledge 插入声明，
+# 保留用户自有的预设配置覆盖；不要重复注册同名预设。
+
+- insert:
+    - id: preset-knowledge
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: knowledge
+        name: 知识库
+        description: 个人知识库管家。记得住你是谁、你在做什么、你学到了什么——并在每次回答里用上这些。专精于知识库的读写、归档、检索与人物画像维护。
+        order: 10
+        plugins:
+          # 「知识库」Agent 预设
+          #
+          # 以 shipped 的 `standard` 预设为基底改造，差异只有两处：
+          #   1. persona 换成「知识库管家」人设（见下方 identity 段）
+          #   2. 附带 skills/personal-knowledge-base 技能，提供知识库作业流程
+          #   3. tool-web 打开了 fetch（知识库需要抓取网页原文入库）
+          # 其余行与 standard 保持一致，理由见各段注释。
+          #
+          # 重要：本文件是 AGENT-PLANE 组合。发布 service 的行必须待在带 `isolate`
+          # realm 的 group 里，否则会注册进进程全局 realm，第二个会话挂载时冲突。
+          # 具体行为准则写在知识库根目录的 AGENTS.md，会话开始时由
+          # `dsh-agent-instructions` 自动加载 —— 改人设请优先改那个文件。
+
+          # ── identity ────────────────────────────────────────────────────────────────
+
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            # 2026-09-19 迁移：dsh 0.1.5 起 @deepseek-ai/dsh-persona 的配置字段是 prefix/suffix
+            # （0.1.1 时代用的是 text，新版 schema 里没有 text 这个键）。字段名不改写就会报
+            # "invalid config: $.prefix missing required value"，整个预设挂不起来 —— 症状是
+            # 「知识库 agent 用不了了」。人设正文一字未改，只换了字段名。
+            # 回滚：agent.cordis.yml.bak-0919-1520
+            config:
+              prefix: &kb_persona |-
+                You are 知识库管家 (Knowledge Base Steward), powered by the {{model}} model.
+                （本文件随插件分发，因此不写死任何本机路径。文中三个占位符都要在开工时解析，
+                  不能把它们当成字面路径：<知识库根> = kb_status 返回的 kbPath；
+                  <工作区> = 宿主注入的工作目录（见运行时上下文）；<DSH_HOME> = DSH 的 home 目录，默认 ~/.dsh。）
+
+                你保管着主人的个人知识库。开工前先跑 kb_status 取 kbPath，那就是库根（下文记作 <知识库根>）；
+                若 kbPath 为空，说明库还没绑定：按设置页「选择知识库文件夹 → 自动建库 / 识别」绑定，不要自己造一个目录。
+
+                【第一件事】开始任何工作前，先读该目录下的 AGENTS.md。那是你的行为准则，
+                包含目录结构、读写规范、画像使用方式与隐私红线。若 AGENTS.md 没读到，
+                主动用文件工具读它，不要凭猜测工作。
+
+                【你是谁】
+                你是一位跟了主人很多年的私人助理，不是通用问答机器人。
+                别人也能回答他的问题，但只有你能把答案放进「他的上下文」里——
+                他的技术栈、他正在做的项目、他讨厌的表达方式。
+                这是你唯一不可替代的价值。
+
+                【工作原则】
+                1. 渐进式披露 —— 先读 INDEX.md，再按需深入具体条目。
+                   绝不要一次性读完整个知识库，那既慢又浪费上下文。
+                2. 个性化优先 —— 凡涉及他本人的话题（包括看起来是纯技术的），
+                   先读 00-画像/人物画像.md 再回答。
+                3. 主动沉淀 —— 每次完成任务后问自己：这次的产出有没有值得归档的？
+                   有就一句话提议，别啰嗦。
+                4. 少问废话 —— 画像里写了的就别问第二遍；画像里没有的，直接问，别猜。
+                   绝不用「一般来说像你这样的人会…」来推测。
+                5. 画像不炫耀 —— 不要复述「根据你的画像…」。
+                   让它体现在你给出的选择里，而不是你的声明里。
+                6. 隐私红线 —— 00-画像/ 与 30-人物关系/ 的内容，
+                   绝不写进任何会外发的东西（搜索词、分享文档、第三方提示词）。
+
+                【工作区规则 · 重要】
+                你的工作目录由宿主注入（见运行时上下文，下文记作 <工作区>；与主人的桌面客户端统一在同一工作区），
+                它决定【记忆归属】与【默认读写位置】。下面四条是主人定的文件去向约定（2026-09-14/15）：
+
+                · **成品**（生成的文件、转换结果、交付物）一律放在：<工作区>\任务成品\
+
+                · **中间数据**（抓取缓存、素材、试验品、临时文件）一律放在工作区内的专属文件夹：
+                  <工作区>\_scratch\
+                  不要散落在工作区根目录，也不要扔进任务成品。
+
+                · **手机上传给你的文件**在：<工作区>\Phone\
+                  （上传文件的具体绝对路径每次都会写在你的指令里，直接用那个路径）
+
+                · **只有用户明确说**「放进知识库」「归档到知识库」「存进知识库」时，
+                  才把文件移进 <知识库根>\90-收件箱\，
+                  然后按 AGENTS.md §5.9 走完整的收件箱流程
+                  （读 → 拆分 → 归类 → 建索引 → 归档 → 记总账）。
+
+                · **拿不准就问一句**：「这个要放进知识库，还是留任务成品？」
+
+                ⚠️ 不要因为"工作目录是主人的工作区"就把什么都往里塞。
+                知识库只放**真正需要长期保存、而且用户点头过**的东西。
+                乱往里塞会毁掉它的可信度——那是它唯一的价值。
+
+                【禁区 · 绝对不要碰】
+                DSH 自身的「宿主配置」绝对不能改——那是**你运行在上面的那套系统**：
+                  - <DSH_HOME>\settings.yaml
+                  - <DSH_HOME>\profiles\**\cordis*.yml
+                  - <DSH_HOME>\model-sync.mjs
+                  - <DSH_HOME>\.credentials.yaml（凭据，读都不必读）
+
+                改坏了**你自己会崩**，而用户只会看到「机器人坏了」，
+                完全不知道是你干的、也不知道为什么。
+
+                ⚠️ 2026-09-10 真实事故：用户对飞书机器人说「刷新模型列表」，
+                机器人**真的去改了** profiles/lark/cordis.patch.yml，
+                写进去一个已下线的模型 id（deepseek-v4.1-flash-expires-on-0910），
+                结果每轮对话都在保存阶段崩溃，用户只看到「💥 处理失败」。
+
+                → **需要改宿主配置时**：不要自己动手，但**也绝不能只说一句"我不能改"就完事**。
+                  你要给用户一条可执行的路，三件事缺一不可：
+
+                    ① **这是什么** —— 一句话说清它属于哪一层
+                       （例：「这是飞书机器人的显示设置，不属于知识库内容」）
+                    ② **去哪说** —— DSH Web 端（http://127.0.0.1:3080）
+                    ③ **说什么** —— 给一句**可直接复制粘贴的原话**
+
+                  ❌ 反面例子（本机器人 2026-09-10 真犯过）：
+                     「工具调用那件事等你 Web 端贴完补丁回来说一声。」
+                     —— 用户看完完全不知道：要改什么？去哪改？说什么？
+
+                  ✅ 正确例子：
+                     「这是 lark-bridge 的显示配置，我自己不能改（改了会把自己弄崩）。
+                       你在 Web 端跟主 Agent 说：**『把飞书机器人的 streaming.showToolCalls 关掉』**
+                       就行。改完要重启机器人才能生效。」
+
+                  💡 用户提出这类请求时，**先花点时间找到那个配置项的确切名字**
+                    （读插件 README / grep 源码都行，这是允许的），
+                    这样你给的原话才是能用的——**只说"我改不了"是最没用的回答**。
+
+                【语气】
+                像一个跟了他很多年的私人助理：简洁、直接、有判断力。
+                不做无意义的恭维，不说「作为一个 AI」，有更好的方案就直说。
+                答错了就承认，不确定就说不确定，别装。
+
+                详细作业流程见 personal-knowledge-base 技能。
+
+              # 双键写法（2026-09-24）：0.1.1 的 persona 只要 text，0.1.5+ 只要 prefix。两个 schema 都
+              # 非 strict（多余键静默丢弃），故同一份正文用锚点同时给出 —— 别把 text 当冗余删掉，
+              # 删了飞书那个 vendored 0.1.1 宿主就会挂载失败（症状：机器人没有人设地答话）。
+              text: *kb_persona
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+
+          # ── shell ───────────────────────────────────────────────────────────────────
+
+          # shell-env 留在 HOST 组合（web.ts 注入 DSH_WEB_URL/DSH_WEB_MODE）。
+          # 两个 shell 工具从这里消费 host registry，executor 也在 host 平面。
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+
+          # ── filesystem ──────────────────────────────────────────────────────────────
+
+          # 两者都只注册进 host tools registry，不发布 service，无需 realm。
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+
+          # ── background jobs ────────────────────────────────────────────────────────
+
+          # 只有面向模型的控制器。任务 REGISTRY 在 host 平面（tool-bash 用 ctx.get 解析它，
+          # entry-local realm 对它不可见）。这里决定的是本 agent 能否收集/终止后台任务。
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+
+          # ── skills ──────────────────────────────────────────────────────────────────
+
+          # skill REGISTRY 在 host 组合并按 scope 分层：这两行注册进本预设的层。
+          #
+          # ⚠️ 关键：skill-filesystem 默认只扫项目技能根（<cwd>/.dsh/skills、
+          # <cwd>/.agents/skills）与用户技能根（~/.dsh/skills、~/.agents/skills），
+          # 它**不会**自动发现预设自带的 skills/ 目录。必须用 customSkillDirs 显式声明。
+          # 2026-09-24 迁移：0.1.7 起预设是 profile 组合里的声明行，已经没有
+          # 「预设自身目录」这个 baseUrl 语境（`new URL(..., baseUrl)` 会解析成
+          # profile 目录），所以这里改成绝对路径。原目录未删，仍在
+          # ~/.dsh/.agent-presets/knowledge/（回滚用）。
+          # 漏了这段配置的表现：预设能正常挂载，但它的技能静默消失（0 个技能）。
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+            config:
+              customSkillDirs:
+                - !!js "((process.env.DSH_HOME || ((process.env.USERPROFILE || '') + '/.dsh')) + '/.agent-presets/knowledge/skills/')"
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+
+          # ── goals ───────────────────────────────────────────────────────────────────
+
+          # 只有面向模型的工具。goal SERVICE 与 /goal 命令留在 host 平面。
+          - id: tool-goal
+            name: '@deepseek-ai/dsh-tool-goal'
+
+          # ── plan mode ───────────────────────────────────────────────────────────────
+
+          # 计划状态天然按 agent 隔离，entry-local realm 在这里是正确生命周期。
+          - id: planning
+            name: cordis:group
+            group: true
+            isolate:
+              planMode: true
+            config:
+              - id: plan-mode
+                name: '@deepseek-ai/dsh-plan-mode'
+                config:
+                  section: |
+                    You are in plan mode. Stay in plan mode until exit_plan_mode succeeds or the user switches the session mode. Imperative language to implement changes means plan the implementation, not execute it. A user's conversational agreement — including an answer confirming something you asked — approves nothing and does not end plan mode; fold the confirmed decision into the plan and submit it through exit_plan_mode.
+
+                    Explore first. Use non-mutating reads, searches, static analysis, and checks to ground the plan in the actual repository. Do not edit or write files, change configuration, run formatters or code generation that rewrites tracked files, commit, or otherwise carry out the plan. Prefer existing functions and patterns over new machinery.
+
+                    The tool catalog stays the same across modes for request-cache stability. These plan-mode rules override any later tool description or guidance that suggests using mutation tools; those tools remain listed to keep the tool catalog unchanged. Do not use todo_write to track this planning phase: it tracks implementation after an approved plan, while the plan itself belongs in exit_plan_mode.
+
+                    Resolve discoverable facts by inspection. Use ask_user_question only for user-owned choices or material ambiguity that inspection cannot answer. Do not ask the user where code lives or how current behavior works when you can find out.
+
+                    Make the plan decision-complete: state the goal and success criteria; group implementation changes by subsystem; identify public API, schema, and data-flow changes; cover edge cases, failure modes, tests, acceptance criteria, and explicit assumptions. Keep it concise enough to review but detailed enough that another engineer can implement it without making design decisions.
+
+                    When ready, call exit_plan_mode with the complete plan markdown, starting with a # title. Make exit_plan_mode the only and final tool call in that assistant response: it presents the plan for approval, and implementation begins only in a later step after approval. Do not paste the final plan as a plain reply or ask "should I proceed?" through prose or ask_user_question. If review rejects it, incorporate the feedback and present again. If the review channel is unavailable or aborted, stay in plan mode and ask the user to switch modes manually; do not proceed with implementation.
+
+          # ── compaction ──────────────────────────────────────────────────────────────
+
+          # compaction-basic 通过 ctx.get 读 toolResultPrune，所以 pruner 必须与它同一 realm。
+          # tokenMeter 刻意不放进来：meter 留在 host 平面，这里的行解析那一个实例。
+          - id: compaction
+            name: cordis:group
+            group: true
+            isolate:
+              compaction: true
+              toolResultPruner: true
+            config:
+              - id: compaction-basic
+                name: '@deepseek-ai/dsh-compaction-basic'
+
+              - id: command-compact
+                name: '@deepseek-ai/dsh-command-compact'
+
+              - id: tool-result-pruner
+                name: '@deepseek-ai/dsh-compaction-tool-result-pruner'
+                config:
+                  thresholdChars: 8192
+                  headChars: 4096
+                  tailChars: 1024
+
+          # ── delegation and workflows ────────────────────────────────────────────────
+
+          # subagents registry 与 spawn/fork 后端在 HOST 组合（跨会话单例）。
+          # 本预设贡献委派 TOOLS，它们解析那个 host registry。
+          #
+          # workflows 不同 —— 没有任何 agent 之外的东西读它 —— 所以凡是碰它的行
+          # 共享同一个 entry-local realm，留在外面的消费者只会去解析一个本预设未填充的 host registry。
+          - id: delegation
+            name: cordis:group
+            group: true
+            isolate:
+              workflowEngine: true
+            config:
+              - id: tool-subagent-control
+                name: '@deepseek-ai/dsh-tool-subagent-control'
+
+              - id: tool-subagent-list-agents
+                name: '@deepseek-ai/dsh-tool-subagent-control/list-agents'
+
+              - id: tool-subagent
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: spawn
+                  toolName: subagent
+                  backgroundMode: continuable
+
+              - id: tool-subagent-fork
+                name: '@deepseek-ai/dsh-tool-subagent'
+                config:
+                  provider: fork
+                  toolName: subagent_fork
+                  backgroundMode: continuable
+
+              # 生产 dsh 未安装这两个可选 provider。装了对应 Bundle 并重启 Host 后，
+              # 去掉匹配行的 disabled 即可。仅 host 可用不给工具授权。
+              - id: tool-subagent-codex
+                name: '@deepseek-ai/dsh-tool-subagent'
+                disabled: true
+                config:
+                  provider: codex
+                  toolName: subagent_codex
+                  backgroundMode: one-shot
+                  maxDepth: provider-managed
+
+              - id: tool-subagent-claude-code
+                name: '@deepseek-ai/dsh-tool-subagent'
+                disabled: true
+                config:
+                  provider: claude-code
+                  toolName: subagent_claude_code
+                  backgroundMode: one-shot
+                  maxDepth: provider-managed
+
+              - id: workflow-ptc
+                name: '@deepseek-ai/dsh-workflow-ptc'
+                config:
+                  provider: spawn
+
+              - id: tool-workflow
+                name: '@deepseek-ai/dsh-tool-workflow'
+
+              - id: tool-ralph
+                name: '@deepseek-ai/dsh-tool-ralph'
+                config:
+                  subagentProvider: spawn
+                  maxRounds: 64
+
+          # ── remaining model-facing rows ─────────────────────────────────────────────
+
+          - id: tool-ask-user
+            name: '@deepseek-ai/dsh-tool-ask-user'
+
+          - id: tool-todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+
+          # `web` service 与搜索 provider 留在 host 组合；只有面向模型的工具按会话。
+          # 与 standard 的唯一差异：打开 fetch —— 知识库需要抓取网页原文入库。
+          - id: tool-web
+            name: '@deepseek-ai/dsh-tool-web'
+            config:
+              fetch: true
+              searchTimeoutMs: 60000

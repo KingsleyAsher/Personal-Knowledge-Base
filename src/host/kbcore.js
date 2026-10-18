@@ -18,7 +18,7 @@ import path from 'node:path'
 import { readImportSources, derivedPrivatePartitions, effectivePrivateDirs, foldGeneratedPairs } from './fsindex.js'
 
 // 版本单一来源：package.json 的 version 必须与此一致（详见 INSTALL 说明）
-export const VERSION = '0.2.0-rc2'
+export const VERSION = '1.0.2'
 
 export const REQUIRED_FIELDS = ['title', 'type', 'tags', 'status', 'updated']
 export const SCHEMA_VERSION = 1
@@ -42,6 +42,17 @@ const DEFAULT_EXCLUDES = ['_模板', '_手册', '.kbmeta', '.kb-state', '50-底�
 
 const nowIso = () => new Date().toISOString()
 const today = () => nowIso().slice(0, 10)
+/**
+ * 按指定时区取「日期」（YYYY-MM-DD）。时区非法时退回 UTC 日期并在日志里留一句，
+ * 绝不因为一个时区串写错就拒绝写入。
+ */
+function dateInTz(iso, tz) {
+  try {
+    return new Intl.DateTimeFormat('sv-SE', { timeZone: tz, dateStyle: 'short' }).format(new Date(iso))
+  } catch {
+    return String(iso).slice(0, 10)
+  }
+}
 
 function sha12(buf) {
   return crypto.createHash('sha256').update(buf).digest('hex').slice(0, 12)
@@ -622,9 +633,17 @@ export function createCore(cfg, logger) {
   function buildConfigPatch(current, patch) {
     // R3：白名单 + 校验。以前是 {...config, ...patch} 全量合并，未知/非法字段会原样落盘。
     const next = { ...current }
-    const allowed = new Set(['kbPath', 'categories', 'excludeFromSearch', 'followLinks', 'privateDirs'])
+    const allowed = new Set(['kbPath', 'categories', 'excludeFromSearch', 'followLinks', 'privateDirs', 'parsing'])
     for (const key of Object.keys(patch ?? {})) {
       if (!allowed.has(key)) return { ok: false, reason: 'unknown-config-field', detail: `不接受的配置字段：${key}` }
+    }
+    // 第二轮：解析服务提供方（OCR/ASR）。深校验在 parsing.js 里做；这里只挡住形状错误。
+    // 注意：这里存的是**非敏感配置 + 凭据引用名**，任何密钥值都不允许落盘（由 parsing.js 拒绝）。
+    if (patch && patch.parsing !== undefined) {
+      const p = patch.parsing
+      if (p === null || typeof p !== 'object' || Array.isArray(p)) return { ok: false, reason: 'bad-parsing', detail: 'parsing 必须是对象' }
+      if (!Array.isArray(p.providers)) return { ok: false, reason: 'bad-parsing', detail: 'parsing.providers 必须是数组' }
+      next.parsing = p
     }
     if (patch && patch.kbPath !== undefined) next.kbPath = normKbPath(patch.kbPath)
     if (patch && patch.categories !== undefined) {
@@ -1543,6 +1562,31 @@ export function createCore(cfg, logger) {
 
   // ── 写入（D：路径边界 + 强制版本；E：互斥 + 部分完成）───────────────
   async function createEntry(args) {
+    // Flows snapshot their destination. Validate and hold the same config lock
+    // used by commitBind, so a switch cannot redirect a running report.
+    if (args.expectedBinding) {
+      const lock = await acquireConfigLock('flow-create')
+      if (!lock.ok) return { ok: false, reason: lock.reason ?? 'config-lock-timeout' }
+      try {
+        const gate = await configGate()
+        if (!gate.ok) return { ok: false, reason: gate.refusal.reason }
+        const expected = args.expectedBinding
+        const root = kbRootOf(gate.conf)
+        const meta = await readMeta(root)
+        if (normAbs(root) !== normAbs(expected.kbPath) || meta.state !== 'ok' || meta.value.kbId !== expected.kbId
+          || (expected.revision != null && gate.conf.revision !== expected.revision)) {
+          return { ok: false, reason: 'flow-binding-changed', detail: '流程目标库或配置版本已改变，未写入报告' }
+        }
+        args.signal?.throwIfAborted()
+        return await createEntryUnchecked(args)
+      } finally {
+        await releaseConfigLock(lock.token)
+      }
+    }
+    return createEntryUnchecked(args)
+  }
+
+  async function createEntryUnchecked(args) {
     // C1：写入口必须强制重读并校验配置，不能吃 status 留下的缓存
     const gate = await configGate()
     if (!gate.ok) return { ok: false, entryId: null, reason: gate.refusal.reason, detail: gate.refusal.detail }
@@ -1614,8 +1658,15 @@ export function createCore(cfg, logger) {
         return { ok: false, reason: dirCheck.reason, detail: `分类目录 ${category}：${dirCheck.detail}` }
       }
       await mkdir(dir, { recursive: true })
-      let file = path.join(dir, `${today()}-${slugOf(args.title)}.md`)
-      if (existsSync(file)) file = path.join(dir, `${today()}-${slugOf(args.title)}-${entryId.slice(3)}.md`)
+      // 2026-10-18（flows 落库用）：可选 tz / status。
+      // 缺省行为**逐字不变**（tz 为空 → 仍用 today()=UTC 日期；status 为空 → 仍写"进行中"），
+      // 因此既有调用方零影响；流程执行器传入 outputRules.tz 后，
+      // 文件名前缀与 frontmatter 的 created/updated 会**用同一个时区**取日期（不再一处 UTC 一处本地）。
+      const tzIn = typeof args.tz === 'string' && args.tz.trim() !== '' ? args.tz.trim() : ''
+      const statusIn = typeof args.status === 'string' && args.status.trim() !== '' ? args.status.trim() : '进行中'
+      const dayStamp = tzIn === '' ? today() : dateInTz(nowIso(), tzIn)
+      let file = path.join(dir, `${dayStamp}-${slugOf(args.title)}.md`)
+      if (existsSync(file)) file = path.join(dir, `${dayStamp}-${slugOf(args.title)}-${entryId.slice(3)}.md`)
       if (!isInside(root, file)) return { ok: false, reason: 'path-escape', detail: toPosix(file) }
       const fileCheck = await checkRealPath(root, file, { followLinks: conf.followLinks })
       if (!fileCheck.ok) {
@@ -1627,9 +1678,9 @@ export function createCore(cfg, logger) {
         title: args.title,
         type: kind,
         tags: args.tags ?? [],
-        status: '进行中',
-        created: today(),
-        updated: today(),
+        status: statusIn,
+        created: dayStamp,
+        updated: dayStamp,
       }
       if (args.source) data.source = args.source
       await atomicWrite(file, buildFile(data, String(args.content ?? '').trimEnd() + '\n'))
