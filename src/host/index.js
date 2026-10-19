@@ -17,6 +17,7 @@ import { constants as fsConstants } from 'node:fs'
 import { createCore, VERSION } from './kbcore.js'
 import { apply as gatewayApply, createDelegate as createGatewayDelegate, isLiveKnowledgeGrant } from './gateway.js'
 import { createFlowEngine } from './flows.js'
+import { createFlowWorkspaceManager, prepareFlowConversation } from './flow-workspace.js'
 import { createUpdateChecker, startAutomaticChecks } from './updates.js'
 import { runSelftest } from './selftest.js'
 import { walkTree, privateRootOf, normSegs, toPosix as toPosixFile, DEFAULT_PRIVATE_DIRS, readImportSources, derivedPrivatePartitions, effectivePrivateDirs, knowledgeCount } from './fsindex.js'
@@ -226,6 +227,7 @@ export function apply(ctx, config) {
   let attempts = 0
   let timer = null
   let core = null
+  const flowWorkspaceManager = createFlowWorkspaceManager({ getRegistry: () => ctx.get('workspaceRegistry') })
   const updateChecker = createUpdateChecker({ currentVersion: PLUGIN_VERSION })
   // 自动检查属于宿主后台机制，页面关闭后仍继续按周期检查。
   ctx.effect(() => startAutomaticChecks(updateChecker), 'kb-core: automatic update checks')
@@ -251,7 +253,7 @@ let parsingService = null
   const buildPromise = (async () => {
     // 2026-10-18：新增 gateway.js / flows.js 两个**装载文件** —— buildId 必须覆盖它们，
     // 否则改了流程实现而 buildId 不变，"构建=版本/buildId"这条唯一硬判据就失效了。
-    const list = ['package.json', 'cordis.patch.yml', 'src/host/index.js', 'src/host/kbcore.js', 'src/host/fsindex.js', 'src/host/importer.js', 'src/host/import-service.js', 'src/host/map.js', 'src/host/selftest.js', 'src/host/gateway.js', 'src/host/flows.js', 'src/host/parsing.js', 'src/host/updates.js', 'src/client/index.js']
+    const list = ['package.json', 'cordis.patch.yml', 'src/host/index.js', 'src/host/kbcore.js', 'src/host/fsindex.js', 'src/host/importer.js', 'src/host/import-service.js', 'src/host/map.js', 'src/host/selftest.js', 'src/host/gateway.js', 'src/host/flows.js', 'src/host/parsing.js', 'src/host/updates.js', 'src/host/flow-workspace.js', 'src/client/index.js']
     const whole = crypto.createHash('sha256')
     for (const rel of list) {
       try {
@@ -1771,7 +1773,7 @@ let parsingService = null
                   else if (sub === 'enable') out = await engine.setEnabled(body.id, body.enabled === true)
                   else if (sub === 'archive') out = await engine.archive(body.id, body.restored === true)
                   else if (sub === 'resolve') out = await engine.resolve(body.text)
-                  else if (sub === 'prepare-conversation') out = await engine.prepareConversation(body)
+                  else if (sub === 'prepare-conversation') out = await prepareFlowConversation(engine, flowWorkspaceManager, body)
                   else if (sub === 'run') {
                     // 界面触发**没有调用方 agent** → gateway 走根级分支（借用存活会话的模型路由）
                     out = await engine.start({ id: body.id, text: body.text, params: body.params, runId: body.runId, parentAgent: null, signal: null })
