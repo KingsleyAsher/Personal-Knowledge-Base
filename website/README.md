@@ -1,6 +1,6 @@
 # 个人知识库 · 产品展示网页
 
-面向 DSH 个人知识库插件 1.1.1 的独立产品展示页。直接打开 `index.html`，或用任意静态 HTTP 服务预览。无依赖、无构建步骤。
+面向 DSH 个人知识库插件 1.1.2 的独立产品展示页。直接打开 `index.html`，或用任意静态 HTTP 服务预览。无依赖、无构建步骤。
 
 本版按已选定的 `design-concept.png` 还原：中文衬线大标题、左右首屏构图、精细发光知识网络、悬浮信息卡、原件与识别结果并列的产品窗口、环形光线与盾牌插画。网页标题与控件均为 HTML/CSS/JavaScript，插画作为独立图片载入。
 
@@ -8,7 +8,7 @@
 
 保留的交互包括 OCR/ASR 成对内容切换、文档缩放、复制结果、案例切换、FAQ、安装指南、真实插件下载与 GitHub 仓库链接。字体、图片和安装包随页面打包，不依赖在线字体或图库。动效支持暂停与系统减少动态效果设置。
 
-插件安装包从公开 GitHub 仓库下载并核对发布清单：`downloads/local-dsh-knowledge-base-1.1.1.tgz`，256325 字节；SHA-256 为 `531c165f677360ef531928db3b09e5b3613980e79848b2ffb4c2246cc1ac8439`。
+插件安装包从公开 GitHub 仓库下载并核对发布清单：`downloads/local-dsh-knowledge-base-1.1.2.tgz`，新包摘要见仓库根目录 release-manifest.json。
 
 仓库：https://github.com/KingsleyAsher/Personal-Knowledge-Base
 
