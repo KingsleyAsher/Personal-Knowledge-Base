@@ -346,7 +346,7 @@ export function createImportService({ stateDir, getBaseConfig, getCurrentCore = 
   }
 
   /** 把一个待解析项交给解析服务（不直接落库；落库仍是显式一步）。 */
-  async function parseItem({ importId, rel, kind, providerId } = {}) {
+  async function parseItem({ importId, rel, kind, providerId } = {}, { requestedBy } = {}) {
     const dirError = await taskDirError(importId)
     if (dirError) return { ok: false, ...dirError }
     const manifest = await readManifest(stateDir, importId)
@@ -363,7 +363,7 @@ export function createImportService({ stateDir, getBaseConfig, getCurrentCore = 
     const kindUse = kind || suggestParseKind(item)
     const submitted = await parsing.submit(
       { sourceRel, kind: kindUse, providerId, purpose: 'import-item' },
-      { requestedBy: { via: 'import', importId } },
+      { requestedBy: requestedBy?.via === 'tool' ? { via: 'tool', importId } : { via: 'import', importId } },
     )
     if (submitted.ok !== true) return { ...submitted, rel: item.rel }
     item.parseJobId = submitted.jobId

@@ -4,7 +4,7 @@
  * 设计边界（与 AGENTS/第一轮交付一致）：
  *  · 原件只读：解析只读源文件，从不改写、移动、删除原件。
  *  · 结果隔离：全文/分段/页图只落 `<stateDir>/parse/<kbId>/`，不进知识库、不进任何普通 Agent 可读目录。
- *  · 凭据不入档：provider 只保存 credentialRef（名字），值只在发请求那一刻从宿主环境取，
+ *  · 凭据不入档：provider 只保存 credentialRef；值只在请求时从环境或 Windows DPAPI 存储读取，
  *    绝不写进任务记录、日志、HTTP 返回或 UI。
  *  · 协议与地址分离：protocol 决定"怎么发请求"，baseUrl/command 决定"发给谁"；
  *    支持某协议不代表兼容任何 HTTP API。
@@ -29,13 +29,18 @@ import http from 'node:http'
 import https from 'node:https'
 import net from 'node:net'
 import path from 'node:path'
+import { presetProvider, NATIVE_PROTOCOLS } from './parse-presets.js'
+import { createParseCredentials } from './parse-credentials.js'
+import { createNativeAdapter } from './parse-native.js'
+import { createParseDiscovery } from './parse-discovery.js'
+import { checkRealPath } from './kbcore.js'
 import { fileURLToPath } from 'node:url'
 
 export const PARSING_SCHEMA_VERSION = 1
 
 export const PARSE_PROTOCOLS = {
-  ocr: ['openai-vision'],
-  asr: ['openai-audio-transcriptions', 'cli-transcribe'],
+  ocr: ['openai-vision', 'dashscope-ocr', 'baidu-ocr', 'paddle-local', 'paddle-service', 'ppocr-local'],
+  asr: ['openai-audio-transcriptions', 'cli-transcribe', 'dashscope-asr', 'baidu-asr', 'qwen3-local'],
 }
 
 export const PARSE_KINDS = ['ocr', 'asr']
@@ -114,7 +119,7 @@ export function isLocalHostName(host) {
  */
 export function staticDestinationRefusal(provider) {
   if (provider === null || typeof provider !== 'object') return null
-  if (provider.protocol === 'cli-transcribe') return null
+  if (['cli-transcribe', 'qwen3-local', 'paddle-local', 'ppocr-local'].includes(provider.protocol)) return null
   const baseUrl = String(provider.baseUrl ?? '')
   let url
   try {
@@ -227,7 +232,8 @@ export function validCredentialRef(ref) {
  */
 export function normalizeProvider(input, extra = {}) {
   const errors = []
-  const src = input && typeof input === 'object' ? input : {}
+  let src = input && typeof input === 'object' ? input : {}
+  try { src = presetProvider(src) } catch (e) { errors.push({ field: 'vendor', message: e.message }) }
   const id = typeof src.id === 'string' ? src.id.trim() : ''
   if (!validProviderId(id)) errors.push({ field: 'id', code: 'BAD_ID', message: 'id 需为 3..40 位小写字母/数字/-/_' })
   const kind = PARSE_KINDS.includes(src.kind) ? src.kind : ''
@@ -237,7 +243,7 @@ export function normalizeProvider(input, extra = {}) {
     errors.push({ field: 'protocol', code: 'BAD_PROTOCOL', message: `${kind} 支持的协议：${PARSE_PROTOCOLS[kind].join(' / ')}` })
   }
   const locality = LOCALITY.includes(src.locality) ? src.locality : 'local'
-  const isHttp = protocol === 'openai-vision' || protocol === 'openai-audio-transcriptions'
+  const isHttp = protocol === 'openai-vision' || protocol === 'openai-audio-transcriptions' || protocol === 'paddle-service' || NATIVE_PROTOCOLS.includes(protocol)
   let baseUrl = ''
   let command = ''
   let args = []
@@ -247,8 +253,10 @@ export function normalizeProvider(input, extra = {}) {
     if (/^http:\/\//i.test(baseUrl) && (locality === 'cloud' || locality === 'lan')) {
       // 记录但不阻断：内网 http 是常见部署；策略层再判
     }
-  } else if (protocol === 'cli-transcribe') {
+  }
+  if (['cli-transcribe', 'qwen3-local', 'paddle-local', 'paddle-service', 'ppocr-local'].includes(protocol)) {
     command = typeof src.command === 'string' ? src.command.trim() : ''
+    if (protocol !== 'cli-transcribe' && command && !/python(?:3)?(?:\.exe)?$/i.test(path.basename(command))) command = path.join(command, 'Scripts', 'python.exe')
     if (command === '') errors.push({ field: 'command', code: 'BAD_COMMAND', message: 'CLI 协议需要固定的可执行程序路径' })
     if (Array.isArray(src.args)) args = src.args.map((a) => String(a))
     else if (typeof src.args === 'string' && src.args.trim() !== '') errors.push({ field: 'args', code: 'BAD_ARGS', message: 'args 必须是数组（程序参数由程序构造，不接受命令串）' })
@@ -262,6 +270,13 @@ export function normalizeProvider(input, extra = {}) {
   const credentialRef = typeof src.credentialRef === 'string' ? src.credentialRef.trim() : ''
   if (!validCredentialRef(credentialRef)) errors.push({ field: 'credentialRef', code: 'BAD_CREDENTIAL_REF', message: 'credentialRef 只能填环境变量名（如 KB_OCR_TOKEN），不要粘贴密钥' })
   const value = {
+    vendor: ['openai', 'custom', 'qwen', 'baidu', 'local'].includes(src.vendor) ? src.vendor : 'custom',
+    region: src.region || '',
+    workspaceId: src.workspaceId || '',
+    modelPath: String(src.modelPath || ''),
+    ffmpegCommand: String(src.ffmpegCommand || ''),
+    layoutModelPath: String(src.layoutModelPath || ''),
+    detModelPath: String(src.detModelPath || ''), recModelPath: String(src.recModelPath || ''), dictionaryPath: String(src.dictionaryPath || ''),
     id,
     kind,
     protocol,
@@ -282,6 +297,22 @@ export function normalizeProvider(input, extra = {}) {
     enabled: src.enabled !== false,
     notes: typeof src.notes === 'string' ? src.notes.slice(0, 300) : '',
     updatedAt: extra.now ?? nowIso(),
+  }
+  if (value.renderCommand && !/python(?:3)?(?:\.exe)?$/i.test(path.basename(value.renderCommand))) value.renderCommand = path.join(value.renderCommand, 'Scripts', 'python.exe')
+  if (value.ffmpegCommand && !/^ffmpeg(?:\.exe)?$/i.test(path.basename(value.ffmpegCommand))) value.ffmpegCommand = path.join(value.ffmpegCommand, 'ffmpeg.exe')
+  if (['qwen3-local', 'paddle-local', 'paddle-service', 'ppocr-local'].includes(protocol)) {
+    if (!path.isAbsolute(command) || !/python(?:3)?(?:\.exe)?$/i.test(path.basename(command))) errors.push({ field: 'command', message: '本地适配器需要 Python 可执行文件绝对路径' })
+    if (['qwen3-local', 'paddle-local'].includes(protocol) && !path.isAbsolute(value.modelPath)) errors.push({ field: 'modelPath', message: '请选择模型绝对路径' })
+    if (['paddle-local', 'paddle-service'].includes(protocol) && !path.isAbsolute(value.layoutModelPath || '')) {
+      value.layoutModelPath = 'D:\\DSH WorkPlace\\ocr-models\\PP-DocLayoutV3'
+    }
+    if (protocol === 'ppocr-local' && (!path.isAbsolute(value.detModelPath) || !path.isAbsolute(value.recModelPath))) errors.push({ field: 'modelPath', message: '请选择配套的检测模型、识别模型目录' })
+    if (protocol === 'paddle-service') {
+      let hostname = ''
+      try { hostname = new URL(baseUrl).hostname } catch { /* normal validation below */ }
+      if (!['127.0.0.1', '[::1]'].includes(hostname)) errors.push({ field: 'baseUrl', message: '本地版面管线仅支持回环 IP 服务地址' })
+    }
+    if (locality !== 'local') errors.push({ field: 'locality', message: '本地适配器必须使用本机位置' })
   }
   // 标签必须与真实目标一致：locality=local/lan 而目标是公网域名 → 直接拒（不信自填标签）。
   // 放在最后统一判，是为了让 id/kind/protocol 的错误先报出来（诊断顺序更直观）。
@@ -332,6 +363,9 @@ export function normalizeParsingConfig(raw) {
 /** 对外展示用：绝不带凭据值，只带"有没有配"。 */
 export function publicProvider(p) {
   return {
+    vendor: p.vendor, region: p.region, workspaceId: p.workspaceId,
+    modelPath: p.modelPath, ffmpegCommand: p.ffmpegCommand,
+    layoutModelPath: p.layoutModelPath, detModelPath: p.detModelPath, recModelPath: p.recModelPath, dictionaryPath: p.dictionaryPath,
     id: p.id,
     kind: p.kind,
     protocol: p.protocol,
@@ -396,11 +430,45 @@ async function listJobFiles(dir) {
  * @param {function} [deps.lookup]    DNS 解析器（默认 dns.promises.lookup）。**只给受控桩测试用**：
  *                                    作用是让"域名解析到公网地址 → 发正文前拦下"可以被离线证明。
  */
-export function createParsingService({ stateDir, log = () => {}, getCore, getBinding, lookup = null }) {
+export function createParsingService({ stateDir, log = () => {}, getCore, getBinding, lookup = null, credentialStore = null, nativeRequest = null }) {
   const root = path.join(stateDir, 'parse')
+  const credentials = credentialStore || createParseCredentials(stateDir)
+  // nativeRequest is a transport fixture for offline tests; never exposed in settings.
+  const native = createNativeAdapter({ request: async (p, url, init, context) => {
+    const gate = await executionGate(p, context.conf)
+    if (!gate.ok) return gate
+    return (nativeRequest || requestJson)(p, url, init, { ...context, conf: gate.conf })
+  }, credentials })
+  const discovery = createParseDiscovery({
+    savedPaths: async () => (await readParsingConfig()).providers.flatMap(p => [p.modelPath, p.layoutModelPath, p.detModelPath, p.recModelPath, p.command && path.dirname(path.dirname(p.command)), p.ffmpegCommand && path.dirname(p.ffmpegCommand)]).filter(Boolean),
+    savedDeployments: async () => (await readParsingConfig()).providers.filter(p => p.locality === 'local'),
+    savedServices: async () => (await readParsingConfig()).providers.filter(p => p.locality === 'local' && p.baseUrl).map(p => p.baseUrl),
+    probe: async baseUrl => {
+      const p = { id: 'local-probe', protocol: 'openai-vision', locality: 'local', enabled: true, baseUrl }
+      const r = await requestJson(p, baseUrl + '/models', { method: 'GET' }, { conf: { externalPolicy: 'local-only' }, timeoutMs: 1500 })
+      return r.ok ? r.json.data?.find(m => /paddleocr.?vl/i.test(m.id))?.id : null
+    },
+  })
+  const environmentFile = p => path.join(root, 'validation', sha12(Buffer.from(p.id)) + '.json')
+  async function managedPublic(p) {
+    let environment = null
+    try { const saved = JSON.parse(await readFile(environmentFile(p), 'utf8')); if (saved.configVersion === providerConfigVersion(p)) environment = saved } catch { /* not checked */ }
+    return { ...publicProvider(p), configVersion: providerConfigVersion(p), credentialConfigured: await credentials.configured(p.credentialRef), environmentCheckedAt: environment?.ok ? environment.checkedAt : null }
+  }
   const running = new Map() // jobId → {controller, child}
   const providerLocks = new Map() // providerId → promise chain（本机提供方串行）
   let recovered = false
+  const snapshotBinding = b => b?.kbId && b?.kbPath ? { kbId: b.kbId, kbPath: path.resolve(b.kbPath) } : null
+  const sameBinding = (a, b) => Boolean(a?.kbId && a?.kbPath && b?.kbPath && a.kbId === b.kbId && path.resolve(a.kbPath) === path.resolve(b.kbPath))
+  const bindingFailure = () => ({ ok: false, code: 'BINDING_CHANGED', detail: '知识库绑定已改变，旧任务已停止；请切回原库后重试，已有记录仍保存在原库任务目录' })
+
+  async function executionGate(provider, conf = {}) {
+    if (conf.executionBinding && !sameBinding(conf.executionBinding, await getBinding())) return bindingFailure()
+    const current = await readParsingConfig()
+    const effective = { ...conf, externalPolicy: conf.externalPolicy === 'local-only' || current.externalPolicy === 'local-only' ? 'local-only' : 'allow-configured' }
+    const refusal = policyRefusal(provider, effective)
+    return refusal ? { ok: false, code: refusal.code, detail: refusal.message } : { ok: true, conf: effective }
+  }
 
   /**
    * 本机 GPU 提供方串行：两套模型不假设能同时常驻。
@@ -464,12 +532,17 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
 
   async function providersPublic() {
     const conf = await readParsingConfig()
+    const history = await listJobs({ limit: JOBS_KEPT, status: 'succeeded' })
+    const providers = await Promise.all(conf.providers.map(async p => {
+      const verified = history.jobs?.find(j => j.provider.id === p.id && j.provider.configVersion === providerConfigVersion(p))
+      return { ...await managedPublic(p), parseVerifiedAt: verified?.finishedAt || null }
+    }))
     return {
       ok: true,
       externalPolicy: conf.externalPolicy,
       defaultOcr: conf.defaultOcr,
       defaultAsr: conf.defaultAsr,
-      providers: conf.providers.map(publicProvider),
+      providers,
       protocols: PARSE_PROTOCOLS,
       locality: LOCALITY,
       // 让调用方知道"这些动作不在模型工具里"，而不是以为工具坏了
@@ -477,9 +550,21 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     }
   }
 
-  async function saveProvider(input, { viaAdmin = false } = {}) {
+  async function saveProvider(input, { viaAdmin = false, credentialInput = null, clearCredential = false } = {}) {
     if (viaAdmin !== true) return adminOnly('保存提供方')
     const conf = await readParsingConfig()
+    input = { ...input }
+    if (!input.id) input.id = `${input.kind || 'ocr'}-${randomUUID().slice(0, 12)}`
+    const old = conf.providers.find(p => p.id === input.id)
+    if (clearCredential) input.credentialRef = ''
+    else if (credentialInput?.apiKey?.trim()) {
+      // Validate the provider before storing any credential.
+      const pre = normalizeProvider(input)
+      if (!pre.ok) return { ok: false, reason: 'invalid-provider', errors: pre.errors }
+      if (pre.value.vendor === 'baidu' && !credentialInput.secretKey?.trim()) return { ok: false, reason: 'SECRET_KEY_REQUIRED' }
+      input.credentialRef = await credentials.save(credentialInput)
+      input.authScheme = 'bearer'
+    } else if (input.credentialRef === undefined && old) input.credentialRef = old.credentialRef
     const norm = normalizeProvider(input)
     if (!norm.ok) return { ok: false, reason: 'invalid-provider', errors: norm.errors }
     const next = { ...conf, providers: conf.providers.map((p) => ({ ...p })) }
@@ -492,12 +577,12 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     } else {
       next.providers.push(norm.value)
     }
-    if (norm.value.kind === 'ocr' && next.defaultOcr === null) next.defaultOcr = norm.value.id
-    if (norm.value.kind === 'asr' && next.defaultAsr === null) next.defaultAsr = norm.value.id
+    if (norm.value.locality !== 'cloud' && norm.value.kind === 'ocr' && next.defaultOcr === null) next.defaultOcr = norm.value.id
+    if (norm.value.locality !== 'cloud' && norm.value.kind === 'asr' && next.defaultAsr === null) next.defaultAsr = norm.value.id
     const written = await writeParsingConfig(next)
     if (!written.ok) return written
     log('info', `解析提供方已保存 ${norm.value.id}（${norm.value.kind}/${norm.value.protocol}/${norm.value.locality}）`)
-    return { ok: true, provider: publicProvider(norm.value), revision: written.revision, defaults: { ocr: written.parsing.defaultOcr, asr: written.parsing.defaultAsr } }
+    return { ok: true, provider: await managedPublic(norm.value), revision: written.revision, defaults: { ocr: written.parsing.defaultOcr, asr: written.parsing.defaultAsr } }
   }
 
   async function deleteProvider(id, { viaAdmin = false } = {}) {
@@ -575,10 +660,10 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
   }
 
   // ── HTTP / CLI 适配器 ───────────────────────────────────────────────────
-  function authHeaders(provider, diagnostics) {
+  async function authHeaders(provider, diagnostics) {
     const headers = {}
     if (provider.credentialRef === '' || provider.authScheme === 'none') return headers
-    const value = process.env[provider.credentialRef]
+    const value = (await credentials.read(provider.credentialRef)).apiKey
     if (!value) {
       diagnostics.push({ code: 'MISSING_CREDENTIAL', message: `提供方 ${provider.id} 引用的凭据 ${provider.credentialRef} 在宿主环境里没有值` })
       throw Object.assign(new Error('MISSING_CREDENTIAL'), { code: 'MISSING_CREDENTIAL' })
@@ -782,8 +867,15 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
       let body = init.body
       let headers = init.headers ?? {}
       for (let hop = 0; hop < 4; hop++) {
+        const gate = await executionGate(provider, conf)
+        if (!gate.ok) return gate
+        conf = gate.conf
         const checked = await checkTarget(target, provider, conf)
         if (checked.ok !== true) return { ok: false, code: checked.code, detail: checked.detail }
+        // DNS may have waited while the user disabled cloud processing.
+        const beforeSend = await executionGate(provider, conf)
+        if (!beforeSend.ok) return beforeSend
+        conf = beforeSend.conf
         const sameOriginAsStart = new URL(target).origin === new URL(url).origin
         const res = await httpOnce({
           url: target,
@@ -797,6 +889,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
         if (res.ok !== true) return res
         const status = res.status
         if (status >= 300 && status < 400) {
+          if (NATIVE_PROTOCOLS.includes(provider.protocol)) return { ok: false, code: 'REDIRECT_BLOCKED', detail: '原生服务不允许重定向凭据或原件' }
           const loc = res.headers && res.headers.location ? String(res.headers.location) : ''
           if (loc === '') return { ok: false, status, code: 'REDIRECT_WITHOUT_LOCATION', detail: '服务端返回重定向但没有 Location' }
           let nextUrl
@@ -820,17 +913,17 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
             }
             method = 'GET'
             body = null
-            headers = Object.fromEntries(Object.entries(headers).filter(([k]) => k.toLowerCase() !== 'content-type'))
+            headers = Object.fromEntries(Object.entries(headers).filter(([k]) => !['content-type', 'authorization'].includes(k.toLowerCase())))
           }
           target = nextUrl.toString()
           continue
         }
         const text = res.buffer.toString('utf8')
-        if (status < 200 || status >= 300) return { ok: false, status, code: 'HTTP_' + status, detail: text.slice(0, 600) }
+        if (status < 200 || status >= 300) return { ok: false, status, code: 'HTTP_' + status, detail: '服务返回错误；请检查权限、额度、地域及输入格式' }
         try {
           return { ok: true, status, json: JSON.parse(text), rawLength: text.length }
         } catch {
-          return { ok: false, status, code: 'BAD_JSON', detail: text.slice(0, 300) }
+          return { ok: false, status, code: 'BAD_JSON', detail: '服务未返回有效 JSON' }
         }
       }
       return { ok: false, code: 'TOO_MANY_REDIRECTS', detail: '重定向超过 4 跳' }
@@ -844,6 +937,12 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
 
   /** OCR：openai-vision —— 明确的 HTTP 协议（POST {baseUrl}/chat/completions + image_url data URI）。 */
   async function ocrOneImage(provider, conf, imagePath, { signal, diagnostics }) {
+    if (NATIVE_PROTOCOLS.includes(provider.protocol)) {
+      const r = await native.image(provider, imagePath, mimeOf(path.extname(imagePath).slice(1)), { signal, timeoutMs: provider.timeoutMs, conf })
+      if (r.requestId) diagnostics.push({ code: 'PROVIDER_REQUEST', requestId: String(r.requestId), at: nowIso() })
+      return r
+    }
+    if (['paddle-local', 'paddle-service', 'ppocr-local'].includes(provider.protocol)) return localModel(provider, imagePath, { signal, diagnostics })
     const buf = await readFile(imagePath)
     const ext = path.extname(imagePath).slice(1).toLowerCase()
     const b64 = buf.toString('base64')
@@ -863,7 +962,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     }
     let headers
     try {
-      headers = { 'content-type': 'application/json', ...authHeaders(provider, diagnostics) }
+      headers = { 'content-type': 'application/json', ...await authHeaders(provider, diagnostics) }
     } catch (error) {
       return { ok: false, code: (error && error.code) || 'AUTH_ERROR', detail: errText(error) }
     }
@@ -1014,7 +1113,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     })
     let headers
     try {
-      headers = { 'content-type': form.contentType, ...authHeaders(provider, diagnostics) }
+      headers = { 'content-type': form.contentType, ...await authHeaders(provider, diagnostics) }
     } catch (error) {
       return { ok: false, code: (error && error.code) || 'AUTH_ERROR', detail: errText(error) }
     }
@@ -1051,14 +1150,16 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
   // ── 任务记录 ────────────────────────────────────────────────────────────
   const jobPath = (binding, jobId) => path.join(jobsDir(binding), jobId + '.json')
 
-  async function readJob(jobId) {
+  async function readJob(jobId, bindingIn) {
     const candidates = []
-    const binding = await getBinding()
+    const binding = snapshotBinding(bindingIn || await getBinding())
     if (binding) candidates.push(jobPath(binding, jobId))
     if (candidates.length === 0) return null
     for (const p of candidates) {
       try {
-        return JSON.parse(await readFile(p, 'utf8'))
+        const job = JSON.parse(await readFile(p, 'utf8'))
+        if (job.kbId !== binding.kbId || job.binding && !sameBinding(job.binding, binding)) return null
+        return job
       } catch {
         continue
       }
@@ -1075,6 +1176,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
    * 而心跳（5s）、进度回调、终态写会并发发生 → 必须按 jobId 串行，且 tmp 名唯一。
    */
   async function writeJob(binding, job) {
+    if (!binding || job.kbId !== binding.kbId || job.binding && !sameBinding(job.binding, binding)) throw Object.assign(new Error('拒绝把旧任务写入其他知识库的任务目录'), { code: 'JOB_BINDING_MISMATCH' })
     const key = job.jobId + '|' + kbKeyOf(binding)
     const prev = jobWriteChains.get(key) ?? Promise.resolve()
     let release
@@ -1090,7 +1192,15 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
       writeSeq = (writeSeq + 1) % 1_000_000
       const tmp = `${file}.tmp-${process.pid}-${writeSeq}`
       await writeFile(tmp, JSON.stringify(job, null, 2), 'utf8')
-      await rename(tmp, file)
+      // Windows readers / antivirus can briefly hold the destination even with
+      // writers serialized. Retry replacement without deleting the old record.
+      for (let attempt = 0; ; attempt++) {
+        try { await rename(tmp, file); break }
+        catch (e) {
+          if (!['EPERM', 'EBUSY', 'EACCES'].includes(e.code) || attempt >= 7) throw e
+          await new Promise(resolve => setTimeout(resolve, 20 * (attempt + 1)))
+        }
+      }
       return job
     } finally {
       release()
@@ -1120,7 +1230,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
             textChars: job.result.textChars,
             pageCount: job.result.pageCount,
             pages: job.result.pages?.map((p) => ({ page: p.page, chars: p.chars, method: p.method, status: p.status })) ?? [],
-            segments: job.result.segments?.map((s) => ({ index: s.index, startSec: s.startSec, endSec: s.endSec, chars: (s.text ?? '').length })) ?? [],
+            segments: job.result.segments?.map((s) => ({ index: s.index, startSec: s.startSec, endSec: s.endSec, chars: (s.text ?? '').length, status: s.status || 'ok', granularity: s.granularity })) ?? [],
             method: job.result.method,
             usage: job.result.usage ?? null,
             unavailable: job.result.unavailable ?? [],
@@ -1139,8 +1249,8 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
   }
 
   /** 源文件定位：必须在当前绑定库内（真实路径也在内），只读。 */
-  async function resolveSource(sourceRel) {
-    const binding = await getBinding()
+  async function resolveSource(sourceRel, bindingIn) {
+    const binding = snapshotBinding(bindingIn || await getBinding())
     if (!binding || !binding.kbPath) return { ok: false, code: 'KB_UNBOUND', message: '知识库未绑定：先选择并绑定知识库文件夹' }
     const rel = String(sourceRel ?? '').trim().replace(/\\/g, '/')
     if (rel === '') return { ok: false, code: 'NO_SOURCE', message: '缺少 sourceRel（库内相对路径）' }
@@ -1154,6 +1264,9 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
       return r !== '' && !r.startsWith('..') && !path.isAbsolute(r)
     }
     if (!inside(abs, rootAbs)) return { ok: false, code: 'SOURCE_ESCAPE', message: '解析路径越出知识库根目录' }
+    const followLinks = (await getCore()?.getConfig())?.followLinks === true
+    const guard = await checkRealPath(rootAbs, abs, { followLinks })
+    if (!guard.ok) return { ok: false, code: 'SOURCE_ESCAPE', message: '原件真实路径或目录联接不符合知识库访问规则：' + guard.detail }
     let st
     try {
       st = await stat(abs)
@@ -1166,15 +1279,18 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
 
   // ── 提交任务 ────────────────────────────────────────────────────────────
   async function submit(input, { requestedBy } = {}) {
-    const binding = await getBinding()
+    const binding = snapshotBinding(await getBinding())
     if (!binding || !binding.kbId) return { ok: false, reason: 'KB_UNBOUND', detail: '知识库未绑定或未初始化' }
     const kindIn = String(input?.kind ?? '').trim()
     if (!PARSE_KINDS.includes(kindIn)) return { ok: false, reason: 'BAD_KIND', detail: 'kind 只能是 ocr 或 asr' }
     const conf = await readParsingConfig()
-    const picked = pickProvider(conf, kindIn, input?.providerId)
+    // Caller provenance is supplied by the host, never by model arguments.
+    // A remembered provider ID cannot override the user's current default.
+    const toolDefault = requestedBy?.via === 'tool'
+    const picked = pickProvider(conf, kindIn, toolDefault ? undefined : input?.providerId)
     if (picked.error) return { ok: false, reason: picked.error.code, detail: picked.error.message }
     const provider = picked.provider
-    const src = await resolveSource(input?.sourceRel)
+    const src = await resolveSource(input?.sourceRel, binding)
     if (!src.ok) return { ok: false, reason: src.code, detail: src.message }
     const format = path.extname(src.rel).slice(1).toLowerCase()
     if (!provider.formats.includes(format)) {
@@ -1201,12 +1317,14 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
       schemaVersion: PARSING_SCHEMA_VERSION,
       jobId: newJobId(kindIn),
       kbId: binding.kbId,
+      binding,
       kind: kindIn,
       purpose: typeof input?.purpose === 'string' ? input.purpose.slice(0, 200) : '',
       requestedBy: requestedBy ?? { via: 'unknown' },
       source: { relPath: src.rel, absPath: src.abs, sha256: sha, bytes: src.bytes, format },
       provider: {
         id: provider.id,
+        selectionSource: toolDefault || !input?.providerId ? 'settings-default' : 'explicit',
         protocol: provider.protocol,
         model: provider.model,
         locality: provider.locality,
@@ -1237,7 +1355,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     }
     await writeJob(binding, job)
     log('info', `解析任务已排队 ${job.jobId}（${job.kind} ← ${job.source.relPath} via ${provider.id}）`)
-    void runJob(job.jobId)
+    void runJob(job.jobId, binding)
     return { ok: true, deduped: false, jobId: job.jobId, status: 'queued', job: publicJob(job) }
   }
 
@@ -1248,6 +1366,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     for (const f of files) {
       try {
         const j = JSON.parse(await readFile(path.join(dir, f), 'utf8'))
+        if (j.kbId !== binding.kbId || j.binding && !sameBinding(j.binding, binding)) continue
         if (j.dedupeKey !== dedupeKey) continue
         if (reuseTerminalOnly && !['succeeded', 'partial'].includes(j.status)) continue
         if (best === null || String(j.createdAt) > String(best.createdAt)) best = j
@@ -1259,23 +1378,24 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
   }
 
   // ── 执行 ────────────────────────────────────────────────────────────────
-  async function runJob(jobId) {
-    const binding = await getBinding()
+  async function runJob(jobId, bindingIn) {
+    const binding = snapshotBinding(bindingIn || await getBinding())
     if (!binding) return
-    const job = await readJob(jobId)
+    const job = await readJob(jobId, binding)
     if (!job) return
     if (running.has(jobId)) return
     if (!['queued'].includes(job.status)) return
     const controller = new AbortController()
-    const entry = { controller, child: null, job }
+    const entry = { controller, child: null, job, binding, bindingChanged: false }
     running.set(jobId, entry)
     const conf = normalizeParsingConfig(job.configSnapshot?.provider ? { externalPolicy: job.configSnapshot.externalPolicy, providers: [job.configSnapshot.provider], defaultOcr: job.kind === 'ocr' ? job.configSnapshot.provider.id : null, defaultAsr: job.kind === 'asr' ? job.configSnapshot.provider.id : null } : null).value
     const provider = job.configSnapshot.provider
+    conf.executionBinding = binding
     const diagnostics = []
     const work = path.join(tmpDir(binding), jobId)
     // 执行前先核一次真实目标：拦在"起引擎/发正文"之前，比事后记一条诊断有意义
     // （同一条判据在每次 HTTP 请求前还会再核一次，防 DNS 在这段时间里被改）。
-    if (provider.protocol !== 'cli-transcribe') {
+    if (!['cli-transcribe', 'qwen3-local', 'paddle-local', 'ppocr-local'].includes(provider.protocol)) {
       const pre = await checkTarget(provider.baseUrl, provider, conf)
       if (pre.ok !== true) {
         job.status = 'failed'
@@ -1286,6 +1406,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
         job.diagnostics = [{ code: pre.code, message: pre.detail ?? '', at: nowIso() }]
         await writeJob(binding, job)
         log('warn', `解析任务 ${jobId} 在发送前被策略拦下：${pre.code}`)
+        running.delete(jobId)
         return
       }
     }
@@ -1299,6 +1420,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
       job.diagnostics = [{ code: cliRefusal.code, message: cliRefusal.message, at: nowIso() }]
       await writeJob(binding, job)
       log('warn', `解析任务 ${jobId} 的 CLI 配置被策略拒绝：${cliRefusal.code}`)
+      running.delete(jobId)
       return
     }
     job.status = 'running'
@@ -1307,10 +1429,11 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     job.heartbeatAt = job.startedAt
     job.attempts += 1
     await writeJob(binding, job)
-    const heartbeat = setInterval(() => {
+    const heartbeat = setInterval(() => { void (async () => {
+      if (!sameBinding(binding, await getBinding())) { entry.bindingChanged = true; controller.abort(Object.assign(new Error('binding changed'), { code: 'BINDING_CHANGED' })) }
       job.heartbeatAt = nowIso()
-      void writeJob(binding, job)
-    }, 5000)
+      await writeJob(binding, job)
+    })().catch(() => { log('warn', `解析任务 ${jobId} 心跳写入失败，任务记录仍归属原库`) }) }, 5000)
     const t0 = Date.now()
     let outcome
     // 本机提供方串行：绝不假设两套模型能同时常驻；排队期间仍是 queued（可取消）
@@ -1319,6 +1442,17 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
       await mkdir(work, { recursive: true })
       const body = async () => {
         if (job.cancelRequestedAt !== null) return { ok: false, code: 'CANCELED', detail: '已取消' }
+        const gate = await executionGate(provider, conf)
+        if (!gate.ok) return gate
+        const source = await resolveSource(job.source.relPath, binding)
+        if (!source.ok) return { ok: false, code: source.code, detail: source.message }
+        const bytes = await readFile(source.abs)
+        const verified = await resolveSource(job.source.relPath, binding)
+        if (!verified.ok) return { ok: false, code: verified.code, detail: verified.message }
+        if (sha256(bytes) !== job.source.sha256) return { ok: false, code: 'SOURCE_CHANGED', detail: '原件已变化，请新建解析任务；不复用旧片段' }
+        // Engines consume an immutable task copy, never a live source link.
+        entry.sourcePath = path.join(work, 'source.' + job.source.format)
+        await writeFile(entry.sourcePath, bytes)
         job.stage = job.kind === 'ocr' ? 'rendering' : 'transcribing'
         job.heartbeatAt = nowIso()
         await writeJob(binding, job)
@@ -1330,9 +1464,9 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
         job.stage = 'waiting-provider'
         job.status = 'queued'
         await writeJob(binding, job)
-        outcome = await withProviderLock(provider.id, async () => {
+        outcome = await withProviderLock('local-gpu', async () => {
           // 排队期间可能已被取消：必须以磁盘上的最新记录为准（内存里的是旧副本）
-          const fresh = await readJob(job.jobId)
+          const fresh = await readJob(job.jobId, binding)
           if (fresh && fresh.cancelRequestedAt !== null) {
             job.cancelRequestedAt = fresh.cancelRequestedAt
             return { ok: false, code: 'CANCELED', detail: '排队期间已取消' }
@@ -1354,7 +1488,8 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     job.finishedAt = nowIso()
     job.diagnostics = diagnostics
     // 取消状态可能只写在磁盘上（cancel() 写盘，而内存里这份是旧的）：以磁盘为准
-    const latestOnDisk = await readJob(job.jobId)
+    const latestOnDisk = await readJob(job.jobId, binding)
+    if (entry.bindingChanged || !sameBinding(binding, await getBinding())) outcome = { ...outcome, ...bindingFailure() }
     if (latestOnDisk && latestOnDisk.cancelRequestedAt !== null) {
       job.cancelRequestedAt = latestOnDisk.cancelRequestedAt
       job.canceledBy = latestOnDisk.canceledBy ?? job.canceledBy ?? null
@@ -1392,8 +1527,8 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     if (fmt === 'pdf') {
       job.stage = 'rendering'
       job.progress.pagesTotal = null
-      await writeJob(await getBinding(), job)
-      const rendered = await renderPdfPages(provider, job.source.absPath, path.join(work, 'pages'), { signal: entry.controller.signal, maxPages: provider.maxPages, onChild: (c) => { entry.child = c } })
+      await writeJob(entry.binding, job)
+      const rendered = await renderPdfPages(provider, entry.sourcePath, path.join(work, 'pages'), { signal: entry.controller.signal, maxPages: provider.maxPages, onChild: (c) => { entry.child = c } })
       if (!rendered.ok) return { ok: false, code: rendered.code, detail: rendered.detail }
       pageCount = rendered.pageCount
       method = 'vision-per-page'
@@ -1402,6 +1537,11 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
       job.stage = 'recognizing'
       for (const p of rendered.pages) {
         if (entry.controller.signal.aborted) return { ok: false, code: 'CANCELED', detail: '已取消' }
+        const gate = await executionGate(provider, conf)
+        if (!gate.ok) {
+          const missing = rendered.pages.filter(row => !pages.some(done => done.page === row.page)).map(row => ({ unit: 'page', index: row.page, error: gate.code }))
+          return { ...gate, partial: { failedUnits: missing, note: '未继续解析的页面已明确标记，已有结果保留在原库任务中' }, result: finalizeOcr(job, pages, method, { pageCount, diagnostics }) }
+        }
         const pageNo = p.page
         if (typeof p.text === 'string' && p.text.trim().length >= 20) {
           // 文字层可直接抽取：不再送 OCR（文本 PDF 走直读，不浪费引擎）
@@ -1413,7 +1553,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
         }
         job.progress.pagesDone = pages.length
         job.heartbeatAt = nowIso()
-        await writeJob(await getBinding(), job)
+        await writeJob(entry.binding, job)
       }
       const failed = pages.filter((p) => p.status !== 'ok')
       const result = finalizeOcr(job, pages, method, { pageCount, diagnostics })
@@ -1425,8 +1565,8 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     // 单张图片
     job.progress.pagesTotal = 1
     job.stage = 'recognizing'
-    await writeJob(await getBinding(), job)
-    const one = await ocrOneImage(provider, conf, job.source.absPath, { signal: entry.controller.signal, diagnostics })
+    await writeJob(entry.binding, job)
+    const one = await ocrOneImage(provider, conf, entry.sourcePath, { signal: entry.controller.signal, diagnostics })
     if (!one.ok) return { ok: false, code: one.code, detail: one.detail }
     pages.push({ page: 1, chars: one.text.length, method: 'ocr', status: 'ok', text: one.text, usage: one.usage ?? null })
     job.progress.pagesDone = 1
@@ -1459,13 +1599,107 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     }
   }
 
+  async function localModel(provider, file, { signal }) {
+    const work = path.dirname(file)
+    const manifest = path.join(root, `ocr-${randomUUID()}.json`)
+    const out = manifest + '.out'
+    try {
+      await mkdir(root, { recursive: true })
+      await writeFile(manifest, JSON.stringify([{ index: 0, file }]), 'utf8')
+      const r = await runChild(provider.command, ['-X', 'utf8', path.join(HOST_PKG_ROOT, 'tools', 'kb-local-model.py'), '--kind', 'ocr', ...localArguments(provider), '--manifest', manifest, '--out', out], { signal, timeoutMs: provider.timeoutMs, cwd: work })
+      if (!r.ok) return { ok: false, code: r.code, detail: '本地 OCR 执行失败；请检查运行环境和模型' }
+      return JSON.parse(await readFile(out, 'utf8'))[0] || { ok: false, code: 'EMPTY_TEXT' }
+    } finally { await rm(manifest, { force: true }); await rm(out, { force: true }) }
+  }
+
+  function localArguments(p) {
+    return ['--protocol', p.protocol, '--model', p.modelPath || '', '--layout-model', p.layoutModelPath || '', '--service-url', p.baseUrl || '', '--service-model', p.model || '', '--det-model', p.detModelPath || '', '--rec-model', p.recModelPath || '', '--dictionary', p.dictionaryPath || '']
+  }
+  async function chunkedAsr(provider, conf, job, work, entry, diagnostics) {
+    const signal = entry.controller.signal
+    const seconds = provider.protocol === 'qwen3-local' ? 60 : 50
+    const ffmpeg = provider.ffmpegCommand || (process.platform === 'win32' ? 'C:\\ffmpeg\\ffmpeg.exe' : 'ffmpeg')
+    const converted = await runChild(ffmpeg, ['-nostdin', '-y', '-v', 'error', '-i', entry.sourcePath, '-vn', '-ac', '1', '-ar', '16000', '-c:a', 'pcm_s16le', '-f', 'segment', '-segment_time', String(seconds), '-reset_timestamps', '1', path.join(work, 'chunk-%05d.wav')], { signal, timeoutMs: provider.timeoutMs, cwd: work, onChild: c => { entry.child = c } })
+    if (!converted.ok) return { ok: false, code: converted.code, detail: '音频转换失败；请在高级设置中检查 FFmpeg 路径' }
+    const files = (await readdir(work)).filter(n => /^chunk-\d{5}\.wav$/.test(n)).sort()
+    if (!files.length || files.length > 1000) return { ok: false, code: 'BAD_CHUNK_COUNT', detail: '音频片段为空或超过 1000 段' }
+    job.chunkResults = job.chunkResults || {}
+    // Source hash and provider snapshot belong to this job and are immutable.
+    // Checkpoints survive failed attempts and host restarts; only failures rerun.
+    const checkpoint = path.join(root, 'checkpoints', job.jobId + '.json')
+    if (provider.protocol === 'qwen3-local') {
+      try { for (const r of JSON.parse(await readFile(checkpoint, 'utf8'))) if (r.ok) job.chunkResults[r.index] = r } catch { /* first attempt */ }
+    }
+    job.progress.segmentsTotal = files.length
+    job.progress.segmentsDone = Object.values(job.chunkResults).filter(r => r.ok).length
+    await writeJob(entry.binding, job)
+    let localResults = []
+    if (provider.protocol === 'qwen3-local') {
+      await mkdir(path.dirname(checkpoint), { recursive: true })
+      const manifest = path.join(work, 'manifest.json')
+      const pending = files.flatMap((file, index) => job.chunkResults[index]?.ok ? [] : [{ index, file: path.join(work, file) }])
+      if (pending.length) {
+        // Write successful earlier pieces too so an interrupted retry never loses them.
+        const output = checkpoint + '.attempt'
+        await writeFile(manifest, JSON.stringify(pending), 'utf8')
+        const capture = async () => {
+          try {
+            const rows = JSON.parse(await readFile(output, 'utf8'))
+            for (const r of rows) if (r.ok) job.chunkResults[r.index] = r
+            await writeFile(checkpoint, JSON.stringify(Object.values(job.chunkResults)), 'utf8')
+            job.progress.segmentsDone = Object.values(job.chunkResults).filter(r => r.ok).length
+            await writeJob(entry.binding, job)
+          } catch { /* helper has not completed a piece yet */ }
+        }
+        let captureChain = Promise.resolve()
+        const timer = setInterval(() => { captureChain = captureChain.then(capture) }, 1000)
+        let r
+        try {
+          r = await runChild(provider.command, ['-X', 'utf8', path.join(HOST_PKG_ROOT, 'tools', 'kb-local-model.py'), '--kind', 'asr', '--model', provider.modelPath, '--manifest', manifest, '--out', output], { signal, timeoutMs: provider.timeoutMs, cwd: work, onChild: c => { entry.child = c } })
+        } finally { clearInterval(timer); await captureChain; await capture() }
+        try { localResults = JSON.parse(await readFile(output, 'utf8')) } catch { /* failed before first piece */ }
+        for (const piece of pending) if (!localResults.some(r => r.index === piece.index)) localResults.push({ index: piece.index, ok: false, code: r?.code || 'LOCAL_MODEL_FAILED' })
+        await rm(output, { force: true })
+      }
+    }
+    const segments = [], failedUnits = []
+    let offset = 0
+    for (let index = 0; index < files.length; index++) {
+      if (signal.aborted) return { ok: false, code: 'CANCELED' }
+      const gate = await executionGate(provider, conf)
+      if (!gate.ok) return { ...gate, partial: { failedUnits: files.slice(index).map((_f, i) => ({ index: index + i, code: gate.code })) } }
+      const data = await readFile(path.join(work, files[index]))
+      let audioBytes = 0
+      for (let pos = 12; pos + 8 <= data.length;) {
+        const size = data.readUInt32LE(pos + 4)
+        if (data.toString('ascii', pos, pos + 4) === 'data') { audioBytes = Math.min(size, data.length - pos - 8); break }
+        pos += 8 + size + (size % 2)
+      }
+      const duration = audioBytes / 32000
+      let r = job.chunkResults[index]
+      if (!r?.ok) r = provider.protocol === 'qwen3-local' ? localResults.find(r => r.index === index) : await native.recognize(provider, data, 'audio/wav', { signal, timeoutMs: provider.timeoutMs, conf })
+      r = r || { ok: false, code: 'LOCAL_MODEL_FAILED' }
+      job.chunkResults[index] = { ...r, index }
+      if (r.requestId) diagnostics.push({ code: 'PROVIDER_REQUEST', requestId: String(r.requestId), segment: index, at: nowIso() })
+      segments.push({ index, startSec: offset, endSec: offset + duration, text: r.ok ? r.text : `[第 ${index + 1} 段识别失败：${r.code}]`, status: r.ok ? 'ok' : 'failed', granularity: 'chunk' })
+      if (!r.ok) failedUnits.push({ index, startSec: offset, endSec: offset + duration, code: r.code })
+      offset += duration
+      job.progress.segmentsDone = Object.values(job.chunkResults).filter(r => r.ok).length
+      await writeJob(entry.binding, job)
+    }
+    if (failedUnits.length === files.length) return { ok: false, code: 'ALL_CHUNKS_FAILED', detail: '全部片段识别失败，成功片段会在重试时复用', partial: { failedUnits } }
+    const usage = Object.values(job.chunkResults).filter(r => r.ok && r.usage).map(r => ({ index: r.index, usage: r.usage }))
+    return { ok: true, text: segments.map(s => s.text).join('\n'), segments, failedUnits, usage: usage.length ? { successfulChunks: usage, note: '成功片段的服务商用量；不包含失败请求的计费' } : null }
+  }
+
   async function runAsr(provider, conf, job, work, entry, diagnostics) {
     job.stage = 'transcribing'
-    await writeJob(await getBinding(), job)
+    await writeJob(entry.binding, job)
     let out
-    if (provider.protocol === 'cli-transcribe') out = await asrViaCli(provider, job.source.absPath, work, { signal: entry.controller.signal, diagnostics, entry })
-    else out = await asrViaHttp(provider, job.source.absPath, { signal: entry.controller.signal, diagnostics, conf })
-    if (!out.ok) return { ok: false, code: out.code, detail: out.detail }
+    if (provider.protocol === 'cli-transcribe') out = await asrViaCli(provider, entry.sourcePath, work, { signal: entry.controller.signal, diagnostics, entry })
+    else if (['dashscope-asr', 'baidu-asr', 'qwen3-local'].includes(provider.protocol)) out = await chunkedAsr(provider, conf, job, work, entry, diagnostics)
+    else out = await asrViaHttp(provider, entry.sourcePath, { signal: entry.controller.signal, diagnostics, conf })
+    if (!out.ok) return { ok: false, code: out.code, detail: out.detail, partial: out.partial }
     const segments = out.segments ?? null
     if (segments === null) diagnostics.push({ code: 'SEGMENTS_UNAVAILABLE', message: '引擎没有给出分段位置：只保存全文，不伪造时间轴', at: nowIso() })
     job.progress.segmentsTotal = segments ? segments.length : null
@@ -1480,19 +1714,19 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
       pages: [],
       segments: segments ?? [],
       durationSec: durationHint,
-      method: provider.protocol === 'cli-transcribe' ? 'local-cli' : 'http-transcriptions',
+      method: provider.protocol,
       usage: out.usage ? { ...out.usage, source: 'provider' } : { available: false, reason: '提供方没有返回 usage' },
       unavailable: ['wordLevelTimestamps', 'confidence', 'speakerLabels'],
       diagnostics,
     }
     if ((transcript || '').trim() === '') return { ok: false, code: 'EMPTY_TEXT', detail: '转写结果为空' }
-    return { ok: true, result }
+    return { ok: true, result, partial: out.failedUnits || [] }
   }
 
   // ── 取消 / 重试 ─────────────────────────────────────────────────────────
   async function cancel(jobId, { by } = {}) {
     const binding = await getBinding()
-    const job = await readJob(jobId)
+    const job = await readJob(jobId, binding)
     if (!job) return { ok: false, reason: 'not-found' }
     if (['succeeded', 'partial', 'failed', 'canceled'].includes(job.status)) {
       return { ok: false, reason: 'already-terminal', status: job.status, detail: '任务已结束，无法取消' }
@@ -1521,13 +1755,13 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
 
   async function retry(jobId, { reason } = {}) {
     const binding = await getBinding()
-    const job = await readJob(jobId)
+    const job = await readJob(jobId, binding)
     if (!job) return { ok: false, reason: 'not-found' }
     // 解析成功但落库失败：只重试提交，不重复请求引擎
-    if (job.result && (job.status === 'succeeded' || job.status === 'partial') && job.land?.status !== 'landed') {
+    if (job.result && (job.status === 'succeeded' || (job.status === 'partial' && !job.chunkResults)) && job.land?.status !== 'landed') {
       return { ok: true, retryKind: 'land-only', jobId, detail: '解析结果已存在：只重试落库，不重复请求引擎', land: job.land }
     }
-    if (!['failed', 'canceled'].includes(job.status)) {
+    if (!['failed', 'canceled', 'partial'].includes(job.status)) {
       return { ok: false, reason: 'not-retryable', detail: `状态 ${job.status} 不能重试` }
     }
     if (job.attempts >= job.maxAttempts) {
@@ -1535,18 +1769,20 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     }
     job.status = 'queued'
     job.stage = 'queued'
+    job.result = null
+    job.partial = null
     job.cancelRequestedAt = null
     job.finishedAt = null
     job.diagnostics = [...(job.diagnostics ?? []), { code: 'RETRY', message: String(reason ?? '手动重试'), at: nowIso() }]
     await writeJob(binding, job)
-    void runJob(job.jobId)
+    void runJob(job.jobId, binding)
     return { ok: true, retryKind: 'parse', jobId, status: 'queued', attempts: job.attempts }
   }
 
   // ── 结果读取（有界） ────────────────────────────────────────────────────
   async function readResult(jobId, { offset = 0, limit = 4000, pages: pageFilter = null, segments: segFilter = null } = {}) {
     const binding = await getBinding()
-    const job = await readJob(jobId)
+    const job = await readJob(jobId, binding)
     if (!job) return { ok: false, reason: 'not-found' }
     if (!job.result) return { ok: false, reason: 'no-result', status: job.status, detail: '任务还没有结果' }
     const full = String(job.result.text ?? '')
@@ -1588,7 +1824,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     const binding = await getBinding()
     const core = getCore()
     if (!core) return { ok: false, reason: 'core-not-ready' }
-    const job = await readJob(jobId)
+    const job = await readJob(jobId, binding)
     if (!job) return { ok: false, reason: 'not-found' }
     if (job.land?.status === 'landed') {
       return { ok: true, alreadyLanded: true, jobId, entryId: job.land.entryId, revision: job.land.revision, detail: '这条解析结果已经落库过（不会重复建条目）' }
@@ -1615,7 +1851,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
       '> 这是可追溯底稿，不是已校订知识；逐字引用请回原件。',
     ].filter(Boolean).join('\n')
     const content = `${String(job.result.plainText ?? job.result.text).trim()}\n${provenance}\n`
-    const args = { kind, title, content, tags, source: job.source.relPath, requestId: 'parse-' + job.jobId }
+    const args = { kind, title, content, tags, source: job.source.relPath, requestId: 'parse-' + job.jobId, expectedBinding: snapshotBinding(binding) }
     const r = await (opts.entryId
       ? core.updateEntry({
           entryId: opts.entryId,
@@ -1623,6 +1859,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
           patch: { title, tags, source: job.source.relPath },
           content,
           requestId: 'parse-' + job.jobId + '-upd',
+          expectedBinding: snapshotBinding(binding),
         })
       : core.createEntry(args))
     if (!r || r.ok !== true) {
@@ -1645,6 +1882,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     for (const f of files) {
       try {
         const j = JSON.parse(await readFile(path.join(dir, f), 'utf8'))
+        if (j.kbId !== binding.kbId || j.binding && !sameBinding(j.binding, binding)) continue
         if (kind && j.kind !== kind) continue
         if (status && j.status !== status) continue
         jobs.push(publicJob(j))
@@ -1674,6 +1912,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
         continue
       }
       if (j.status !== 'running' && j.status !== 'queued') continue
+      if (j.kbId !== binding.kbId || j.binding && !sameBinding(j.binding, binding)) continue
       if (running.has(j.jobId)) continue
       const requeue = j.attempts < (j.maxAttempts ?? MAX_ATTEMPTS) && j.status === 'running'
       j.diagnostics = [...(j.diagnostics ?? []), { code: 'INTERRUPTED', message: `宿主重启：任务停在 ${j.status}/${j.stage}，未观察到结束`, at: nowIso() }]
@@ -1682,7 +1921,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
         j.stage = 'queued'
         j.note = 'requeued-after-restart'
         await writeJob(binding, j)
-        void runJob(j.jobId)
+        void runJob(j.jobId, binding)
       } else {
         j.status = 'failed'
         j.stage = 'failed'
@@ -1712,11 +1951,27 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     }
     rows.sort((a, b) => String(a.at).localeCompare(String(b.at)))
     const drop = rows.filter((r) => r.terminal).slice(0, Math.max(0, rows.length - JOBS_KEPT))
-    for (const r of drop) await rm(path.join(dir, r.f), { force: true }).catch(() => {})
+    for (const r of drop) {
+      await rm(path.join(dir, r.f), { force: true }).catch(() => {})
+      await rm(path.join(root, 'checkpoints', r.f), { force: true }).catch(() => {})
+    }
   }
 
   /** 连接测试：只验证"这个地址/程序通不通"，**不冒充解析通过**。 */
   async function testConnection(providerId) {
+    const provider = (await readParsingConfig()).providers.find(p => p.id === providerId)
+    const result = await checkConnection(providerId)
+    if (provider && ['qwen3-local', 'paddle-local', 'paddle-service', 'ppocr-local'].includes(provider.protocol)) {
+      const file = environmentFile(provider)
+      await mkdir(path.dirname(file), { recursive: true })
+      const tmp = file + '.tmp-' + randomUUID()
+      await writeFile(tmp, JSON.stringify({ configVersion: providerConfigVersion(provider), checkedAt: nowIso(), ok: result.ok }), 'utf8')
+      await rename(tmp, file)
+    }
+    return result
+  }
+
+  async function checkConnection(providerId) {
     const conf = await readParsingConfig()
     const provider = conf.providers.find((p) => p.id === providerId)
     if (!provider) return { ok: false, reason: 'not-found' }
@@ -1724,12 +1979,28 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     if (refused) return { ok: false, reason: refused.code, detail: refused.message, kind: 'policy' }
     const diagnostics = []
     const t0 = Date.now()
-    if (provider.protocol === 'cli-transcribe') {
+    if (['cli-transcribe', 'qwen3-local', 'paddle-local', 'paddle-service', 'ppocr-local'].includes(provider.protocol)) {
       try {
         const st = await stat(provider.command)
         if (!st.isFile()) return { ok: false, reason: 'BAD_COMMAND', detail: 'command 不是文件' }
       } catch {
         return { ok: false, reason: 'COMMAND_MISSING', detail: '找不到可执行程序：' + provider.command, kind: 'connection' }
+      }
+      if (provider.protocol !== 'cli-transcribe') {
+        try {
+          if (['qwen3-local', 'paddle-local'].includes(provider.protocol) && !(await stat(provider.modelPath)).isDirectory()) throw new Error('not-directory')
+          if (provider.kind === 'asr') await stat(provider.ffmpegCommand || 'C:\\ffmpeg\\ffmpeg.exe')
+        } catch { return { ok: false, kind: 'connection', reason: 'LOCAL_DEPENDENCY_MISSING', detail: '模型目录或 FFmpeg 不存在，请检查高级设置' } }
+        const r = await runChild(provider.command, ['-X', 'utf8', path.join(HOST_PKG_ROOT, 'tools', 'kb-local-model.py'), '--check', '--kind', provider.kind, ...localArguments(provider)], { timeoutMs: 20000 })
+        if (!r.ok) return { ok: false, kind: 'connection', reason: r.code, detail: '无法检查本地 Python 环境' }
+        try {
+          const check = JSON.parse(r.stdout.trim().split('\n').pop())
+          if (check.ok && provider.kind === 'ocr') {
+            const render = await runChild(provider.renderCommand || provider.command, ['-X', 'utf8', '-c', 'import importlib.util,json; print(json.dumps({"ok":bool(importlib.util.find_spec("pymupdf") or importlib.util.find_spec("fitz"))}))'], { timeoutMs: 20000 })
+            if (!render.ok || !render.stdout.includes('"ok": true')) return { ok: false, kind: 'environment', reason: 'PDF_RENDER_MISSING', detail: 'OCR 环境存在；PDF 渲染环境缺少 PyMuPDF，请在高级设置中选择另一个已安装环境。图片识别仍可单独测试。' }
+          }
+          return check.ok ? { ok: true, kind: 'connection', detail: '模型目录及依赖存在（未加载模型）；需测试解析验证。' + (provider.kind === 'ocr' ? '已找到版面分析及 PDF 渲染依赖。' : '') } : { ok: false, kind: 'connection', reason: 'LOCAL_DEPENDENCY_MISSING', detail: '缺少依赖：' + check.missing.join('、') }
+        } catch { return { ok: false, kind: 'connection', reason: 'LOCAL_CHECK_FAILED', detail: '环境检查未返回有效结果' } }
       }
       for (const a of provider.args) {
         if (a.toLowerCase().endsWith('.py') || a.toLowerCase().endsWith('.cmd')) {
@@ -1742,9 +2013,10 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
       }
       return { ok: true, kind: 'connection', latencyMs: Date.now() - t0, detail: '固定程序与脚本存在（这只证明"能找到程序"，不证明转写可用）', note: '解析请用 testParse（真实小样本）' }
     }
+    if (NATIVE_PROTOCOLS.includes(provider.protocol)) return native.connection(provider, { timeoutMs: Math.min(provider.timeoutMs, 20000), conf })
     let headers
     try {
-      headers = authHeaders(provider, diagnostics)
+      headers = await authHeaders(provider, diagnostics)
     } catch (error) {
       return { ok: false, reason: (error && error.code) || 'AUTH_ERROR', detail: errText(error), kind: 'auth', diagnostics }
     }
@@ -1759,7 +2031,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
       models,
       modelConfigured: provider.model || null,
       modelPresent: modelOk,
-      detail: modelOk === false ? `服务在线，但模型列表里没有 ${provider.model}` : '服务在线',
+      detail: (modelOk === false ? `服务在线，但模型列表里没有 ${provider.model}` : '服务在线') + (provider.kind === 'ocr' ? `；PDF 渲染程序${provider.renderCommand && await stat(provider.renderCommand).then(s => s.isFile()).catch(() => false) ? '存在，需用 PDF 测试验证' : '未配置或不存在'}；视觉接口不包含版面分析管线` : ''),
       note: '这只证明"地址与鉴权通"，不证明解析可用；请用 testParse 真实跑一个小样本',
       diagnostics,
     }
@@ -1768,7 +2040,10 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
   /** 真实小样本解析：走同一条任务服务（不是另开一条捷径）。 */
   async function testParse({ providerId, sourceRel, kind } = {}, { requestedBy } = {}) {
     const conf = await readParsingConfig()
-    const provider = conf.providers.find((p) => p.id === providerId)
+    const toolDefault = requestedBy?.via === 'tool'
+    if (toolDefault && !PARSE_KINDS.includes(kind)) return { ok: false, reason: 'BAD_KIND', detail: '会话测试解析必须指定 ocr 或 asr，服务由当前默认设置决定' }
+    const selectedId = toolDefault ? (kind === 'ocr' ? conf.defaultOcr : conf.defaultAsr) : providerId
+    const provider = conf.providers.find((p) => p.id === selectedId)
     if (!provider) return { ok: false, reason: 'not-found' }
     const submitted = await submit({ kind: kind ?? provider.kind, providerId, sourceRel, purpose: 'provider-test' }, { requestedBy: requestedBy ?? { via: 'test' } })
     if (!submitted.ok) return submitted
@@ -1794,6 +2069,14 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
   }
 
   return {
+    async scanStart(input, { viaAdmin = false } = {}) { return viaAdmin ? discovery.start(input) : adminOnly('扫描本机') },
+    scanStatus(id, { viaAdmin = false } = {}) { return viaAdmin ? discovery.get(id) : adminOnly('查看扫描') },
+    scanCancel(id, { viaAdmin = false } = {}) { return viaAdmin ? discovery.cancel(id) : adminOnly('取消扫描') },
+    async scanAdd(scanId, resultId, { viaAdmin = false } = {}) {
+      if (!viaAdmin) return adminOnly('添加扫描结果')
+      const candidate = discovery.candidate(scanId, resultId)
+      return candidate ? saveProvider(candidate, { viaAdmin: true }) : { ok: false, reason: 'CANDIDATE_NOT_READY' }
+    },
     providersPublic,
     saveProvider,
     deleteProvider,

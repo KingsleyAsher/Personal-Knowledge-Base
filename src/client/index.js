@@ -127,8 +127,7 @@ window.__ModuleLoader__.load({
   background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);border-radius:8px;outline:none;resize:vertical;
   font-family:inherit}
 .kbf-hr{height:1px;background:rgba(255,255,255,.08);margin:14px 0}
-.kbc-parse-dev{pointer-events:none;user-select:none}
-.kbc-parse-dev > *:not(.kbc-parse-dev-note){opacity:.45}
+.kbc-parse-dev{min-width:0}
 .kbc-parse-dev-note{margin:0 0 10px;padding:8px 10px;border-radius:8px;background:rgba(255,190,90,.14);border:1px solid rgba(255,190,90,.42);color:rgba(255,206,132,.98);font-size:12.5px;line-height:1.7;font-weight:600;opacity:1}
 /* 解析服务（OCR / ASR）：行优先，不用卡片，无动画 */
 .kbc-parse-list{display:flex;flex-direction:column;gap:6px}
@@ -231,6 +230,27 @@ body:not([data-ds-dark-theme]) .kbm select{color-scheme:light}
 body:not([data-ds-dark-theme]) .kbc-set-input option,
 body:not([data-ds-dark-theme]) .kbf-run option,
 body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
+.kbc-parse-workspace{margin-top:24px;padding-top:20px;border-top:1px solid #8883;max-width:960px}
+.kbc-workspace-heading h3{font-size:20px;font-weight:600;margin:0 0 6px;letter-spacing:-.4px}
+.kbc-workspace-heading p{font-size:13px;opacity:.6;margin:0 0 22px}
+.kbc-kind-tabs{display:flex;gap:6px;border-bottom:1px solid #8883;margin-bottom:18px}
+.kbc-kind-tab{font:inherit;font-size:14px;font-weight:500;color:inherit;background:none;border:0;padding:12px 18px;cursor:pointer;opacity:.55;border-bottom:2px solid transparent}
+.kbc-kind-tab.selected{opacity:1;border-bottom-color:currentColor}
+.kbc-workspace-toolbar{display:flex;align-items:center;justify-content:space-between;gap:20px;margin-bottom:20px}
+.kbc-pane-tabs{display:flex;gap:4px}.kbc-pane-tab{font:inherit;font-size:12px;background:none;border:0;color:inherit;padding:7px 11px;border-radius:6px;opacity:.55;cursor:pointer}
+.kbc-pane-tab.selected{background:#8882;opacity:1}.kbc-pane-content{padding:2px 0 16px}
+.kbc-parse-empty{padding:42px 24px;text-align:center;border:1px dashed #8885;border-radius:10px}
+.kbc-parse-empty strong{font-size:16px;font-weight:500}.kbc-parse-empty p{opacity:.6;margin:10px 0 20px}
+.kbc-parse-workspace .kbc-parse-form{padding:22px;gap:16px;max-width:650px;margin-bottom:18px;background:transparent}
+.kbc-parse-workspace .kbc-parse-field>label{font-size:13px;opacity:.8}
+.kbc-directory-input{display:flex;gap:8px}.kbc-directory-input>input{flex:1;min-width:0}.kbc-directory-input>button{white-space:nowrap}
+.kbc-advanced{display:flex;flex-direction:column;gap:14px;padding:16px 0 6px}.kbc-discovery-row{padding:16px 0;border-bottom:1px solid #8883;display:flex;flex-direction:column;gap:7px}
+.kbc-parse-workspace h4{font-size:13px;font-weight:600;margin:24px 0 4px;opacity:.7}
+.kbc-parse-workspace .kbc-parse-row{padding:16px;margin-bottom:6px;background:transparent;border-color:#8883;gap:10px}
+.kbc-provider-details summary,.kbc-parse-policy summary,.kbc-parse-workspace details>summary{cursor:pointer;font-size:12px;opacity:.7;padding:6px 0}
+.kbc-provider-details[open] summary{margin-bottom:10px}.kbc-parse-policy{margin-top:12px;padding-top:12px;border-top:1px solid #8883}
+.kbc-parse-workspace .kbc-set-hint{opacity:.65}.kbc-parse-workspace .kbc-set-msg{padding:10px 12px;background:#8881;border-radius:6px;margin-bottom:12px}
+
 `
 
     function ensureStyle() {
@@ -256,11 +276,61 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
 
     // 重建索引：走宿主 op 'index-rebuild'，与模型工具 kb_check(rebuild=true) 同一条路径。
     // 设置页与顶栏页签各有一个按钮，都调这一个函数，避免两处语义漂移。
+    let indexBusy = false
+    let backgroundIndexBusy = false
+    const indexEvent = () => window.dispatchEvent(new Event('kb-index-maintenance'))
+    function useIndexBusy() {
+      const [busy, setBusy] = react.useState(indexBusy || backgroundIndexBusy)
+      react.useEffect(() => { const fn = () => setBusy(indexBusy || backgroundIndexBusy); window.addEventListener('kb-index-maintenance', fn); return () => window.removeEventListener('kb-index-maintenance', fn) }, [])
+      return busy
+    }
     async function rebuildIndex() {
-      const data = await callApi({ op: 'index-rebuild' })
+      if (indexBusy || backgroundIndexBusy) throw new Error('索引维护正在进行，请等待完成')
+      indexBusy = true; indexEvent()
+      try {
+      const status = (await callApi({ op: 'status' })).status
+      const request = { op: 'index-rebuild', expectedKbId: status?.kbId, expectedRevision: status?.config?.revision }
+      let data = await callApi(request)
+      if (!data.ok && data.result?.confirmationToken && window.confirm('条目数量从 ' + data.result.oldCount + ' 减少到 ' + data.result.newCount + '。旧索引将保留快照。确认这些删除符合预期并重建？')) data = await callApi({ ...request, confirmDrop: data.result.confirmationToken })
       // ok:false 时 data.error 是宿主给的可读原因（例如「扫描不完整（3 处错误），旧索引已保留」）
       if (!data || data.ok !== true) throw new Error((data && data.error) || '重建未成功')
       return data.result || {}
+      } finally { indexBusy = false; indexEvent() }
+    }
+
+    function IndexMaintenancePanel({ onUpdated }) {
+      const [info, setInfo] = react.useState(null), [snapshots, setSnapshots] = react.useState(null), [note, setNote] = react.useState('')
+      const sharedBusy = useIndexBusy()
+      const completedRef = react.useRef(undefined), updatedRef = react.useRef(onUpdated)
+      updatedRef.current = onUpdated
+      const read = react.useCallback(async () => { try {
+        const r = await callApi({ op:'index-maintenance.status' })
+        if (!r.ok) { setNote('无法检查索引维护状态：' + (r.reason || '未知')); return }
+        setInfo(r)
+        const nextBusy = Boolean(r.scheduler?.running || r.maintenance?.state === 'running')
+        if (nextBusy !== backgroundIndexBusy) { backgroundIndexBusy = nextBusy; indexEvent() }
+        const completed = r.maintenance?.lastCompletedAt
+        if (completed && completedRef.current !== undefined && completed !== completedRef.current) updatedRef.current?.({fresh:true})
+        completedRef.current = completed || null
+      } catch { setNote('无法检查索引维护状态，请稍后刷新') } }, [])
+      react.useEffect(() => {
+        read(); const timer = setInterval(() => { if (!document.hidden) read() }, 3000)
+        const refresh = () => { read(); if (!indexBusy) onUpdated?.() }
+        window.addEventListener('kb-index-maintenance',refresh)
+        return () => { clearInterval(timer); window.removeEventListener('kb-index-maintenance',refresh) }
+      }, [read,onUpdated])
+      if (!info) return null
+      const m = info.maintenance || {}, running = sharedBusy || info.scheduler?.running || m.state === 'running'
+      return e('div',{className:'kbc-set-plan'},
+        e('div',{className:'kbc-set-actions'},e('label',null,e('input',{type:'checkbox',checked:info.enabled,disabled:running,onChange:async ev=>{const enabled=ev.target.checked;setInfo(old=>({...old,enabled}));try{const r=await callApi({op:'index-maintenance.configure',enabled});if(r.ok){await read();indexEvent()}else{setNote(r.reason||'设置失败');await read()}}catch{setNote('设置失败，请重试');await read()}}}),' 自动维护索引'),
+          e('span',{className:'kbc-set-hint'},running?'正在同步…':m.state==='failed'?'维护失败：'+(m.detail||m.reason):info.scheduler?.state==='unhealthy'?'无法检查：知识库不可用':info.index?.fresh===false?'等待同步 · '+(info.index.reasonLabel||info.index.reason):m.lastCompletedAt?'已同步 · '+fmtAgo(m.lastCompletedAt):info.enabled?'文件变化后自动同步':'已关闭自动维护')),
+        e('details',null,e('summary',{style:{cursor:'pointer'}},'维护详情与索引快照'),
+          e('div',{className:'kbc-set-hint'},'仅维护检索缓存，不修改正文或记忆。全量替换前保留最近 3 份快照。'),
+          e('div',{className:'kbc-set-hint'},(info.index?.reasonLabel||'未知状态')+' · 原因码 '+(info.index?.reason||'未知')+' · 索引生成 '+(info.index?.indexedAt||'未知')),
+          m.diff?e('div',null,'新增 '+m.diff.added.length+' · 删除 '+m.diff.removed.length+' · 内容变化 '+m.diff.changed.length,e('details',null,e('summary',null,'变化路径示例'),e('pre',{style:{whiteSpace:'pre-wrap'}},[...m.diff.added,...m.diff.removed,...m.diff.changed].slice(0,8).join('\n')))):null,
+          e('button',{className:'kbc-btn kbc-btn-ghost',disabled:running,onClick:async()=>{const r=await callApi({op:'index-snapshots',expectedKbId:info.kbId});if(r.ok)setSnapshots(r.snapshots);else setNote(r.reason)}},'查看可恢复快照'),
+          snapshots?snapshots.length?snapshots.map(s=>e('div',{key:s.name},s.entries+' 条 · '+s.generatedAt+' ',e('button',{className:'kbc-btn kbc-btn-ghost',disabled:running,onClick:async()=>{if(!window.confirm('只恢复索引缓存，不会恢复原文。恢复后自动维护将关闭，是否继续？'))return;const r=await callApi({op:'index-snapshots',restore:s.name,expectedKbId:info.kbId});setNote(r.note||r.reason);await read();indexEvent() }},'恢复此索引'))):e('p',null,'暂无索引快照'):null),
+        note?e('div',{role:'status'},note):null)
     }
 
     const fmtBytes = (n) => {
@@ -303,6 +373,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     //      元数据损坏或不兼容则明确提示且不覆盖。
     // 选择目录**只记录候选**；点主按钮才执行；验证可用后才切换当前库。
     function Section() {
+      const sharedIndexBusy = useIndexBusy()
       const [status, setStatus] = react.useState(null)
       const [dirs, setDirs] = react.useState(null)
       const [candidate, setCandidate] = react.useState('')
@@ -539,7 +610,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: () => refresh({ force: true }) }, '刷新状态'),
           e('button', {
             className: 'kbc-btn ' + (indexStale ? 'kbc-btn-primary' : 'kbc-btn-ghost'),
-            disabled: busy || rebuilding || !status || !currentKb,
+            disabled: busy || rebuilding || sharedIndexBusy || !status || !currentKb,
             onClick: doRebuild,
             title: '重新扫描并写入索引（等价于 kb_check(rebuild=true)）',
           }, rebuilding ? '重建中…' : (indexStale ? '重建索引（当前需重建）' : '重建索引'))),
@@ -589,6 +660,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
 
         // ── 解析服务（OCR / ASR）──
         // 放在导入进度之后：导入把文件收进来，解析把它们变成可检索的文本。
+        e(IndexMaintenancePanel, { onUpdated: refresh }),
         e(ParseSection, { initialImportId: jobId }),
         pickerNote ? e('div', { className: 'kbc-set-hint' }, pickerNote) : null)
     }
@@ -598,6 +670,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     // 规则：未知显示「未知」不显示「正常」；页面隐藏时暂停刷新；刷新只读、不绑定不建库不重建。
     const REFRESH_MS = 30000
     function Overview() {
+      const sharedIndexBusy = useIndexBusy()
       const [data, setData] = react.useState(null)
       const [busy, setBusy] = react.useState(false)
       const [error, setError] = react.useState('')
@@ -759,7 +832,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         // 2) 运行状态条（未知就是未知）
         e('div', { className: 'kbm-chips' },
           chip('配置', run.config ? run.config.ok : null, run.config && run.config.ok ? '正常' : ('降级：' + ((run.config && run.config.reason) || '未知'))),
-          chip('索引', run.index ? run.index.fresh : null, run.index && run.index.fresh === true ? '新鲜' : (run.index ? ('需重建：' + (run.index.reason || '未知')) : '未知')),
+          chip('索引', run.index ? run.index.fresh : null, run.index && run.index.fresh === true ? '已同步' : (run.index ? (run.index.reasonLabel || run.index.reason || '未知') : '未知')),
           chip('上次检查', null, run.lastCheck && run.lastCheck.known === false ? '未知（本版未落盘时间线）' : (run.lastCheck ? '已知' : '未知')),
           chip('扫描', scanStatus === 'ok' ? true : scanStatus === 'empty' ? null : false, scanStatus === 'ok' ? '完整' : (scanStatus === 'empty' ? '空目录' : scanStatus))),
 
@@ -767,11 +840,12 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         e('div', { className: 'kbc-set-actions', style: { marginTop: 10 } },
           e('button', {
             className: 'kbc-btn ' + (run.index && run.index.fresh === false ? 'kbc-btn-primary' : 'kbc-btn-ghost'),
-            disabled: busy || rebuilding,
+            disabled: busy || rebuilding || sharedIndexBusy,
             onClick: doRebuild,
             title: '重新扫描并写入索引（等价于 kb_check(rebuild=true)）',
           }, rebuilding ? '重建索引中…' : (run.index && run.index.fresh === false ? '重建索引（当前需重建）' : '重建索引'))),
 
+        e(IndexMaintenancePanel, { onUpdated: load }),
         // 3) 分层计数（不能把总文件数当条目数）
         e('div', { className: 'kbm-stats' },
           statCell('知识条目', layers.entries === null ? '未知' : String(layers.entries), layers.entriesInIndex === undefined || layers.entriesInIndex === null ? '知识层 .md' : ('索引 ' + layers.entriesInIndex)),
@@ -788,6 +862,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
             e('div', { className: 'kbm-issue-head', onClick: () => setOpenIssue(openIssue === it.kind ? '' : it.kind) },
               e('span', { className: 'kbm-issue-dot' }),
               e('span', { className: 'kbm-issue-label' }, it.label),
+              it.kind === 'index-stale' ? e('button', { className:'kbc-btn kbc-btn-primary',disabled:busy||rebuilding||sharedIndexBusy,onClick:ev=>{ev.stopPropagation();doRebuild()} }, rebuilding||sharedIndexBusy?'同步中…':'重建索引') : null,
               e('span', { className: 'kbm-issue-toggle' }, openIssue === it.kind ? '收起' : '看范围')),
             openIssue === it.kind ? e('div', { className: 'kbm-issue-detail' }, it.detail) : null)),
 
@@ -861,7 +936,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           e('span', { className: 'kbm-file-meta' }, fmtBytes(f.bytes) + ' · ' + fmtAgo(f.mtime)))),
 
         e('div', { className: 'kbc-set-hint', style: { marginTop: 16 } },
-          '只读：本页不写文件、不建索引、不改绑定。「刷新」只是重新扫一次磁盘（同一份快照在 8 秒内复用，不会重复扫）。隐私分区只计数、不列文件名。'),
+          '「刷新」只读取状态，不触发重建。自动维护由宿主后台执行；「重建索引」按钮手动维护检索缓存，不修改正文。隐私分区只计数、不列文件名。'),
         toast ? e('div', { className: 'kbm-toast' }, toast) : null)
     }
 
@@ -1340,7 +1415,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     const PARSE_LAND_TEXT = { none: '未落库', landed: '已落库', failed: '落库失败', conflict: '落库冲突' }
     const PARSE_LOCALITY_TEXT = { local: 'local（本机）', lan: 'lan（局域网）', cloud: 'cloud（云端）' }
-    const PARSE_CLI_PROTOCOLS = ['cli-transcribe']
+    const PARSE_CLI_PROTOCOLS = ['cli-transcribe', 'qwen3-local', 'paddle-local', 'paddle-service', 'ppocr-local']
 
     const parseShow = (v) => (v === null || v === undefined || v === '' ? '—' : String(v))
     const parseIsCli = (protocol) => PARSE_CLI_PROTOCOLS.indexOf(String(protocol || '')) >= 0
@@ -1356,19 +1431,21 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
 
     const parseEmptyDraft = (kind, protocol) => ({
+      vendor: 'openai', source: 'api', region: 'cn-beijing', workspaceId: '',
+      apiKey: '', secretKey: '', clearCredential: false, modelPath: '', ffmpegCommand: '',
       isNew: true,
       id: '',
       kind: kind,
       protocol: protocol || '',
       label: '',
-      locality: 'local',
+      locality: 'cloud',
       baseUrl: '',
       command: '',
       argsText: '',
       renderCommand: '',
       model: '',
       credentialRef: '',
-      authScheme: 'none',
+      authScheme: 'bearer',
       timeoutMs: '',
       formatsText: '',
       maxBytes: '',
@@ -1378,6 +1455,10 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     })
 
     const parseDraftOf = (p) => ({
+      vendor: p.vendor || 'custom', source: p.locality === 'local' ? 'local' : 'api',
+      region: p.region || 'cn-beijing', workspaceId: p.workspaceId || '',
+      apiKey: '', secretKey: '', clearCredential: false, credentialConfigured: p.credentialConfigured,
+      modelPath: p.modelPath || '', ffmpegCommand: p.ffmpegCommand || '', layoutModelPath: p.layoutModelPath || '', detModelPath: p.detModelPath || '', recModelPath: p.recModelPath || '', dictionaryPath: p.dictionaryPath || '',
       isNew: false,
       // originId = 打开表单时的 id，用来确定"这个表单属于哪一行"
       // （直接用 draft.id 判会让用户在 id 输入框里敲第一个字符时表单就消失）
@@ -1405,6 +1486,8 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     // 数值字段留空就不发（不拿 0 去试探宿主校验），填了才带
     const parseProviderPayload = (d) => {
       const out = {
+        vendor: d.vendor, region: d.region, workspaceId: d.workspaceId,
+        modelPath: d.modelPath, ffmpegCommand: d.ffmpegCommand, layoutModelPath: d.layoutModelPath, detModelPath: d.detModelPath, recModelPath: d.recModelPath, dictionaryPath: d.dictionaryPath,
         id: String(d.id || '').trim(),
         kind: d.kind,
         protocol: d.protocol,
@@ -1417,6 +1500,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         enabled: d.enabled === true,
         notes: String(d.notes || ''),
       }
+      if (!out.formats.length) delete out.formats
       const timeoutMs = parseNum(d.timeoutMs)
       if (timeoutMs !== undefined) out.timeoutMs = timeoutMs
       const maxBytes = parseNum(d.maxBytes)
@@ -1425,6 +1509,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       if (maxPages !== undefined) out.maxPages = maxPages
       if (parseIsCli(d.protocol)) {
         out.command = String(d.command || '').trim()
+        if (d.protocol === 'paddle-service') out.baseUrl = String(d.baseUrl || '').trim()
         out.args = splitList(d.argsText)
       } else {
         out.baseUrl = String(d.baseUrl || '').trim()
@@ -1443,6 +1528,11 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       const [testSource, setTestSource] = react.useState({})
       const [testNote, setTestNote] = react.useState({})
       const [pending, setPending] = react.useState({})
+      const [selectedKind, setSelectedKind] = react.useState('ocr')
+      const [parsePane, setParsePane] = react.useState('providers')
+      const [scan, setScan] = react.useState(null)
+      const [scanDirectory, setScanDirectory] = react.useState('')
+      const [scanBusy, setScanBusy] = react.useState(false)
       const [jobs, setJobs] = react.useState(null)
       const [jobDetail, setJobDetail] = react.useState(null)
       const [jobPreview, setJobPreview] = react.useState(null)
@@ -1505,6 +1595,36 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       }, [activeCount, loadJobs])
 
       const patch = (p) => setDraft((prev) => (prev === null ? prev : Object.assign({}, prev, p)))
+      react.useEffect(() => {
+        if (!scan || scan.status !== 'running') return undefined
+        let active = true
+        const timer = setInterval(async () => {
+          try {
+            const r = await callApi({ op: 'parse.scan.status', scanId: scan.id })
+            if (active && r.ok) setScan(r.scan)
+          } catch (err) { if (active) setMsg('扫描状态读取失败：' + err.message) }
+        }, 800)
+        return () => { active = false; clearInterval(timer) }
+      }, [scan && scan.id, scan && scan.status])
+      const startScan = async (mode, directory) => {
+        setScanBusy(true)
+        try {
+          const r = await callApi({ op: 'parse.scan.start', mode, directory: directory || scanDirectory })
+          if (r.ok) setScan(r.scan)
+          else setMsg('扫描无法开始：' + (r.detail || r.reason))
+        } catch (err) { setMsg('扫描失败：' + err.message) }
+        finally { setScanBusy(false) }
+      }
+      const chooseScanDirectory = async () => {
+        try {
+          const workspace = flowClientContext && flowClientContext.get('uiWorkspace')
+          if (workspace && typeof workspace.pickDirectory === 'function') {
+            const chosen = await workspace.pickDirectory()
+            const dir = typeof chosen === 'string' ? chosen : chosen && (chosen.path || chosen.directory)
+            if (dir) { setScanDirectory(dir); await startScan('directory', dir) }
+          } else setMsg('宿主未提供目录选择器，请在目录输入框填写绝对路径后扫描。')
+        } catch (err) { setMsg('无法打开目录选择器，请手动填写目录：' + err.message) }
+      }
       const patchTestSource = (id, v) => setTestSource((prev) => Object.assign({}, prev, { [id]: v }))
       const patchTestNote = (id, v) => setTestNote((prev) => Object.assign({}, prev, { [id]: v }))
       const patchPending = (id, v) => setPending((prev) => Object.assign({}, prev, { [id]: v }))
@@ -1574,6 +1694,8 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           const d = await callApi({
             op: 'parse.provider.save',
             provider: parseProviderPayload(draft),
+            credentials: draft.apiKey ? { apiKey: draft.apiKey, secretKey: draft.secretKey } : undefined,
+            clearCredential: draft.clearCredential === true,
           })
           if (d && d.ok) {
             setMsg('已保存 ' + parseShow(d.provider && d.provider.id) + '（revision ' + parseShow(d.revision) + '）')
@@ -1623,8 +1745,9 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
             patchTestNote(p.id, '连接通过：' + (d.latencyMs === null || d.latencyMs === undefined ? '' : String(d.latencyMs) + ' ms · ')
               + parseShow(d.detail) + (d.note ? '（' + d.note + '）' : '')
               + '。注意：这只证明地址 / 程序通，不代表能解析，请再点「真实解析测试」。')
+            await load()
           } else {
-            patchTestNote(p.id, '连接失败：' + ((d && (d.reason || d.detail)) || '未知原因'))
+            patchTestNote(p.id, '检查未通过：' + ((d && (d.detail || d.reason)) || '未知原因'))
           }
         } catch (err) {
           patchTestNote(p.id, '连接失败：' + String((err && err.message) || err))
@@ -1645,9 +1768,11 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         try {
           const d = await callApi({ op: 'parse.test-parse', providerId: p.id, sourceRel: sourceRel, kind: p.kind })
           if (d && d.ok) {
-            patchTestNote(p.id, '真实解析通过：' + parseShow(d.textChars) + ' 字符 · 状态 ' + parseShow(d.status)
+            patchTestNote(p.id, (d.status === 'partial' ? '真实解析部分成功（存在缺页 / 缺段）：' : '真实解析通过：') + parseShow(d.textChars) + ' 字符 · 状态 ' + parseShow(d.status)
               + (d.preview ? ' · 预览：' + String(d.preview).slice(0, 120) : '')
               + (d.note ? '（' + d.note + '）' : ''))
+            await load()
+            await loadJobs()
           } else {
             patchTestNote(p.id, '真实解析失败：' + ((d && (d.reason || d.detail)) || '未知原因'))
           }
@@ -1780,7 +1905,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
 
       const field = (label, node, hint) => e('div', { className: 'kbc-parse-field' },
         e('label', null, label),
-        node,
+        ['input', 'select', 'textarea'].includes(node.type) ? react.cloneElement(node, { 'aria-label': label }) : node,
         hint ? e('span', { className: 'kbc-set-hint' }, hint) : null)
 
       const textInput = (value, onChange, placeholder) => e('input', {
@@ -1807,58 +1932,60 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         return parts.join(' · ')
       }
 
-      const formNode = (d) => e('div', { className: 'kbc-parse-form' },
-        e('div', { className: 'kbf-run-row' },
-          d.isNew ? ('新增' + (PARSE_KIND_TEXT[d.kind] || d.kind) + ' 提供方') : ('编辑 ' + d.originId + '（kind 保存时不可改）')),
-        e('div', { className: 'kbc-parse-grid' },
-          field('id', textInput(d.id, (v) => patch({ id: v }), '必填；它就是主键，改 id 等于新建一条')),
-          field('kind（类型）', selectInput(d.kind, [
-            { value: 'ocr', label: 'ocr（图片 / 扫描件 → 文字）' },
-            { value: 'asr', label: 'asr（语音 → 文字）' },
-          ], (v) => {
-            const list = (protocols && protocols[v]) || []
-            patch({ kind: v, protocol: list.indexOf(d.protocol) >= 0 ? d.protocol : (list[0] || '') })
-          }, !d.isNew))),
-        e('div', { className: 'kbc-parse-grid' },
-          field('protocol（协议）', selectInput(d.protocol,
-            ((protocols && protocols[d.kind]) || []).map((x) => ({ value: x, label: x })),
-            (v) => patch({ protocol: v }))),
-          field('label（显示名）', textInput(d.label, (v) => patch({ label: v }), '例：本机 PaddleOCR-VL'))),
-        e('div', { className: 'kbc-parse-grid' },
-          field('locality（位置）', selectInput(d.locality,
-            localities.map((x) => ({ value: x, label: PARSE_LOCALITY_TEXT[x] || x })),
-            (v) => patch({ locality: v }))),
-          field('authScheme（鉴权方式）', selectInput(d.authScheme, [
-            { value: 'none', label: 'none（不带凭据）' },
-            { value: 'bearer', label: 'bearer（Authorization: Bearer …）' },
-          ], (v) => patch({ authScheme: v })))),
-        parseIsCli(d.protocol)
-          ? e('div', { className: 'kbc-parse-grid' },
-            field('command（可执行程序）', textInput(d.command, (v) => patch({ command: v }), '例：whisper.exe 的绝对路径')),
-            field('args（参数，逗号分隔）', textInput(d.argsText, (v) => patch({ argsText: v }), '例：--model,large,--language,zh')))
-          : field('baseUrl（服务地址）', textInput(d.baseUrl, (v) => patch({ baseUrl: v }), 'http 协议必填，例：http://127.0.0.1:8118/v1')),
-        d.kind === 'ocr'
-          ? field('renderCommand（版面渲染命令，可空）', textInput(d.renderCommand, (v) => patch({ renderCommand: v }), '可选：把 PDF 页面渲染成图片的程序'))
-          : null,
-        e('div', { className: 'kbc-parse-grid' },
-          field('model（模型名）', textInput(d.model, (v) => patch({ model: v }), '例：PaddleOCR-VL-1.6-0.9B')),
-          field('credentialRef（凭据名）', textInput(d.credentialRef, (v) => patch({ credentialRef: v }), '环境变量名，如 KB_OCR_TOKEN'))),
-        e('div', { className: 'kbc-parse-grid' },
-          field('timeoutMs（超时毫秒）', textInput(d.timeoutMs, (v) => patch({ timeoutMs: v }), '可空，留空则不覆盖宿主默认值')),
-          field('formats（支持的格式，逗号分隔）', textInput(d.formatsText, (v) => patch({ formatsText: v }), '例：png,jpg,pdf'))),
-        e('div', { className: 'kbc-parse-grid' },
-          field('maxBytes（单文件上限，字节）', textInput(d.maxBytes, (v) => patch({ maxBytes: v }), '可空')),
-          field('maxPages（最多页数）', textInput(d.maxPages, (v) => patch({ maxPages: v }), '可空'))),
-        field('notes（备注）', textInput(d.notes, (v) => patch({ notes: v }), '给未来的自己一句说明')),
-        e('label', { style: { display: 'flex', gap: 6, alignItems: 'center', fontSize: 12.5 } },
-          e('input', { type: 'checkbox', checked: d.enabled === true, onChange: (ev) => patch({ enabled: ev.target.checked }) }),
-          ' 启用（停用的提供方不会被当成默认 / 可选项）'),
-        formErrors.length > 0
-          ? e('div', { className: 'kbc-parse-err' }, '保存被拒：' + formErrors.join('；'))
-          : null,
-        e('div', { className: 'kbc-set-actions' },
-          e('button', { className: 'kbc-btn kbc-btn-primary', disabled: busy, onClick: saveProvider }, busy ? '保存中…' : '保存'),
-          e('button', { className: 'kbc-btn kbc-btn-ghost', onClick: () => { setDraft(null); setFormErrors([]) } }, '取消')))
+      const advancedFormNode = (d) => e('div', { className: 'kbc-advanced' },
+        field('显示名称', textInput(d.label, v => patch({ label: v }), '可选，便于区分多个服务')),
+        field('提供方 ID', textInput(d.id, v => patch({ id: v }), '留空自动生成')),
+        d.vendor === 'custom' || d.source === 'local' ? field('协议', selectInput(d.protocol, ((protocols[d.kind]) || []).map(v => ({ value: v, label: v })), v => patch({ protocol: v }))) : null,
+        field('超时（毫秒）', textInput(d.timeoutMs, v => patch({ timeoutMs: v }), '使用默认值')),
+        field('支持格式', textInput(d.formatsText, v => patch({ formatsText: v }), '留空使用默认格式')),
+        field('单文件大小上限（字节）', textInput(d.maxBytes, v => patch({ maxBytes: v }))),
+        field('PDF 最多页数', textInput(d.maxPages, v => patch({ maxPages: v }))),
+        d.kind === 'ocr' ? directoryField('PDF 渲染 Python', 'renderCommand', d.renderCommand, '可选择独立 Python 环境或填写 python.exe') : directoryField('FFmpeg 程序', 'ffmpegCommand', d.ffmpegCommand, '选择 FFmpeg 目录或填写 ffmpeg.exe'),
+        d.protocol === 'ppocr-local' ? field('外部字典（可选，须与模型内置字典一致）', textInput(d.dictionaryPath || '', v => patch({ dictionaryPath: v }))) : null,
+        d.protocol === 'cli-transcribe' ? field('固定程序参数', textInput(d.argsText, v => patch({ argsText: v }))) : null,
+        field('旧环境变量 / 凭据引用', textInput(d.credentialRef, v => patch({ credentialRef: v }))),
+        field('服务位置', selectInput(d.locality, localities.map(v => ({ value: v, label: PARSE_LOCALITY_TEXT[v] || v })), v => patch({ locality: v }))),
+        field('鉴权方式', selectInput(d.authScheme, [{ value: 'none', label: '无需凭据' }, { value: 'bearer', label: 'Bearer Token' }], v => patch({ authScheme: v }))),
+        field('备注', textInput(d.notes, v => patch({ notes: v }))))
+
+      const directoryField = (label, key, value, placeholder) => field(label, e('div', { className: 'kbc-directory-input' },
+        react.cloneElement(textInput(value || '', v => patch({ [key]: v }), placeholder), { 'aria-label': label }),
+        e('button', { className: 'kbc-btn kbc-btn-ghost', type: 'button', onClick: async () => {
+          try { const service = flowClientContext && flowClientContext.get('uiWorkspace'); if (!service?.pickDirectory) { setMsg('请在输入框中填写目录绝对路径'); return }
+            const selected = await service.pickDirectory(); const value = typeof selected === 'string' ? selected : selected?.path || selected?.directory
+            if (value) patch({ [key]: value })
+          } catch (err) { setMsg('目录选择失败：' + err.message) }
+        } }, '选择目录')))
+
+      const formNode = (d) => {
+        const changeVendor = (vendor) => {
+          const local = vendor === 'local'
+          patch({ vendor, source: local ? 'local' : 'api', protocol: local ? (d.kind === 'asr' ? 'qwen3-local' : 'paddle-service') : vendor === 'qwen' ? (d.kind === 'asr' ? 'dashscope-asr' : 'dashscope-ocr') : vendor === 'baidu' ? (d.kind === 'asr' ? 'baidu-asr' : 'baidu-ocr') : (d.kind === 'asr' ? 'openai-audio-transcriptions' : 'openai-vision'), model: local && d.kind === 'ocr' ? 'PaddleOCR-VL-1.6-0.9B' : '', baseUrl: local && d.kind === 'ocr' ? 'http://127.0.0.1:8118/v1' : '', command: local ? (d.kind === 'asr' ? 'D:\\DSH WorkPlace\\qwen3-asr-env\\Scripts\\python.exe' : '') : '', modelPath: local && d.kind === 'asr' ? 'D:\\DSH WorkPlace\\qwen3-asr-models\\Qwen3-ASR-1.7B' : '', layoutModelPath: local ? 'D:\\DSH WorkPlace\\ocr-models\\PP-DocLayoutV3' : '', locality: local ? 'local' : 'cloud', authScheme: local ? 'none' : 'bearer', credentialRef: '', apiKey: '', secretKey: '', credentialConfigured: false })
+        }
+        return e('div', { className: 'kbc-parse-form' },
+          e('div', { className: 'kbc-set-h' }, (d.isNew ? '添加 ' : '编辑 ') + PARSE_KIND_TEXT[d.kind]),
+          field('接入方式', selectInput(d.source || 'api', [{ value: 'api', label: 'API 服务' }, { value: 'local', label: '本地模型' }], v => changeVendor(v === 'local' ? 'local' : 'openai'))),
+          d.source === 'local' ? field('本地引擎', selectInput(d.protocol, d.kind === 'ocr' ? [{value:'paddle-service',label:'PaddleOCR-VL 服务 + 版面分析'},{value:'paddle-local',label:'PaddleOCR-VL 本地权重'},{value:'ppocr-local',label:'PP-OCR 检测 + 识别'},{value:'openai-vision',label:'兼容视觉接口（仅文字识别）'}] : [{value:'qwen3-local',label:'Qwen3-ASR 本地模型'},{value:'cli-transcribe',label:'自定义转写程序'}], v => patch({protocol:v}))) : null,
+          d.source !== 'local' ? field('服务商', selectInput(d.vendor || 'custom', [{ value: 'openai', label: 'OpenAI' }, { value: 'custom', label: '自定义 OpenAI 兼容' }, { value: 'qwen', label: 'Qwen / 阿里云百炼（原生）' }, { value: 'baidu', label: '百度智能云（原生）' }], changeVendor)) : e('div', { className: 'kbc-set-hint' }, '可使用下方本地扫描添加模型，也可在高级设置中指定本地地址或程序。'),
+          d.vendor === 'custom' || (d.source === 'local' && (!parseIsCli(d.protocol) || d.protocol === 'paddle-service')) ? field('服务地址', textInput(d.baseUrl, v => patch({ baseUrl: v }), 'https://服务地址/v1 或 http://127.0.0.1:8118/v1')) : null,
+          d.source !== 'local' ? field(d.credentialConfigured ? 'API Key（已保存；留空保留）' : 'API Key', e('input', { className: 'kbc-set-input', type: 'password', autoComplete: 'new-password', value: d.apiKey || '', onChange: ev => patch({ apiKey: ev.target.value, clearCredential: false }) })) : null,
+          d.vendor === 'baidu' ? field('Secret Key（更换凭据时与 API Key 一起填写）', e('input', { className: 'kbc-set-input', type: 'password', autoComplete: 'new-password', value: d.secretKey || '', onChange: ev => patch({ secretKey: ev.target.value }) })) : null,
+          d.credentialRef ? e('label', null, e('input', { type: 'checkbox', checked: !!d.clearCredential, onChange: ev => patch({ clearCredential: ev.target.checked, apiKey: '', secretKey: '' }) }), ' 清除凭据引用') : null,
+          d.source !== 'local' && (d.credentialRef || providers.some(p => p.credentialConfigured && p.vendor === d.vendor && p.id !== d.id)) ? field('复用已保存凭据（需已开通当前能力）', selectInput(d.credentialRef || '', [{ value: '', label: '不复用 / 填写新凭据' }, ...providers.filter(p => p.credentialConfigured && p.vendor === d.vendor && p.id !== d.id).map(p => ({ value: p.credentialRef, label: p.label || p.id })), ...(d.credentialRef ? [{ value: d.credentialRef, label: '当前凭据' }] : [])], v => patch({ credentialRef: v, clearCredential: false }))) : null,
+          d.vendor === 'qwen' ? e(react.Fragment, null,
+            field('地域', selectInput(d.region || 'cn-beijing', [{ value: 'cn-beijing', label: '中国内地（北京）' }, { value: 'ap-southeast-1', label: '新加坡' }, { value: 'us-east-1', label: '美国（弗吉尼亚）' }], v => patch({ region: v }))),
+            field('工作空间 ID（可选；留空使用公共域名）', textInput(d.workspaceId || '', v => patch({ workspaceId: v }), '请与 API Key 所属地域一致'))) : null,
+          d.vendor === 'baidu' ? field('识别模式', selectInput(d.model || (d.kind === 'ocr' ? 'general_basic' : '1537'), d.kind === 'ocr' ? [{ value: 'general_basic', label: '通用文字识别标准版' }, { value: 'accurate_basic', label: '通用文字识别高精度版' }] : [{ value: '1537', label: '短语音识别标准版 · 普通话' }], v => patch({ model: v }))) : field('模型', textInput(d.model, v => patch({ model: v }), d.vendor === 'qwen' ? (d.kind === 'ocr' ? '默认 qwen-vl-ocr' : '默认 qwen3-asr-flash') : d.vendor === 'openai' ? (d.kind === 'ocr' ? '默认 gpt-4o-mini' : '默认 whisper-1') : '填写模型 ID')),
+          d.source === 'local' && parseIsCli(d.protocol) ? e(react.Fragment, null,
+            directoryField('Python 环境（也可填写 python.exe）', 'command', d.command, '选择运行环境目录'),
+            ['qwen3-local', 'paddle-local'].includes(d.protocol) ? directoryField('模型权重目录', 'modelPath', d.modelPath, '包含 config.json 的模型目录') : null,
+            ['paddle-local', 'paddle-service'].includes(d.protocol) ? directoryField('版面模型目录', 'layoutModelPath', d.layoutModelPath, 'PP-DocLayoutV3 所在目录') : null,
+            d.protocol === 'ppocr-local' ? e(react.Fragment, null, directoryField('文字检测模型', 'detModelPath', d.detModelPath), directoryField('文字识别模型', 'recModelPath', d.recModelPath)) : null) : null,
+          d.source !== 'local' ? e('div', { className: 'kbc-set-hint' }, policy === 'local-only' ? '当前禁止云解析：可以保存配置；使用前需在「数据与权限」中调整外发策略。' : '测试解析会发送所选文件到服务商，可能产生费用；保存后主动点击测试。') : null,
+          e('details', null, e('summary', { style: { cursor: 'pointer' } }, '高级设置'), advancedFormNode(d)),
+          formErrors.length ? e('div', { className: 'kbc-parse-err' }, formErrors.join('；')) : null,
+          e('div', { className: 'kbc-set-actions' }, e('button', { className: 'kbc-btn kbc-btn-primary', disabled: busy, onClick: saveProvider }, busy ? '保存中…' : '保存'), e('button', { className: 'kbc-btn kbc-btn-ghost', onClick: () => setDraft(null) }, '取消')))
+      }
 
       const providerRow = (p) => {
         const isDefault = defaults[p.kind] === p.id
@@ -1867,17 +1994,18 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         const editing = draft !== null && draft.isNew === false && draft.originId === p.id
         return e('div', { className: 'kbc-parse-row', key: p.id },
           e('div', { className: 'kbc-parse-head' },
-            e('span', { className: 'kbc-parse-id' }, p.id),
+            e('span', { className: 'kbc-parse-id' }, p.label && p.label !== p.id ? p.label : ({qwen:'Qwen',baidu:'百度智能云',openai:'OpenAI',local:'本地'}[p.vendor] || '自定义') + ' ' + PARSE_KIND_TEXT[p.kind]),
             isDefault ? e('span', { className: 'kbc-parse-badge' }, '默认') : null,
+            p.parseVerifiedAt ? e('span', { className: 'kbc-parse-badge', title: p.parseVerifiedAt+' · 配置 '+p.configVersion }, '解析验证通过') : p.environmentCheckedAt ? e('span', { className: 'kbc-parse-badge', title: p.environmentCheckedAt+' · 尚未证明能推理' }, '环境检查通过') : e('span', { className: 'kbc-set-hint' }, '待验证'),
             p.enabled === false ? e('span', { className: 'kbc-parse-badge off' }, '停用') : null),
-          e('div', { className: 'kbc-parse-meta' },
+          e('details', { className: 'kbc-provider-details' }, e('summary', null, '配置与测试'), e('div', { className: 'kbc-parse-meta' },
             '协议 ' + parseShow(p.protocol) + ' · 位置 ' + parseShow(p.locality) + (p.locale ? '（' + p.locale + '）' : '')
             + ' · 模型 ' + parseShow(p.model)
             + (p.credentialRef ? ' · 凭据 ' + p.credentialRef + (p.credentialConfigured ? '（已配置）' : '（未配置）') : '')
             + (p.baseUrl ? ' · ' + p.baseUrl : '')
             + (p.command ? ' · ' + p.command : '')),
           e('div', { className: 'kbc-parse-actions' },
-            e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: isPending || busy, onClick: () => testConnection(p) }, '测试连接'),
+            e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: isPending || busy, onClick: () => testConnection(p) }, p.locality==='local'&&parseIsCli(p.protocol)?'检查运行环境':'测试连接'),
             e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: isPending || busy, onClick: () => testParse(p) }, '真实解析测试'),
             e('input', {
               className: 'kbc-parse-inline',
@@ -1893,8 +2021,9 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
               className: 'kbc-btn kbc-btn-ghost',
               disabled: busy,
               onClick: () => { setFormErrors([]); setDraft(parseDraftOf(p)) },
-            }, editing ? '编辑中' : '编辑')),
+            }, editing ? '编辑中' : '编辑'))),
           testNote[p.id] ? e('div', { className: 'kbc-parse-meta' }, testNote[p.id]) : null,
+          p.locality === 'cloud' ? e('div', { className: 'kbc-set-hint' }, '真实解析测试会将所选文件发送至服务商，可能产生费用；仅在主动点击后执行。') : null,
           editing ? formNode(draft) : null)
       }
 
@@ -1902,7 +2031,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         const status = String(j.status || '')
         const landStatus = j.land && j.land.status ? String(j.land.status) : 'none'
         const canCancel = status === 'queued' || status === 'running'
-        const canRetry = status === 'failed' || status === 'canceled' || (landStatus !== 'none' && landStatus !== 'landed')
+        const canRetry = status === 'partial' || status === 'failed' || status === 'canceled' || (landStatus !== 'none' && landStatus !== 'landed')
         const canLand = (status === 'succeeded' || status === 'partial') && landStatus !== 'landed'
         const textChars = j.result && typeof j.result.textChars === 'number' ? j.result.textChars : null
         return e('div', { className: 'kbc-parse-row', key: j.jobId },
@@ -1993,62 +2122,36 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
                   onClick: () => parseWaiting(it),
                 }, '解析'))))))
 
-      return e('div', { className: 'kbc-parse-dev' },
-        e('div', { className: 'kbc-set-h' }, '解析服务（OCR / ASR）'),
-        e('div', { className: 'kbc-parse-dev-note' }, '开发中，现阶段使用可直接在聊天中告诉模型使用的本地模型或者使用其他插件接口。'),
-        row('策略', policy === '' ? '（未读到）' : (policy === 'local-only' ? 'local-only（禁止云解析）' : policy)),
-        e('div', { className: 'kbc-set-actions' },
-          e('select', {
-            className: 'kbc-set-input',
-            style: { maxWidth: 240 },
-            value: policy,
-            disabled: busy || policy === '',
-            onChange: (ev) => changePolicy(ev.target.value),
-          },
-          policy === '' ? e('option', { value: '' }, '（未读到）') : null,
-          e('option', { value: 'local-only' }, 'local-only（禁止云解析）'),
-          e('option', { value: 'allow-configured' }, 'allow-configured'))),
-        e('div', { className: 'kbc-set-hint' },
-          policy === 'local-only'
-            ? 'local-only：所有位置为 cloud 的提供方都会被拒绝（云端 OCR / ASR 一律不可用），只能用位置为 local / lan 的。'
-            : 'allow-configured：只放行你下面显式配置过的提供方；位置为 cloud 的会真的把文件发到外部服务。'),
-        row('默认提供方（OCR）', defaults.ocr ? defaults.ocr : '未设置'),
-        row('默认提供方（ASR）', defaults.asr ? defaults.asr : '未设置'),
-        e('div', { className: 'kbc-set-actions' },
-          e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: () => load() }, busy ? '处理中…' : '刷新解析配置'),
-          e('button', {
-            className: 'kbc-btn kbc-btn-ghost',
-            disabled: busy,
-            onClick: () => { setFormErrors([]); setDraft(parseEmptyDraft('ocr', ((protocols && protocols.ocr) || [])[0] || '')) },
-          }, '新增 OCR 提供方'),
-          e('button', {
-            className: 'kbc-btn kbc-btn-ghost',
-            disabled: busy,
-            onClick: () => { setFormErrors([]); setDraft(parseEmptyDraft('asr', ((protocols && protocols.asr) || [])[0] || '')) },
-          }, '新增 ASR 提供方')),
-        msg !== '' ? e('div', { className: 'kbc-set-msg' }, msg) : null,
-        draft !== null && draft.isNew ? formNode(draft) : null,
-        ['ocr', 'asr'].map((kind) => e('div', { key: kind },
-          e('div', { className: 'kbc-set-h' }, (PARSE_KIND_TEXT[kind] || kind) + ' 提供方'),
-          providersOf(kind).length === 0
-            ? e('div', { className: 'kbc-set-hint' }, '还没有配置 ' + (PARSE_KIND_TEXT[kind] || kind) + ' 提供方')
-            : e('div', { className: 'kbc-parse-list' }, providersOf(kind).map(providerRow)))),
-        e('div', { className: 'kbc-set-h' }, '解析任务'),
-        e('div', { className: 'kbc-set-actions' },
-          e('button', { className: 'kbc-btn kbc-btn-ghost', onClick: () => loadJobs() }, '刷新任务')),
-        e('div', { className: 'kbc-set-hint' },
-          activeCount > 0
-            ? '有 ' + activeCount + ' 个任务在排队 / 运行，每 5 秒自动刷新一次；全部结束后自动停止刷新。'
-            : '只显示最近 8 个任务。'),
-        jobs === null
-          ? e('div', { className: 'kbc-set-hint' }, '还没有读取任务列表')
-          : jobs.length === 0
-            ? e('div', { className: 'kbc-set-hint' }, '还没有解析任务')
-            : e('div', { className: 'kbc-parse-list' }, jobs.map(jobRow)),
-        detailPanel,
-        previewPanel,
-        waitingPanel,
-        toast ? e('div', { className: 'kbm-toast' }, toast) : null)
+      const scanning = scanBusy || scan?.status === 'running'
+      const roleText = { layout: '版面分析组件', detection: '文字检测组件', recognition: '文字识别组件', weights: '模型权重', service: '视觉服务（需版面组件）', python: 'Python 运行环境', ffmpeg: '音频转换程序', unknown: '其他模型' }
+      const renderScanRow = r => e('div', { key: r.id, className: 'kbc-discovery-row' },
+        e('div', null, e('strong', null, r.name), e('span', { className: 'kbc-set-hint' }, ' · ' + (roleText[r.role] || '本地部署'))),
+        e('div', { className: 'kbc-parse-meta' }, r.path),
+        e('div', { className: 'kbc-set-hint' }, r.missing.length ? r.missing.join('；') : r.status === 'reachable' ? '服务可连接；解析能力待验证' : '已发现，待验证'),
+        r.candidate ? e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy || scanning, onClick: () => { setDraft(Object.assign(parseDraftOf({...r.candidate,id:''}),{isNew:true,originId:''}));setSelectedKind(r.kind);setParsePane('providers');setFormErrors([]) } }, r.status === 'component' ? '关联配套组件' : '选择并配置') : null)
+      return e('section', { className: 'kbc-parse-dev kbc-parse-workspace' },
+        e('div', { className:'kbc-workspace-heading' }, e('div', null, e('h3', null, '识别与转写'), e('p', null, '配置一次，在导入和流程中重复使用。'))),
+        e('div', { className:'kbc-kind-tabs', role:'tablist','aria-label':'解析类型' }, ['ocr','asr'].map(kind => e('button', {key:kind,role:'tab','aria-selected':selectedKind===kind,className:'kbc-kind-tab'+(selectedKind===kind?' selected':''),onClick:()=>{setSelectedKind(kind);setDraft(null);setFormErrors([])}},kind==='ocr'?'图片与文档 OCR':'音频转写 ASR'))),
+        e('div', { className:'kbc-workspace-toolbar' },
+          e('div',{className:'kbc-pane-tabs'},[{id:'providers',label:'已配置服务'},{id:'discover',label:'发现本地模型'},{id:'tasks',label:'任务记录'}].map(t=>e('button',{key:t.id,className:'kbc-pane-tab'+(parsePane===t.id?' selected':''),onClick:()=>{setParsePane(t.id);setDraft(null)}},t.label))),
+          e('button',{className:'kbc-btn kbc-btn-primary',disabled:busy,onClick:()=>{setDraft(parseEmptyDraft(selectedKind,selectedKind==='ocr'?'openai-vision':'openai-audio-transcriptions'));setParsePane('providers');setFormErrors([])}},'添加 '+PARSE_KIND_TEXT[selectedKind])),
+        msg ? e('div',{className:'kbc-set-msg',role:'status'},msg):null,
+        parsePane==='providers' ? e('div',{className:'kbc-pane-content'},
+          draft?.isNew ? formNode(draft):null,
+          !draft && !providersOf(selectedKind).length ? e('div',{className:'kbc-parse-empty'},e('strong',null,selectedKind==='ocr'?'让图片和文档变成文字':'把录音转换为文字'),e('p',null,'添加 API 服务，或发现这台电脑上的本地模型。'),e('button',{className:'kbc-btn kbc-btn-ghost',onClick:()=>setParsePane('discover')},'发现本地模型')):null,
+          e('div',{className:'kbc-parse-list'},providersOf(selectedKind).map(providerRow))) : null,
+        parsePane==='discover' ? e('div',{className:'kbc-pane-content'},
+          e('p',{className:'kbc-set-intro'},'扫描只查找文件和服务，不会下载或启动模型。模型与运行环境可以位于不同目录。'),
+          e('div',{className:'kbc-set-actions'},e('button',{className:'kbc-btn kbc-btn-primary',disabled:scanning,onClick:()=>startScan('quick')},scanning?'扫描中…':'快速扫描本机'),e('button',{className:'kbc-btn kbc-btn-ghost',disabled:scanning,onClick:chooseScanDirectory},'选择模型目录扫描')),
+          e('details',null,e('summary',null,'手动输入扫描路径'),field('模型所在目录（也可手动填写）',textInput(scanDirectory,setScanDirectory,'模型目录或多个模型的上级目录')),e('button',{className:'kbc-btn kbc-btn-ghost',disabled:scanning||!scanDirectory.trim(),onClick:()=>startScan('directory')},'扫描填写的目录')),
+          scan?e('div',null,e('p',{className:'kbc-set-hint'},'已检查 '+scan.entries+' 个目录项 · '+({running:'扫描中',done:'扫描完成',canceled:'已取消，已发现结果保留',failed:'扫描失败'}[scan.status]||scan.status)+(scan.incomplete?' · 部分范围未完成':'')),
+            scanning?e('button',{className:'kbc-btn kbc-btn-ghost',onClick:async()=>{const r=await callApi({op:'parse.scan.cancel',scanId:scan.id});if(r.ok)setScan(r.scan)}},'取消扫描'):null,
+            [{label:'可配置的本地部署',test:r=>r.status!=='component'&&r.candidate},{label:'需要关联的配套组件',test:r=>r.status==='component'},{label:'其他发现与缺项',test:r=>!r.candidate}].map(group=>{const rows=scan.results.filter(r=>r.kind===selectedKind&&group.test(r));return rows.length?e('div',{key:group.label},e('h4',null,group.label),rows.map(renderScanRow)):null}),
+            scan.status!=='running'&&!scan.results.filter(r=>r.kind===selectedKind).length?e('p',null,'此范围未发现当前类型的模型，可换选目录或切换 OCR / ASR。'):null,
+            e('details',null,e('summary',null,'扫描范围与详情'),e('div',{className:'kbc-parse-meta'},scan.roots.join('；')),scan.issues.map((it,i)=>e('div',{key:i,className:'kbc-set-hint'},it.path+'：'+it.reason)))):null):null,
+        parsePane==='tasks'?e('div',{className:'kbc-pane-content'},e('button',{className:'kbc-btn kbc-btn-ghost',onClick:loadJobs},'刷新任务'),jobs?.length?jobs.filter(j=>j.kind===selectedKind).map(jobRow):e('p',{className:'kbc-set-hint'},'还没有解析任务'),detailPanel,previewPanel,e('details',null,e('summary',null,'导入待处理项'),waitingPanel)):null,
+        e('details',{className:'kbc-parse-policy'},e('summary',null,'数据与权限 · '+(policy==='local-only'?'仅本地处理':'允许已配置云端服务')),e('p',{className:'kbc-set-hint'},'本地不可用时不会自动上传云端。云端测试需主动点击，可能产生服务商费用。'),e('select',{className:'kbc-set-input',value:policy,disabled:busy,onChange:ev=>changePolicy(ev.target.value)},e('option',{value:'local-only'},'仅本地处理'),e('option',{value:'allow-configured'},'允许已配置云端服务'))),
+        toast?e('div',{className:'kbm-toast'},toast):null)
     }
 
     function apply(ctx) {
