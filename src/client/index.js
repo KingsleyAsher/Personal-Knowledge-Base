@@ -11,7 +11,9 @@ window.__ModuleLoader__.load({
     const exports = module.exports
     Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' })
     const react = require('react')
+    const reactDom = require('react-dom')
     const e = react.createElement
+    let releaseNoticeClaimed = false
 
     const CSS = `
 .kbc-set{display:flex;flex-direction:column;gap:12px;padding:4px 0 8px;font-size:13px;line-height:1.6}
@@ -71,6 +73,28 @@ window.__ModuleLoader__.load({
 .kbm-empty{opacity:.4;padding:20px 0}
 .kbm-toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);padding:8px 16px;
   border-radius:8px;background:rgba(0,0,0,.82);color:#fff;font-size:12px;pointer-events:none;z-index:99}
+.kb-release-backdrop{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;padding:24px;
+  background:rgba(5,10,14,.68);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);pointer-events:auto}
+.kb-release-card{position:relative;width:min(560px,100%);max-height:min(760px,calc(100vh - 48px));overflow:auto;
+  box-sizing:border-box;padding:34px;border:1px solid rgba(133,238,207,.34);border-radius:20px;
+  color:#edf7f4;background:linear-gradient(145deg,#17252a,#10171d 68%);box-shadow:0 24px 90px rgba(0,0,0,.55),0 0 50px rgba(91,229,190,.08);
+  font:14px/1.7 system-ui,-apple-system,"Segoe UI",sans-serif}
+.kb-release-close{position:absolute;right:16px;top:14px;width:36px;height:36px;border:1px solid #fff2;border-radius:50%;
+  color:#d6e5e1;background:rgba(255,255,255,.05);font-size:22px;line-height:1;cursor:pointer}
+.kb-release-kicker{margin:0 0 8px;color:#8fe9cc;font-size:11px;letter-spacing:.18em;text-transform:uppercase}
+.kb-release-card h2{margin:0 40px 6px 0;font-size:26px;line-height:1.3;font-weight:560;letter-spacing:-.03em}
+.kb-release-version{display:inline-flex;margin:4px 0 20px;padding:3px 10px;border:1px solid #7fe5c44a;border-radius:999px;
+  color:#a3efd9;background:#7fe5c411;font-size:12px;font-variant-numeric:tabular-nums}
+.kb-release-intro{margin:0 0 16px;color:#c7d4d3}
+.kb-release-list{display:grid;gap:10px;margin:0 0 24px;padding:0;list-style:none}
+.kb-release-list li{display:flex;gap:10px;align-items:flex-start;color:#e1ecea}
+.kb-release-list li:before{content:"✦";flex:none;color:#8fe9cc}
+.kb-release-actions{display:flex;flex-wrap:wrap;gap:10px}
+.kb-release-actions a{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 16px;
+  border:1px solid #8fe9cc;border-radius:10px;color:#10221c;background:#8fe9cc;text-decoration:none;font-weight:650}
+.kb-release-actions a.secondary{color:#e5f1ee;background:#ffffff08;border-color:#ffffff26}
+.kb-release-foot{margin:16px 0 0;color:#aebdbb;font-size:12px}
+@media(max-width:560px){.kb-release-backdrop{padding:14px}.kb-release-card{padding:26px 20px;border-radius:16px}.kb-release-card h2{font-size:23px}}
 /* §四 顶栏页签新增 */
 .kbm.mono,.kbm-sub.mono{font-family:ui-monospace,Consolas,monospace;font-size:11.5px}
 .kbm-badge{font-size:11px;padding:1px 7px;border-radius:999px;background:rgba(120,190,120,.16);
@@ -2154,9 +2178,68 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         toast?e('div',{className:'kbm-toast'},toast):null)
     }
 
+    const RELEASE_NOTICE_VERSION = '1.1.1'
+    const RELEASE_NOTICE_KEY = 'dsh-kb-release-seen:' + RELEASE_NOTICE_VERSION
+    const RELEASE_GITHUB_URL = 'https://github.com/KingsleyAsher/Personal-Knowledge-Base'
+    const RELEASE_SITE_URL = 'https://kingsleyasher.github.io/Personal-Knowledge-Base/'
+
+    function ReleaseNotice() {
+      const [visible, setVisible] = react.useState(false)
+      const portalHost = react.useMemo(() => {
+        const host = document.createElement('div')
+        host.setAttribute('data-kb-release-host', RELEASE_NOTICE_VERSION)
+        return host
+      }, [])
+      const closeRef = react.useRef(null)
+      react.useEffect(() => {
+        if (!portalHost.isConnected) document.body.appendChild(portalHost)
+        return () => { if (portalHost.isConnected) portalHost.remove() }
+      }, [portalHost])
+      react.useEffect(() => {
+        if (releaseNoticeClaimed) return
+        releaseNoticeClaimed = true
+        try {
+          if (window.localStorage.getItem(RELEASE_NOTICE_KEY) === '1') return
+          window.localStorage.setItem(RELEASE_NOTICE_KEY, '1')
+        } catch { /* 浏览器禁用存储时，本次运行仍展示提示 */ }
+        setVisible(true)
+      }, [])
+      react.useEffect(() => {
+        if (!visible) return undefined
+        closeRef.current?.focus()
+        const onKeyDown = (event) => { if (event.key === 'Escape') setVisible(false) }
+        window.addEventListener('keydown', onKeyDown)
+        return () => window.removeEventListener('keydown', onKeyDown)
+      }, [visible])
+      if (!visible) return null
+      const dismiss = () => setVisible(false)
+      return reactDom.createPortal(
+        e('div', { className: 'kb-release-backdrop', role: 'presentation', onMouseDown: (event) => { if (event.target === event.currentTarget) dismiss() } },
+          e('section', { className: 'kb-release-card', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'kb-release-title', 'aria-describedby': 'kb-release-intro' },
+            e('button', { ref: closeRef, className: 'kb-release-close', type: 'button', 'aria-label': '关闭更新说明', onClick: dismiss }, '×'),
+            e('p', { className: 'kb-release-kicker' }, 'PERSONAL KNOWLEDGE · RELEASE NOTES'),
+            e('h2', { id: 'kb-release-title' }, '知识库插件已更新'),
+            e('span', { className: 'kb-release-version' }, '当前版本 ' + RELEASE_NOTICE_VERSION),
+            e('p', { id: 'kb-release-intro', className: 'kb-release-intro' }, '欢迎使用个人知识库。本次更新为你准备了产品介绍页，并会在新版本首次启动时展示更新内容。'),
+            e('ul', { className: 'kb-release-list' }, [
+              '首次安装或首次启动此版本时，自动展示版本更新说明。',
+              '提供 GitHub 仓库入口，查看源码、发布包与完整更新记录。',
+              '提供产品展示网页入口，了解资料整理、检索与知识沉淀的使用方式。',
+            ].map((item) => e('li', { key: item }, item))),
+            e('div', { className: 'kb-release-actions' },
+              e('a', { href: RELEASE_GITHUB_URL, target: '_blank', rel: 'noopener noreferrer', onClick: dismiss }, '访问 GitHub ↗'),
+              e('a', { className: 'secondary', href: RELEASE_SITE_URL, target: '_blank', rel: 'noopener noreferrer', onClick: dismiss }, '访问产品网页 ↗')),
+            e('p', { className: 'kb-release-foot' }, '此提示按版本显示一次。按 Esc 或点击遮罩可以关闭。'))),
+        portalHost)
+    }
+
     function apply(ctx) {
       flowClientContext = ctx
       ensureStyle()
+      ctx.slots.inject('conversation.input.overlay', () =>
+        ctx.slots.register({ name: 'conversation.input.overlay', id: 'kb-release-notice', order: 999 }, ReleaseNotice))
+      ctx.slots.inject('conversation.hero.brand.mark', () =>
+        ctx.slots.register({ name: 'conversation.hero.brand.mark', id: 'kb-release-notice', order: 999 }, ReleaseNotice))
       ctx.slots.inject('settings.section', () =>
         ctx.slots.register({ name: 'settings.section', id: 'kb-core', order: 26, label: () => '个人知识库' }, Section))
       ctx.slots.inject('conversation.view', () =>

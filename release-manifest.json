@@ -1,11 +1,11 @@
 {
   "package": "@local/dsh-knowledge-base",
-  "version": "1.1.0",
-  "buildId": "2cf4065a897520c8",
-  "tgz": "local-dsh-knowledge-base-1.1.0.tgz",
-  "bytes": 254081,
-  "sha256": "4f5ada4a0ebcd7d459fe78eacac3bb2201ce9f26d227766cd0402bacf989778d",
-  "integrity": "sha512-cLsYbWJLNLJfgrs6MqxOSbrxg2fUaiRpT7waTQzqcnAFyjIuybXJ7hpApwyrwHd8d/tdGw/7jLevAF/1KoWDdg==",
+  "version": "1.1.1",
+  "buildId": "72bc39f0a727fc20",
+  "tgz": "local-dsh-knowledge-base-1.1.1.tgz",
+  "bytes": 256325,
+  "sha256": "531c165f677360ef531928db3b09e5b3613980e79848b2ffb4c2246cc1ac8439",
+  "integrity": "sha512-8gQnhrmFrP7zaJRKtY9rthw0ic9gIebrIOw/6Yrud7K8p7PtbMU+RRnamye1dh+aPZ+P29ZuaCiftjnCefsPlQ==",
   "packageFileCount": 27,
   "buildFileCount": 22,
   "files": [
@@ -21,8 +21,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 2561,
-      "sha256": "4063709f78be3ddc782059a9c47202fea50931fc548393fc98ec1b9ca83eac53"
+      "bytes": 3067,
+      "sha256": "a8b36a4bc9c87b7366f32431164c844568a2d7a7dd2679499311170d492fe377"
     },
     {
       "path": "cordis.patch.yml",
@@ -32,7 +32,7 @@
     {
       "path": "package.json",
       "bytes": 920,
-      "sha256": "6be2a8b250c6b47192ff46517ae78d0d6d1bd9c8568cbf46612dfdd2f58ddf6b"
+      "sha256": "cb7a601b94e62f945a073775fc7abf878e6243e0faac2162aebc55ad8d1bc34d"
     },
     {
       "path": "presets/01-knowledge-agent.patch.yml",
@@ -46,8 +46,8 @@
     },
     {
       "path": "src/client/index.js",
-      "bytes": 141319,
-      "sha256": "a9d0b28efe98e53f73cfdb8da07ad406d2d42afb9b7992dca02f91591ff7d082"
+      "bytes": 147487,
+      "sha256": "bb0f56013878a3c8b1b358f3650f41230ef5e28edfaa450eb26ddec06107e5b9"
     },
     {
       "path": "src/host/flow-workspace.js",
@@ -92,7 +92,7 @@
     {
       "path": "src/host/kbcore.js",
       "bytes": 119164,
-      "sha256": "54c615f553fceeeb05b47304797fa0b53a4e6a7e4dbae6f19b9574d662f0f4c8"
+      "sha256": "141a3fb168f73e1a04d22caa9a251f398e151c6f427ba3a200b22babbcdf976c"
     },
     {
       "path": "src/host/map.js",
@@ -146,13 +146,12 @@
     }
   ],
   "validation": {
-    "previewUserValidated": true,
-    "previewVersion": "1.0.7-preview.4",
-    "realCloudApiTested": false,
-    "realInferenceRepeatedForVersionChange": false,
-    "formalRuntimeVerified": false,
-    "nodeTests": 33,
-    "localAdapterChecks": 5,
-    "sourcePackageMatch": "27/27"
+    "releaseAssemblyVerified": true,
+    "sourcePackageMatch": "27/27",
+    "startupNoticeRuntimeVerified": false,
+    "githubPagesPublicationVerified": false,
+    "previousPreviewVersion": "1.0.7-preview.4",
+    "previousPreviewUserValidated": true,
+    "realCloudApiTested": false
   }
 }
