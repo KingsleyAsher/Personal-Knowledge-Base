@@ -535,6 +535,52 @@ export function createFlowEngine(opts) {
     return { ok: true, kbId: b.kbId, flow: flow }
   }
 
+  // 页面运行只准备一条完整提示词；执行和实时事件交给普通知识库会话。
+  // 不调用 start/run，不创建后台运行记录，也不启动委派或落库。
+  async function prepareConversation(input = {}) {
+    const b = await boundKb()
+    if (!b.ok) return kbFail(b)
+    if (input.kbId !== b.kbId) return fail('kb-changed', '绑定的知识库已变化，请刷新流程页面后再运行')
+    const found = await get(input.id)
+    if (!found.ok) return found
+    if (found.kbId !== b.kbId) return fail('kb-changed', '绑定的知识库已变化，请刷新后重试')
+    const flow = found.flow
+    if (flow.archived === true) return fail('archived', '该流程已归档：恢复后才能运行')
+    if (flow.enabled === false) return fail('disabled', '该流程已停用：启用后才能运行')
+    if (flow.revision !== input.expectedRevision) return fail('flow-changed', '流程定义已变化，请刷新页面后再运行')
+    const running = active.get(flow.id)
+    if (running) return fail('flow-busy', '该流程仍有后台任务运行，请等待结束或先取消（' + running.runId + '）')
+    const resolved = resolveParams(flow, input.params)
+    if (!resolved.ok) return fail('missing-param', '缺少必填参数：' + resolved.missing.join('、'))
+    const rules = flow.outputRules
+    const windowDays = Number(rules.windowDays) || 7
+    const tz = rules.tz || 'Asia/Shanghai'
+    const end = Date.now()
+    const lines = [
+      `请在本会话中直接执行知识库流程「${flow.name}」（${flow.id}，定义版本 v${flow.revision}）。`,
+      `知识库身份：${b.kbId}`,
+      `用途：${flow.description || '按以下步骤完成任务'}`,
+      '先用 kb_status 核对当前绑定的 kbId；与上述身份不一致时停止并说明原因。',
+      '执行前核对已有产出和未结束的同名任务，避免重复写入或重复外发。',
+      '按顺序在本会话中执行以下全部步骤。开始每一步时说明步骤序号和当前动作，完成后展示实际结果；工具调用和输出留在本会话中。',
+      '不要调用 kb_flow 的 run，也不要把整个流程再次交给后台流程引擎或子代理。遇到错误、缺少参数或需确认的操作时，在本会话说明并等待处理；不得假报成功或自动重试有副作用的动作。',
+      '【本次参数】',
+      JSON.stringify(resolved.values, null, 2),
+      `【默认时间窗】${fmtInTz(new Date(end - windowDays * 86400_000).toISOString(), tz)} → ${fmtInTz(new Date(end).toISOString(), tz)}（${tz}，最近 ${windowDays} 天；步骤中另有明确时间要求时按该要求执行）`,
+      '【依次执行】',
+    ]
+    flow.steps.forEach((step, index) => {
+      lines.push(`第 ${index + 1}/${flow.steps.length} 步：${step.title}`)
+      if (step.capability) lines.push(`步骤能力：${step.capability}`)
+      lines.push(step.instruction, '')
+    })
+    lines.push('【输出规则】', JSON.stringify(rules, null, 2))
+    lines.push(rules.land === true
+      ? '只有全部步骤成功后，才按上述输出规则通过知识库条目工具写入最终成果；失败、取消或等待确认时不写成功报告。完成后给出条目位置和实际产出。'
+      : '最终成果保留在本会话，不额外创建知识库条目。')
+    return { ok: true, kbId: b.kbId, cwd: b.kbPath, flowId: flow.id, flowRevision: flow.revision, prompt: lines.join('\n') }
+  }
+
   /**
    * 新建或更新。更新必须带 expectedRevision（数字）。
    * conflict 时**不写盘**，并返回当前 revision 与差异摘要。
@@ -1011,6 +1057,7 @@ export function createFlowEngine(opts) {
   return {
     list: list,
     get: get,
+    prepareConversation,
     save: input => serialized(stateDir, () => save(input)),
     setEnabled: (id, enabled) => serialized(stateDir, () => setEnabled(id, enabled)),
     archive: (id, restored) => serialized(stateDir, () => archive(id, restored)),
