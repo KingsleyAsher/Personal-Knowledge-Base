@@ -15,6 +15,6 @@ build=['package.json','cordis.patch.yml','src/host/index.js','src/host/kbcore.js
 h=hashlib.sha256()
 for rel in build:h.update((rel+'\0'+hashlib.sha256(files[rel]).hexdigest()+'\n').encode())
 assert h.hexdigest()[:16]==m['buildId']
-assert json.loads(files['package.json'])['version']==m['version']=='1.0.5'
+assert json.loads(files['package.json'])['version']==m['version']=='1.0.6'
 assert ("export const VERSION = '"+m['version']+"'").encode() in files['src/host/kbcore.js']
-print('PASS: 1.0.5 / '+m['buildId']+'; source/package 20/20; SHA256 '+m['sha256'])
+print('PASS: 1.0.6 / '+m['buildId']+'; source/package 20/20; SHA256 '+m['sha256'])

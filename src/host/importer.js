@@ -16,7 +16,7 @@
 //   R6  空/非法路径不解释成 cwd；目录不存在时若父级可写，由 initializeLibrary 创建。
 //   其余原有约束（不覆盖同名、可中断可续、原件不执行、不冒充全文）保持不变。
 import path from 'node:path'
-import { createHash } from 'node:crypto'
+import { createHash, randomUUID } from 'node:crypto'
 import { readFile, writeFile, mkdir, stat, rename, copyFile } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { toPosix, normSegs, walkTree, sha256File, privateRootOf, DEFAULT_PRIVATE_DIRS } from './fsindex.js'
@@ -135,7 +135,7 @@ async function writeManifest(stateDir, manifest) {
   const r = await resolveImportDir(stateDir, manifest.importId)
   if (!r.ok) throw new Error('导入任务目录非法：' + r.reason)
   await mkdir(r.dir, { recursive: true })
-  const tmp = path.join(r.dir, 'manifest.json.tmp')
+  const tmp = path.join(r.dir, 'manifest.json.tmp-' + randomUUID())
   await writeFile(tmp, JSON.stringify(manifest, null, 2), 'utf8')
   await renameWithRetry(tmp, path.join(r.dir, 'manifest.json'))
 }
@@ -192,7 +192,7 @@ export async function writeSourceMap(targetRoot, map) {
   const file = sourcesFileOf(targetRoot)
   await mkdir(path.dirname(file), { recursive: true })
   const payload = { version: 1, updatedAt: new Date().toISOString(), entries: map.entries ?? {} }
-  const tmp = `${file}.tmp`
+  const tmp = `${file}.tmp-${randomUUID()}`
   await writeFile(tmp, JSON.stringify(payload, null, 2), 'utf8')
   await renameWithRetry(tmp, file)
   return payload

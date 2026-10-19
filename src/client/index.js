@@ -20,7 +20,7 @@ window.__ModuleLoader__.load({
 .kbc-set-row{display:flex;align-items:baseline;gap:10px}
 .kbc-set-key{min-width:84px;flex-shrink:0;opacity:.55}
 .kbc-set-val{word-break:break-all}
-.kbc-set-input{width:100%;box-sizing:border-box;padding:7px 10px;font-size:13px;line-height:1.5;
+.kbc-set-input{width:100%;min-width:0;box-sizing:border-box;padding:7px 10px;font-size:13px;line-height:1.5;
   color:inherit;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.12);
   border-radius:8px;outline:none;transition:border-color .15s,box-shadow .15s}
 .kbc-set-input::placeholder{color:rgba(255,255,255,.32)}
@@ -110,7 +110,15 @@ window.__ModuleLoader__.load({
 .kbf-state.on{color:rgba(160,225,160,.95);border-color:rgba(120,190,120,.35)}
 .kbf-field{display:flex;flex-direction:column;gap:4px;margin-bottom:10px}
 .kbf-field > label{font-size:12px;opacity:.55}
-.kbf-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.kbf-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px}
+.kbf-grid > *{min-width:0}
+.kbf-param-controls{display:flex;gap:8px;align-items:center;min-width:0;flex-wrap:wrap}
+.kbf-param-controls > .kbc-set-input{flex:1 1 160px}
+.kbf-param-controls > label,.kbf-param-controls > button{flex:0 0 auto}
+.kbf-window{display:flex;gap:6px;align-items:center;min-width:0}
+.kbf-window > span{white-space:nowrap}
+.kbf-name,.kbf-trig{overflow-wrap:anywhere;min-width:0}
+@media(max-width:600px){.kbf-grid{grid-template-columns:minmax(0,1fr)}.kbm{padding-left:16px;padding-right:16px}}
 .kbf-step{padding:8px 10px;border:1px solid rgba(255,255,255,.1);border-radius:8px;margin-bottom:8px;background:rgba(255,255,255,.03)}
 .kbf-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
 .kbf-run{padding:8px 10px;border-radius:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);margin:8px 0}
@@ -432,10 +440,11 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       // R7：effect 依赖 [jobId, stage]，终态清 interval（旧实现只依赖 jobId，跑完还在轮询）。
       const jobId = job && job.importId ? job.importId : ''
       const jobStage = job && job.stage ? job.stage : ''
+      const jobRunning = job && job.running === true
       const TERMINAL_STAGE = { done: 1, partial: 1, failed: 1, canceled: 1, conflict: 1 }
       react.useEffect(() => {
         if (jobId === '') return undefined
-        if (TERMINAL_STAGE[jobStage] === 1) return undefined
+        if (TERMINAL_STAGE[jobStage] === 1 && !jobRunning) return undefined
         let stop = false
         let timer = null
         const tick = async () => {
@@ -444,9 +453,10 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
             if (stop) return
             if (d && d.ok) {
               setJob((prev) => ({ ...(prev || {}), ...d }))
-              if (TERMINAL_STAGE[d.stage] === 1) {
+              if (TERMINAL_STAGE[d.stage] === 1 && d.running !== true) {
                 if (timer) clearInterval(timer)
                 loadUnfinished()
+                refresh({ force: false })
               }
             }
           } catch {
@@ -456,7 +466,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         tick()
         timer = setInterval(tick, 1500)
         return () => { stop = true; if (timer) clearInterval(timer) }
-      }, [jobId, jobStage, loadUnfinished])
+      }, [jobId, jobStage, jobRunning, loadUnfinished, refresh])
 
       const cancelImport = async () => {
         if (!jobId) return
@@ -613,6 +623,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         try {
           const d = await callApi({ op: 'overview', fresh: opts && opts.fresh === true })
           if (seq !== overviewSeqRef.current) return // 有更新的概览请求在路上 → 丢弃这次
+          if (!d || !d.ok || !d.overview) throw new Error((d && d.error) || '宿主未返回知识库状态')
           const ov = d.overview
           setData(ov)
           const ver = ov && ov.version ? ov.version : null
@@ -869,6 +880,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       triggersText: '',
       description: '',
       params: [],
+      capabilities: [],
       steps: [{ id: 's1', title: '', instruction: '', capability: '' }],
       outputRules: { land: true, kind: '知识', tags: '', dir: '', tz: 'Asia/Shanghai', windowDays: 7 },
       enabled: true,
@@ -882,6 +894,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       triggersText: (flow.triggers || []).join('，'),
       description: flow.description || '',
       params: (flow.params || []).map((p) => ({ name: p.name, default: p.default === undefined ? '' : String(p.default), required: p.required === true })),
+      capabilities: (flow.capabilities || []).slice(),
       steps: (flow.steps || []).map((s, i) => ({ id: s.id || 's' + (i + 1), title: s.title || '', instruction: s.instruction || '', capability: s.capability || '' })),
       outputRules: {
         land: flow.outputRules ? flow.outputRules.land === true : true,
@@ -890,6 +903,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         dir: flow.outputRules ? flow.outputRules.dir || '' : '',
         tz: flow.outputRules ? flow.outputRules.tz || 'Asia/Shanghai' : 'Asia/Shanghai',
         windowDays: flow.outputRules && flow.outputRules.windowDays ? flow.outputRules.windowDays : 7,
+        status: flow.outputRules ? flow.outputRules.status || '生效' : '生效',
       },
       enabled: flow.enabled !== false,
     })
@@ -905,7 +919,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         if (String(s.capability || '').trim() !== '') one.capability = String(s.capability).trim()
         return one
       }),
-      capabilities: [],
+      capabilities: d.capabilities || [],
       outputRules: {
         land: d.outputRules.land === true,
         kind: d.outputRules.kind,
@@ -913,6 +927,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         dir: String(d.outputRules.dir || '').trim(),
         tz: String(d.outputRules.tz || 'Asia/Shanghai').trim(),
         windowDays: Number(d.outputRules.windowDays) || 7,
+        status: d.outputRules.status || '生效',
       },
       enabled: d.enabled !== false,
     })
@@ -920,7 +935,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     let flowClientContext = null
     let flowLaunchPending = false
 
-    async function launchFlowConversation(flow, kbId) {
+    async function launchFlowConversation(flow, kbId, params) {
       if (flowLaunchPending) throw new Error('正在创建流程会话，请勿重复点击')
       flowLaunchPending = true
       let reference = null
@@ -930,7 +945,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         const workspace = flowClientContext && flowClientContext.get('uiWorkspace')
         const views = flowClientContext && flowClientContext.get('uiConversation')
         if (!sessions || !workspace || !views) throw new Error('宿主会话服务尚未就绪，请稍后重试')
-        const prepared = await callApi({ op: 'flows.prepare-conversation', id: flow.id, kbId, expectedRevision: flow.revision })
+        const prepared = await callApi({ op: 'flows.prepare-conversation', id: flow.id, kbId, expectedRevision: flow.revision, params })
         if (!prepared || !prepared.ok) throw new Error((prepared && (prepared.error || prepared.reason)) || '无法读取流程提示词')
         if (!prepared.workspaceId) throw new Error('未获得流程工作区，未创建会话；请确认宿主已加载最新插件')
         sessionId = await sessions.create({ workspaceId: prepared.workspaceId, agentPreset: 'knowledge' })
@@ -958,7 +973,9 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       const [msg, setMsg] = react.useState('')
       const [busy, setBusy] = react.useState(false)
       const [draft, setDraft] = react.useState(null)
+      const [runRequest, setRunRequest] = react.useState(null)
       const launching = react.useRef(false)
+      const requesting = react.useRef(false)
       const [records, setRecords] = react.useState(null)
       const [toast, showToast] = useToast()
 
@@ -1028,19 +1045,46 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         }
       }
 
-      const startRun = async (flow) => {
+      const startRun = async (flow, kbId, params) => {
         if (launching.current) return
+        const missing = (flow.params || []).filter(p => p.required && !String(params && Object.hasOwn(params, p.name) ? params[p.name] : p.default || '').trim())
+        if (missing.length) { setMsg('请填写必填参数：' + missing.map(p => p.name).join('、')); return }
         launching.current = true
         setBusy(true)
         setMsg('正在新建会话并发送流程提示词…')
         setRecords(null)
         try {
-          await launchFlowConversation(flow, data.kbId)
+          await launchFlowConversation(flow, kbId, params)
+          setRunRequest(null)
           setMsg('提示词已发送，请在新会话中查看实时执行过程')
         } catch (err) {
           setMsg('未能启动：' + String((err && err.message) || err))
         } finally {
           launching.current = false
+          setBusy(false)
+        }
+      }
+
+      const requestRun = async (summary) => {
+        if (busy || launching.current || requesting.current) return
+        requesting.current = true
+        setBusy(true)
+        setMsg('正在读取流程定义…')
+        try {
+          // List rows are summaries and deliberately contain no parameter definitions.
+          const result = await callApi({ op: 'flows.get', id: summary.id })
+          if (!result || !result.ok || !result.flow) throw new Error((result && (result.error || result.reason)) || '无法读取流程定义')
+          if (result.kbId !== data.kbId) throw new Error('绑定的知识库已变化，请刷新流程页面后再运行')
+          const flow = result.flow
+          if (flow.revision !== summary.revision) throw new Error('流程定义已变化，请刷新页面后再运行')
+          setMsg('')
+          if ((flow.params || []).length === 0) { await startRun(flow, result.kbId, {}); return }
+          setRunRequest({ flow, kbId: result.kbId, params: Object.fromEntries(flow.params.map(p => [p.name, String(p.default ?? '')])) })
+          setDraft(null)
+        } catch (err) {
+          setMsg('未能启动：' + String((err && err.message) || err))
+        } finally {
+          requesting.current = false
           setBusy(false)
         }
       }
@@ -1068,7 +1112,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         setBusy(true)
         try {
           const d = await callApi({ op: 'flows.get', id: flow.id })
-          if (d && d.ok) setDraft(draftOf(d.flow))
+          if (d && d.ok) { setDraft(draftOf(d.flow)); setRunRequest(null) }
           else setMsg('读取定义失败：' + ((d && (d.error || d.reason)) || '未知'))
         } catch (err) {
           setMsg('读取定义失败：' + String((err && err.message) || err))
@@ -1116,6 +1160,21 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           FLOW_TERMINAL[r.status] === 1 ? null : e('button', { className: 'kbc-btn kbc-btn-ghost', onClick: () => cancelBackgroundRun(r.runId) }, '取消后台运行'))),
         e('div', { className: 'kbf-actions' }, e('button', { className: 'kbc-btn kbc-btn-ghost', onClick: () => setRecords(null) }, '收起')))
 
+      const runPanel = runRequest === null ? null : e('form', {
+        className: 'kbf-run', 'aria-label': '流程运行参数',
+        onSubmit: ev => { ev.preventDefault(); void startRun(runRequest.flow, runRequest.kbId, runRequest.params) },
+      },
+      e('div', { className: 'kbf-run-row' }, '运行参数 · ' + runRequest.flow.name),
+      e('p', { className: 'kbc-set-hint' }, '填写本次运行的参数；不会修改流程的默认值。确认后才会新建会话。'),
+      runRequest.flow.params.map((p, i) => e('div', { className: 'kbf-field', key: p.name },
+        e('label', { htmlFor: 'kbf-run-param-' + i }, p.name + (p.required ? '（必填）' : '（可选）')),
+        e('input', { id: 'kbf-run-param-' + i, className: 'kbc-set-input', required: p.required === true,
+          disabled: busy, value: runRequest.params[p.name], autoFocus: i === 0,
+          onChange: ev => { const value = ev.target.value; setRunRequest(prev => prev && ({ ...prev, params: { ...prev.params, [p.name]: value } })) } }))),
+      e('div', { className: 'kbf-actions' },
+        e('button', { type: 'submit', className: 'kbc-btn kbc-btn-primary', disabled: busy }, busy ? '正在创建会话…' : '开始运行'),
+        e('button', { type: 'button', className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: () => setRunRequest(null) }, '取消运行')))
+
       // ── 编辑表单（表单 + 步骤编辑，不要求手写 JSON）──
       const form = draft === null ? null : e('div', { className: 'kbf-run' },
         e('div', { className: 'kbf-run-row' }, draft.isNew ? '新增流程' : ('编辑流程 ' + draft.id + '（当前 v' + draft.expectedRevision + '）')),
@@ -1137,7 +1196,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           e('div', { className: 'kbf-field' }, e('label', null, '跑完之后要把结果写成一条知识库条目吗'),
             e('label', { style: { fontSize: 12.5, display: 'flex', gap: 6, alignItems: 'center' } },
               e('input', { type: 'checkbox', checked: draft.outputRules.land === true, onChange: (ev) => patchRules({ land: ev.target.checked }) }),
-              draft.outputRules.land === true ? '会写一条（只在成功时写）' : '不写，只留在流程记录里'),
+              draft.outputRules.land === true ? '会写一条（只在成功时写）' : '不写，结果保留在会话历史中'),
             draft.outputRules.land === true
               ? e('div', { style: { display: 'flex', gap: 6, alignItems: 'center', marginTop: 6 } },
                 e('span', { style: { fontSize: 12, opacity: .6 } }, '写进哪个板块'),
@@ -1152,7 +1211,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           e('div', { className: 'kbf-field' }, e('label', null, '参数（需要你临时补的值；一般留空）'),
             draft.params.map((p, i) => e('div', { key: 'p' + i, className: 'kbf-grid', style: { marginBottom: 6 } },
               input(p.name, (v) => updateParam(i, { name: v }), '参数名'),
-              e('div', { style: { display: 'flex', gap: 6, alignItems: 'center' } },
+              e('div', { className: 'kbf-param-controls' },
                 input(p.default, (v) => updateParam(i, { default: v }), '默认值'),
                 e('label', { style: { fontSize: 12, opacity: .7, whiteSpace: 'nowrap' } },
                   e('input', { type: 'checkbox', checked: p.required === true, onChange: (ev) => updateParam(i, { required: ev.target.checked }) }), ' 必填'),
@@ -1160,7 +1219,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
             e('button', { className: 'kbc-btn kbc-btn-ghost', onClick: addParam }, '加参数')),
           e('div', { className: 'kbf-field' }, e('label', null, '统计窗口 / 时区 / 存放子目录'),
             e('div', { className: 'kbf-grid' },
-              e('div', { style: { display: 'flex', gap: 6, alignItems: 'center' } },
+              e('div', { className: 'kbf-window' },
                 e('span', { style: { fontSize: 12, opacity: .6 } }, '窗口天数'),
                 input(String(draft.outputRules.windowDays), (v) => patchRules({ windowDays: v }), '7')),
               input(draft.outputRules.tz, (v) => patchRules({ tz: v }), '时区 Asia/Shanghai'),
@@ -1177,12 +1236,12 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
             e('span', { className: 'kbf-name' }, f.name),
             e('span', { className: 'kbf-trig' }, (f.triggers || []).join(' / ') || '（无触发语）'),
             e('span', { className: 'kbf-desc' }, f.description || '—'),
-            e('span', { className: 'kbf-state' + (f.enabled ? ' on' : '') }, f.enabled ? '启用' : '停用'),
+            e('span', { className: 'kbf-state' + (f.enabled && !f.archived ? ' on' : '') }, f.archived ? '已归档' : f.enabled ? '启用' : '停用'),
             e('span', { className: 'kbf-state' }, f.lastRun ? ('后台：' + f.lastRun.status + ' · ' + String(f.lastRun.startedAt || '').slice(5, 16)) : '无后台记录'),
             e('span', { style: { display: 'flex', gap: 6, flexWrap: 'wrap' } },
               e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: () => openEdit(f) }, '编辑'),
-              e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: () => toggle(f) }, f.enabled ? '停用' : '启用'),
-              e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy || !f.enabled || f.archived, onClick: () => startRun(f) }, '立即运行（新会话）'),
+              e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy || f.archived, onClick: () => toggle(f) }, f.enabled ? '停用' : '启用'),
+              e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy || !f.enabled || f.archived, onClick: () => requestRun(f) }, '立即运行（新会话）'),
               e('button', { className: 'kbc-btn kbc-btn-ghost', onClick: () => loadRecords(f) }, '后台记录'),
               f.archived
                 ? e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: () => archive(f, true) }, '恢复')
@@ -1192,11 +1251,11 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         head,
         e('div', { className: 'kbm-sub' }, '点击运行会新建知识库会话，自动发送完整流程提示词，并切换到对话查看实时回复、工具调用和执行结果；可在会话中停止。新运行保存在会话历史中，后台记录保留旧执行器的历史。'),
         e('div', { className: 'kbf-bar', style: { marginTop: 10 } },
-          e('button', { className: 'kbc-btn kbc-btn-primary', onClick: () => { setDraft(emptyDraft()); setMsg('') } }, '新增流程'),
-          e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: load }, '刷新')),
-        msg ? e('div', { className: 'kbc-set-msg' }, msg) : null,
+          e('button', { className: 'kbc-btn kbc-btn-primary', disabled: busy, onClick: () => { setDraft(emptyDraft()); setRunRequest(null); setMsg('') } }, '新增流程')),
+        msg ? e('div', { className: 'kbc-set-msg', role: 'status' }, msg) : null,
         error && data !== null ? e('div', { className: 'kbm-empty' }, error) : null,
         recordsPanel,
+        runPanel,
         form,
         e('div', { className: 'kbm-h' }, '已定义的流程'),
         listNode,

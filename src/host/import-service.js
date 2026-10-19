@@ -15,9 +15,13 @@ import { inspectFolder, planImport, runImport, readManifest, saveManifest, cance
 
 export const TERMINAL_STAGES = new Set(['done', 'partial', 'failed', 'canceled', 'conflict'])
 const norm = (p) => String(p ?? '').replace(/\\/g, '/').toLowerCase()
+// All service instances for one profile share admission and running state.
+const serviceStates = new Map()
 
 export function createImportService({ stateDir, getBaseConfig, getCurrentCore = null, log = () => {}, coreFactory = createCore, commitBinding = null, getParsingService = null }) {
-  const jobs = new Map()
+  const stateKey = process.platform === 'win32' ? path.resolve(stateDir).toLowerCase() : path.resolve(stateDir)
+  if (!serviceStates.has(stateKey)) serviceStates.set(stateKey, { jobs: new Map(), starting: new Map() })
+  const { jobs, starting } = serviceStates.get(stateKey)
   const taskStateDirOf = (importId) => path.join(stateDir, 'imports', importId, 'core-state')
   const isActive = (importId) => Boolean(jobs.get(importId) && jobs.get(importId).running)
 
@@ -103,7 +107,7 @@ export function createImportService({ stateDir, getBaseConfig, getCurrentCore = 
     const cur = current ?? (await currentStatus())
     if (mode === 'copy' && !(cur && cur.kbPath)) return { ok: false, reason: 'unbound', error: '复制导入需要先绑定目标知识库' }
     const target = mode === 'copy' ? cur.kbPath : path.resolve(srcRaw)
-    const manifest = await planImport({ stateDir, source: srcRaw, target, mode, log, isActive })
+    const manifest = await planImport({ stateDir, source: srcRaw, target, mode, log, isActive: id => isActive(id) || starting.has(id) })
     if (manifest && manifest.error) return { ok: false, reason: manifest.reason ?? 'plan-failed', error: manifest.error }
     if (manifest.running) {
       return { ok: true, running: true, importId: manifest.importId, mode: manifest.mode, source: manifest.source, target: manifest.target, stage: manifest.stage, counts: manifest.counts, note: manifest.note }
@@ -127,6 +131,20 @@ export function createImportService({ stateDir, getBaseConfig, getCurrentCore = 
 
   /** 启动（后台执行）。校验顺序：id → 清单 → 目标初始化 → 独立 core 实际身份 → 运行。 */
   async function start({ importId }) {
+    const pending = starting.get(importId)
+    if (pending) {
+      const result = await pending
+      return result.ok && result.started
+        ? { ...result, started: false, running: isActive(importId), reason: 'already-running' }
+        : result
+    }
+    // Reserve synchronously, before directory/configuration I/O can yield.
+    const admission = Promise.resolve().then(() => startLocked({ importId }))
+    starting.set(importId, admission)
+    try { return await admission } finally { if (starting.get(importId) === admission) starting.delete(importId) }
+  }
+
+  async function startLocked({ importId }) {
     const dirError = await taskDirError(importId)
     if (dirError) return { ok: false, ...dirError }
     const manifest = await readManifest(stateDir, importId)
@@ -256,7 +274,7 @@ export function createImportService({ stateDir, getBaseConfig, getCurrentCore = 
     const job = jobs.get(importId) ?? null
     const counts = manifest.counts
     // 异常中断（job 已停但清单还写着 importing）→ 如实报 failed，不冒充"仍在跑"也不冒充 done
-    const endedByError = Boolean(job && !job.running && job.lastError && manifest.stage === 'importing')
+    const endedByError = Boolean(job && !job.running && job.lastError)
     const stage = endedByError ? 'failed' : manifest.stage
     const terminalReasons = endedByError ? [...(manifest.terminalReasons ?? []), '执行异常：' + String(job.lastError).slice(0, 160)] : manifest.terminalReasons ?? []
     return {
@@ -273,7 +291,7 @@ export function createImportService({ stateDir, getBaseConfig, getCurrentCore = 
       counts,
       scan: manifest.scan,
       verify: manifest.verify ?? null,
-      terminalReasons: manifest.terminalReasons ?? [],
+      terminalReasons,
       conflicts: (manifest.conflicts ?? []).slice(0, 20),
       lastError: job ? job.lastError : null,
       committed: job ? job.committed === true : false,
