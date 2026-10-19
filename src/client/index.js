@@ -2178,7 +2178,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         toast?e('div',{className:'kbm-toast'},toast):null)
     }
 
-    const RELEASE_NOTICE_VERSION = '1.1.1'
+    const RELEASE_NOTICE_VERSION = '1.1.2'
     const RELEASE_NOTICE_KEY = 'dsh-kb-release-seen:' + RELEASE_NOTICE_VERSION
     const RELEASE_GITHUB_URL = 'https://github.com/KingsleyAsher/Personal-Knowledge-Base'
     const RELEASE_SITE_URL = 'https://kingsleyasher.github.io/Personal-Knowledge-Base/'
@@ -2200,7 +2200,6 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         releaseNoticeClaimed = true
         try {
           if (window.localStorage.getItem(RELEASE_NOTICE_KEY) === '1') return
-          window.localStorage.setItem(RELEASE_NOTICE_KEY, '1')
         } catch { /* 浏览器禁用存储时，本次运行仍展示提示 */ }
         setVisible(true)
       }, [])
@@ -2212,7 +2211,10 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         return () => window.removeEventListener('keydown', onKeyDown)
       }, [visible])
       if (!visible) return null
-      const dismiss = () => setVisible(false)
+      const dismiss = () => {
+        try { window.localStorage.setItem(RELEASE_NOTICE_KEY, '1') } catch { /* 存储不可用时仅本次关闭 */ }
+        setVisible(false)
+      }
       return reactDom.createPortal(
         e('div', { className: 'kb-release-backdrop', role: 'presentation', onMouseDown: (event) => { if (event.target === event.currentTarget) dismiss() } },
           e('section', { className: 'kb-release-card', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'kb-release-title', 'aria-describedby': 'kb-release-intro' },
@@ -2238,8 +2240,6 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       ensureStyle()
       ctx.slots.inject('conversation.input.overlay', () =>
         ctx.slots.register({ name: 'conversation.input.overlay', id: 'kb-release-notice', order: 999 }, ReleaseNotice))
-      ctx.slots.inject('conversation.hero.brand.mark', () =>
-        ctx.slots.register({ name: 'conversation.hero.brand.mark', id: 'kb-release-notice', order: 999 }, ReleaseNotice))
       ctx.slots.inject('settings.section', () =>
         ctx.slots.register({ name: 'settings.section', id: 'kb-core', order: 26, label: () => '个人知识库' }, Section))
       ctx.slots.inject('conversation.view', () =>

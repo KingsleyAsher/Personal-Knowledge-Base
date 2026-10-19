@@ -1,11 +1,11 @@
 {
   "package": "@local/dsh-knowledge-base",
-  "version": "1.1.1",
-  "buildId": "72bc39f0a727fc20",
-  "tgz": "local-dsh-knowledge-base-1.1.1.tgz",
-  "bytes": 256325,
-  "sha256": "531c165f677360ef531928db3b09e5b3613980e79848b2ffb4c2246cc1ac8439",
-  "integrity": "sha512-8gQnhrmFrP7zaJRKtY9rthw0ic9gIebrIOw/6Yrud7K8p7PtbMU+RRnamye1dh+aPZ+P29ZuaCiftjnCefsPlQ==",
+  "version": "1.1.2",
+  "buildId": "d881ed4ff0990f64",
+  "tgz": "local-dsh-knowledge-base-1.1.2.tgz",
+  "bytes": 256395,
+  "sha256": "0ab189a00b26dae923a3f7142599ed030fa016aa2d0061b3f470260ac032d638",
+  "integrity": "sha512-QWLRhm/3fm3So6T4SCrafYH5vaFp+qzfY4G8DgfjI0Je9qbFQEBWColP5vcOPtylSfqItCqAl6QawS5kHcnFcw==",
   "packageFileCount": 27,
   "buildFileCount": 22,
   "files": [
@@ -21,18 +21,18 @@
     },
     {
       "path": "README.md",
-      "bytes": 3067,
-      "sha256": "a8b36a4bc9c87b7366f32431164c844568a2d7a7dd2679499311170d492fe377"
+      "bytes": 3196,
+      "sha256": "68db2434e31ed14be0cbcca2540655b20088ea8228116e445aab95adb849c386"
     },
     {
       "path": "cordis.patch.yml",
       "bytes": 5018,
-      "sha256": "d9bc593909ad7bebe44d39d25509c6a0902248c11e22c2bedff65e56e0e3f7f3"
+      "sha256": "46a23d092143471fa7a8b40d9029897176550573eca08657e352f4475d976661"
     },
     {
       "path": "package.json",
       "bytes": 920,
-      "sha256": "cb7a601b94e62f945a073775fc7abf878e6243e0faac2162aebc55ad8d1bc34d"
+      "sha256": "501dbccf398e969ba898481eee426778265e73ac7b505937716b816b53b00bfc"
     },
     {
       "path": "presets/01-knowledge-agent.patch.yml",
@@ -46,8 +46,8 @@
     },
     {
       "path": "src/client/index.js",
-      "bytes": 147487,
-      "sha256": "bb0f56013878a3c8b1b358f3650f41230ef5e28edfaa450eb26ddec06107e5b9"
+      "bytes": 147378,
+      "sha256": "23fa524b91751f75f478fc12a9d98cad2e34c78699b673555a5702fab7dcc1a3"
     },
     {
       "path": "src/host/flow-workspace.js",
@@ -92,7 +92,7 @@
     {
       "path": "src/host/kbcore.js",
       "bytes": 119164,
-      "sha256": "141a3fb168f73e1a04d22caa9a251f398e151c6f427ba3a200b22babbcdf976c"
+      "sha256": "c1012f5edad2df2fa4e0bc05e7ec8d5982652ff036a643b3a64d6e0442e2b29e"
     },
     {
       "path": "src/host/map.js",
