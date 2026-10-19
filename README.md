@@ -1,8 +1,16 @@
-# 个人知识库 1.0.4
+# 个人知识库 1.0.5
 
 DSH 知识库主插件：目录绑定、条目管理与检索、资料导入、知识库界面、自定义流程、知识库预设及委派入口。日常只安装 `@local/dsh-knowledge-base` 一个包。
 
-## 本版更新
+## 流程工作区
+
+从知识库页签运行流程时，首次自动在知识库文件夹旁创建同级的「流程工作区」文件夹，并注册为 DSH 工作区。新会话通过 workspaceId 明确归入「流程工作区」，后续运行复用，不再落入未分组。
+
+草稿、下载和临时文件留在流程工作区，最终成果按输出规则落库。提示词明确带上知识库与工作区的绝对路径，避免把当前工作目录误当成知识库。
+
+已有同名工作区指向其他路径、路径被文件或目录链接占用、目录无权创建或工作区服务不可用时明确报错，不会回退创建未分组会话。原有会话保留，不自动迁移。
+
+## 其他功能
 
 - 知识库页签和设置页面只显示宿主实际加载的版本号，构建号继续保留在内部诊断与发布清单中。
 - 自动检查更新是后台机制：插件启动后约 15 秒检查一次，此后每 6 小时检查一次，关闭知识库页签也会继续。打开页签时同步检查结果。
@@ -14,9 +22,9 @@ DSH 知识库主插件：目录绑定、条目管理与检索、资料导入、�
 
 ## 安装与核对
 
-从仓库 [dist 安装包目录](https://github.com/KingsleyAsher/Personal-Knowledge-Base/tree/main/dist) 下载 `local-dsh-knowledge-base-1.0.4.tgz`，通过 DSH「设置 → 插件」安装。升级保留知识库绑定和运行数据。
+从仓库 [dist 安装包目录](https://github.com/KingsleyAsher/Personal-Knowledge-Base/tree/main/dist) 下载 `local-dsh-knowledge-base-1.0.5.tgz`，通过 DSH「设置 → 插件」安装。升级保留知识库绑定和运行数据。
 
-完全退出 DSH（包括托盘）再重新打开，在知识库页签顶部应看到「版本 1.0.4」。检查更新只提示可用版本；下载安装后仍需重启。完整源码和安装包哈希见 `release-manifest.json`，发布件以 dist 中的原 tgz 为准。
+完全退出 DSH（包括托盘）再重新打开，在知识库页签顶部应看到「版本 1.0.5」。检查更新只提示可用版本；下载安装后仍需重启。完整源码和安装包哈希见 `release-manifest.json`，发布件以 dist 中的原 tgz 为准。
 
 不需要另外安装旧委派网关或 H1；历史 profile 若仍启用旧网关，应迁移其配置并停用旧 bundle。同名知识库预设只保留一份。
 
@@ -26,6 +34,7 @@ DSH 知识库主插件：目录绑定、条目管理与检索、资料导入、�
 
 ```text
 python -X utf8 tools/verify-release.py
+node tests/flow-workspace-probe.mjs
 node tests/updates-probe.mjs
 node tests/flow-conversation-probe.mjs
 node tests/rebuild-probe.mjs src/host/index.js

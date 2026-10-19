@@ -932,7 +932,8 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         if (!sessions || !workspace || !views) throw new Error('宿主会话服务尚未就绪，请稍后重试')
         const prepared = await callApi({ op: 'flows.prepare-conversation', id: flow.id, kbId, expectedRevision: flow.revision })
         if (!prepared || !prepared.ok) throw new Error((prepared && (prepared.error || prepared.reason)) || '无法读取流程提示词')
-        sessionId = await sessions.create({ cwd: prepared.cwd, agentPreset: 'knowledge' })
+        if (!prepared.workspaceId) throw new Error('未获得流程工作区，未创建会话；请确认宿主已加载最新插件')
+        sessionId = await sessions.create({ workspaceId: prepared.workspaceId, agentPreset: 'knowledge' })
         reference = sessions.retain(sessionId, { source: 'kb-flow-launch' })
         await reference.ready
         const scope = sessions.scope(sessionId)

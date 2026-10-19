@@ -578,7 +578,7 @@ export function createFlowEngine(opts) {
     lines.push(rules.land === true
       ? '只有全部步骤成功后，才按上述输出规则通过知识库条目工具写入最终成果；失败、取消或等待确认时不写成功报告。完成后给出条目位置和实际产出。'
       : '最终成果保留在本会话，不额外创建知识库条目。')
-    return { ok: true, kbId: b.kbId, cwd: b.kbPath, flowId: flow.id, flowRevision: flow.revision, prompt: lines.join('\n') }
+    return { ok: true, kbId: b.kbId, kbPath: b.kbPath, cwd: b.kbPath, flowId: flow.id, flowRevision: flow.revision, prompt: lines.join('\n') }
   }
 
   /**
