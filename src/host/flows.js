@@ -126,7 +126,7 @@ export function validateFlow(flow) {
     }
     if (!/^[A-Za-z0-9_\u4e00-\u9fa5-]{1,32}$/.test(str(p.name))) errors.push(`params[${i}].name 非法（字母/数字/下划线/汉字，≤32）`)
   }
-  const names = arr(flow.params).map((p) => str(p.name)).filter((n) => n !== '')
+  const names = arr(flow.params).filter(isPlainObject).map((p) => str(p.name)).filter((n) => n !== '')
   if (new Set(names).size !== names.length) errors.push('params 名字重复')
   if (flow.capabilities !== undefined && flow.capabilities !== null && !Array.isArray(flow.capabilities)) errors.push('capabilities 必须是数组')
   const rules = flow.outputRules === undefined || flow.outputRules === null ? {} : flow.outputRules
@@ -195,16 +195,16 @@ export function normalizeFlow(input, ctxIn = {}) {
 /** 参数默认值解析：给定值 → 默认值；required 且最终为空 → 报缺参（不替用户猜）。 */
 export function resolveParams(flow, given) {
   const g = isPlainObject(given) ? given : {}
-  const values = {}
+  const values = Object.create(null)
   const missing = []
   for (const p of arr(flow.params)) {
-    const raw = g[p.name]
-    const value = raw === undefined || raw === null || String(raw) === '' ? p.default : String(raw)
-    if (p.required === true && String(value) === '') missing.push(p.name)
+    const raw = Object.hasOwn(g, p.name) ? g[p.name] : undefined
+    const value = raw === undefined || raw === null || String(raw) === '' ? (p.default ?? '') : String(raw)
+    if (p.required === true && String(value ?? '').trim() === '') missing.push(p.name)
     values[p.name] = String(value)
   }
   // 未声明的参数原样保留（调用方可能带临时值），但不参与 required 判定
-  for (const key of Object.keys(g)) if (values[key] === undefined) values[key] = String(g[key])
+  for (const key of Object.keys(g)) if (!Object.hasOwn(values, key)) values[key] = String(g[key])
   return { ok: missing.length === 0, values: values, missing: missing }
 }
 
@@ -578,7 +578,7 @@ export function createFlowEngine(opts) {
     lines.push(rules.land === true
       ? '只有全部步骤成功后，才按上述输出规则通过知识库条目工具写入最终成果；失败、取消或等待确认时不写成功报告。完成后给出条目位置和实际产出。'
       : '最终成果保留在本会话，不额外创建知识库条目。')
-    return { ok: true, kbId: b.kbId, cwd: b.kbPath, flowId: flow.id, flowRevision: flow.revision, prompt: lines.join('\n') }
+    return { ok: true, kbId: b.kbId, kbPath: b.kbPath, cwd: b.kbPath, flowId: flow.id, flowRevision: flow.revision, prompt: lines.join('\n') }
   }
 
   /**
@@ -613,13 +613,17 @@ export function createFlowEngine(opts) {
       return fail('not-found', '没有这个流程：' + wantId + '（新建请省略 id）')
     }
 
-    const flow = normalizeFlow(Object.assign({}, payload, {
+    const merged = Object.assign({}, exist || {}, payload, {
+      outputRules: Object.assign({}, exist ? exist.outputRules : {}, payload.outputRules || {}),
       id: exist !== null ? exist.id : wantId,
       revision: exist !== null ? Number(exist.revision) + 1 : 1,
       createdAt: exist !== null ? exist.createdAt : undefined,
-      archived: payload.archived === true,
-      enabled: payload.enabled !== false,
-    }))
+      // Archive/restore has a separate endpoint; an edit must not restore a flow.
+      archived: exist !== null ? exist.archived === true : payload.archived === true,
+    })
+    const flow = normalizeFlow(merged)
+    if (flow.archived) flow.enabled = false
+    if (exist && Object.hasOwn(exist, 'enabledBeforeArchive')) flow.enabledBeforeArchive = exist.enabledBeforeArchive
     const next = exist !== null
       ? r.store.flows.map((f) => (f.id === flow.id ? flow : f))
       : r.store.flows.concat([flow])
@@ -635,6 +639,7 @@ export function createFlowEngine(opts) {
     if (!r.ok) return fail(r.reason, r.error)
     const flow = r.store.flows.find((f) => f.id === str(id))
     if (!flow) return fail('not-found', '没有这个流程：' + str(id))
+    if (flow.archived === true) return fail('archived', '该流程已归档：请先恢复，再启用或停用')
     const next = Object.assign({}, flow, { enabled: enabled === true, revision: Number(flow.revision) + 1, updatedAt: nowIso() })
     await writeStore(b.kbId, { flows: r.store.flows.map((f) => (f.id === next.id ? next : f)) }, r.paths)
     return { ok: true, kbId: b.kbId, id: next.id, enabled: next.enabled, revision: next.revision }
