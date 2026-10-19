@@ -24,6 +24,7 @@ import { walkTree, privateRootOf, normSegs, toPosix as toPosixFile, DEFAULT_PRIV
 import { createImportService } from './import-service.js'
 import { inspectFolder } from './importer.js'
 import { createParsingService } from './parsing.js'
+import { createIndexMaintenance } from './index-maintenance.js'
 
 export const name = 'kb-core'
 // 版本单一来源：kbcore 的 VERSION（package.json 必须与之一致）
@@ -253,7 +254,7 @@ let parsingService = null
   const buildPromise = (async () => {
     // 2026-10-18：新增 gateway.js / flows.js 两个**装载文件** —— buildId 必须覆盖它们，
     // 否则改了流程实现而 buildId 不变，"构建=版本/buildId"这条唯一硬判据就失效了。
-    const list = ['package.json', 'cordis.patch.yml', 'src/host/index.js', 'src/host/kbcore.js', 'src/host/fsindex.js', 'src/host/importer.js', 'src/host/import-service.js', 'src/host/map.js', 'src/host/selftest.js', 'src/host/gateway.js', 'src/host/flows.js', 'src/host/parsing.js', 'src/host/updates.js', 'src/host/flow-workspace.js', 'src/client/index.js']
+    const list = ['package.json', 'cordis.patch.yml', 'src/host/index.js', 'src/host/kbcore.js', 'src/host/fsindex.js', 'src/host/importer.js', 'src/host/import-service.js', 'src/host/map.js', 'src/host/selftest.js', 'src/host/gateway.js', 'src/host/flows.js', 'src/host/parsing.js', 'src/host/updates.js', 'src/host/flow-workspace.js', 'src/client/index.js', 'src/host/parse-presets.js', 'src/host/parse-credentials.js', 'src/host/parse-native.js', 'src/host/parse-discovery.js', 'src/host/index-maintenance.js', 'tools/kb-local-model.py', 'tools/kb-pdf-pages.py']
     const whole = crypto.createHash('sha256')
     for (const rel of list) {
       try {
@@ -385,10 +386,9 @@ let parsingService = null
     if (parsingService === null) return { ok: false, reason: 'PARSE_NOT_ENABLED', detail: '解析服务未就绪（本插件未接入解析能力）' }
     const src = String((params && (params.source ?? params.Source ?? params.sourceRel)) ?? '').trim()
     if (src === '') return { ok: false, reason: 'missing-param', detail: '解析步骤需要流程参数 source（库内相对路径，如 90-收件箱/原件归档/x.pdf）' }
-    const providerId = String((params && params.provider) ?? '').trim()
     const submitted = await parsingService.submit(
-      { sourceRel: src, kind: kind ?? undefined, providerId: providerId === '' ? undefined : providerId, purpose: 'flow-step' },
-      { requestedBy: { via: 'flow' } },
+      { sourceRel: src, kind: kind ?? undefined, purpose: 'flow-step' },
+      { requestedBy: { via: 'tool' } },
     )
     if (!submitted.ok) return { ok: false, reason: submitted.reason, detail: submitted.detail }
     const waited = await kbParseWait(submitted.jobId, { signal, timeoutMs: 15 * 60_000 })
@@ -440,6 +440,7 @@ let parsingService = null
       name: 'kb_parse',
       description:
         '解析（OCR / 语音转写）：只能用**管理员已在设置页配好的**提供方，任务固定源原件（库内相对路径）+ 提供方/配置版本，支持进度、超时、取消、有限重试与重启恢复；解析成功与落库成功分开记录；结果只落隔离的底稿区，落库时按来源映射写入知识库。'
+        + '会话提交及测试解析强制使用当前设置的默认 OCR/ASR 服务；不得根据记忆指定其他服务。用户需要单次选择时，请其在解析设置页选择后提交。test-parse 必须提供 kind。'
         + 'action：providers（列出提供方与默认/策略）/ test-connection（只验地址或程序通不通）/ test-parse（真实小样本解析，与连接测试分开）/ submit / jobs / job / result（有界读取，可只取某几页或某几段）/ cancel / retry（解析失败重试；解析成功但落库失败只重试落库）/ land（把底稿按来源落成条目）。'
         + '⚠️ 提供方的新增/修改/删除、程序与参数、凭据引用、外发策略都属**管理面**，只能由用户在「设置 → 个人知识库 → 解析」里改；模型调用这些动作会得到 ADMIN_ONLY。',
       parameters: {
@@ -454,7 +455,7 @@ let parsingService = null
           // 保留这两个字段：即使有人伪造出管理面 action，也要在 execute 里被 ADMIN_ONLY 挡住，
           // 而不是靠"schema 里没有这个字段"来挡（见 2026-10-18 定向审查 §最小修复）。
           provider: { type: 'object', additionalProperties: true, description: '（管理面，模型侧会被拒）提供方定义' },
-          providerId: { type: 'string' },
+          providerId: { type: 'string', description: '连接测试使用；会话 submit/test-parse 始终跟随设置中的默认服务，此字段不能覆盖默认值。单次选择请由用户在设置页操作。' },
           kind: { type: 'string', enum: ['ocr', 'asr'] },
           externalPolicy: { type: 'string', enum: ['local-only', 'allow-configured'], description: '（管理面，模型侧会被拒）' },
           sourceRel: { type: 'string', description: '库内相对路径（不能是绝对路径或含 ..）' },
@@ -955,7 +956,7 @@ let parsingService = null
             importId: { type: 'string', description: 'run/status/cancel/waiting/parse 必填（plan 会返回）' },
             rel: { type: 'string', description: 'parse：导入清单里的相对路径' },
             kind: { type: 'string', enum: ['ocr', 'asr'], description: 'parse：解析类型（不填按扩展名推断）' },
-            providerId: { type: 'string', description: 'parse：指定提供方（不填用默认）' },
+            providerId: { type: 'string', description: '兼容旧请求保留；会话导入解析始终使用设置中的默认服务，忽略此字段' },
           },
         },
         output: {
@@ -1045,7 +1046,7 @@ let parsingService = null
             const importId = String(args?.importId ?? '')
             if (importId === '') return { ok: false, error: 'parse 需要 importId' }
             if (String(args?.rel ?? '').trim() === '') return { ok: false, error: 'parse 需要 rel（导入清单里的相对路径）' }
-            return await importService.parseItem({ importId, rel: String(args.rel), kind: args?.kind, providerId: args?.providerId })
+            return await importService.parseItem({ importId, rel: String(args.rel), kind: args?.kind }, { requestedBy: { via: 'tool' } })
           }
           return { ok: false, error: '未知 action：' + action }
         },
@@ -1234,6 +1235,11 @@ let parsingService = null
   const KB_LIST_MAX = 50000
   const OVERVIEW_TTL_MS = 8000
   let overviewCache = { at: 0, key: null, value: null, inflight: null }
+  let indexMaintainer = null
+  ctx.effect(() => {
+    indexMaintainer = createIndexMaintenance({ getCore: () => core, onChange: () => { overviewCache.value = null; overviewCache.at = 0 } })
+    return () => { indexMaintainer?.dispose(); indexMaintainer = null }
+  }, 'kb-core: automatic index maintenance')
 
   // F2：有效私密策略 —— 配置里的私密根 ∪ 承载私密派生条目的分区。
   // 只配置 '10-项目/私密' 时，派生到 00-画像 的条目同样必须遮罩：物理分区是插件指定的私密分区，不能因配置漏项变公开。
@@ -1340,7 +1346,7 @@ let parsingService = null
           issues.push({ kind: 'kb-unhealthy', label: '库结构不健康：' + (st.healthReason ?? '未知'), detail: st.healthDetail || '库元数据/分类目录不完整，写入会被拒绝；请先修复或用 kb_init 补齐。' })
         }
         if (st.index && st.index.fresh !== true) {
-          issues.push({ kind: 'index-stale', label: '索引需重建（' + (st.index.reason || '未知') + '）', detail: '检索会自动回退扫描磁盘，结果不会漏；点上方「重建索引」按钮即可重建（等价于 kb_check(rebuild=true)）。' })
+          issues.push({ kind: 'index-stale', label: (st.index.reason === 'index-fingerprint-unknown' ? '无法检查索引' : '索引需要同步') + '：' + (st.index.reasonLabel || st.index.reason || '未知'), detail: '原因码：' + st.index.reason + '；索引生成时间：' + (st.index.indexedAt || '未知') + '。' + (st.index.detail || '') + '；未同步时检索回退磁盘扫描，扫描错误会单独报告。' })
         }
         const recoverTodo = await kbCountRecoverTodo(st.kbPath)
         if (recoverTodo > 0) {
@@ -1595,17 +1601,29 @@ let parsingService = null
               const body = JSON.parse((await kbReadBody(req)) || '{}')
               if (body.op === 'status') return kbSendJson(res, 200, { ok: true, status: { ...(await current.status()), build: buildInfo } })
               if (body.op === 'updates.check') return kbSendJson(res, 200, await updateChecker.check({ force: body.force === true }))
+              if (body.op === 'index-maintenance.status') {
+                const status = await current.status()
+                return kbSendJson(res, 200, { ok: true, enabled: (await current.getConfig()).autoIndex !== false, scheduler: indexMaintainer?.status(), maintenance: current.maintenanceStatus(), kbId: status.kbId, index: status.index })
+              }
+              if (body.op === 'index-maintenance.configure') {
+                const out = await current.setConfig({ autoIndex: body.enabled })
+                if (out.ok) overviewCache.value = null
+                return kbSendJson(res, 200, out)
+              }
+              if (body.op === 'index-snapshots') return kbSendJson(res, 200, await current.indexSnapshots({ restore: body.restore, expectedKbId: body.expectedKbId }))
               if (body.op === 'index-rebuild') {
                 // 界面「重建索引」按钮的唯一入口：与模型工具 kb_check(rebuild=true) 走同一条路径，
                 // 不另写一套扫描逻辑，避免「按钮」与「工具」两种语义漂移。
                 const t0 = Date.now()
-                const checkRes = await current.checkEntry({ rebuild: true })
-                const summary = kbSummarizeRebuild(checkRes, Date.now() - t0)
+                const checkRes = await current.maintainIndex({ full: true, expectedKbId: body.expectedKbId, expectedRevision: body.expectedRevision, confirmDrop: body.confirmDrop })
+                if (checkRes.ok) indexMaintainer?.resume()
+                overviewCache.value = null
+                const summary = { ...checkRes, elapsedMs: Date.now() - t0, added: checkRes.diff?.added?.length, removed: checkRes.diff?.removed?.length, changed: checkRes.diff?.changed?.length }
                 // ok 只代表「索引确实重建了」：partial / 拒绝 / 空返回都是 ok:false + 可读 reason。
                 // 仍然回 200 —— 请求本身处理成功，结论是「没重建成功」，前端据此报原因。
                 return kbSendJson(res, 200, {
                   ok: summary.ok,
-                  error: summary.ok ? undefined : (summary.reason ?? '重建未成功'),
+                  error: summary.ok ? undefined : (summary.detail || summary.reason || '重建未成功'),
                   result: summary,
                 })
               }
@@ -1802,7 +1820,11 @@ let parsingService = null
                 try {
                   let out
                   if (sub === 'providers') out = await parsingService.providersPublic()
-                  else if (sub === 'provider.save') out = await parsingService.saveProvider(body.provider, admin)
+                  else if (sub === 'provider.save') out = await parsingService.saveProvider(body.provider, { ...admin, credentialInput: body.credentials, clearCredential: body.clearCredential === true })
+                  else if (sub === 'scan.start') out = await parsingService.scanStart({ mode: body.mode, directory: body.directory }, admin)
+                  else if (sub === 'scan.status') out = parsingService.scanStatus(String(body.scanId || ''), admin)
+                  else if (sub === 'scan.cancel') out = parsingService.scanCancel(String(body.scanId || ''), admin)
+                  else if (sub === 'scan.add') out = await parsingService.scanAdd(String(body.scanId || ''), String(body.resultId || ''), admin)
                   else if (sub === 'provider.delete') out = await parsingService.deleteProvider(String(body.providerId ?? ''), admin)
                   else if (sub === 'default') out = await parsingService.setDefaults({ kind: String(body.kind ?? ''), id: String(body.providerId ?? '') }, admin)
                   else if (sub === 'policy') out = await parsingService.setPolicy(String(body.externalPolicy ?? ''), admin)

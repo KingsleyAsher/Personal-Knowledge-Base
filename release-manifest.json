@@ -1,13 +1,13 @@
 {
   "package": "@local/dsh-knowledge-base",
-  "version": "1.0.6",
-  "buildId": "ae3f2b74ded63322",
-  "tgz": "local-dsh-knowledge-base-1.0.6.tgz",
-  "bytes": 221107,
-  "sha256": "2598509453a971b24016ad18d84a130e3faa7b5fa72ea13a597d3ec3ec12e33c",
-  "integrity": "sha512-8Ue7apx/WrMhvKeAJ3HYKib1BDcEOtG1M6CSTPDhBxBv8rT5v3N9Q5a7qhVlOJxSaO9MCAvDF8IO+JTysr4B2A==",
-  "packageFileCount": 20,
-  "buildFileCount": 15,
+  "version": "1.1.0",
+  "buildId": "2cf4065a897520c8",
+  "tgz": "local-dsh-knowledge-base-1.1.0.tgz",
+  "bytes": 254081,
+  "sha256": "4f5ada4a0ebcd7d459fe78eacac3bb2201ce9f26d227766cd0402bacf989778d",
+  "integrity": "sha512-cLsYbWJLNLJfgrs6MqxOSbrxg2fUaiRpT7waTQzqcnAFyjIuybXJ7hpApwyrwHd8d/tdGw/7jLevAF/1KoWDdg==",
+  "packageFileCount": 27,
+  "buildFileCount": 22,
   "files": [
     {
       "path": "LICENSE",
@@ -15,19 +15,24 @@
       "sha256": "39ef89056baa986e05f881cc739300a636d4288c2f0600f54551fe2854326120"
     },
     {
+      "path": "PARSING-PREVIEW.md",
+      "bytes": 8954,
+      "sha256": "b075d243acf12672864da917d4a8273a87bb51fbf2edb37bd62dc3147b14c37c"
+    },
+    {
       "path": "README.md",
-      "bytes": 3219,
-      "sha256": "2a6bfa0df7f977719a0f265569db71745e2a2ffa620b9093bcdc28a0e66ff49e"
+      "bytes": 2561,
+      "sha256": "4063709f78be3ddc782059a9c47202fea50931fc548393fc98ec1b9ca83eac53"
     },
     {
       "path": "cordis.patch.yml",
       "bytes": 5018,
-      "sha256": "a797c83017ef93c9269ffdcfd8c5da7c01a1eb93c8a580258716ee6cf4db5be6"
+      "sha256": "d9bc593909ad7bebe44d39d25509c6a0902248c11e22c2bedff65e56e0e3f7f3"
     },
     {
       "path": "package.json",
-      "bytes": 863,
-      "sha256": "229d0fcefdbe3af1f9f95050463ad69072a602c085d48382c46185df75d12f7c"
+      "bytes": 920,
+      "sha256": "6be2a8b250c6b47192ff46517ae78d0d6d1bd9c8568cbf46612dfdd2f58ddf6b"
     },
     {
       "path": "presets/01-knowledge-agent.patch.yml",
@@ -41,8 +46,8 @@
     },
     {
       "path": "src/client/index.js",
-      "bytes": 120889,
-      "sha256": "13f064cd9d0ae5d78cdc3a51e0df47c102010e14dabc0bcc3f74805ec876887d"
+      "bytes": 141319,
+      "sha256": "a9d0b28efe98e53f73cfdb8da07ad406d2d42afb9b7992dca02f91591ff7d082"
     },
     {
       "path": "src/host/flow-workspace.js",
@@ -66,8 +71,8 @@
     },
     {
       "path": "src/host/import-service.js",
-      "bytes": 26903,
-      "sha256": "cc4ddc3d46d1f6ac06ec3e586255dfd025aae21aacacc64db06d0f163a96253f"
+      "bytes": 26981,
+      "sha256": "b6370537d56ebc358a87764e77b6ac668242cdf223d14b40fa4b4e1106929a38"
     },
     {
       "path": "src/host/importer.js",
@@ -75,14 +80,19 @@
       "sha256": "80a881113bec6a0c8b4d32c25bb3355a5f30740bdafd4ea144bb68e1b5560bc8"
     },
     {
+      "path": "src/host/index-maintenance.js",
+      "bytes": 4093,
+      "sha256": "553ebf454fe0eadaa338b1eca380cdf35ad3ef8f968c85418979762a834b96ad"
+    },
+    {
       "path": "src/host/index.js",
-      "bytes": 117759,
-      "sha256": "79375824163ac0a57172089dc570bd8f26cec394ae2c716458945293787122cd"
+      "bytes": 120588,
+      "sha256": "1cda347645e62ae94148ee4da7232f31a5f9228e217b14ef40d5b934072516ee"
     },
     {
       "path": "src/host/kbcore.js",
-      "bytes": 106457,
-      "sha256": "b52076784d2b2b374ad1edb57352961394dd0bd94d068d2f0111a83d93301385"
+      "bytes": 119164,
+      "sha256": "54c615f553fceeeb05b47304797fa0b53a4e6a7e4dbae6f19b9574d662f0f4c8"
     },
     {
       "path": "src/host/map.js",
@@ -90,9 +100,29 @@
       "sha256": "10789a57bcbc973563e59795698cb7dd5c4b5efa6e450bc1354192514fa9e34e"
     },
     {
+      "path": "src/host/parse-credentials.js",
+      "bytes": 3090,
+      "sha256": "970bd419d5a8c89a41d139a657b5dc9c61a618ddd7b1f699f63147a36c13bb4b"
+    },
+    {
+      "path": "src/host/parse-discovery.js",
+      "bytes": 10884,
+      "sha256": "59ee43a7ac3c9c9f125d67b751934e41986dfdb9e7ec4bef35181ea72ef3f350"
+    },
+    {
+      "path": "src/host/parse-native.js",
+      "bytes": 5529,
+      "sha256": "35e4e830d8352bddb07d21b255d9c0e1b85e4b3d4e066005a30dc14a74097ed1"
+    },
+    {
+      "path": "src/host/parse-presets.js",
+      "bytes": 2173,
+      "sha256": "bba2e8a84c737d88b52592a3eae3107dc6169dc2be11b37f4357dc1d79578cad"
+    },
+    {
       "path": "src/host/parsing.js",
-      "bytes": 85907,
-      "sha256": "2c9d91c09c6fb3d7d03b61661abef8876b670d423f25ad1e684a90ed6787467e"
+      "bytes": 110163,
+      "sha256": "705963cbffe7fb79392c18bd9e2d5816a66f35e6158742144b630cede33745b1"
     },
     {
       "path": "src/host/selftest.js",
@@ -101,8 +131,13 @@
     },
     {
       "path": "src/host/updates.js",
-      "bytes": 4042,
-      "sha256": "4432d4db4c92febef3260d461f31a42f94dec83a9358feaf826c73262c9b5d74"
+      "bytes": 4387,
+      "sha256": "7a34d28a2d2459a71822a2c22042d4a4692b4d788a5d4ab02344e191114caba6"
+    },
+    {
+      "path": "tools/kb-local-model.py",
+      "bytes": 7010,
+      "sha256": "d2b6727e8325c4e73dda174b434594dc6fb54592f076cc5e64ef0d86ec100818"
     },
     {
       "path": "tools/kb-pdf-pages.py",
@@ -111,17 +146,13 @@
     }
   ],
   "validation": {
-    "sourcePackageMatch": "20/20",
-    "fixesProbePassed": true,
-    "fixesChecks": 8,
-    "browserFixturePassed": true,
-    "realModelRun": false,
-    "formalLibraryAccessed": false,
-    "installed": false,
-    "githubPublished": false,
-    "browserCases": 16,
-    "importUiPassed": true,
-    "importUiCases": 3,
-    "workspaceProbePassed": true
+    "previewUserValidated": true,
+    "previewVersion": "1.0.7-preview.4",
+    "realCloudApiTested": false,
+    "realInferenceRepeatedForVersionChange": false,
+    "formalRuntimeVerified": false,
+    "nodeTests": 33,
+    "localAdapterChecks": 5,
+    "sourcePackageMatch": "27/27"
   }
 }

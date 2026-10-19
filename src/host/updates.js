@@ -53,7 +53,11 @@ export function createUpdateChecker({ currentVersion, fetch: fetchFn = globalThi
       if (manifest.package !== '@local/dsh-knowledge-base' || !stableParts(manifest.version)
         || manifest.tgz !== 'local-dsh-knowledge-base-' + manifest.version + '.tgz'
         || !/^[a-f0-9]{64}$/.test(manifest.sha256 || '')) throw new Error('GitHub 更新清单无效')
-      const comparison = compareStableVersions(manifest.version, currentVersion)
+      // A local preview may compare with the stable feed, while remote
+      // prereleases remain rejected by the manifest validation above.
+      const currentBase = typeof currentVersion === 'string' ? currentVersion.replace(/-preview\.[1-9]\d*$/, '') : currentVersion
+      let comparison = compareStableVersions(manifest.version, currentBase)
+      if (comparison === 0 && currentBase !== currentVersion) comparison = 1
       return {
         ok: true, currentVersion, latestVersion: manifest.version,
         updateAvailable: comparison > 0, ahead: comparison < 0,

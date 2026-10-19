@@ -18,7 +18,7 @@ import path from 'node:path'
 import { readImportSources, derivedPrivatePartitions, effectivePrivateDirs, foldGeneratedPairs } from './fsindex.js'
 
 // 版本单一来源：package.json 的 version 必须与此一致（详见 INSTALL 说明）
-export const VERSION = '1.0.6'
+export const VERSION = '1.1.0'
 
 export const REQUIRED_FIELDS = ['title', 'type', 'tags', 'status', 'updated']
 export const SCHEMA_VERSION = 1
@@ -633,9 +633,13 @@ export function createCore(cfg, logger) {
   function buildConfigPatch(current, patch) {
     // R3：白名单 + 校验。以前是 {...config, ...patch} 全量合并，未知/非法字段会原样落盘。
     const next = { ...current }
-    const allowed = new Set(['kbPath', 'categories', 'excludeFromSearch', 'followLinks', 'privateDirs', 'parsing'])
+    const allowed = new Set(['kbPath', 'categories', 'excludeFromSearch', 'followLinks', 'privateDirs', 'parsing', 'autoIndex'])
     for (const key of Object.keys(patch ?? {})) {
       if (!allowed.has(key)) return { ok: false, reason: 'unknown-config-field', detail: `不接受的配置字段：${key}` }
+    }
+    if (patch?.autoIndex !== undefined) {
+      if (typeof patch.autoIndex !== 'boolean') return { ok: false, reason: 'bad-auto-index' }
+      next.autoIndex = patch.autoIndex
     }
     // 第二轮：解析服务提供方（OCR/ASR）。深校验在 parsing.js 里做；这里只挡住形状错误。
     // 注意：这里存的是**非敏感配置 + 凭据引用名**，任何密钥值都不允许落盘（由 parsing.js 拒绝）。
@@ -864,6 +868,15 @@ export function createCore(cfg, logger) {
     return sha12(Buffer.from(lines.join('\n'), 'utf8'))
   }
 
+  function validIndexPayload(payload) {
+    return payload?.meta?.format === INDEX_FORMAT && payload.meta.tokenizer === INDEX_TOKENIZER
+      && Array.isArray(payload.entries) && payload.meta.entries === payload.entries.length
+      && payload.entries.every(r => r && typeof r.path === 'string' && typeof r.text === 'string'
+        && Number.isFinite(r.mtimeMs) && r.size === Buffer.byteLength(r.text)
+        && r.revision === sha12(Buffer.from(r.text)))
+      && payload.meta.fingerprint === fingerprintOf(payload.entries)
+  }
+
   function entryFromBuffer(relPath, abs, buf, mtimeMs) {
     const text = buf.toString('utf8')
     const parsed = parseFrontmatter(text)
@@ -906,6 +919,7 @@ export function createCore(cfg, logger) {
     }
     const meta = payload.meta ?? null
     if (meta === null) return { fresh: false, reason: 'index-legacy', detail: '索引缺 meta（旧格式），需重建' }
+    if (typeof meta.kbId !== 'string' || !meta.kbId.trim()) return { fresh: false, reason: 'index-legacy', detail: '索引缺少有效的知识库身份摘要，需完整重建' }
     const kb = await readMeta(root)
     const kbId = kb.state === 'ok' ? (kb.value.kbId ?? null) : null
     if (meta.kbId !== kbId) return { fresh: false, reason: 'index-kbid-mismatch', detail: `索引 kbId=${meta.kbId} 当前=${kbId}` }
@@ -913,11 +927,12 @@ export function createCore(cfg, logger) {
     if (meta.excludes !== excludes) return { fresh: false, reason: 'index-excludes-changed', detail: '排除规则与索引不一致（需重建）' }
     if (meta.format !== INDEX_FORMAT) return { fresh: false, reason: 'index-format-old', detail: `索引格式 ${meta.format ?? '(缺)'}，本版需要 ${INDEX_FORMAT}` }
     if (meta.tokenizer !== INDEX_TOKENIZER) return { fresh: false, reason: 'index-tokenizer-old', detail: `索引分词版本 ${meta.tokenizer ?? '(缺)'}，本版需要 ${INDEX_TOKENIZER}` }
+    if (!validIndexPayload(payload)) return { fresh: false, reason: 'index-corrupt', detail: '索引条目或摘要校验失败，需安全重建' }
     // 内容指纹：需要 walk+stat（不读文件），用来抓"用户在文件系统里直接改了正文"
     const current = await diskFingerprint(conf)
     if (current.error) return { fresh: false, reason: 'index-fingerprint-unknown', detail: current.error }
     if (meta.fingerprint !== current.fingerprint) {
-      return { fresh: false, reason: 'index-stale-content', detail: `磁盘内容与索引不一致（${current.files} 个 .md；索引写入于 ${meta.writtenAt ?? '-'}），需重建` }
+      return { fresh: false, reason: 'index-stale-content', detail: `文件清单或属性有变化（${current.files} 个 .md；索引写入于 ${meta.writtenAt ?? '-'}），等待核对内容并增量同步` }
     }
     return { fresh: true, reason: 'ok', detail: '', meta }
   }
@@ -930,8 +945,8 @@ export function createCore(cfg, logger) {
       return { state: res.state, entries: [], freshness: { fresh: false, reason: res.state === 'missing' ? 'index-missing' : 'index-corrupt', detail: res.error ?? '' } }
     }
     const payload = res.value ?? {}
-    const entries = Array.isArray(payload.entries) ? payload.entries : []
     const freshness = await freshnessOf(conf, payload)
+    const entries = freshness.reason === 'index-corrupt' ? [] : Array.isArray(payload.entries) ? payload.entries : []
     return { state: 'ok', entries, payload, generatedAt: payload.generatedAt ?? null, freshness }
   }
 
@@ -1358,19 +1373,144 @@ export function createCore(cfg, logger) {
 
   // ── 索引 ────────────────────────────────────────────────────────────
   const indexPath = (root) => path.join(root, '.kbmeta', 'index', 'entries.json')
+  async function indexStorageGuard(root) {
+    for (const file of [indexPath(root), path.join(root, '.kbmeta', 'index', 'snapshots')]) {
+      const guard = await checkRealPath(root, file)
+      if (!guard.ok) return guard
+    }
+    return { ok: true }
+  }
 
   async function readIndex(conf) {
     const res = await readJsonState(indexPath(kbRootOf(conf)))
-    if (res.state === 'ok') return { state: 'ok', ...res.value }
+    if (res.state === 'ok') {
+      if (!res.value || !Array.isArray(res.value.entries)) return { state: 'corrupt', entries: [] }
+      return { state: 'ok', ...res.value, entries: res.value.entries.filter(e => e && typeof e.path === 'string') }
+    }
     return { state: res.state, entries: [] }
   }
 
-  async function writeIndex(conf, entries) {
+  async function writeIndex(conf, entries, options = {}) {
     const payload = { generatedAt: nowIso(), meta: await indexMetaOf(conf, entries), entries }
     const root = kbRootOf(conf)
     if (root === null) return { ok: false, reason: 'unbound' }
+    const guard = await indexStorageGuard(root)
+    if (!guard.ok) throw Object.assign(new Error(guard.detail), { code: guard.reason })
+    const currentConf = await getConfigFresh()
+    if (kbRootOf(currentConf) !== root || currentConf.revision !== conf.revision) throw Object.assign(new Error('绑定或配置已改变，索引未替换'), { code: 'binding-changed' })
+    const disk = await diskFingerprint(conf)
+    if (disk.error || disk.fingerprint !== fingerprintOf(entries)) throw Object.assign(new Error('扫描期间文件发生变化或不可读，旧索引已保留'), { code: 'source-unstable' })
+    const old = await readJsonState(indexPath(root))
+    if (old.state === 'ok' && Array.isArray(old.value?.entries) && typeof old.value.meta?.kbId === 'string' && old.value.meta.kbId.trim() && old.value.meta.kbId !== payload.meta.kbId) throw Object.assign(new Error('索引知识库身份不匹配'), { code: 'index-kbid-mismatch' })
+    const oldCount = Array.isArray(old.value?.entries) ? old.value.entries.filter(e => e && typeof e.path === 'string').length : 0
+    const drop = oldCount - entries.length
+    const token = sha12(Buffer.from(JSON.stringify([old.value?.meta?.fingerprint, payload.meta.fingerprint, oldCount, entries.length])))
+    if ((oldCount > 0 && !entries.length || oldCount >= 20 && drop / oldCount >= .2) && options.confirmDrop !== token) {
+      throw Object.assign(new Error('条目数量明显下降，已保留旧索引；请核对差异后确认'), { code: 'index-drop-confirmation', confirmationToken: token, oldCount, newCount: entries.length })
+    }
+    if (options.snapshot !== false && old.state === 'ok' && validIndexPayload(old.value) && old.value.meta?.kbId === payload.meta.kbId) {
+      const directory = path.join(root, '.kbmeta', 'index', 'snapshots')
+      await mkdir(directory, { recursive: true })
+      const name = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}.json`
+      await atomicWrite(path.join(directory, name), JSON.stringify(old.value))
+      const snapshots = (await readdir(directory)).filter(n => /^\d+-[a-f0-9]+\.json$/.test(n)).sort().reverse()
+      for (const file of snapshots.slice(3)) await rm(path.join(directory, file), { force: true }).catch(() => {})
+    }
     await atomicWrite(indexPath(root), JSON.stringify(payload))
     return payload
+  }
+
+  let maintenanceState = { state: 'idle', reason: null, lastCompletedAt: null, diff: null }
+  const maintenanceStatus = () => ({ ...maintenanceState })
+  async function maintainIndex({ expectedKbId, expectedRevision, paths = [], full = false, confirmDrop, automatic = false, signal } = {}) {
+    const gate = await configGate()
+    if (!gate.ok) return { ok: false, reason: gate.refusal.reason }
+    const conf = gate.conf, root = kbRootOf(conf)
+    if (!root) return { ok: false, reason: 'unbound' }
+    const storage = await indexStorageGuard(root)
+    if (!storage.ok) return { ...storage, indexPreserved: true }
+    const configLock = await acquireConfigLock('index-maintenance')
+    if (!configLock.ok) return { ok: false, reason: 'config-lock-timeout' }
+    try { return await withLock(root, () => withKbLock(root, 'index-maintenance', async () => {
+      try {
+        const current = await getConfigFresh(), health = await healthOf(current)
+        const meta = await readMeta(root)
+        if (kbRootOf(current) !== root || current.revision !== conf.revision || expectedRevision != null && expectedRevision !== current.revision || expectedKbId && meta.value?.kbId !== expectedKbId) return { ok: false, reason: 'binding-changed' }
+        if (!health.healthy || current.degraded || automatic && current.autoIndex === false) return { ok: false, reason: 'maintenance-disabled-or-unhealthy' }
+        maintenanceState = { ...maintenanceState, state: 'running', reason: null }
+        const snap = await indexSnapshot(conf)
+        if (snap.freshness.reason === 'index-kbid-mismatch') throw Object.assign(new Error('索引身份不一致，未自动替换'), { code: 'index-kbid-mismatch' })
+        const incremental = !full && snap.state === 'ok' && validIndexPayload(snap.payload) && ['ok', 'index-stale-content', 'index-excludes-changed'].includes(snap.freshness.reason)
+        let entries = [], errors = [], metadataChanged = false
+        // Damaged/legacy cache rows must never prevent a full source scan.
+        const comparable = snap.entries.filter(e => e && typeof e.path === 'string' && typeof e.revision === 'string')
+        const previous = new Map(comparable.map(e => [e.path, e]))
+        if (incremental) {
+          const files = await walkMd(root, excludesOf(conf), root, [], errors, [])
+          const dirty = new Set(paths.map(p => toPosix(p)))
+          for (const file of files) {
+            if (signal?.aborted) throw Object.assign(new Error('维护已取消'), { code: 'canceled' })
+            const rel = toPosix(path.relative(root, file)), before = await stat(file), old = previous.get(rel)
+            if (old && old.size === before.size && old.mtimeMs === before.mtimeMs && !dirty.has(rel)) entries.push(old)
+            else {
+              const buf = await readFile(file), after = await stat(file)
+              if (before.size !== after.size || before.mtimeMs !== after.mtimeMs || buf.length !== after.size) throw Object.assign(new Error('文件仍在写入'), { code: 'source-unstable' })
+              entries.push(entryFromBuffer(rel, file, buf, after.mtimeMs)); metadataChanged = true
+            }
+          }
+        } else {
+          const scanned = await scanDisk(conf, root)
+          entries = scanned.entries; errors = scanned.scanErrors
+        }
+        if (errors.length) throw Object.assign(new Error('扫描不完整，保留旧索引'), { code: 'scan-incomplete' })
+        const next = new Map(entries.map(e => [e.path, e]))
+        const diff = { added: entries.filter(e => !previous.has(e.path)).map(e => e.path), removed: comparable.filter(e => !next.has(e.path)).map(e => e.path), changed: entries.filter(e => previous.has(e.path) && previous.get(e.path).revision !== e.revision).map(e => e.path) }
+        const changed = diff.added.length + diff.removed.length + diff.changed.length
+        maintenanceState = { ...maintenanceState, diff, indexedAtBefore: snap.generatedAt || null }
+        if (signal?.aborted) throw Object.assign(new Error('维护已取消'), { code: 'canceled' })
+        let mode = 'unchanged'
+        if (!incremental || changed || metadataChanged || snap.freshness.reason === 'index-excludes-changed') {
+          await writeIndex(conf, entries, { confirmDrop, snapshot: !incremental || Boolean(changed) })
+          mode = !incremental ? 'full' : changed ? 'incremental' : 'metadata'
+        }
+        maintenanceState = { state: 'synced', reason: null, mode, lastCompletedAt: nowIso(), diff, entries: entries.length }
+        if (mode !== 'unchanged') await writeLog('info', `索引维护 ${mode} entries=${entries.length} added=${diff.added.length} removed=${diff.removed.length} changed=${diff.changed.length}`)
+        return { ok: true, execution: 'ok', indexWritten: mode !== 'unchanged', mode, entries: entries.length, diff, ...maintenanceState }
+      } catch (e) {
+        maintenanceState = { ...maintenanceState, state: 'failed', reason: e.code || 'maintenance-failed', detail: e.message, confirmationToken: e.confirmationToken, oldCount: e.oldCount, newCount: e.newCount }
+        await writeLog('warn', `索引维护未替换旧索引 reason=${maintenanceState.reason}`)
+        return { ok: false, ...maintenanceState, indexPreserved: true }
+      }
+    })) } finally { await releaseConfigLock(configLock.token) }
+  }
+
+  async function indexSnapshots({ restore, expectedKbId } = {}) {
+    const gate = await configGate()
+    if (!gate.ok) return { ok: false, reason: gate.refusal.reason }
+    const conf = gate.conf, root = kbRootOf(conf)
+    if (!root) return { ok: false, reason: 'unbound' }
+    const storage = await indexStorageGuard(root)
+    if (!storage.ok) return storage
+    const configLock = await acquireConfigLock('index-snapshot')
+    if (!configLock.ok) return { ok: false, reason: 'config-lock-timeout' }
+    try { return await withLock(root, () => withKbLock(root, 'index-snapshot', async () => {
+      const meta = await readMeta(root)
+      if (expectedKbId && expectedKbId !== meta.value?.kbId) return { ok: false, reason: 'binding-changed' }
+      const directory = path.join(root, '.kbmeta', 'index', 'snapshots')
+      const names = await readdir(directory).catch(e => { if (e.code === 'ENOENT') return []; throw e })
+      const files = names.filter(n => /^\d+-[a-f0-9]+\.json$/.test(n)).sort().reverse()
+      for (const file of files) { const guard = await checkRealPath(root, path.join(directory, file)); if (!guard.ok) return guard }
+      if (!restore) return { ok: true, snapshots: await Promise.all(files.map(async name => { const r = await readJsonState(path.join(directory, name)); return { name, generatedAt: r.value?.generatedAt, entries: r.value?.entries?.length } })) }
+      if (!files.includes(restore)) return { ok: false, reason: 'snapshot-not-found' }
+      const r = await readJsonState(path.join(directory, restore)), current = await getConfigFresh()
+      if (r.state !== 'ok' || !validIndexPayload(r.value) || r.value.meta?.kbId !== meta.value?.kbId || current.revision !== conf.revision || kbRootOf(current) !== root) return { ok: false, reason: 'snapshot-invalid-or-binding-changed' }
+      const disabled = { ...current, autoIndex: false, revision: (current.revision ?? 1) + 1, updatedAt: nowIso() }
+      await atomicWrite(configFile, JSON.stringify(disabled, null, 2))
+      config = disabled
+      await atomicWrite(indexPath(root), JSON.stringify(r.value))
+      maintenanceState = { state: 'restored', reason: 'snapshot-restored', lastCompletedAt: nowIso() }
+      return { ok: true, note: '仅恢复索引缓存，未恢复或修改原文；自动维护已关闭' }
+    })) } finally { await releaseConfigLock(configLock.token) }
   }
 
   /** 对**指定根目录**写索引（R6：初始化新库时当前绑定还没切，不能用 kbRootOf(conf)） */
@@ -1488,8 +1628,10 @@ export function createCore(cfg, logger) {
       const rel = toPosix(path.relative(root, file))
       if (rel === 'INDEX.md') continue
       try {
+        const before = await stat(file)
         const buf = await readFile(file)
-        const st = await stat(file).catch(() => null)
+        const st = await stat(file)
+        if (before.size !== st.size || before.mtimeMs !== st.mtimeMs || buf.length !== st.size) throw new Error('文件扫描期间发生变化')
         entries.push(entryFromBuffer(rel, file, buf, st ? st.mtimeMs : 0))
       } catch (error) {
         scanErrors.push(`${rel}: ${(error && (error.code || error.message)) ?? error}`)
@@ -1562,10 +1704,14 @@ export function createCore(cfg, logger) {
 
   // ── 写入（D：路径边界 + 强制版本；E：互斥 + 部分完成）───────────────
   async function createEntry(args) {
+    return args.expectedBinding ? withExpectedBinding(args, 'flow-create', () => createEntryUnchecked(args)) : createEntryUnchecked(args)
+  }
+
+  async function withExpectedBinding(args, label, write) {
     // Flows snapshot their destination. Validate and hold the same config lock
     // used by commitBind, so a switch cannot redirect a running report.
     if (args.expectedBinding) {
-      const lock = await acquireConfigLock('flow-create')
+      const lock = await acquireConfigLock(label)
       if (!lock.ok) return { ok: false, reason: lock.reason ?? 'config-lock-timeout' }
       try {
         const gate = await configGate()
@@ -1578,12 +1724,12 @@ export function createCore(cfg, logger) {
           return { ok: false, reason: 'flow-binding-changed', detail: '流程目标库或配置版本已改变，未写入报告' }
         }
         args.signal?.throwIfAborted()
-        return await createEntryUnchecked(args)
+        return await write()
       } finally {
         await releaseConfigLock(lock.token)
       }
     }
-    return createEntryUnchecked(args)
+    return write()
   }
 
   async function createEntryUnchecked(args) {
@@ -1712,6 +1858,10 @@ export function createCore(cfg, logger) {
   }
 
   async function updateEntry(args) {
+    return args.expectedBinding ? withExpectedBinding(args, 'parse-update', () => updateEntryUnchecked(args)) : updateEntryUnchecked(args)
+  }
+
+  async function updateEntryUnchecked(args) {
     // C1：同上——配置损坏时 update 曾经仍按旧缓存写入
     const gate = await configGate()
     if (!gate.ok) return { ok: false, entryId: args?.entryId ?? null, reason: gate.refusal.reason, detail: gate.refusal.detail }
@@ -2125,7 +2275,8 @@ export function createCore(cfg, logger) {
       realPath: await realOf(root),
       index: (() => {
         const f = freshnessOnce
-        return { fresh: f.fresh, reason: f.reason, detail: f.detail ?? '' }
+        const labels = { ok: '已同步', 'index-stale-content': '文件清单或属性有变化，等待核对内容', 'index-missing': '索引文件缺失', 'index-corrupt': '索引损坏', 'index-legacy': '旧索引缺少校验信息', 'index-format-old': '索引格式不兼容', 'index-tokenizer-old': '分词版本不兼容', 'index-excludes-changed': '检索排除范围有变化', 'index-kbid-mismatch': '知识库身份不一致，已暂停维护', 'index-fingerprint-unknown': '无法完整读取目录或文件属性' }
+        return { fresh: f.fresh, reason: f.reason, reasonLabel: labels[f.reason] || f.reason, detail: f.detail ?? '', indexedAt: index.generatedAt || null }
       })(),
       lock: { file: toPosix(lockFileOf(root)), held: existsSync(lockFileOf(root)) },
       followLinks: conf.followLinks === true,
@@ -2142,6 +2293,7 @@ export function createCore(cfg, logger) {
   }
 
   return {
+    maintainIndex, maintenanceStatus, indexSnapshots,
     loadConfig,
     getConfig,
     getConfigHealth,
