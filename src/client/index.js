@@ -917,14 +917,47 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       enabled: d.enabled !== false,
     })
 
+    let flowClientContext = null
+    let flowLaunchPending = false
+
+    async function launchFlowConversation(flow, kbId) {
+      if (flowLaunchPending) throw new Error('正在创建流程会话，请勿重复点击')
+      flowLaunchPending = true
+      let reference = null
+      let sessionId = ''
+      try {
+        const sessions = flowClientContext && flowClientContext.get('sessions')
+        const workspace = flowClientContext && flowClientContext.get('uiWorkspace')
+        const views = flowClientContext && flowClientContext.get('uiConversation')
+        if (!sessions || !workspace || !views) throw new Error('宿主会话服务尚未就绪，请稍后重试')
+        const prepared = await callApi({ op: 'flows.prepare-conversation', id: flow.id, kbId, expectedRevision: flow.revision })
+        if (!prepared || !prepared.ok) throw new Error((prepared && (prepared.error || prepared.reason)) || '无法读取流程提示词')
+        sessionId = await sessions.create({ cwd: prepared.cwd, agentPreset: 'knowledge' })
+        reference = sessions.retain(sessionId, { source: 'kb-flow-launch' })
+        await reference.ready
+        const scope = sessions.scope(sessionId)
+        const conversation = scope && scope.get('conversation')
+        if (!conversation || typeof conversation.send !== 'function') throw new Error('新会话未就绪，未发送提示词')
+        workspace.openSession(sessionId)
+        views.binding(sessionId).activate('chat')
+        // 原样发送完整步骤，普通会话负责流式回复、工具事件与停止操作。
+        await conversation.send(prepared.prompt)
+        return sessionId
+      } catch (err) {
+        throw new Error((sessionId ? '会话 ' + sessionId + ' 已创建，自动发送未确认成功；请查看该会话后再决定是否重试。' : '') + String((err && err.message) || err))
+      } finally {
+        if (reference) reference.release()
+        flowLaunchPending = false
+      }
+    }
+
     function Flows() {
       const [data, setData] = react.useState(null)
       const [error, setError] = react.useState('')
       const [msg, setMsg] = react.useState('')
       const [busy, setBusy] = react.useState(false)
       const [draft, setDraft] = react.useState(null)
-      const [run, setRun] = react.useState(null)
-      const [runRec, setRunRec] = react.useState(null)
+      const launching = react.useRef(false)
       const [records, setRecords] = react.useState(null)
       const [toast, showToast] = useToast()
 
@@ -946,32 +979,6 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         ensureStyle()
         load()
       }, [load])
-
-      // 运行进度轮询：终态立即停表（取消后也停，状态由后端真值给）
-      const runId = run && run.runId ? run.runId : ''
-      react.useEffect(() => {
-        if (runId === '') return undefined
-        let stop = false
-        let timer = null
-        const tick = async () => {
-          try {
-            const d = await callApi({ op: 'flows.runs', runId })
-            if (stop) return
-            if (d && d.ok && d.run) {
-              setRunRec(d.run)
-              if (FLOW_TERMINAL[d.run.status] === 1) {
-                if (timer) clearInterval(timer)
-                load()
-              }
-            }
-          } catch (err) {
-            /* 轮询失败不打断界面，下一拍再试 */
-          }
-        }
-        tick()
-        timer = setInterval(tick, 1200)
-        return () => { stop = true; if (timer) clearInterval(timer) }
-      }, [runId, load])
 
       const save = async () => {
         if (draft === null) return
@@ -1021,32 +1028,27 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       }
 
       const startRun = async (flow) => {
+        if (launching.current) return
+        launching.current = true
         setBusy(true)
-        setMsg('')
+        setMsg('正在新建会话并发送流程提示词…')
         setRecords(null)
         try {
-          // 前端另造 runId：双击/重试同一个按钮时后端会直接返回既有记录，不会跑两遍
-          const once = 'ui-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7)
-          const d = await callApi({ op: 'flows.run', id: flow.id, runId: once })
-          if (d && d.ok) {
-            setRun({ runId: d.runId, flowName: flow.name })
-            setRunRec(d.run || null)
-            setMsg(d.deduplicated ? '同一 runId 已有记录：直接展示那次结果，没有重复执行' : '已开始运行：下面显示步骤进度')
-          } else {
-            setMsg('未能启动：' + ((d && (d.error || d.reason)) || '未知'))
-          }
+          await launchFlowConversation(flow, data.kbId)
+          setMsg('提示词已发送，请在新会话中查看实时执行过程')
         } catch (err) {
           setMsg('未能启动：' + String((err && err.message) || err))
         } finally {
+          launching.current = false
           setBusy(false)
         }
       }
 
-      const cancelRun = async () => {
-        if (!run) return
+      const cancelBackgroundRun = async (runId) => {
         try {
-          const d = await callApi({ op: 'flows.cancel', runId: run.runId })
+          const d = await callApi({ op: 'flows.cancel', runId })
           setMsg(d && d.ok ? '已发出取消：正在跑的这一步会被中断，之后的步骤不再开始' : '取消失败：' + ((d && (d.error || d.reason)) || '未知'))
+          await load()
         } catch (err) {
           setMsg('取消失败：' + String((err && err.message) || err))
         }
@@ -1104,26 +1106,13 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         e('span', { className: 'kbm-sub' }, data && data.ok ? ('库 ' + String(data.kbId || '-').slice(0, 8) + ' · ' + data.count + ' 条') : ''),
         e('button', { className: 'kbc-btn kbc-btn-ghost', style: { marginLeft: 'auto', padding: '3px 10px', fontSize: 12 }, disabled: busy, onClick: load }, busy ? '处理中…' : '刷新'))
 
-      // ── 运行进度面板 ──
-      const runPanel = run === null ? null : e('div', { className: 'kbf-run' },
-        e('div', { className: 'kbf-run-row' },
-          '运行 ' + run.flowName + ' · ' + run.runId + ' → ' + String((runRec && runRec.status) || 'running')
-          + (runRec && runRec.landedEntryId ? ' · 已落库 ' + runRec.landedEntryId : '')),
-        (runRec && Array.isArray(runRec.steps) ? runRec.steps : []).map((s, i) => e('div', { key: (s.id || '') + i, className: 'kbf-run-row' },
-          (i + 1) + '. ' + s.title + ' — ' + s.status + (s.attempts > 1 ? '（重试 ' + (s.attempts - 1) + ' 次）' : '') + (s.error ? '：' + s.error : ''))),
-        runRec && runRec.error ? e('div', { className: 'kbf-run-row' }, '原因：' + runRec.error) : null,
-        runRec && FLOW_TERMINAL[runRec.status] === 1
-          ? e('div', { className: 'kbf-actions' }, e('button', { className: 'kbc-btn kbc-btn-ghost', onClick: () => { setRun(null); setRunRec(null) } }, '收起'))
-          : e('div', { className: 'kbf-actions' },
-            e('button', { className: 'kbc-btn kbc-btn-ghost', onClick: cancelRun }, '取消运行'),
-            e('span', { className: 'kbc-set-hint' }, '取消会真的中断当前这一步（不是只隐藏界面）')))
-
       // ── 记录面板 ──
       const recordsPanel = records === null ? null : e('div', { className: 'kbf-run' },
-        e('div', { className: 'kbf-run-row' }, '「' + records.flowName + '」运行记录：' + (records.error || (records.rows.length + ' 条'))),
+        e('div', { className: 'kbf-run-row' }, '「' + records.flowName + '」后台运行记录：' + (records.error || (records.rows.length + ' 条'))),
         (records.rows || []).map((r) => e('div', { key: r.runId, className: 'kbf-run-row' },
           r.runId + ' · ' + r.status + ' · ' + (r.startedAt || '-') + ' · 步骤 ' + r.stepDone + '/' + r.stepTotal
-          + (r.landedEntryId ? ' · 落库 ' + r.landedEntryId : '') + (r.error ? ' · ' + r.error : ''))),
+          + (r.landedEntryId ? ' · 落库 ' + r.landedEntryId : '') + (r.error ? ' · ' + r.error : ''),
+          FLOW_TERMINAL[r.status] === 1 ? null : e('button', { className: 'kbc-btn kbc-btn-ghost', onClick: () => cancelBackgroundRun(r.runId) }, '取消后台运行'))),
         e('div', { className: 'kbf-actions' }, e('button', { className: 'kbc-btn kbc-btn-ghost', onClick: () => setRecords(null) }, '收起')))
 
       // ── 编辑表单（表单 + 步骤编辑，不要求手写 JSON）──
@@ -1188,25 +1177,24 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
             e('span', { className: 'kbf-trig' }, (f.triggers || []).join(' / ') || '（无触发语）'),
             e('span', { className: 'kbf-desc' }, f.description || '—'),
             e('span', { className: 'kbf-state' + (f.enabled ? ' on' : '') }, f.enabled ? '启用' : '停用'),
-            e('span', { className: 'kbf-state' }, f.lastRun ? (f.lastRun.status + ' · ' + String(f.lastRun.startedAt || '').slice(5, 16)) : '未运行'),
+            e('span', { className: 'kbf-state' }, f.lastRun ? ('后台：' + f.lastRun.status + ' · ' + String(f.lastRun.startedAt || '').slice(5, 16)) : '无后台记录'),
             e('span', { style: { display: 'flex', gap: 6, flexWrap: 'wrap' } },
               e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: () => openEdit(f) }, '编辑'),
               e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: () => toggle(f) }, f.enabled ? '停用' : '启用'),
-              e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy || !f.enabled || f.archived, onClick: () => startRun(f) }, '立即运行'),
-              e('button', { className: 'kbc-btn kbc-btn-ghost', onClick: () => loadRecords(f) }, '查看记录'),
+              e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy || !f.enabled || f.archived, onClick: () => startRun(f) }, '立即运行（新会话）'),
+              e('button', { className: 'kbc-btn kbc-btn-ghost', onClick: () => loadRecords(f) }, '后台记录'),
               f.archived
                 ? e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: () => archive(f, true) }, '恢复')
                 : e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: () => archive(f, false) }, '删除'))))
 
       return e('div', { className: 'kbm' },
         head,
-        e('div', { className: 'kbm-sub' }, '流程按库身份保存（换库不串读）；删除是软删除，运行记录保留。运行会通过已安装宿主的委派能力逐步交给知识库子代理，成功才落库。'),
+        e('div', { className: 'kbm-sub' }, '点击运行会新建知识库会话，自动发送完整流程提示词，并切换到对话查看实时回复、工具调用和执行结果；可在会话中停止。新运行保存在会话历史中，后台记录保留旧执行器的历史。'),
         e('div', { className: 'kbf-bar', style: { marginTop: 10 } },
           e('button', { className: 'kbc-btn kbc-btn-primary', onClick: () => { setDraft(emptyDraft()); setMsg('') } }, '新增流程'),
           e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: load }, '刷新')),
         msg ? e('div', { className: 'kbc-set-msg' }, msg) : null,
         error && data !== null ? e('div', { className: 'kbm-empty' }, error) : null,
-        runPanel,
         recordsPanel,
         form,
         e('div', { className: 'kbm-h' }, '已定义的流程'),
@@ -1215,13 +1203,45 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
 
     // 知识库页签的容器：「概览」与「流程」是两个内部二级页签，不把概览堆成长页
+    function BuildBadge() {
+      const [build, setBuild] = react.useState(null)
+      const [error, setError] = react.useState('')
+      const [loading, setLoading] = react.useState(true)
+      const request = react.useRef(0)
+      const refresh = react.useCallback(async () => {
+        const seq = ++request.current
+        setLoading(true)
+        setError('')
+        try {
+          const data = await callApi({ op: 'status' })
+          if (seq !== request.current) return
+          const current = data && data.ok && data.status && data.status.build
+          if (!current || !current.version || !current.buildId) throw new Error('宿主尚未返回完整版本信息')
+          setBuild(current)
+        } catch (err) {
+          if (seq === request.current) { setBuild(null); setError('版本信息读取失败') }
+        } finally {
+          if (seq === request.current) setLoading(false)
+        }
+      }, [])
+      react.useEffect(() => {
+        refresh()
+        return () => { request.current += 1 }
+      }, [refresh])
+      return e('div', { style: { marginLeft: 'auto', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 10px', fontSize: 12 }, 'aria-label': '插件版本信息' },
+        e('span', { style: { opacity: .75, overflowWrap: 'anywhere' }, role: 'status' },
+          loading ? '正在读取版本…' : error || ('版本 ' + build.version + ' · 构建 ' + build.buildId)),
+        e('button', { className: 'kbc-btn kbc-btn-ghost', style: { padding: '3px 8px', fontSize: 12 }, disabled: loading, onClick: refresh, 'aria-label': '刷新版本信息' }, '刷新版本'))
+    }
+
     function KbView() {
       const [tab, setTab] = react.useState('overview')
       ensureStyle()
       return e('div', { style: { height: '100%', display: 'flex', flexDirection: 'column' } },
         e('div', { className: 'kbf-bar', style: { padding: '12px 22px 0', margin: 0 } },
           e('button', { className: 'kbf-tab' + (tab === 'overview' ? ' on' : ''), onClick: () => setTab('overview') }, '概览'),
-          e('button', { className: 'kbf-tab' + (tab === 'flows' ? ' on' : ''), onClick: () => setTab('flows') }, '流程')),
+          e('button', { className: 'kbf-tab' + (tab === 'flows' ? ' on' : ''), onClick: () => setTab('flows') }, '流程'),
+          e(BuildBadge)),
         e('div', { style: { flex: 1, minHeight: 0, overflow: 'auto' } },
           tab === 'overview' ? e(Overview) : e(Flows)))
     }
@@ -1950,6 +1970,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
 
     function apply(ctx) {
+      flowClientContext = ctx
       ensureStyle()
       ctx.slots.inject('settings.section', () =>
         ctx.slots.register({ name: 'settings.section', id: 'kb-core', order: 26, label: () => '个人知识库' }, Section))

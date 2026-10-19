@@ -1747,6 +1747,7 @@ let parsingService = null
               //   flows.archive{id, restored?}             → {ok,id,archived,restored}
               //   flows.resolve{text}                      → {ok,status,matched,guarded}
               //   flows.run    {id?, text?, params?, runId?} → {ok,runId,run}（立即返回，后台执行）
+              //   flows.prepare-conversation {id,kbId,expectedRevision,params?} → {ok,cwd,prompt}（不执行）
               //   flows.runs   {flowId?, runId?, limit?}   → {ok,runs[]} | {ok,run}
               //   flows.cancel {runId}                     → {ok,canceling}
               if (String(body.op).startsWith('flows.')) {
@@ -1765,6 +1766,7 @@ let parsingService = null
                   else if (sub === 'enable') out = await engine.setEnabled(body.id, body.enabled === true)
                   else if (sub === 'archive') out = await engine.archive(body.id, body.restored === true)
                   else if (sub === 'resolve') out = await engine.resolve(body.text)
+                  else if (sub === 'prepare-conversation') out = await engine.prepareConversation(body)
                   else if (sub === 'run') {
                     // 界面触发**没有调用方 agent** → gateway 走根级分支（借用存活会话的模型路由）
                     out = await engine.start({ id: body.id, text: body.text, params: body.params, runId: body.runId, parentAgent: null, signal: null })
