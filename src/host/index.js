@@ -17,6 +17,7 @@ import { constants as fsConstants } from 'node:fs'
 import { createCore, VERSION } from './kbcore.js'
 import { apply as gatewayApply, createDelegate as createGatewayDelegate, isLiveKnowledgeGrant } from './gateway.js'
 import { createFlowEngine } from './flows.js'
+import { createUpdateChecker, startAutomaticChecks } from './updates.js'
 import { runSelftest } from './selftest.js'
 import { walkTree, privateRootOf, normSegs, toPosix as toPosixFile, DEFAULT_PRIVATE_DIRS, readImportSources, derivedPrivatePartitions, effectivePrivateDirs, knowledgeCount } from './fsindex.js'
 import { createImportService } from './import-service.js'
@@ -225,6 +226,9 @@ export function apply(ctx, config) {
   let attempts = 0
   let timer = null
   let core = null
+  const updateChecker = createUpdateChecker({ currentVersion: PLUGIN_VERSION })
+  // 自动检查属于宿主后台机制，页面关闭后仍继续按周期检查。
+  ctx.effect(() => startAutomaticChecks(updateChecker), 'kb-core: automatic update checks')
   // R1：UI 与工具共用的导入服务。在 install() 里创建（要等 core 就绪后才拿得到配置）。
   let importService = null
 // 第二轮：解析服务（OCR/ASR）。工具、设置页、导入与流程**共用这一个实例**。
@@ -247,7 +251,7 @@ let parsingService = null
   const buildPromise = (async () => {
     // 2026-10-18：新增 gateway.js / flows.js 两个**装载文件** —— buildId 必须覆盖它们，
     // 否则改了流程实现而 buildId 不变，"构建=版本/buildId"这条唯一硬判据就失效了。
-    const list = ['package.json', 'cordis.patch.yml', 'src/host/index.js', 'src/host/kbcore.js', 'src/host/fsindex.js', 'src/host/importer.js', 'src/host/import-service.js', 'src/host/map.js', 'src/host/selftest.js', 'src/host/gateway.js', 'src/host/flows.js', 'src/host/parsing.js', 'src/client/index.js']
+    const list = ['package.json', 'cordis.patch.yml', 'src/host/index.js', 'src/host/kbcore.js', 'src/host/fsindex.js', 'src/host/importer.js', 'src/host/import-service.js', 'src/host/map.js', 'src/host/selftest.js', 'src/host/gateway.js', 'src/host/flows.js', 'src/host/parsing.js', 'src/host/updates.js', 'src/client/index.js']
     const whole = crypto.createHash('sha256')
     for (const rel of list) {
       try {
@@ -1588,6 +1592,7 @@ let parsingService = null
               if (req.method !== 'POST') return kbSendJson(res, 405, { ok: false, error: 'method not allowed' })
               const body = JSON.parse((await kbReadBody(req)) || '{}')
               if (body.op === 'status') return kbSendJson(res, 200, { ok: true, status: { ...(await current.status()), build: buildInfo } })
+              if (body.op === 'updates.check') return kbSendJson(res, 200, await updateChecker.check({ force: body.force === true }))
               if (body.op === 'index-rebuild') {
                 // 界面「重建索引」按钮的唯一入口：与模型工具 kb_check(rebuild=true) 走同一条路径，
                 // 不另写一套扫描逻辑，避免「按钮」与「工具」两种语义漂移。

@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-knowledge-base",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "个人知识库产品 P0 骨架：目录绑定、幂等初始化、条目写入（entryId + revision）、索引检索、状态展示。host 侧只依赖 ctx 服务，不 import @deepseek-ai/*。",
   "type": "module",
   "main": "./src/host/index.js",

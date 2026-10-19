@@ -523,7 +523,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           row('库结构', status ? (status.healthy ? '正常' : '异常（' + (status.healthReason || '未知') + '）') : '-'),
           row('索引', status && status.index ? (status.index.fresh ? '新鲜' : '需重建（' + (status.index.reason || '未知') + '）') : '-'),
           row('条目数（索引）', entryCount === null ? '-' : entryCount),
-          row('构建', build && build.buildId ? build.version + ' / ' + build.buildId : '-'),
+          row('版本', build && build.version ? build.version : '-'),
           row('状态目录', status ? (status.stateDir || '-') : '-')),
         e('div', { className: 'kbc-set-actions' },
           e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: () => refresh({ force: true }) }, '刷新状态'),
@@ -1204,34 +1204,56 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
 
     // 知识库页签的容器：「概览」与「流程」是两个内部二级页签，不把概览堆成长页
     function BuildBadge() {
-      const [build, setBuild] = react.useState(null)
-      const [error, setError] = react.useState('')
-      const [loading, setLoading] = react.useState(true)
-      const request = react.useRef(0)
-      const refresh = react.useCallback(async () => {
-        const seq = ++request.current
-        setLoading(true)
-        setError('')
+      const [version, setVersion] = react.useState('')
+      const [update, setUpdate] = react.useState(null)
+      const [checking, setChecking] = react.useState(false)
+      const versionRequest = react.useRef(0)
+      const updateRequest = react.useRef(0)
+      const refreshVersion = react.useCallback(async () => {
+        const seq = ++versionRequest.current
         try {
           const data = await callApi({ op: 'status' })
-          if (seq !== request.current) return
+          if (seq !== versionRequest.current) return
           const current = data && data.ok && data.status && data.status.build
-          if (!current || !current.version || !current.buildId) throw new Error('宿主尚未返回完整版本信息')
-          setBuild(current)
+          setVersion(current && current.version ? current.version : '')
+        } catch {
+          if (seq === versionRequest.current) setVersion('')
+        }
+      }, [])
+      const check = react.useCallback(async (force) => {
+        const seq = ++updateRequest.current
+        setChecking(true)
+        setUpdate(null)
+        try {
+          const data = await callApi({ op: 'updates.check', force: force === true })
+          if (seq === updateRequest.current) setUpdate(data || { ok: false, error: '检查更新失败，请稍后重试' })
         } catch (err) {
-          if (seq === request.current) { setBuild(null); setError('版本信息读取失败') }
+          if (seq === updateRequest.current) setUpdate({ ok: false, error: '检查更新失败：' + String((err && err.message) || err) })
         } finally {
-          if (seq === request.current) setLoading(false)
+          if (seq === updateRequest.current) setChecking(false)
         }
       }, [])
       react.useEffect(() => {
-        refresh()
-        return () => { request.current += 1 }
-      }, [refresh])
-      return e('div', { style: { marginLeft: 'auto', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 10px', fontSize: 12 }, 'aria-label': '插件版本信息' },
-        e('span', { style: { opacity: .75, overflowWrap: 'anywhere' }, role: 'status' },
-          loading ? '正在读取版本…' : error || ('版本 ' + build.version + ' · 构建 ' + build.buildId)),
-        e('button', { className: 'kbc-btn kbc-btn-ghost', style: { padding: '3px 8px', fontSize: 12 }, disabled: loading, onClick: refresh, 'aria-label': '刷新版本信息' }, '刷新版本'))
+        refreshVersion()
+        return () => { versionRequest.current += 1; updateRequest.current += 1 }
+      }, [refreshVersion])
+      react.useEffect(() => {
+        const tick = () => { if (!document.hidden) check(false) }
+        tick()
+        const timer = setInterval(tick, 6 * 60 * 60 * 1000)
+        document.addEventListener('visibilitychange', tick)
+        return () => { clearInterval(timer); document.removeEventListener('visibilitychange', tick) }
+      }, [check])
+      const label = checking ? '正在检查更新…' : !update ? ''
+        : !update.ok ? update.error || '检查更新失败，请稍后重试'
+          : update.updateAvailable ? '发现新版本 ' + update.latestVersion
+            : update.ahead ? '当前版本高于已发布版本 ' + update.latestVersion : '已是最新版本'
+      return e('div', { style: { marginLeft: 'auto', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 10px', fontSize: 12 }, 'aria-label': '插件版本与更新' },
+        e('span', { style: { opacity: .75 } }, version ? '版本 ' + version : '版本读取中或暂不可用'),
+        e('button', { className: 'kbc-btn kbc-btn-ghost', style: { padding: '3px 8px', fontSize: 12 }, disabled: checking, onClick: () => { refreshVersion(); check(true) } }, checking ? '检查中…' : '检查更新'),
+        label ? e('span', { role: 'status', style: { opacity: .8, overflowWrap: 'anywhere' } }, label) : null,
+        !checking && update && update.ok && update.updateAvailable
+          ? e('a', { href: update.downloadUrl, target: '_blank', rel: 'noopener noreferrer', style: { color: 'inherit', textDecoration: 'underline' } }, '下载新版本') : null)
     }
 
     function KbView() {
