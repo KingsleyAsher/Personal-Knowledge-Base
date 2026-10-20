@@ -5,6 +5,9 @@ import { randomUUID, randomBytes, timingSafeEqual } from 'node:crypto'
 import { walkTree, privateRootOf, effectivePrivateDirs, readImportSources, derivedPrivatePartitions, knowledgeCount } from './fsindex.js'
 import { digest, inside, fail, safePath, relativePath, readJson, atomicJson, locked, DEFAULT_PREFERENCES, validatePreferences } from './workbench-state.js'
 import { createBackupService } from './workbench-backup.js'
+import { createQuestionService } from './workbench-question.js'
+import { collectRelations, createRepairService } from './workbench-links.js'
+import { deliverablesOf, deliverablePrivate, createDeliverableService } from './workbench-deliverables.js'
 
 export const GUIDE_ID = 'knowledge-workbench-v1'
 const INITIAL = { format: 1, revision: 0, defaults: DEFAULT_PREFERENCES, libraries: {}, onboarding: {}, pairs: {} }
@@ -36,7 +39,7 @@ export function extractLinks(text) {
   return refs
 }
 
-export function createWorkbench({ stateDir, getCore, getParsing = () => null, getFlows = () => null, getImports = () => null, getFileActions = () => null, log = () => {}, now = Date.now }) {
+export function createWorkbench({ stateDir, getCore, getParsing = () => null, getFlows = () => null, getImports = () => null, getFileActions = () => null, getAIWorkspace = () => null, log = () => {}, now = Date.now }) {
   const profileFile = path.join(stateDir, 'workbench', 'profile.json')
   let cache = null, scanPending = null
   const questions = new Map()
@@ -57,13 +60,14 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     const preferences = validatePreferences(stored?.value ?? DEFAULT_PREFERENCES)
     const conf = await core.getConfig()
     const sources = await readImportSources(root)
+    const deliverables = await deliverablesOf(root)
     const privateDirs = effectivePrivateDirs(conf.privateDirs, derivedPrivatePartitions(sources))
     const needsConfirmation = !stored && JSON.stringify(validatePreferences(prefs.defaults)) !== JSON.stringify(validatePreferences(DEFAULT_PREFERENCES))
     return { core, st, root, key, preferences, needsConfirmation, preferencesRevision: stored?.revision ?? 0, profile: prefs, conf, sources, privateDirs,
-      dataFile: path.join(stateDir, 'workbench', 'libraries', key + '.json') }
+      deliverables, dataFile: path.join(stateDir, 'workbench', 'libraries', key + '.json') }
   }
   const versionOf = b => digest([b.key, b.preferencesRevision, b.conf.revision].join('|')).slice(0, 20)
-  const isPrivate = (b, file) => privateRootOf(file, b.privateDirs) !== null
+  const isPrivate = (b, file) => privateRootOf(file, b.privateDirs) !== null || deliverablePrivate(b.deliverables, file)
   const visible = (b, file, question = false, includePrivate = false) => !isPrivate(b, file) || (question ? b.preferences.showPrivate && b.preferences.allowPrivateQuestions && includePrivate : b.preferences.showPrivate)
   function redactReferences(b, file, text, allowPrivate = b.preferences.showPrivate) {
     if (allowPrivate) return text
@@ -148,7 +152,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       p.revision++
       await atomicJson(profileFile, p)
       cache = null
-      questions.clear()
+      questions.clear(); questionService.clear()
       notify({ type: 'preferences', kbId: b?.st.kbId ?? null, guideComplete: complete })
       return { preferences: next, revision: b ? p.libraries[b.key].revision : p.revision, completed: complete }
     })
@@ -172,7 +176,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
   }
 
   async function scan(b, fresh = false) {
-    const key = versionOf(b)
+    const key = versionOf(b) + ':' + digest(JSON.stringify(b.deliverables))
     if (!fresh && cache?.key === key && now() - cache.at < 5000) return cache.value
     if (scanPending?.key === key) return scanPending.promise
     const promise = (async () => {
@@ -189,12 +193,19 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
           indexed.set(f.path, { path: f.path, entryId: parsed.data.id ?? indexed.get(f.path)?.entryId ?? null, title: parsed.data.title ?? path.posix.basename(f.path, '.md'), kind: parsed.data.type ?? null, tags: Array.isArray(parsed.data.tags) ? parsed.data.tags : [], status: parsed.data.status ?? null, text: content.text, truncated: content.truncated })
         }
       }
+      for (const f of walk.files.filter(f => f.path.startsWith('任务成品/'))) {
+        const item = b.deliverables.items.find(i => i.path === f.path)
+        let text = item?.text || ''
+        if (/\.(md|txt|csv|json|html)$/i.test(f.path)) text = (await textOf(b, f.path, 8 * 1024 * 1024)).text
+        if (item || text) indexed.set(f.path, { path: f.path, title: item?.title || path.posix.basename(f.path), kind: '任务成品', tags: ['任务成品'], text: [item?.description, text].filter(Boolean).join('\n'), status: '已完成' })
+      }
       const files = walk.files.map(f => {
         const e = indexed.get(f.path)
         return { path: f.path, bytes: f.bytes ?? f.size ?? 0, mtimeMs: f.mtimeMs, title: e?.title ?? path.posix.basename(f.path),
           tags: e?.tags ?? [], kind: e?.kind ?? null, status: e?.status ?? null, entryId: e?.entryId ?? null,
           extension: path.posix.extname(f.path).slice(1).toLowerCase(), private: isPrivate(b, f.path),
-          layer: f.path.startsWith('90-收件箱/') ? 'original' : f.path.startsWith('50-底稿/') ? 'draft' : e ? 'knowledge' : 'file' }
+          summary: redactReferences(b, f.path, e?.text || '').replace(/^---[\s\S]*?---\s*/, '').replace(/[#*`>|]/g, '').trim().slice(0, 160),
+          layer: f.path.startsWith('任务成品/') ? 'deliverable' : f.path.startsWith('90-收件箱/') ? 'original' : f.path.startsWith('50-底稿/') ? 'draft' : e ? 'knowledge' : 'file' }
       })
       const value = { files, dirs: walk.dirs, coverage: walk.coverage, truncated: walk.truncated, indexed, indexFresh: index.freshness?.fresh === true,
         version: key + ':' + digest(files.map(f => `${f.path}:${f.bytes}:${f.mtimeMs}`).join('\n')).slice(0, 12) }
@@ -206,6 +217,13 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
   }
 
   async function textOf(b, file, max = MAX_TEXT) {
+    const product = b.deliverables.items.find(i => i.path === file)
+    if (product && !TEXT.test(file)) {
+      const abs = await safePath(b.root, file), bytes = await readFile(abs)
+      if (digest(bytes) !== product.revision) throw fail('FILE_CHANGED', '成品已改变，请重新登记检索文字')
+      const text = [product.description, product.text].filter(Boolean).join('\n')
+      return { text: text.slice(0, max), revision: digest(text), truncated: text.length > max, bytes: bytes.length }
+    }
     const abs = await safePath(b.root, file)
     const fh = await open(abs, 'r')
     try {
@@ -255,69 +273,27 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
 
   async function relations(b, args) {
     const snap = await scan(b), data = await userData(b)
-    const accessible = snap.files.filter(f => visible(b, f.path)), paths = new Set(accessible.map(f => f.path))
-    const allPaths = new Set(snap.files.map(f => f.path))
-    const names = new Map()
-    for (const f of accessible) for (const name of new Set([path.posix.basename(f.path), path.posix.basename(f.path, path.posix.extname(f.path)), f.title])) {
-      const key = name.toLowerCase(); names.set(key, [...(names.get(key) ?? []), f.path])
-    }
-    const edges = [], issues = [], seen = new Set()
-    const add = edge => { const key = [edge.from, edge.to, edge.type].join('|'); if (!seen.has(key)) { seen.add(key); edges.push({ ...edge, id: edge.id ?? digest(key).slice(0, 20) }) } }
-    if (args.type === 'directory') for (const d of snap.dirs) {
-      const dir = typeof d === 'string' ? d : d.path, parent = path.posix.dirname(dir)
-      if (parent !== '.' && visible(b, dir) && visible(b, parent)) add({ from: parent, to: dir, type: 'directory', evidence: '实际子目录' })
-    }
-    for (const file of accessible) {
-      if (args.type === 'directory') { const parent = path.posix.dirname(file.path); if (parent !== '.') add({ from: parent, to: file.path, type: 'directory', evidence: '实际目录' }) }
-      if (!file.path.endsWith('.md')) continue
-      const indexed = snap.indexed.get(file.path)
-      const content = snap.indexFresh && typeof indexed?.text === 'string' ? { text: indexed.text } : await textOf(b, file.path).catch(() => null)
-      if (!content) continue
-      const refs = extractLinks(content.text), frontmatter = b.core._internal.parseFrontmatter(content.text).data
-      if (Array.isArray(frontmatter.see_also)) for (const target of frontmatter.see_also) if (typeof target === 'string') refs.push({ target, wiki: !target.includes('/'), type: 'reference', line: Math.max(1, content.text.split('\n').findIndex(l => l.startsWith('see_also:')) + 1) })
-      for (const ref of refs) {
-        if (safeUrl(ref.target) || /^[a-z]+:/i.test(ref.target)) continue
-        let target
-        try { target = path.posix.normalize(path.posix.join(path.posix.dirname(file.path), decodeURIComponent(ref.target))) } catch { continue }
-        const candidates = ref.wiki ? names.get(ref.target.toLowerCase()) ?? [] : [target, target + '.md', ref.target].filter(p => allPaths.has(p))
-        const unique = [...new Set(candidates)]
-        if (unique.some(p => !visible(b, p)) || isPrivate(b, target) && !b.preferences.showPrivate) continue
-        if (unique.length === 1 && paths.has(unique[0])) add({ from: file.path, to: unique[0], type: ref.type, line: ref.line, evidence: `第 ${ref.line} 行` })
-        else issues.push({ path: file.path, line: ref.line, reason: unique.length > 1 ? 'ambiguous' : 'unresolved' })
-      }
-    }
-    for (const source of Object.values(b.sources)) {
-      const from = source.originalPath, to = source.entryPath
-      if (typeof from !== 'string' || typeof to !== 'string' || !paths.has(to)) continue
-      if (!visible(b, from)) continue
-      if (paths.has(from) && source.mode === 'attach') add({ from, to, type: 'source', evidence: '导入来源映射' })
-      else if (source.mode === 'copy') {
-        // The mapping may record the inbox copy separately; only bind an exact existing path.
-        const copy = source.copiedPath ?? source.targetOriginalPath
-        if (copy && paths.has(copy)) add({ from: copy, to, type: 'source', evidence: '导入原件副本' })
-      }
-    }
-    for (const edge of data.links) {
-      if (!visible(b, edge.from) || !visible(b, edge.to)) continue
-      if (paths.has(edge.from) && paths.has(edge.to)) add({ ...edge, type: 'manual', evidence: edge.note || '手动关联' })
-      else issues.push({ id: edge.id, path: paths.has(edge.from) ? edge.from : null, reason: 'manual-target-missing' })
-    }
-    let selected = args.type ? edges.filter(e => e.type === args.type) : edges.filter(e => e.type !== 'directory')
+    const directories = snap.dirs.map(d => typeof d === 'string' ? d : d.path).filter(Boolean).map(p => ({ path: p, title: path.posix.basename(p), layer: 'directory' }))
+    const accessible = [...snap.files, ...directories].filter(f => visible(b, f.path))
+    const collected = await collectRelations({ files: accessible, readText: p => textOf(b, p, 8 * 1024 * 1024), visible: p => visible(b, p), links: data.links, type: args.type })
+    const navigation = p => /(^|\/)(INDEX|AGENTS|README)\.md$/.test(p)
+    const archive = p => /(^|\/)(_archive|原件归档)(\/|$)/.test(p)
+    let selected = collected.edges.filter(e => (!args.type || e.type === args.type) && (args.includeArchive || !archive(e.from) && !archive(e.to)) && (args.includeNavigation || !navigation(e.from) && !navigation(e.to)))
     if (args.path) {
       assertVisible(b, args.path)
       const reached = new Set([args.path]), result = new Map()
       for (let depth = 0; depth < (args.depth === 2 ? 2 : 1); depth++) {
         const next = new Set(reached)
-        for (const e of selected) if (reached.has(e.from) || reached.has(e.to)) { result.set(e.id, e); next.add(e.from); next.add(e.to) }
+        for (const edge of selected) if (reached.has(edge.from) || reached.has(edge.to)) { result.set(edge.id, edge); next.add(edge.from); next.add(edge.to) }
         for (const p of next) reached.add(p)
       }
       selected = [...result.values()]
     }
-    const nodePaths = [...new Set(selected.flatMap(e => [e.from, e.to]))]
-    const graphNodes = nodePaths.slice(0, 200), graphSet = new Set(graphNodes)
-    const graphEdges = selected.filter(e => graphSet.has(e.from) && graphSet.has(e.to)).slice(0, 500)
-    return { ...slicePage(selected, args), nodes: graphNodes.map(p => accessible.find(f => f.path === p) ?? { path: p, title: path.posix.basename(p), layer: 'directory' }), edges: graphEdges,
-      graphLimited: nodePaths.length > 200 || selected.length > graphEdges.length, issues: issues.slice(0, 100), revision: data.revision, kbId: b.st.kbId, policyVersion: versionOf(b), coverage: snap.coverage }
+    collected.issues = collected.issues.map(i => ({ ...i, context: redactReferences(b, i.path, i.context || '') }))
+    const nodePaths = [...new Set([...(args.path ? [args.path] : []), ...selected.flatMap(e => [e.from, e.to])])]
+    const nodeSet = new Set(nodePaths.slice(0, 200))
+    return { ...slicePage(selected, args), nodes: [...nodeSet].map(p => accessible.find(f => f.path === p) || { path: p, title: path.posix.basename(p), layer: 'directory' }), edges: selected.filter(e => nodeSet.has(e.from) && nodeSet.has(e.to)).slice(0, 500),
+      graphLimited: nodePaths.length > 200, issues: args.allIssues ? collected.issues : collected.issues.slice(0, 5), issueTotal: collected.issues.length, ...(args.allIssues ? { allFiles: accessible } : {}), revision: data.revision, kbId: b.st.kbId, policyVersion: versionOf(b), coverage: snap.coverage }
   }
 
   async function questionContext(b, args) {
@@ -342,19 +318,26 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
 
   const backups = createBackupService({ stateDir, binding, scan, userData, visible, safePath, checkDestination, now })
 
-  async function execute(args) {
+  const questionService = createQuestionService({ binding, versionOf, visible, list, textOf, redactReferences, now })
+  const repairs = createRepairService({ binding, versionOf, relations, userData, mutate, assertVisible, redactReferences, textOf, stateDir, now })
+  const deliverables = createDeliverableService({ binding, versionOf, isPrivate, assertVisible, now })
+  async function execute(args, caller) {
     if (args.op === 'preferences.get' || args.op === 'preferences.save') return { ok: true, ...await preferences(args) }
     if (args.op === 'onboarding.complete') return { ok: true, ...await preferences(args, true) }
     if (args.op.startsWith('onboarding.')) return { ok: true, ...await onboarding(args) }
     const b = await binding(args.expectedKbId)
     if (args.policyVersion && args.policyVersion !== versionOf(b)) throw fail('SETTINGS_CHANGED', '隐私或知识库设置已改变，请刷新')
+    if (args.op.startsWith('question.')) return { ok: true, ...await questionService.dispatch(b, args, caller) }
+    if (args.op === 'links.workspace') return { ok:true, ...await getAIWorkspace(b.root) }
+    if (args.op.startsWith('links.')) { const result = ['links.apply','links.undo'].includes(args.op) ? await b.core._internal.withMutationLock(b.root, () => repairs.dispatch(b, args, caller)) : await repairs.dispatch(b, args, caller); if (['links.apply','links.undo'].includes(args.op)) { cache = null; await b.core.maintainIndex({ expectedKbId: b.st.kbId }); notify({ type: 'links-changed', kbId: b.st.kbId }) }; return { ok: true, ...result } }
+    if (args.op.startsWith('deliverables.')) { const result = await deliverables.dispatch(b, args); cache = null; return { ok: true, ...result } }
     if (args.op === 'atlas.snapshot') {
       const snap = await scan(b, args.fresh), data = await userData(b)
       const knowledge = knowledgeCount(snap.files.filter(f => snap.indexed.has(f.path)).map(f => f.path), b.sources, { kbId: b.st.kbId, root: b.root })
       const sectionNames = [...new Set([...snap.dirs.map(d => typeof d === 'string' ? d : d.path).filter(p => p && !p.includes('/')), ...snap.files.filter(f => f.path.includes('/')).map(f => f.path.split('/')[0])])].sort()
       return { ok: true, kbId: b.st.kbId, root: b.root, policyVersion: versionOf(b), version: snap.version, revision: data.revision, preferences: b.preferences, guideComplete: Boolean(b.profile.onboarding[GUIDE_ID]?.completedAt), needsConfirmation: b.needsConfirmation,
         totals: { files: snap.files.length, knowledge: knowledge.knowledge, visible: snap.files.filter(f => visible(b, f.path)).length, private: snap.files.filter(f => f.private).length }, coverage: snap.coverage,
-        recent: snap.files.filter(f => visible(b, f.path)).sort((a, z) => z.mtimeMs - a.mtimeMs).slice(0, 12).map(f => ({ path: f.path, title: f.title, mtimeMs: f.mtimeMs })),
+        recent: snap.files.filter(f => visible(b, f.path)).sort((a, z) => z.mtimeMs - a.mtimeMs).slice(0, 12).map(f => ({ ...f })),
         sections: sectionNames.map(name => ({ name, private: isPrivate(b, name), files: snap.files.filter(f => scopeMatch(f.path, name)).length })) }
     }
     if (args.op === 'atlas.tree') {
@@ -589,11 +572,11 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     })
   }
 
-  async function dispatch(args) {
+  async function dispatch(args, caller) {
     if (!args || typeof args.op !== 'string') throw fail('BAD_OPERATION', '缺少操作类型')
     const management = /^(preferences|onboarding)\./.test(args.op)
     const before = management ? null : await binding(args.expectedKbId)
-    const result = await execute(args)
+    const result = await execute(args, caller)
     if (before) {
       const after = await binding(before.st.kbId)
       if (versionOf(before) !== versionOf(after)) throw fail('SETTINGS_CHANGED', '设置已改变，本次旧结果已作废')

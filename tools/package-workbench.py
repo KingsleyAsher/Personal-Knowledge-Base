@@ -34,6 +34,18 @@ if validation.is_file():
 (delivery / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 (delivery / 'SHA256SUMS').write_text(manifest['sha256'] + '  ' + archive.name + '\n', encoding='utf-8')
 shutil.copyfile(repo / 'WORKBENCH.md', delivery / '使用说明.md')
+shutil.copyfile(repo / 'BETA4.md', delivery / '整改说明与回退.md')
+browser_report = repo.parent / 'beta4-browser-evidence' / 'browser-validation.json'
+if browser_report.is_file():
+    browser = json.loads(browser_report.read_text(encoding='utf-8'))
+    for rel, expected in browser['sourceHashes'].items():
+        assert hashlib.sha256((repo / rel).read_bytes()).hexdigest() == expected, 'Browser evidence is stale: ' + rel
+    shutil.copyfile(browser_report, delivery / 'browser-validation.json')
+    manifest['validation']['browserUiVerifiedWithSyntheticHost'] = browser['passed']
+    manifest['validation']['browserEvidence'] = 'browser-validation.json'
+    (delivery / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
+    for name in browser['screenshots']:
+        shutil.copyfile(browser_report.parent / name, delivery / name)
 with zipfile.ZipFile(delivery / '知识库快速收集-浏览器扩展.zip', 'w', zipfile.ZIP_DEFLATED) as packed:
     for file in sorted((repo / 'browser-extension').iterdir()):
         if file.is_file(): packed.write(file, file.name)
