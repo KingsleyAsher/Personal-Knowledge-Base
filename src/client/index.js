@@ -2178,7 +2178,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         toast?e('div',{className:'kbm-toast'},toast):null)
     }
 
-    const RELEASE_NOTICE_VERSION = '1.1.2'
+    const RELEASE_NOTICE_VERSION = '1.1.3'
     const RELEASE_NOTICE_KEY = 'dsh-kb-release-seen:' + RELEASE_NOTICE_VERSION
     const RELEASE_GITHUB_URL = 'https://github.com/KingsleyAsher/Personal-Knowledge-Base'
     const RELEASE_SITE_URL = 'https://kingsleyasher.github.io/Personal-Knowledge-Base/'
@@ -2191,6 +2191,10 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         return host
       }, [])
       const closeRef = react.useRef(null)
+      const dismiss = () => {
+        try { window.localStorage.setItem(RELEASE_NOTICE_KEY, '1') } catch { /* 存储不可用时仅本次关闭 */ }
+        setVisible(false)
+      }
       react.useEffect(() => {
         if (!portalHost.isConnected) document.body.appendChild(portalHost)
         return () => { if (portalHost.isConnected) portalHost.remove() }
@@ -2206,15 +2210,11 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       react.useEffect(() => {
         if (!visible) return undefined
         closeRef.current?.focus()
-        const onKeyDown = (event) => { if (event.key === 'Escape') setVisible(false) }
+        const onKeyDown = (event) => { if (event.key === 'Escape') dismiss() }
         window.addEventListener('keydown', onKeyDown)
         return () => window.removeEventListener('keydown', onKeyDown)
       }, [visible])
       if (!visible) return null
-      const dismiss = () => {
-        try { window.localStorage.setItem(RELEASE_NOTICE_KEY, '1') } catch { /* 存储不可用时仅本次关闭 */ }
-        setVisible(false)
-      }
       return reactDom.createPortal(
         e('div', { className: 'kb-release-backdrop', role: 'presentation', onMouseDown: (event) => { if (event.target === event.currentTarget) dismiss() } },
           e('section', { className: 'kb-release-card', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'kb-release-title', 'aria-describedby': 'kb-release-intro' },
@@ -2222,11 +2222,11 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
             e('p', { className: 'kb-release-kicker' }, 'PERSONAL KNOWLEDGE · RELEASE NOTES'),
             e('h2', { id: 'kb-release-title' }, '知识库插件已更新'),
             e('span', { className: 'kb-release-version' }, '当前版本 ' + RELEASE_NOTICE_VERSION),
-            e('p', { id: 'kb-release-intro', className: 'kb-release-intro' }, '欢迎使用个人知识库。本次更新为你准备了产品介绍页，并会在新版本首次启动时展示更新内容。'),
+            e('p', { id: 'kb-release-intro', className: 'kb-release-intro' }, '本版加强了导入解析权限控制，并统一公告的关闭行为。'),
             e('ul', { className: 'kb-release-list' }, [
-              '首次安装或首次启动此版本时，自动展示版本更新说明。',
-              '提供 GitHub 仓库入口，查看源码、发布包与完整更新记录。',
-              '提供产品展示网页入口，了解资料整理、检索与知识沉淀的使用方式。',
+              '导入解析现在核验活跃调用方、知识库授权及 H1 状态。',
+              '解析继续使用设置中的默认服务；会话记忆里的 provider ID 不会生效。',
+              '按 Esc、点击关闭按钮或遮罩都会记住已读状态。',
             ].map((item) => e('li', { key: item }, item))),
             e('div', { className: 'kb-release-actions' },
               e('a', { href: RELEASE_GITHUB_URL, target: '_blank', rel: 'noopener noreferrer', onClick: dismiss }, '访问 GitHub ↗'),

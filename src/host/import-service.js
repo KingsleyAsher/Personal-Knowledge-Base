@@ -363,7 +363,9 @@ export function createImportService({ stateDir, getBaseConfig, getCurrentCore = 
     const kindUse = kind || suggestParseKind(item)
     const submitted = await parsing.submit(
       { sourceRel, kind: kindUse, providerId, purpose: 'import-item' },
-      { requestedBy: requestedBy?.via === 'tool' ? { via: 'tool', importId } : { via: 'import', importId } },
+      { requestedBy: requestedBy?.via === 'tool'
+        ? { via: 'tool', importId, gate: requestedBy.gate ?? null, session: requestedBy.session ?? null }
+        : { via: 'import', importId } },
     )
     if (submitted.ok !== true) return { ...submitted, rel: item.rel }
     item.parseJobId = submitted.jobId

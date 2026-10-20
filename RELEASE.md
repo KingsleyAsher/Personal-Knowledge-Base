@@ -1,11 +1,11 @@
-# 个人知识库 1.1.2
+# 个人知识库 1.1.3
 
-本版修复启动版本说明浮窗出现后立即消失的问题。弹窗仅挂载到一个宿主插槽；只有用户主动关闭时才记录本版本已读，避免宿主重渲染后弹窗消失并永久被标记为已看过。
+本版修复两个缺口：`kb_import action=parse` 过去没有经过 `kb_parse` 的调用者授权与 H1 状态检查；现在只有宿主确认的知识库根会话或仍有效的知识库子代理可以解析，且 H1 必须就绪。任务记录保存授权来源，模型传入的 provider ID 不会改变设置默认值。
 
-浮窗提供 GitHub 仓库和产品展示网页入口。提示状态按公告版本保存在当前浏览器配置中，用户关闭后本版本不再重复弹出。
+更新公告以统一关闭函数处理按钮、遮罩和 Esc 键；按 Esc 关闭后也会保存本版本已读状态。
 
-安装包：`dist/local-dsh-knowledge-base-1.1.2.tgz`。升级后完全退出 DSH（含托盘）并重开。摘要、构建号及逐文件校验见 `release-manifest.json`。
+安装包：`dist/local-dsh-knowledge-base-1.1.3.tgz`。版本升级会改变内容构建号；安装后完全退出 DSH（含托盘）并重开，再核对版本和构建号。摘要、构建号及逐文件校验见 `release-manifest.json`。
 
-展示页地址：`https://kingsleyasher.github.io/Personal-Knowledge-Base/`。仓库 Pages 发布源已设为 GitHub Actions，部署任务等待 GitHub 托管 runner 调度。
+展示页地址：`https://kingsleyasher.github.io/Personal-Knowledge-Base/`。本次合并后由 GitHub Pages Actions 发布 1.1.3 页面和下载包。
 
-本次修复尚未进行 DSH 实机启动验收。未调用真实收费云端 API。
+新增回归测试覆盖未授权/伪造调用方拒绝、H1 缺失或未就绪拒绝、授权撤销、授权来源留痕和 Esc 已读持久化。未进行 1.1.3 DSH 实机启动验收或真实收费云端 API 验证。
