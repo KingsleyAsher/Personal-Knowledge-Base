@@ -104,6 +104,21 @@ export function createParseCaller(getService, config) {
     return deny('PARSE_DELEGATION_REQUIRED', '这条会话没有实时的知识库授权：解析只能由知识库子代理执行（请用 agent_call(target="knowledge") 委派）')
   }
 }
+
+/** kb_import 的 parse 子动作复用唯一解析授权门，且不接受模型传入的 providerId。 */
+export async function runImportParseAction({ args, exec, importService, parseCaller }) {
+  const importId = String(args?.importId ?? '')
+  if (importId === '') return { ok: false, error: 'parse 需要 importId' }
+  const rel = String(args?.rel ?? '')
+  if (rel.trim() === '') return { ok: false, error: 'parse 需要 rel（导入清单里的相对路径）' }
+  const gate = parseCaller(exec)
+  if (!gate.ok) return { ok: false, reason: gate.reason, error: gate.detail }
+  return await importService.parseItem(
+    { importId, rel, kind: args?.kind },
+    { requestedBy: { via: 'tool', gate: gate.via, session: exec?.agent?.session?.header?.id ?? null } },
+  )
+}
+
 const kv = (prefix, v, fields) =>
   text(prefix + ' ' + fields.filter((f) => v[f] !== undefined && v[f] !== null).map((f) => `${f}=${typeof v[f] === 'object' ? JSON.stringify(v[f]) : v[f]}`).join(' '))
 
@@ -434,12 +449,12 @@ let parsingService = null
     return flowEngine
   }
 
-  /** kb_parse：解析（OCR / 语音转写）的唯一模型入口。普通 Agent 必须委派知识库子代理。 */
+  /** kb_parse：解析能力的主模型入口；kb_import 的 parse 子动作复用同一调用方闸门。 */
   const parseToolDefs = () => {
     const tool = {
       name: 'kb_parse',
       description:
-        '解析（OCR / 语音转写）：只能用**管理员已在设置页配好的**提供方，任务固定源原件（库内相对路径）+ 提供方/配置版本，支持进度、超时、取消、有限重试与重启恢复；解析成功与落库成功分开记录；结果只落隔离的底稿区，落库时按来源映射写入知识库。'
+        '解析（OCR / 语音转写）：只能由宿主选定的知识库会话或获得实时知识库授权的子代理调用，且 H1 必须就绪；kb_import action=parse 也执行相同检查。只能用**管理员已在设置页配好的**提供方，任务固定源原件（库内相对路径）+ 提供方/配置版本，支持进度、超时、取消、有限重试与重启恢复；解析成功与落库成功分开记录；结果只落隔离的底稿区，落库时按来源映射写入知识库。'
         + '会话提交及测试解析强制使用当前设置的默认 OCR/ASR 服务；不得根据记忆指定其他服务。用户需要单次选择时，请其在解析设置页选择后提交。test-parse 必须提供 kind。'
         + 'action：providers（列出提供方与默认/策略）/ test-connection（只验地址或程序通不通）/ test-parse（真实小样本解析，与连接测试分开）/ submit / jobs / job / result（有界读取，可只取某几页或某几段）/ cancel / retry（解析失败重试；解析成功但落库失败只重试落库）/ land（把底稿按来源落成条目）。'
         + '⚠️ 提供方的新增/修改/删除、程序与参数、凭据引用、外发策略都属**管理面**，只能由用户在「设置 → 个人知识库 → 解析」里改；模型调用这些动作会得到 ADMIN_ONLY。',
@@ -944,7 +959,7 @@ let parsingService = null
       },
       {
         name: 'kb_import',
-        description: '导入异构资料 / 旧库，与设置页共用同一后端流程。action=plan：只读冻结源清单（含逐文件 sha256、跳过目录、截断情况），不写任何东西；action=run：按清单执行（可中断、可重试、同一文件不重复建条目）；action=status：看阶段与成功/待处理/失败计数；action=cancel：中止；action=waiting：列出该导入任务里"待解析/待识别"的项（含建议的解析类型与是否可解析）；action=parse：把其中一项交给解析服务（只解析、不自动落库，落库用 kb_parse action=land）。mode=attach 接入原目录（原件留原位）/ copy 复制导入（原件进 90-收件箱）。',
+        description: '导入异构资料 / 旧库，与设置页共用同一后端流程。action=plan：只读冻结源清单（含逐文件 sha256、跳过目录、截断情况），不写任何东西；action=run：按清单执行（可中断、可重试、同一文件不重复建条目）；action=status：看阶段与成功/待处理/失败计数；action=cancel：中止；action=waiting：列出该导入任务里"待解析/待识别"的项（含建议的解析类型与是否可解析）；action=parse：仅知识库授权会话且 H1 就绪时可用，把其中一项交给解析服务（只解析、不自动落库，落库用 kb_parse action=land）。mode=attach 接入原目录（原件留原位）/ copy 复制导入（原件进 90-收件箱）。',
         parameters: {
           type: 'object',
           additionalProperties: false,
@@ -987,7 +1002,7 @@ let parsingService = null
           },
         },
         isConcurrencySafe: () => false,
-        async execute(args) {
+        async execute(args, exec) {
           const action = String(args?.action ?? '')
           if (importService === null) return { ok: false, error: '导入服务尚未就绪（core 未安装完成）' }
           // R1：模型工具与设置页走**同一个**服务；任务目标由清单固定，不跟随当前绑定
@@ -1043,10 +1058,7 @@ let parsingService = null
             return await importService.waiting({ importId })
           }
           if (action === 'parse') {
-            const importId = String(args?.importId ?? '')
-            if (importId === '') return { ok: false, error: 'parse 需要 importId' }
-            if (String(args?.rel ?? '').trim() === '') return { ok: false, error: 'parse 需要 rel（导入清单里的相对路径）' }
-            return await importService.parseItem({ importId, rel: String(args.rel), kind: args?.kind }, { requestedBy: { via: 'tool' } })
+            return await runImportParseAction({ args, exec, importService, parseCaller: kbParseCaller })
           }
           return { ok: false, error: '未知 action：' + action }
         },
@@ -1109,7 +1121,7 @@ let parsingService = null
       evidence.registration.attempted.push(entry.name)
       try {
         ctx.effect(() => tools.register(entry), 'kb-core: ' + entry.name)
-        if (['kb_status', 'kb_flow', 'kb_flow_resolve', 'kb_parse'].includes(entry.name)) {
+        if (['kb_status', 'kb_flow', 'kb_flow_resolve', 'kb_parse', 'kb_import'].includes(entry.name)) {
           ctx.get('h1Isolation')?.registerGateway(entry)
           ctx.inject(['h1Isolation'], scope => scope.get('h1Isolation').registerGateway(entry))
         }
