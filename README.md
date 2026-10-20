@@ -1,13 +1,13 @@
-# 个人知识库 2.0.1-beta1
+# 个人知识库 2.0.1-beta2
 
 知识工作台预览：可控隐私、首次及跨版本设置引导、目录与关系地图、快速收集、PDF 阅读摘录、原生 @ 知识库提问和默认关闭的完整备份。完整使用与边界见 [工作台说明](WORKBENCH.md)。
 
 ## 选择下载版本
 
-- **正式版 1.1.4**：[下载正式版](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-1.1.4.tgz)。
-- **预览版 2.0.1-beta1**：[下载预览版](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.0.1-beta1.tgz) · [预览发布说明](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.0.1-beta1)。
+- **正式版 1.1.5**：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-1.1.5.tgz) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-1.1.5.tgz?ref=main) · [GitHub 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v1.1.5/local-dsh-knowledge-base-1.1.5.tgz)。
+- **预览版 2.0.1-beta2**：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.0.1-beta2.tgz) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.0.1-beta2.tgz?ref=main) · [GitHub 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.0.1-beta2/local-dsh-knowledge-base-2.0.1-beta2.tgz)。
 
-新版更新器同时检查正式版和预览版；预览更新仅作可选提示，由用户主动下载或安装。正式版清单指向 1.1.4。旧版用户先升级正式版 1.1.4，即可获得预览提示和可选下载入口。
+新版更新器同时检查正式版和预览版；预览更新仅作可选提示，由用户主动下载或安装。正式版清单指向 1.1.5。旧版用户先升级正式版 1.1.5，即可获得预览提示和可选下载入口。
 
 以下为 1.1.3 基线的历史能力和发布说明。
 
@@ -34,7 +34,7 @@ DSH 个人知识库插件：目录绑定、条目管理与检索、资料导入�
 
 ## 安装
 
-首次安装或从旧版接入新更新器：在 DSH 插件管理器的安装源中填写 `https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-1.1.4.tgz`，由客户端下载和安装；也可安装仓库 `dist/` 下的本地包。旧版自身的下载按钮仍采用旧流程，需先安装本版才能获得新更新器。
+首次安装或从旧版接入新更新器：在 DSH 插件管理器的安装源中填写 `https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-1.1.5.tgz`，由客户端下载和安装；也可安装仓库 `dist/` 下的本地包。旧版自身的下载按钮仍采用旧流程，需先安装本版才能获得新更新器。
 
 安装本版后，插件内「检查更新 → 立即更新」自动完成下载、SHA-256 与包身份校验、安装及加载核对。普通宿主支持时热加载，宿主返回需要重启时再完全退出（含托盘）并重开。核对版本及构建号，摘要见 [发布清单](release-manifest.json)。宿主未提供安装接口时，按钮会说明需使用宿主插件管理器。
 
@@ -58,3 +58,7 @@ node tests/rebuild-probe.mjs src/host/index.js
 自动化使用合成资料及模拟服务。预览阶段本机 OCR 图片与两页 PDF、ASR 短音频与 66 秒分块音频通过；用户确认 preview.4 本机验证通过。1.1.1 新增启动公告和产品页；1.1.2 修复公告弹窗双插槽挂载及过早写入已读标记的问题；1.1.3 让导入解析复用解析授权闸门，并修正 Esc 关闭时未保存已读状态的问题。未进行真实收费云端接口验证或 1.1.3 DSH 实机启动验收。
 
 索引维护只改索引及维护状态，不改知识正文、原件、聊天和其他记忆。快照恢复仅恢复索引。独立脚本或其他插件绕过解析入口的调用，不受本插件默认服务规则控制。
+
+## 国内更新源
+
+1.1.5 正式版与 2.0.1-beta2 预览版内置 Gitee、GitCode 和 GitHub。三个源并发检查正式/预览清单，采用可用源中的最新版本；同版本摘要冲突时阻止更新。优先使用国内源，下载失败或包校验失败时切换其他源。界面可展开查看来源状态和各源下载入口。GitCode 使用官方文件 API，Gitee 使用可重新获取的原始文件链接，不保存临时签名地址。镜像同步可能有延迟；全部源不可用会明确报错，不视为最新。已安装的旧版需要先更新一次才能使用新源。

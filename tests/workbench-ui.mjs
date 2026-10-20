@@ -64,9 +64,11 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/kb-core/api') {
       let body = ''; for await (const chunk of req) body += chunk
       const args = JSON.parse(body || '{}'); let result
-      if (args.op === 'status') result = { ok: true, status: { ...await core.status(), build: { version: '2.0.1-beta1' } } }
+      if (args.op === 'status') result = { ok: true, status: { ...await core.status(), build: { version: '2.0.1-beta2' } } }
       else if (args.op === 'parse.providers') result = { ok: true, providers: [], defaultOcr: null, defaultAsr: null }
-      else if (args.op === 'updates.check') result = { ok: true, currentVersion: '2.0.1-beta1', updateAvailable: false }
+      else if (args.op === 'updates.check') result = { ok: true, currentVersion: '2.0.1-beta2', latestVersion: '1.1.5', sourceName: 'Gitee', updateAvailable: false,
+        sourceStatus: [{ id: 'gitee', name: 'Gitee', ok: true, version: '1.1.5' }, { id: 'gitcode', name: 'GitCode', ok: true, version: '1.1.5' }, { id: 'github', name: 'GitHub', ok: false, error: '连接超时' }],
+        downloadSources: [{ id: 'gitee', name: 'Gitee', url: 'https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-1.1.5.tgz' }, { id: 'gitcode', name: 'GitCode', url: 'https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-1.1.5.tgz?ref=main' }] }
       else result = await workbench.dispatch(args)
       res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(result))
     }
@@ -91,6 +93,12 @@ try {
   await page.getByRole('button', { name: '下一步', exact: true }).click()
   await page.getByRole('button', { name: '保存并开始使用' }).click()
   await page.getByRole('dialog').waitFor({ state: 'hidden' })
+  await page.getByText('下载源：Gitee / GitCode / GitHub · 当前 Gitee', { exact: true }).click()
+  await page.getByText('正式版 · GitCode：可连接 1.1.5', { exact: true }).waitFor()
+  assert((await page.getByRole('link', { name: 'GitCode 正式版下载', exact: true }).getAttribute('href')).startsWith('https://api.gitcode.com/'))
+  await page.screenshot({ path: path.join(output, 'desktop-update-sources.png') })
+  await page.getByText('下载源：Gitee / GitCode / GitHub · 当前 Gitee', { exact: true }).click()
+  cases.push('更新界面显示 Gitee / GitCode / GitHub 状态及国内下载入口')
   await page.getByRole('textbox', { name: '搜索知识库' }).fill('完全不存在的验收关键词')
   await page.getByRole('button', { name: '搜索', exact: true }).click()
   await page.locator('.kbw-list').getByText('当前范围没有匹配的内容', { exact: true }).waitFor()

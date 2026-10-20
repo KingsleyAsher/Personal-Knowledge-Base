@@ -54,93 +54,108 @@ export function compareReleaseVersions(a, b) {
   return 0
 }
 
-export function createUpdateChecker({ currentVersion, fetch: fetchFn = globalThis.fetch, now = Date.now, timeoutMs = 8000, previewManifestUrl = UPDATE_PREVIEW_MANIFEST_URL } = {}) {
-  let cached = null
-  let expiresAt = 0
-  let inflight = null
-  async function fetchLatest() {
-    const controller = new AbortController()
-    const timer = setTimeout(() => controller.abort(), timeoutMs)
-    try {
-      const response = await fetchFn(UPDATE_MANIFEST_URL, {
-        signal: controller.signal, redirect: 'error', cache: 'no-store',
-        headers: { accept: 'application/json' },
-      })
-      if (!response.ok) throw new Error('GitHub 返回 HTTP ' + response.status)
-      const reader = response.body.getReader()
-      const chunks = []
-      let bytes = 0
-      try {
-        for (;;) {
-          const { done, value } = await reader.read()
-          if (done) break
-          bytes += value.byteLength
-          if (bytes > 65536) { await reader.cancel(); throw new Error('更新信息过大') }
-          chunks.push(value)
-        }
-      } finally { reader.releaseLock() }
-      const data = new Uint8Array(bytes)
-      let offset = 0
-      for (const chunk of chunks) { data.set(chunk, offset); offset += chunk.byteLength }
-      const manifest = JSON.parse(new TextDecoder().decode(data))
-      if (manifest.package !== '@local/dsh-knowledge-base' || !stableParts(manifest.version)
-        || manifest.tgz !== 'local-dsh-knowledge-base-' + manifest.version + '.tgz'
-        || !/^[a-f0-9]{64}$/.test(manifest.sha256 || '')) throw new Error('GitHub 更新清单无效')
-      // The stable feed stays stable-only; previews have an independent feed.
-      const comparison = compareReleaseVersions(manifest.version, currentVersion)
-      return {
-        ok: true, currentVersion, latestVersion: manifest.version,
-        updateAvailable: comparison > 0, ahead: comparison < 0,
-        checkedAt: new Date(now()).toISOString(), source: UPDATE_REPOSITORY,
-        downloadUrl: UPDATE_RAW_ROOT + encodeURIComponent(manifest.tgz),
-        notesUrl: UPDATE_REPOSITORY + '/blob/main/RELEASE.md',
-        tgz: manifest.tgz, sha256: manifest.sha256, bytes: manifest.bytes, buildId: manifest.buildId,
-      }
-    } catch (error) {
-      const detail = controller.signal.aborted ? '连接 GitHub 超时' : error instanceof SyntaxError ? 'GitHub 更新清单无效' : String(error.message || error)
-      return { ok: false, currentVersion, checkedAt: new Date(now()).toISOString(), error: '检查更新失败：' + (detail === 'fetch failed' ? '无法连接 GitHub，请稍后重试' : detail) }
-    } finally { clearTimeout(timer) }
-  }
-  return {
-    check({ force = false } = {}) {
-      if (inflight) return inflight
-      if (!force && cached && now() < expiresAt) return Promise.resolve({ ...cached, cached: true })
-      inflight = fetchLatest().then(async result => {
-        if (previewManifestUrl) {
-          const controller = new AbortController(), timer = setTimeout(() => controller.abort(), timeoutMs)
-          try {
-            const response = await fetchFn(previewManifestUrl, { signal: controller.signal, redirect: 'error', cache: 'no-store', headers: { accept: 'application/json' } })
-            if (!response.ok) throw Error('HTTP ' + response.status)
-            const reader = response.body.getReader(), chunks = []; let bytes = 0
-            try {
-              for (;;) {
-                const { done, value } = await reader.read(); if (done) break
-                bytes += value.byteLength
-                if (bytes > 65536) { await reader.cancel(); throw Error('预览版清单过大') }
-                chunks.push(Buffer.from(value))
-              }
-            } finally { reader.releaseLock() }
-            const p = JSON.parse(Buffer.concat(chunks).toString('utf8'))
-            if (p.package !== '@local/dsh-knowledge-base' || !versionParts(p.version)?.pre.length ||
-                p.tgz !== 'local-dsh-knowledge-base-' + p.version + '.tgz' || !/^[a-f0-9]{64}$/.test(p.sha256 || '') ||
-                !/^[a-f0-9]{16}$/.test(p.buildId || '') || !Number.isSafeInteger(p.bytes) || p.bytes < 1 || p.bytes > MAX_UPDATE_BYTES) throw Error('预览版清单无效')
-            result.preview = { ok: true, channel: 'preview', latestVersion: p.version, updateAvailable: compareReleaseVersions(p.version, currentVersion) > 0,
-              tgz: p.tgz, sha256: p.sha256, bytes: p.bytes, buildId: p.buildId,
-              downloadUrl: UPDATE_RAW_ROOT + encodeURIComponent(p.tgz), notesUrl: UPDATE_REPOSITORY + '/releases/tag/v' + encodeURIComponent(p.version) }
-          } catch { result.previewError = '预览版信息暂不可用，可稍后重新检查' }
-          finally { clearTimeout(timer) }
-        }
-        cached = result
-        expiresAt = now() + (result.ok ? UPDATE_INTERVAL_MS : 5 * 60 * 1000)
-        return result
-      }).finally(() => { inflight = null })
-      return inflight
-    },
-  }
+const REPO_PATH = 'KingsleyAsher/Personal-Knowledge-Base'
+const MAX_UPDATE_BYTES = 16 * 1024 * 1024
+export const UPDATE_SOURCES = Object.freeze([
+  { id: 'gitee', name: 'Gitee', repository: 'https://gitee.com/' + REPO_PATH,
+    file: rel => 'https://gitee.com/' + REPO_PATH + '/raw/main/' + rel,
+    hosts: ['gitee.com', 'raw.giteeusercontent.com'] },
+  { id: 'gitcode', name: 'GitCode', repository: 'https://gitcode.com/' + REPO_PATH,
+    file: rel => 'https://api.gitcode.com/api/v5/repos/' + REPO_PATH + '/raw/' + rel + '?ref=main',
+    hosts: ['api.gitcode.com', 'raw.gitcode.com', 'gitcode.com'] },
+  { id: 'github', name: 'GitHub', repository: UPDATE_REPOSITORY,
+    file: rel => 'https://raw.githubusercontent.com/' + REPO_PATH + '/main/' + rel,
+    hosts: ['raw.githubusercontent.com'] },
+])
+
+function selectedSources(ids) {
+  if (!Array.isArray(ids) || !ids.length || ids.some(id => !UPDATE_SOURCES.some(s => s.id === id))) throw Error('更新源无效')
+  return [...new Set(ids)].map(id => UPDATE_SOURCES.find(s => s.id === id))
 }
 
-const UPDATE_RAW_ROOT = 'https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/'
-const MAX_UPDATE_BYTES = 16 * 1024 * 1024
+// Follow only a bounded set of HTTPS redirects belonging to the selected service.
+// No cookies, authorization, mirror-provided download URLs or user paths are sent.
+async function sourceBytes(fetchFn, source, rel, limit, timeoutMs) {
+  const controller = new AbortController(), timer = setTimeout(() => controller.abort(), timeoutMs)
+  let url = source.file(rel)
+  try {
+    for (let redirects = 0; redirects <= 4; redirects++) {
+      const target = new URL(url)
+      if (target.protocol !== 'https:' || target.port || target.username || target.password || !source.hosts.includes(target.hostname)) throw Error('更新源跳转不受信任')
+      const response = await fetchFn(url, { signal: controller.signal, redirect: source.id === 'github' ? 'error' : 'manual', cache: 'no-store',
+        headers: { accept: '*/*', ...(source.id === 'gitcode' ? { referer: source.repository } : {}) } })
+      if ([301,302,303,307,308].includes(response.status)) {
+        const location = response.headers.get('location')
+        await response.body?.cancel()
+        if (!location || redirects === 4) throw Error('更新源跳转次数过多')
+        url = new URL(location, url).href
+        continue
+      }
+      if (!response.ok) throw Error('HTTP ' + response.status)
+      if (!response.body) throw Error('更新源未返回内容')
+      if ((response.headers.get('content-type') || '').toLowerCase().includes('text/html')) { await response.body.cancel(); throw Error('更新源返回网页，无法作为下载文件') }
+      const reader = response.body.getReader(), chunks = []; let bytes = 0
+      try {
+        for (;;) {
+          const { done, value } = await reader.read(); if (done) break
+          bytes += value.byteLength
+          if (bytes > limit) { await reader.cancel(); throw Error('更新文件超过允许大小') }
+          chunks.push(Buffer.from(value))
+        }
+      } finally { reader.releaseLock() }
+      return Buffer.concat(chunks)
+    }
+  } catch (error) {
+    if (controller.signal.aborted) throw Error('连接超时')
+    throw error
+  } finally { clearTimeout(timer) }
+}
+
+export function createUpdateChecker({ currentVersion, fetch: fetchFn = globalThis.fetch, now = Date.now, timeoutMs = 6000,
+  previewManifestUrl = UPDATE_PREVIEW_MANIFEST_URL, sourceIds = UPDATE_SOURCES.map(s => s.id) } = {}) {
+  const sources = selectedSources(sourceIds)
+  let cached = null, expiresAt = 0, inflight = null
+  async function channel(preview) {
+    const results = await Promise.all(sources.map(async source => {
+      try {
+        const raw = await sourceBytes(fetchFn, source, preview ? 'preview-manifest.json' : 'release-manifest.json', 65536, timeoutMs)
+        const m = JSON.parse(raw.toString('utf8'))
+        if (m.package !== '@local/dsh-knowledge-base' || !(preview ? versionParts(m.version)?.pre.length : stableParts(m.version)) ||
+            m.tgz !== 'local-dsh-knowledge-base-' + m.version + '.tgz' || !/^[a-f0-9]{64}$/.test(m.sha256 || '')) throw Error('更新清单无效')
+        if (preview && (!/^[a-f0-9]{16}$/.test(m.buildId || '') || !Number.isSafeInteger(m.bytes) || m.bytes < 1 || m.bytes > MAX_UPDATE_BYTES)) throw Error('预览版清单无效')
+        return { source, manifest: m, ok: true }
+      } catch (error) { return { source, ok: false, error: error instanceof SyntaxError ? '更新清单无效' : String(error.message || error).slice(0,180) } }
+    }))
+    const good = results.filter(x => x.ok).sort((a,b) => compareReleaseVersions(b.manifest.version,a.manifest.version))
+    const sourceStatus = results.map(x => ({ id: x.source.id, name: x.source.name, ok: x.ok, version: x.manifest?.version, error: x.error }))
+    if (!good.length) return { ok: false, sourceStatus, error: '检查更新失败：所有更新源暂不可用，请稍后重试' }
+    const chosen = good[0], m = chosen.manifest
+    if (good.some(x => x.manifest.version === m.version && (x.manifest.sha256 !== m.sha256 || x.manifest.bytes !== m.bytes || x.manifest.buildId !== m.buildId))) {
+      return { ok: false, sourceStatus, error: '检查更新失败：相同版本的更新源摘要不一致，请稍后重试' }
+    }
+    const comparison = compareReleaseVersions(m.version,currentVersion)
+    return { ok: true, currentVersion, latestVersion: m.version, channel: preview ? 'preview' : 'stable', updateAvailable: comparison > 0, ahead: comparison < 0,
+      checkedAt: new Date(now()).toISOString(), source: chosen.source.repository, sourceId: chosen.source.id, sourceName: chosen.source.name,
+      sourceIds: sources.map(s => s.id), sourceStatus,
+      downloadUrl: chosen.source.file('dist/' + encodeURIComponent(m.tgz)),
+      downloadSources: sources.map(s => ({ id: s.id, name: s.name, url: s.file('dist/' + encodeURIComponent(m.tgz)) })),
+      notesUrl: chosen.source.repository + '/blob/main/' + (preview ? 'PREVIEW.md' : 'RELEASE.md'),
+      tgz: m.tgz, sha256: m.sha256, bytes: m.bytes, buildId: m.buildId }
+  }
+  async function latest() {
+    const [stable, preview] = await Promise.all([channel(false), previewManifestUrl ? channel(true) : null])
+    const result = { ...stable, currentVersion, checkedAt: new Date(now()).toISOString() }
+    if (preview?.ok) result.preview = preview
+    else if (preview) { result.previewError = '预览版信息暂不可用，可稍后重新检查'; result.previewSourceStatus = preview.sourceStatus }
+    return result
+  }
+  return { check({ force = false } = {}) {
+    if (inflight) return inflight
+    if (!force && cached && now() < expiresAt) return Promise.resolve({ ...cached, cached: true })
+    inflight = latest().then(result => { cached = result; expiresAt = now() + (result.ok ? UPDATE_INTERVAL_MS : 5 * 60 * 1000); return result }).finally(() => { inflight = null })
+    return inflight
+  } }
+}
 
 /** Preflight the archive before handing it to the host package manager. */
 export function verifyUpdateArchive(raw, release) {
@@ -179,7 +194,7 @@ export function verifyUpdateArchive(raw, release) {
 }
 
 /** Downloads only to a hash-specific cache. No client-supplied URL/path is used. */
-export function createUpdateDownloader({ checker, cacheDir, fetch: fetchFn = globalThis.fetch, timeoutMs = 60000 } = {}) {
+export function createUpdateDownloader({ checker, cacheDir, fetch: fetchFn = globalThis.fetch, timeoutMs = 20000 } = {}) {
   let inflight = null, inflightVersion = null
   async function download(expectedVersion) {
     if (!cacheDir) throw Error('当前宿主未提供插件更新缓存目录')
@@ -200,36 +215,26 @@ export function createUpdateDownloader({ checker, cacheDir, fetch: fetchFn = glo
         return { ...result, cached: true }
       }
     } catch { /* missing or corrupt cache is downloaded again */ }
-    const controller = new AbortController(), timer = setTimeout(() => controller.abort(), timeoutMs)
     const temporary = target + '.' + randomUUID() + '.tmp'
+    const sources = selectedSources(release.sourceIds || ['github'])
+    sources.sort((a,b) => (a.id === release.sourceId ? -1 : b.id === release.sourceId ? 1 : 0))
+    const errors = []
     try {
-      const response = await fetchFn(UPDATE_RAW_ROOT + encodeURIComponent(release.tgz), { signal: controller.signal, redirect: 'error', cache: 'no-store' })
-      if (!response.ok) throw Error('安装包下载失败：HTTP ' + response.status)
-      if (!response.body) throw Error('安装包下载未返回内容')
-      const reader = response.body.getReader(), chunks = []
-      let bytes = 0
-      try {
-        for (;;) {
-          const { done, value } = await reader.read()
-          if (done) break
-          bytes += value.byteLength
-          if (bytes > release.bytes || bytes > MAX_UPDATE_BYTES) { await reader.cancel(); throw Error('安装包超过发布清单大小') }
-          chunks.push(Buffer.from(value))
+      for (const source of sources) {
+        try {
+          const raw = await sourceBytes(fetchFn, source, 'dist/' + encodeURIComponent(release.tgz), release.bytes, timeoutMs)
+          verifyUpdateArchive(raw, release)
+          await writeFile(temporary, raw, { flag: 'wx', mode: 0o600 })
+          try { await unlink(target) } catch (error) { if (error.code !== 'ENOENT') throw error }
+          await rename(temporary, target)
+          return { ...result, downloadSource: source.id, downloadSourceName: source.name }
+        } catch (error) {
+          errors.push(source.name + '：' + String(error.message || error))
+          try { await unlink(temporary) } catch { /* keep no unverified temporary package */ }
         }
-      } finally { reader.releaseLock() }
-      const raw = Buffer.concat(chunks)
-      verifyUpdateArchive(raw, release)
-      await writeFile(temporary, raw, { flag: 'wx', mode: 0o600 })
-      try { await unlink(target) } catch (error) { if (error.code !== 'ENOENT') throw error }
-      await rename(temporary, target)
-      return result
-    } catch (error) {
-      if (controller.signal.aborted) throw Error('下载安装包超时，请重试')
-      throw error
-    } finally {
-      clearTimeout(timer)
-      try { await unlink(temporary) } catch { /* no partial archive is offered for installation */ }
-    }
+      }
+      throw Error('安装包下载失败：' + errors.join('；'))
+    } finally { try { await unlink(temporary) } catch { /* no partial archive is installable */ } }
   }
   return {
     prepare({ expectedVersion } = {}) {

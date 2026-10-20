@@ -11,7 +11,7 @@ const stable = { package: '@local/dsh-knowledge-base', version: '1.1.3', tgz: 'l
 const preview = { ...stable, version: '2.0.1-beta1', tgz: 'local-dsh-knowledge-base-2.0.1-beta1.tgz', buildId: 'b'.repeat(16), bytes: 100 }
 test('stable and preview checks are read-only; preview remains an independent user choice', async () => {
   const urls = []
-  const checker = createUpdateChecker({ currentVersion: '1.1.3', fetch: async url => { urls.push(url); return Response.json(url.endsWith('/preview-manifest.json') ? preview : stable) } })
+  const checker = createUpdateChecker({ sourceIds: ['github'], currentVersion: '1.1.3', fetch: async url => { urls.push(url); return Response.json(url.endsWith('/preview-manifest.json') ? preview : stable) } })
   const result = await checker.check()
   assert.equal(result.updateAvailable, false)
   assert.equal(result.preview.updateAvailable, true)
@@ -26,7 +26,7 @@ test('stable and preview checks are read-only; preview remains an independent us
 })
 test('unavailable or unsafe preview metadata does not break the stable channel', async () => {
   for (const bad of [null, { ...preview, tgz: '../bad.tgz' }, { ...preview, version: '2.0.1' }, { ...preview, bytes: 20 * 1024 * 1024 }]) {
-    const checker = createUpdateChecker({ currentVersion: '2.0.1-beta1', fetch: async url => {
+    const checker = createUpdateChecker({ sourceIds: ['github'], currentVersion: '2.0.1-beta1', fetch: async url => {
       if (!url.endsWith('/preview-manifest.json')) return Response.json(stable)
       return bad ? Response.json(bad) : new Response('', { status: 404 })
     } })
@@ -35,7 +35,7 @@ test('unavailable or unsafe preview metadata does not break the stable channel',
   }
 })
 test('current preview does not repeat an update and stable successor is offered', async () => {
-  const checker = createUpdateChecker({ currentVersion: '2.0.1-beta1', fetch: async url => Response.json(url.endsWith('/preview-manifest.json') ? preview : { ...stable, version: '2.0.1', tgz: 'local-dsh-knowledge-base-2.0.1.tgz' }) })
+  const checker = createUpdateChecker({ sourceIds: ['github'], currentVersion: '2.0.1-beta1', fetch: async url => Response.json(url.endsWith('/preview-manifest.json') ? preview : { ...stable, version: '2.0.1', tgz: 'local-dsh-knowledge-base-2.0.1.tgz' }) })
   const result = await checker.check()
   assert.equal(result.preview.updateAvailable, false); assert.equal(result.updateAvailable, true)
 })

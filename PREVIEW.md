@@ -1,11 +1,11 @@
-# 2.0.1-beta1 预览版
+# 2.0.1-beta2 预览版
 
 本次提供知识工作台升级预览，正式版提供 1.1.4。
 
 ## 下载与选择
 
-- [预览版 2.0.1-beta1](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.0.1-beta1.tgz)
-- [正式版 1.1.4](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-1.1.4.tgz)
+- [预览版 2.0.1-beta2](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.0.1-beta2.tgz)
+- [正式版 1.1.5](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-1.1.5.tgz)
 - [完整使用说明](WORKBENCH.md)
 
 新版的“检查更新”分别检查正式版和预览版，提示可选预览更新。用户点击下载或安装后才执行对应操作，不自动切换通道。旧版用户先通过原有更新入口安装 1.1.4，即可选择正式版或预览版。
@@ -24,3 +24,7 @@
 84 项自动化测试及实际 Edge 桌面/手机尺寸交互检查通过，使用虚构资料库和宿主适配层。尚未完成真实 DSH 安装升级、实际模型完整回答、扩展安装及手机系统分享菜单验收。引用工具已提供，插件不接管宿主流式回答渲染，不能强制所有模型调用校验工具。
 
 应用内快捷键不等同于系统全局快捷键。完整备份为含校验清单的目录包。大小限制、安装与回退方法见使用说明。
+
+## 国内更新源
+
+1.1.5 正式版与 2.0.1-beta2 预览版内置 Gitee、GitCode 和 GitHub。三个源并发检查正式/预览清单，采用可用源中的最新版本；同版本摘要冲突时阻止更新。优先使用国内源，下载失败或包校验失败时切换其他源。界面可展开查看来源状态和各源下载入口。GitCode 使用官方文件 API，Gitee 使用可重新获取的原始文件链接，不保存临时签名地址。镜像同步可能有延迟；全部源不可用会明确报错，不视为最新。已安装的旧版需要先更新一次才能使用新源。
