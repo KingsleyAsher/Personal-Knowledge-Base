@@ -1,10 +1,10 @@
 {
   "package": "@local/dsh-knowledge-base",
-  "version": "2.0.1-beta4",
-  "buildId": "6ae40bd123ad937f",
-  "tgz": "local-dsh-knowledge-base-2.0.1-beta4.tgz",
-  "bytes": 2725543,
-  "sha256": "a63fa53c90b25b786388920cf2ccf8db7f0fe1b5d081119789c039dfe2dba6ec",
-  "integrity": "sha512-UamhdAfY2fNmTkA5/y12iT1UVJuuXwp15njP2Ctzjb7KcP9u1P8smVwgyjwYjKz4kEJHNj5Gt3d12t/+6DDxgw==",
+  "version": "2.0.2-beta5",
+  "buildId": "890f2e5e2d4c194d",
+  "tgz": "local-dsh-knowledge-base-2.0.2-beta5.tgz",
+  "bytes": 2726019,
+  "sha256": "a2a6133b4765091e7c456baa9f176126751153a6d01b5044395130ff17e81720",
+  "integrity": "sha512-0HdNX30svyjFnlj6vMUiyb5tWMl0ZZ7WoO5ECdeYTggsC8QUyaNgx2OS+1/morYRVdlczUs50o0KiPh1htfSLA==",
   "channel": "preview"
 }

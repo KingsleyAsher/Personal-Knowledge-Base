@@ -1,5 +1,5 @@
 from pathlib import Path
-import json, re, hashlib, tarfile, base64, subprocess, shutil, zipfile
+import json, re, hashlib, tarfile, base64, subprocess, shutil, zipfile, os
 
 repo = Path(__file__).resolve().parents[1]
 version = json.loads((repo / 'package.json').read_text(encoding='utf-8'))['version']
@@ -8,7 +8,7 @@ delivery = repo.parent / ('知识库产品-' + version)
 delivery.mkdir(exist_ok=True)
 subprocess.run(['python', '-X', 'utf8', 'tools/sync-workbench-client.py'], cwd=repo, check=True)
 subprocess.run(['python', '-X', 'utf8', 'tools/sync-workbench-build.py'], cwd=repo, check=True)
-subprocess.run(['npm.cmd', 'pack', '--ignore-scripts', '--pack-destination', str(delivery)], cwd=repo, capture_output=True, check=True)
+subprocess.run(['npm.cmd' if os.name == 'nt' else 'npm', 'pack', '--ignore-scripts', '--pack-destination', str(delivery)], cwd=repo, capture_output=True, check=True)
 archive = delivery / ('local-dsh-knowledge-base-' + version + '.tgz')
 with tarfile.open(archive) as packed:
     files = {item.name.removeprefix('package/'): packed.extractfile(item).read() for item in packed.getmembers() if item.isfile()}

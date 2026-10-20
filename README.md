@@ -1,11 +1,11 @@
-# 个人知识库 2.0.1-beta4
+# 个人知识库 2.0.2-beta5
 
 知识工作台预览：可控隐私、首次及跨版本设置引导、目录与关系地图、快速收集、PDF 阅读摘录、原生 @ 知识库提问和默认关闭的完整备份。完整使用与边界见 [工作台说明](WORKBENCH.md)。
 
 ## 选择下载版本
 
 - **正式版 1.1.6**：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-1.1.6.tgz) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-1.1.6.tgz?ref=main) · [GitHub 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v1.1.6/local-dsh-knowledge-base-1.1.6.tgz)。
-- **预览版 2.0.1-beta4**：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.0.1-beta4.tgz) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.0.1-beta4.tgz?ref=main) · [GitHub 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.0.1-beta4/local-dsh-knowledge-base-2.0.1-beta4.tgz)。
+- **预览版 2.0.2-beta5**：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.0.2-beta5.tgz) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.0.2-beta5.tgz?ref=main) · [GitHub 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.0.2-beta5/local-dsh-knowledge-base-2.0.2-beta5.tgz)。
 
 新版更新器同时检查正式版和预览版；预览更新仅作可选提示，由用户主动下载或安装。正式版清单指向 1.1.6。旧版用户先升级正式版 1.1.6，即可获得预览提示和可选下载入口。
 
@@ -61,4 +61,4 @@ node tests/rebuild-probe.mjs src/host/index.js
 
 ## 国内更新源
 
-1.1.6 正式版与 2.0.1-beta4 预览版内置 Gitee、GitCode 和 GitHub。三个源并发检查正式/预览清单，采用可用源中的最新版本；同版本摘要冲突时阻止更新。优先使用国内源，下载失败或包校验失败时切换其他源。正常更新自动选择可用源，不展示来源清单；只有全部源失败时才列出原因与备用入口。GitCode 使用官方文件 API，Gitee 使用可重新获取的原始文件链接，不保存临时签名地址。镜像同步可能有延迟；全部源不可用会明确报错，不视为最新。已安装的旧版需要先更新一次才能使用新源。
+1.1.6 正式版与 2.0.2-beta5 预览版内置 Gitee、GitCode 和 GitHub。三个源并发检查正式/预览清单，采用可用源中的最新版本；同版本摘要冲突时阻止更新。优先使用国内源，下载失败或包校验失败时切换其他源。正常更新自动选择可用源，不展示来源清单；只有全部源失败时才列出原因与备用入口。GitCode 使用官方文件 API，Gitee 使用可重新获取的原始文件链接，不保存临时签名地址。镜像同步可能有延迟；全部源不可用会明确报错，不视为最新。已安装的旧版需要先更新一次才能使用新源。

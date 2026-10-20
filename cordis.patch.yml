@@ -1,4 +1,4 @@
-# dsh-knowledge-base bundle patch（2.0.1-beta3）
+# dsh-knowledge-base bundle patch（2.0.2-beta5）
 #
 # 这一行只在 **加载本插件的那个 profile** 里生效。
 # 0.1.0-p7 起：默认值不再写死开发者机器上的绝对路径（审查意见 §四 第 5 条）：
