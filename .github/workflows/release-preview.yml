@@ -1,0 +1,93 @@
+name: Publish preview release
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    tags: ['v*-beta*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: preview-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install PDF test dependency
+        run: python -m pip install pymupdf
+      - name: Validate source
+        run: python tools/validate-workbench.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: preview-validation
+          path: ../知识库产品-*/validation.json
+  release:
+    if: github.event_name == 'push'
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/download-artifact@v4
+        with:
+          name: preview-validation
+          path: /tmp/preview-validation
+      - name: Verify packaged source and prepare assets
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python tools/verify-preview-package.py
+          mkdir -p /tmp/preview-assets
+          cp preview-manifest.json /tmp/preview-assets/manifest.json
+          python - <<'PY'
+          import json, shutil
+          from pathlib import Path
+          feed = json.loads(Path('preview-manifest.json').read_text())
+          out = Path('/tmp/preview-assets')
+          shutil.copyfile(Path('dist') / feed['tgz'], out / feed['tgz'])
+          (out / 'SHA256SUMS').write_text(feed['sha256'] + '  ' + feed['tgz'] + '\n')
+          report = next(Path('/tmp/preview-validation').rglob('validation.json'))
+          validation = json.loads(report.read_text())
+          assert validation['passed'] and validation['version'] == feed['version']
+          assert not validation['omittedSuites']
+          shutil.copyfile(report, out / 'validation.json')
+          PY
+      - name: Publish prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          gh release create "$RELEASE_TAG" /tmp/preview-assets/* \
+            --verify-tag --prerelease --latest=false \
+            --title "${RELEASE_TAG#v} · 启动默认进入对话" --notes-file PREVIEW.md
+  mirrors:
+    if: github.event_name == 'push'
+    needs: release
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [gitee, gitcode]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Publish independent preview to mirror
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
+        run: python tools/publish-preview-mirror.py "${{ matrix.platform }}"

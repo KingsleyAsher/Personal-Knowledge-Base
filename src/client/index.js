@@ -282,15 +282,15 @@ window.__ModuleLoader__.load({
         if (!open) return null
         const content = e('div', { className: 'kbw kbw-backdrop', onMouseDown: ev => { if (ev.target === ev.currentTarget) close() } },
           e('section', { className: 'kbw-modal', role: 'dialog', 'aria-modal': true, 'aria-labelledby': 'kbw-guide-title', ref: root },
-            e('div', { className: 'kbw-step' }, normal ? '知识库设置 · 2.0.1-beta4' : `知识工作台 · ${step + 1} / 3`),
+            e('div', { className: 'kbw-step' }, normal ? '知识库设置 · 2.0.2-beta5' : `知识工作台 · ${step + 1} / 3`),
             e('h2', { id: 'kbw-guide-title' }, normal ? '知识库设置' : step === 0 ? '知识库插件已更新' : step === 1 ? '选择适合你的使用方式' : '确认设置'),
-            step === 0 ? e('div', null, e('p', null, '当前版本 2.0.1-beta4' + '：目录地图、可控隐私、快速收集、阅读摘录和知识库提问。'),
+            step === 0 ? e('div', null, e('p', null, '当前版本 2.0.2-beta5' + '：目录地图、可控隐私、快速收集、阅读摘录和知识库提问。'),
               e('p', null, '接下来确认隐私展示和备份等选项。已有明确设置会保留，自动完整备份默认关闭。')) : null,
             step === 1 ? e('div', null,
               e('p', { className: 'kbw-meta' }, '当前知识库：' + (status?.kbPath || '尚未绑定，可稍后设置')),
               !status?.kbPath ? e('div', null, field('知识库目录', folder, setFolder), btn('选择目录', async () => { const r = await api({ op: 'pick-dir' }); if (r.path) setFolder(r.path) }),
                 btn('接入或建立知识库', async () => { setBusy(true); try { await api({ op: 'setup', path: folder }); await refresh() } catch (err) { setError(err.message) } finally { setBusy(false) } }, busy || !folder)) : null,
-              e(PreferencesFields, { prefs, setPrefs }), normal ? e('details', null, e('summary', null, '版本与更新 · 2.0.1-beta4'), e(BuildBadge)) : null, e('details', null, e('summary', null, 'OCR / ASR 解析配置'), e(ParseSummary))) : null,
+              e(PreferencesFields, { prefs, setPrefs }), normal ? e('details', null, e('summary', null, '版本与更新 · 2.0.2-beta5'), e(BuildBadge)) : null, e('details', null, e('summary', null, 'OCR / ASR 解析配置'), e(ParseSummary))) : null,
             step === 2 ? e('div', { className: 'kbw-summary' }, [
               '知识库：' + (status?.kbPath || '稍后绑定'), '隐私展示：' + (prefs.showPrivate ? '开启' : '关闭'),
               '私密资料用于问答：' + (prefs.allowPrivateQuestions ? '允许' : '不允许'),
@@ -3019,7 +3019,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         toast?e('div',{className:'kbm-toast'},toast):null)
     }
 
-    const RELEASE_VERSION = '2.0.1-beta4'
+    const RELEASE_VERSION = '2.0.2-beta5'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Only owner-designated announcements belong here. A package version bump
     // must never add an announcement or change an existing announcement ID.
@@ -3133,7 +3133,27 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         portalHost)
     }
 
+    function resetKnowledgeViewOnStartup(storage) {
+      // DSH restores each session's persisted view before rendering it. Only
+      // reset our own view, preserving drafts and other plugins' selections.
+      // Older hosts used dsh.conversation.chat; newer hosts use dsh.conversation.
+      try {
+        for (let i = 0; i < storage.length; i++) {
+          const key = storage.key(i)
+          if (!key || !key.startsWith('dsh.conversation.')) continue
+          try {
+            const state = JSON.parse(storage.getItem(key))
+            if (!state || Array.isArray(state) || state.view !== 'kb-map') continue
+            state.view = 'chat'
+            if (state.viewRequest?.view === 'kb-map') state.viewRequest = null
+            storage.setItem(key, JSON.stringify(state))
+          } catch { /* One invalid or unwritable session must not block startup. */ }
+        }
+      } catch { /* Storage may be unavailable; keep the plugin usable. */ }
+    }
+
     function apply(ctx) {
+      try { resetKnowledgeViewOnStartup(window.localStorage) } catch { /* storage unavailable */ }
       flowClientContext = ctx
       workbenchUI = createWorkbenchUI({ react, e, api: callApi, ctx: () => flowClientContext,
         Overview: () => e(Overview, { statusOnly: true }), Flows, Parsing: ParseSection, BuildBadge, version: RELEASE_VERSION, portal: reactDom.createPortal })
