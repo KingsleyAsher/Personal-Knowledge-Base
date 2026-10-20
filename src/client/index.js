@@ -14,6 +14,7 @@ window.__ModuleLoader__.load({
     const reactDom = require('react-dom')
     const e = react.createElement
     let releaseNoticeClaimed = false
+    let updateManager = null
 
     const CSS = `
 .kbc-set{display:flex;flex-direction:column;gap:12px;padding:4px 0 8px;font-size:13px;line-height:1.6}
@@ -1362,10 +1363,119 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
 
     // 知识库页签的容器：「概览」与「流程」是两个内部二级页签，不把概览堆成长页
+    // A host-owned installation can outlive this module during HMR. Persist its
+    // request ID, then reconcile via the native manager and the active build.
+    function createClientUpdateFlow({ api, manager, storage, notify, clientVersion = () => null, delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms)) }) {
+      const key = 'dsh-kb-update-operation'
+      let running = null
+      const read = () => { try { return JSON.parse(storage.getItem(key)) } catch { return null } }
+      const save = (record) => { try { storage.setItem(key, JSON.stringify(record)) } catch { throw Error('无法保存更新状态，请检查客户端存储后重试') } }
+      const show = (message, extra = {}) => notify({ busy: false, uncertain: false, restartRequired: false, refreshRequired: false, message, ...extra })
+      const hostActive = async (record) => {
+        try {
+          const build = (await api({ op: 'status' }))?.status?.build
+          return build?.version === record.latestVersion && build?.buildId === record.buildId
+        } catch { return false }
+      }
+      const active = async (record) => clientVersion() === record.latestVersion && await hostActive(record)
+      const owns = (record) => read()?.requestId === record.requestId
+      const complete = (record) => { if (owns(record)) { save(null); show('更新完成，新版本已加载') } }
+      const uncertain = (record) => { if (owns(record)) show('安装状态待确认，请点击核对更新状态；请勿重复安装', { uncertain: true }) }
+      async function resolveLoaded(record) {
+        if (!owns(record)) return
+        if (await active(record)) complete(record)
+        else if (await hostActive(record)) {
+          if (!owns(record)) return
+          save({ ...record, stage: 'client-refresh' })
+          show('新版已安装，当前界面尚未完成热加载，请刷新界面', { refreshRequired: true })
+        } else uncertain(record)
+      }
+      async function settle(value, record) {
+        if (!owns(record)) return
+        if (value?.application === 'failed' || value?.application === 'cancelled') {
+          save(null)
+          show(value.application === 'cancelled' ? '更新已取消' : '安装失败：' + (value.error?.diagnostic || value.error?.code || value.packageResult?.kind || '请在宿主插件管理器查看详情'))
+          return
+        }
+        if (value?.application === 'restart-required') {
+          save({ ...record, stage: 'restart-required' })
+          show('新版已安装，宿主要求重启后生效', { restartRequired: true })
+          return
+        }
+        if (value?.application === 'overridden') {
+          save(null); show('新版安装受到宿主配置覆盖，请在插件管理器检查'); return
+        }
+        if (value?.application === 'applied') {
+          show('安装完成，正在核对新版加载状态…', { busy: true })
+          for (let i = 0; i < 20; i++) {
+            if (await active(record)) { complete(record); return }
+            await delay(500)
+          }
+        }
+        await resolveLoaded(record)
+      }
+      async function reconcile() {
+        const record = read()
+        if (!record?.requestId) return
+        if (await active(record)) { complete(record); return }
+        if (!owns(record)) return
+        if (record.stage === 'restart-required') { show('新版已安装，宿主要求重启后生效', { restartRequired: true }); return }
+        if (record.stage === 'client-refresh') { await resolveLoaded(record); return }
+        const remote = manager()
+        if (!remote || typeof remote.waitForInstall !== 'function') { uncertain(record); return }
+        show('正在核对宿主安装状态…', { busy: true })
+        try {
+          const reply = await remote.waitForInstall(record.requestId)
+          if (reply?.ok && reply.value) await settle(reply.value, record)
+          else await resolveLoaded(record)
+        } catch { await resolveLoaded(record) }
+      }
+      const serialized = (task) => {
+        if (running) return running
+        running = Promise.resolve().then(task).catch((error) => show(String(error.message || error))).finally(() => { running = null })
+        return running
+      }
+      return {
+        recover: () => serialized(reconcile),
+        install: (expectedVersion) => serialized(async () => {
+          if (read()?.requestId) { await reconcile(); return }
+          const remote = manager()
+          if (typeof remote?.installBundle !== 'function' || typeof remote?.waitForInstall !== 'function') throw Error('当前宿主未提供客户端安装接口，请使用宿主插件管理器')
+          show('正在下载并校验安装包…', { busy: true })
+          const prepared = await api({ op: 'updates.prepare', expectedVersion })
+          if (!prepared?.ok || prepared.latestVersion !== expectedVersion || !/^[a-f0-9]{16}$/.test(prepared.buildId || '') || typeof prepared.spec !== 'string') throw Error(prepared?.error || '下载结果无效')
+          const record = { requestId: 'kb-update-' + Date.now() + '-' + Math.random().toString(36).slice(2), latestVersion: prepared.latestVersion, buildId: prepared.buildId, stage: 'installing' }
+          save(record)
+          show('正在安装并重新加载插件…', { busy: true })
+          try {
+            const reply = await remote.installBundle(prepared.spec, { enabled: true, requestId: record.requestId })
+            if (!reply?.ok) { await reconcile(); return }
+            await settle(reply.value, record)
+          } catch { await reconcile() }
+        }),
+      }
+    }
+    let updateViewState = { busy: false, message: '' }
+    const updateFlow = createClientUpdateFlow({ api: callApi, manager: () => updateManager,
+      clientVersion: () => document.documentElement.getAttribute('data-kb-client-version'),
+      storage: { getItem: (key) => window.localStorage.getItem(key), setItem: (key, value) => window.localStorage.setItem(key, value) },
+      notify: (state) => { updateViewState = state; window.dispatchEvent(new CustomEvent('kb-plugin-update', { detail: state })) },
+    })
+
     function BuildBadge() {
       const [version, setVersion] = react.useState('')
       const [update, setUpdate] = react.useState(null)
       const [checking, setChecking] = react.useState(false)
+      const [updating, setUpdating] = react.useState(updateViewState)
+      const [canInstall, setCanInstall] = react.useState(Boolean(updateManager))
+      react.useEffect(() => {
+        const changed = (event) => { if (event.detail) setUpdating(event.detail) }
+        const capability = () => { setCanInstall(Boolean(updateManager)); void updateFlow.recover() }
+        window.addEventListener('kb-plugin-update', changed)
+        window.addEventListener('kb-update-capability', capability)
+        capability()
+        return () => { window.removeEventListener('kb-plugin-update', changed); window.removeEventListener('kb-update-capability', capability) }
+      }, [])
       const versionRequest = react.useRef(0)
       const updateRequest = react.useRef(0)
       const refreshVersion = react.useCallback(async () => {
@@ -1411,8 +1521,13 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         e('span', { style: { opacity: .75 } }, version ? '版本 ' + version : '版本读取中或暂不可用'),
         e('button', { className: 'kbc-btn kbc-btn-ghost', style: { padding: '3px 8px', fontSize: 12 }, disabled: checking, onClick: () => { refreshVersion(); check(true) } }, checking ? '检查中…' : '检查更新'),
         label ? e('span', { role: 'status', style: { opacity: .8, overflowWrap: 'anywhere' } }, label) : null,
+        updating.message ? e('span', { role: 'status' }, updating.message) : null,
+        updating.uncertain ? e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: updating.busy, onClick: () => { void updateFlow.recover() } }, '核对更新状态') : null,
+        updating.refreshRequired ? e('button', { className: 'kbc-btn kbc-btn-ghost', onClick: () => window.location.reload() }, '刷新界面') : null,
         !checking && update && update.ok && update.updateAvailable
-          ? e('a', { href: update.downloadUrl, target: '_blank', rel: 'noopener noreferrer', style: { color: 'inherit', textDecoration: 'underline' } }, '下载新版本') : null)
+          ? e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: !canInstall || update.installSupported === false || updating.busy || updating.uncertain || updating.restartRequired || updating.refreshRequired,
+            title: canInstall && update.installSupported !== false ? '自动下载、校验并由 DSH 安装；支持时直接热加载' : '当前宿主未提供客户端安装接口，请使用宿主插件管理器',
+            onClick: () => { void updateFlow.install(update.latestVersion) } }, updating.busy ? '更新中…' : '立即更新') : null)
     }
 
     function KbView() {
@@ -2290,6 +2405,17 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     function apply(ctx) {
       flowClientContext = ctx
       ensureStyle()
+      // Optional dynamic injection keeps older hosts usable without leaving
+      // this entire client entry pending on a missing management service.
+      ctx.inject(['remote', 'remote.pluginManager'], (scope) => {
+        const manager = scope.remote.pluginManager
+        updateManager = manager
+        window.dispatchEvent(new Event('kb-update-capability'))
+        return () => {
+          if (updateManager === manager) updateManager = null
+          window.dispatchEvent(new Event('kb-update-capability'))
+        }
+      })
       ctx.slots.inject('conversation.input.overlay', () =>
         ctx.slots.register({ name: 'conversation.input.overlay', id: 'kb-release-notice', order: 999 }, ReleaseNotice))
       ctx.slots.inject('settings.section', () =>
@@ -2301,6 +2427,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           order: 20,
           label: () => '知识库',
         }, KbView))
+      document.documentElement.setAttribute('data-kb-client-version', RELEASE_VERSION)
     }
 
     exports.name = 'kb-core'

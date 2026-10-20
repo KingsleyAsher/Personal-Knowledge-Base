@@ -38,7 +38,7 @@ const first = await Promise.all([checker.check(), checker.check(), checker.check
 assert.equal(calls, 1)
 assert.equal(first[0].updateAvailable, true)
 assert.equal(first[0].latestVersion, '1.0.4')
-assert.ok(first[0].downloadUrl.startsWith('https://github.com/KingsleyAsher/Personal-Knowledge-Base/blob/main/dist/'))
+assert.ok(first[0].downloadUrl.startsWith('https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/'))
 assert.equal((await checker.check()).cached, true)
 assert.equal(calls, 1)
 latest = '1.0.3'; assert.equal((await checker.check({force:true})).updateAvailable, false)

@@ -18,7 +18,7 @@ import { createCore, VERSION } from './kbcore.js'
 import { apply as gatewayApply, createDelegate as createGatewayDelegate, isLiveKnowledgeGrant } from './gateway.js'
 import { createFlowEngine } from './flows.js'
 import { createFlowWorkspaceManager, prepareFlowConversation } from './flow-workspace.js'
-import { createUpdateChecker, startAutomaticChecks } from './updates.js'
+import { createUpdateChecker, createUpdateDownloader, startAutomaticChecks } from './updates.js'
 import { runSelftest } from './selftest.js'
 import { walkTree, privateRootOf, normSegs, toPosix as toPosixFile, DEFAULT_PRIVATE_DIRS, readImportSources, derivedPrivatePartitions, effectivePrivateDirs, knowledgeCount } from './fsindex.js'
 import { createImportService } from './import-service.js'
@@ -245,6 +245,9 @@ export function apply(ctx, config) {
   let core = null
   const flowWorkspaceManager = createFlowWorkspaceManager({ getRegistry: () => ctx.get('workspaceRegistry') })
   const updateChecker = createUpdateChecker({ currentVersion: PLUGIN_VERSION })
+  const updateProfile = ctx.get('profileContext')
+  const updateDownloader = createUpdateDownloader({ checker: updateChecker,
+    cacheDir: typeof updateProfile?.dir === 'string' ? path.join(updateProfile.dir, '.kb-plugin-updates') : null })
   // 自动检查属于宿主后台机制，页面关闭后仍继续按周期检查。
   ctx.effect(() => startAutomaticChecks(updateChecker), 'kb-core: automatic update checks')
   // R1：UI 与工具共用的导入服务。在 install() 里创建（要等 core 就绪后才拿得到配置）。
@@ -1612,7 +1615,23 @@ let parsingService = null
               if (req.method !== 'POST') return kbSendJson(res, 405, { ok: false, error: 'method not allowed' })
               const body = JSON.parse((await kbReadBody(req)) || '{}')
               if (body.op === 'status') return kbSendJson(res, 200, { ok: true, status: { ...(await current.status()), build: buildInfo } })
-              if (body.op === 'updates.check') return kbSendJson(res, 200, await updateChecker.check({ force: body.force === true }))
+              if (body.op === 'updates.check') return kbSendJson(res, 200, {
+                ...await updateChecker.check({ force: body.force === true }),
+                installSupported: Boolean(updateProfile?.dir && ctx.get('pluginManager')?.installBundle),
+              })
+              if (body.op === 'updates.prepare') {
+                // Only the settings UI can request a verified download. Model
+                // tools expose no install action, URL override, or cache path.
+                const origin = req.headers.origin
+                if (req.headers['sec-fetch-site'] === 'cross-site' ||
+                  String(req.headers['content-type'] || '').toLowerCase().split(';')[0].trim() !== 'application/json' ||
+                  (origin && (() => { try { return new URL(origin).host !== req.headers.host } catch { return true } })())) {
+                  return kbSendJson(res, 403, { ok: false, error: '更新请求必须来自当前客户端' })
+                }
+                if (!updateProfile?.dir || typeof ctx.get('pluginManager')?.installBundle !== 'function') return kbSendJson(res, 409, { ok: false, error: '当前宿主不支持客户端内安装插件，请使用宿主插件管理器' })
+                try { return kbSendJson(res, 200, await updateDownloader.prepare({ expectedVersion: body.expectedVersion })) }
+                catch (error) { return kbSendJson(res, 400, { ok: false, error: String(error.message || error) }) }
+              }
               if (body.op === 'index-maintenance.status') {
                 const status = await current.status()
                 return kbSendJson(res, 200, { ok: true, enabled: (await current.getConfig()).autoIndex !== false, scheduler: indexMaintainer?.status(), maintenance: current.maintenanceStatus(), kbId: status.kbId, index: status.index })
