@@ -112,10 +112,11 @@ assert release['prerelease'], 'Existing release is not a prerelease'
 assets=[archive, delivery/'知识库快速收集-浏览器扩展.zip', delivery/'使用说明.md', delivery/'manifest.json',delivery/'SHA256SUMS',delivery/'validation.json']
 existing_assets={x['name']:x for x in api('/releases/'+str(release['id'])+'/assets')}
 for file in assets:
-    if file.name in existing_assets:
-        assert existing_assets[file.name]['size']==file.stat().st_size,'Existing asset differs'
+    remote_name={'知识库快速收集-浏览器扩展.zip':'knowledge-base-browser-extension.zip','使用说明.md':'WORKBENCH.md'}.get(file.name,file.name)
+    if remote_name in existing_assets:
+        assert existing_assets[remote_name]['size']==file.stat().st_size,'Existing asset differs'
         continue
-    url=release['upload_url'].split('{')[0]+'?name='+urllib.parse.quote(file.name)
+    url=release['upload_url'].split('{')[0]+'?name='+urllib.parse.quote(remote_name)
     api(url,'POST',raw=file.read_bytes(),mime='application/octet-stream')
 release=api('/releases/'+str(release['id']),'PATCH',{'draft':False,'prerelease':True,'make_latest':'false','body':body})
 result={'version':version,'commit':new['sha'],'releaseUrl':release['html_url'],'prerelease':release['prerelease'],'assets':[x['browser_download_url'] for x in release['assets']], 'stableVersion':stable['version'],'stableReleaseUrl':formal['html_url'],'stableCommit':stable_commit['sha']}
