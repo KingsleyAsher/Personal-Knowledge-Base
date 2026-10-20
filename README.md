@@ -1,5 +1,9 @@
 # 个人知识库 2.0.2-beta5
 
+## 🌐 [访问产品展示网页 →](https://kingsleyasher.github.io/Personal-Knowledge-Base/)
+
+了解产品功能、查看界面展示与使用场景，快速找到下载和安装入口。
+
 知识工作台预览：可控隐私、首次及跨版本设置引导、目录与关系地图、快速收集、PDF 阅读摘录、原生 @ 知识库提问和默认关闭的完整备份。完整使用与边界见 [工作台说明](WORKBENCH.md)。
 
 ## 选择下载版本
@@ -13,7 +17,7 @@
 
 DSH 个人知识库插件：目录绑定、条目管理与检索、资料导入、OCR / ASR 解析、自定义流程及知识库预设。
 
-产品展示页源码位于 [`website/`](website/)，GitHub Pages 发布地址为 <https://kingsleyasher.github.io/Personal-Knowledge-Base/>。发布分支合并到 `main` 且仓库 Pages 使用 GitHub Actions 后，工作流会自动部署。
+产品展示页源码位于 [`website/`](website/)，通过 GitHub Pages 自动部署。
 
 ## 本版变化
 
