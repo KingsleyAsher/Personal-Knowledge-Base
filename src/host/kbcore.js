@@ -18,7 +18,7 @@ import path from 'node:path'
 import { readImportSources, derivedPrivatePartitions, effectivePrivateDirs, foldGeneratedPairs } from './fsindex.js'
 
 // 版本单一来源：package.json 的 version 必须与此一致（详见 INSTALL 说明）
-export const VERSION = '2.0.1-beta3'
+export const VERSION = '2.0.1-beta4'
 
 export const REQUIRED_FIELDS = ['title', 'type', 'tags', 'status', 'updated']
 export const SCHEMA_VERSION = 1
@@ -2316,6 +2316,7 @@ export function createCore(cfg, logger) {
       parseFrontmatter, buildFile, isInside, sha12, sha256, composeWithHeader, splitFrontmatter, contentHashOf,
       // 供定向测试用（不属于公开契约）：锁的获取/释放是 R2 的核心不变量
       acquireKbLock, releaseKbLock, indexSnapshot, fingerprintOf,
+      withMutationLock: (root, fn) => withLock(root, () => withKbLock(root, 'workbench-repair', fn)),
     },
     paths: { stateDir, configFile, bindingFile, logFile },
   }

@@ -532,10 +532,12 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
 
   async function providersPublic() {
     const conf = await readParsingConfig()
-    const history = await listJobs({ limit: JOBS_KEPT, status: 'succeeded' })
+    const history = await listJobs({ limit: JOBS_KEPT })
     const providers = await Promise.all(conf.providers.map(async p => {
-      const verified = history.jobs?.find(j => j.provider.id === p.id && j.provider.configVersion === providerConfigVersion(p))
-      return { ...await managedPublic(p), parseVerifiedAt: verified?.finishedAt || null }
+      const matching = history.jobs?.filter(j => j.provider.id === p.id && j.provider.configVersion === providerConfigVersion(p)).sort((a,b) => String(b.finishedAt||b.createdAt).localeCompare(String(a.finishedAt||a.createdAt))) || []
+      const verified = matching.find(j => j.status === 'succeeded')
+      const latest = matching.find(j => ['succeeded','failed','partial'].includes(j.status))
+      return { ...await managedPublic(p), parseVerifiedAt: verified?.finishedAt || null, label: p.label.replace(/（待补齐）|待验证/g, ''), lastError: latest && ['failed','partial'].includes(latest.status) ? (latest.diagnostics?.at(-1)?.message || latest.diagnostics?.at(-1)?.code || latest.error?.message || latest.error?.detail || latest.error?.code || '最近一次解析未完成，请查看任务详情') : null }
     }))
     return {
       ok: true,
