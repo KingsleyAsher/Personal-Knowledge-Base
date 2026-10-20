@@ -27,14 +27,17 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install PDF test dependency
-        run: python -m pip install pymupdf
+        run: python -m pip install pymupdf==1.26.6
       - name: Validate source
         run: python tools/validate-workbench.py
+      - name: Collect validation report
+        if: always()
+        run: Copy-Item "../知识库产品-*/validation.json" "$env:RUNNER_TEMP/validation.json"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: preview-validation
-          path: ../知识库产品-*/validation.json
+          path: ${{ runner.temp }}/validation.json
   release:
     if: github.event_name == 'push'
     needs: validate

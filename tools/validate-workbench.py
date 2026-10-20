@@ -33,7 +33,7 @@ for command in commands:
     results.append({'command': command, 'exitCode': result.returncode, 'stdout': result.stdout, 'stderr': result.stderr})
     print(('PASS ' if result.returncode == 0 else 'FAIL ') + ' '.join(command), flush=True)
     if result.returncode:
-        print(result.stdout[-4000:] + result.stderr[-4000:], flush=True)
+        print(result.stdout + result.stderr, flush=True)
         break
 passed = len(results) == len(commands) and all(item['exitCode'] == 0 for item in results)
 suite = next((item['stdout'] for item in results if '--test' in item['command']), '')
