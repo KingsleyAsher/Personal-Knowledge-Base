@@ -1,11 +1,11 @@
 {
   "package": "@local/dsh-knowledge-base",
   "version": "1.1.3",
-  "buildId": "31705b475ab67f14",
+  "buildId": "14c33434f33110d7",
   "tgz": "local-dsh-knowledge-base-1.1.3.tgz",
-  "bytes": 253535,
-  "sha256": "0a126f49b01ed10daab2171dbf6f40b33e360010ece75cf960f843cd6742cd87",
-  "integrity": "sha512-oZehqoHD21fbFJ5P6fa4LqNgryCOBNnPPNTTl/swZRYyP8VI48GgO8Z5CWVSixTTykv8qyPTcf38unAGPmZIMA==",
+  "bytes": 258671,
+  "sha256": "6aaf74eee03acf7222fe83d0a9347b2748b576cfc655cb87127bd50d94bd6ba6",
+  "integrity": "sha512-BshUFe0N00cZ7pbdvMEtGtXjAMtmHhLlTWM2wBsdv99cawhaGcCTjGsTvIjOW0Unle9FfWBG8PXYCqqECIDHlg==",
   "packageFileCount": 27,
   "buildFileCount": 22,
   "files": [
@@ -16,13 +16,13 @@
     },
     {
       "path": "PARSING-PREVIEW.md",
-      "bytes": 9031,
-      "sha256": "6bbb345a7f8480df5923a09d2af79fd99dbc9e58eed1b37d090691904adab5ce"
+      "bytes": 9154,
+      "sha256": "dfe6aa742d7b8f59168fc4b0946bf5d12faf089a702d60fdf39123186e39b728"
     },
     {
       "path": "README.md",
-      "bytes": 3703,
-      "sha256": "6308b933efb2d983cf3a5895a937047649fada75c53dab3927b61c5d4783b38b"
+      "bytes": 4563,
+      "sha256": "708d93f18dd235d553ec29a8c67f551cfbb2c7ec5cf36856bc709e027ddfc3be"
     },
     {
       "path": "cordis.patch.yml",
@@ -46,8 +46,8 @@
     },
     {
       "path": "src/client/index.js",
-      "bytes": 150267,
-      "sha256": "e3c5d537741e4fd2ce6b5e709c11d92aa38757bfd54d4412728b4973b0971aa9"
+      "bytes": 158536,
+      "sha256": "0c315cb6fbe74a2648129a51aaaa8ffd3532cf0510c24b585124c5ea5a5f8912"
     },
     {
       "path": "src/host/flow-workspace.js",
@@ -86,8 +86,8 @@
     },
     {
       "path": "src/host/index.js",
-      "bytes": 121264,
-      "sha256": "232919a682fa1d27366f4089e61caf8ba1cc5b37fbe74d07152d70454c631224"
+      "bytes": 122877,
+      "sha256": "33b4983e2b2d8be76499f0b3d314e77423f6a6e151254360b673c78928922e2d"
     },
     {
       "path": "src/host/kbcore.js",
@@ -131,8 +131,8 @@
     },
     {
       "path": "src/host/updates.js",
-      "bytes": 4387,
-      "sha256": "7a34d28a2d2459a71822a2c22042d4a4692b4d788a5d4ab02344e191114caba6"
+      "bytes": 10779,
+      "sha256": "ada4b29721dfa9114e29d1723e100a721a3e3f4c6a4413003fe446c45ac7f7a3"
     },
     {
       "path": "tools/kb-local-model.py",
@@ -155,6 +155,9 @@
     "realCloudApiTested": false,
     "importParseCallerGateAutomatedTests": true,
     "releaseNoticeEscapeDismissalAutomatedTested": true,
-    "designatedReleaseNoticeTests": 11
+    "designatedReleaseNoticeTests": 11,
+    "oneClickUpdateTests": 14,
+    "oneClickUpdateRuntimeVerified": false,
+    "dshInstallContractVersion": "0.2.1-rc.2"
   }
 }
