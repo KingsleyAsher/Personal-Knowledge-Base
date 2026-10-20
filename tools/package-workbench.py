@@ -29,7 +29,7 @@ validation = delivery / 'validation.json'
 if validation.is_file():
     report = json.loads(validation.read_text(encoding='utf-8'))
     assert report['version'] == version and report['passed'] is True, 'Validation did not pass'
-    manifest['validation'].update({'automatedChecksPassed': True, 'nodeTests': report['testCount'], 'browserUiVerifiedWithSyntheticHost': report['uiRun'],
+    manifest['validation'].update({'automatedChecksPassed': report['testCount'] > 0, 'nodeTests': report['testCount'], 'browserUiVerifiedWithSyntheticHost': report['uiRun'],
                                   'mobileSystemShareVerified': False, 'extensionInstalledVerified': False})
 (delivery / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 (delivery / 'SHA256SUMS').write_text(manifest['sha256'] + '  ' + archive.name + '\n', encoding='utf-8')

@@ -282,15 +282,15 @@ window.__ModuleLoader__.load({
         if (!open) return null
         const content = e('div', { className: 'kbw kbw-backdrop', onMouseDown: ev => { if (ev.target === ev.currentTarget) close() } },
           e('section', { className: 'kbw-modal', role: 'dialog', 'aria-modal': true, 'aria-labelledby': 'kbw-guide-title', ref: root },
-            e('div', { className: 'kbw-step' }, normal ? '知识库设置 · v2-beta4' : `知识工作台 · ${step + 1} / 3`),
+            e('div', { className: 'kbw-step' }, normal ? '知识库设置 · 2.0.1-beta4' : `知识工作台 · ${step + 1} / 3`),
             e('h2', { id: 'kbw-guide-title' }, normal ? '知识库设置' : step === 0 ? '知识库插件已更新' : step === 1 ? '选择适合你的使用方式' : '确认设置'),
-            step === 0 ? e('div', null, e('p', null, '当前版本 v2-beta4' + '：目录地图、可控隐私、快速收集、阅读摘录和知识库提问。'),
+            step === 0 ? e('div', null, e('p', null, '当前版本 2.0.1-beta4' + '：目录地图、可控隐私、快速收集、阅读摘录和知识库提问。'),
               e('p', null, '接下来确认隐私展示和备份等选项。已有明确设置会保留，自动完整备份默认关闭。')) : null,
             step === 1 ? e('div', null,
               e('p', { className: 'kbw-meta' }, '当前知识库：' + (status?.kbPath || '尚未绑定，可稍后设置')),
               !status?.kbPath ? e('div', null, field('知识库目录', folder, setFolder), btn('选择目录', async () => { const r = await api({ op: 'pick-dir' }); if (r.path) setFolder(r.path) }),
                 btn('接入或建立知识库', async () => { setBusy(true); try { await api({ op: 'setup', path: folder }); await refresh() } catch (err) { setError(err.message) } finally { setBusy(false) } }, busy || !folder)) : null,
-              e(PreferencesFields, { prefs, setPrefs }), normal ? e('details', null, e('summary', null, '版本与更新 · v2-beta4'), e(BuildBadge)) : null, e('details', null, e('summary', null, 'OCR / ASR 解析配置'), e(ParseSummary))) : null,
+              e(PreferencesFields, { prefs, setPrefs }), normal ? e('details', null, e('summary', null, '版本与更新 · 2.0.1-beta4'), e(BuildBadge)) : null, e('details', null, e('summary', null, 'OCR / ASR 解析配置'), e(ParseSummary))) : null,
             step === 2 ? e('div', { className: 'kbw-summary' }, [
               '知识库：' + (status?.kbPath || '稍后绑定'), '隐私展示：' + (prefs.showPrivate ? '开启' : '关闭'),
               '私密资料用于问答：' + (prefs.allowPrivateQuestions ? '允许' : '不允许'),
@@ -2235,7 +2235,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       const allCheckSourcesFailed = update?.sourceStatus?.length > 0 && ![...(update.sourceStatus || []), ...(update.preview?.sourceStatus || update.previewSourceStatus || [])].some(s => s.ok)
       const showSourceFailures = !checking && (allCheckSourcesFailed || updating.allSourcesFailed)
       return e('div', { style: { marginLeft: 'auto', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 10px', fontSize: 12 }, 'aria-label': '插件版本与更新' },
-        e('span', { style: { opacity: .75 } }, version ? '版本 ' + (version === '2.0.1-beta4' ? 'v2-beta4' : version) : '版本读取中或暂不可用'),
+        e('span', { style: { opacity: .75 } }, version ? '版本 ' + version : '版本读取中或暂不可用'),
         e('button', { className: 'kbc-btn kbc-btn-ghost', style: { padding: '3px 8px', fontSize: 12 }, disabled: checking, onClick: () => { refreshVersion(); check(true) } }, checking ? '检查中…' : '检查更新'),
         label ? e('span', { role: 'status', style: { opacity: .8, overflowWrap: 'anywhere' } }, label) : null,
         showSourceFailures ? e('details', { open: true, style: { width: '100%' } },
