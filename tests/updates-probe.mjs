@@ -19,7 +19,7 @@ scheduled.forEach(job=>job.fn())
 assert.equal(automaticChecks,2)
 stop(); assert.deepEqual(cleared,['startup','interval'])
 let calls = 0, clock = 1_000_000, mode = 'ok', latest = '1.0.4'
-const checker = createUpdateChecker({ currentVersion: '1.0.3', now: () => clock, fetch: async (url, options) => {
+const checker = createUpdateChecker({ previewManifestUrl: null, currentVersion: '1.0.3', now: () => clock, fetch: async (url, options) => {
   calls++
   assert.equal(url, UPDATE_MANIFEST_URL)
   assert.equal(options.method, undefined)
@@ -59,9 +59,9 @@ clock += 5 * 60 * 1000 + 1
 mode = 'ok'; latest = '1.0.4'
 assert.equal((await checker.check()).ok, true)
 assert.equal(calls, before + 1)
-const timeout = createUpdateChecker({currentVersion:'1.0.3', timeoutMs:20, fetch:(_url,{signal})=>new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(Error('aborted'))))})
+const timeout = createUpdateChecker({ previewManifestUrl: null,currentVersion:'1.0.3', timeoutMs:20, fetch:(_url,{signal})=>new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(Error('aborted'))))})
 assert.ok((await timeout.check()).error.includes('超时'))
-const preview = createUpdateChecker({currentVersion:'1.0.7-preview.1',fetch:async()=>Response.json(manifest(latest))})
+const preview = createUpdateChecker({ previewManifestUrl: null,currentVersion:'1.0.7-preview.1',fetch:async()=>Response.json(manifest(latest))})
 latest='1.0.6';assert.equal((await preview.check({force:true})).ahead,true)
 latest='1.0.7';assert.equal((await preview.check({force:true})).updateAvailable,true)
 latest='1.0.8';assert.equal((await preview.check({force:true})).updateAvailable,true)

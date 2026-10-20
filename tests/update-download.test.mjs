@@ -76,7 +76,7 @@ test('archive preflight checks package identity, version, traversal, links and t
 
 test('checking alone never downloads a package', async () => {
   const data = release(); let calls = 0
-  const checker = createUpdateChecker({ currentVersion: '1.1.2', fetch: async (url) => {
+  const checker = createUpdateChecker({ previewManifestUrl: null, currentVersion: '1.1.2', fetch: async (url) => {
     calls++; assert.ok(url.endsWith('/release-manifest.json'))
     return Response.json({ ...data, package: '@local/dsh-knowledge-base', version: data.latestVersion })
   } })

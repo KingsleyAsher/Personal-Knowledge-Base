@@ -17,7 +17,7 @@ const versions = (items) => Array.from(items, (item) => item.version)
 
 test('ordinary upgrade 1.1.2 -> 1.1.3 creates no announcement', () => {
   const store = storage(initial('1.1.2')), api = policy()
-  assert.deepEqual(versions(api.loadReleaseNotices(store)), [])
+  assert.deepEqual(versions(api.loadReleaseNotices(store, '1.1.3')), [])
   assert.deepEqual(versions(api.RELEASE_NOTICES), ['1.1.1'])
   assert.equal(JSON.parse(store.getItem(stateKey)).version, '1.1.3')
 })

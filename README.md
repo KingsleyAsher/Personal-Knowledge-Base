@@ -1,4 +1,15 @@
-# 个人知识库 1.1.3
+# 个人知识库 2.0.1-beta1
+
+知识工作台预览：可控隐私、首次及跨版本设置引导、目录与关系地图、快速收集、PDF 阅读摘录、原生 @ 知识库提问和默认关闭的完整备份。完整使用与边界见 [工作台说明](WORKBENCH.md)。
+
+## 选择下载版本
+
+- **正式版 1.1.4**：[下载正式版](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-1.1.4.tgz)。
+- **预览版 2.0.1-beta1**：[下载预览版](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.0.1-beta1.tgz) · [预览发布说明](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.0.1-beta1)。
+
+新版更新器同时检查正式版和预览版；预览更新仅作可选提示，由用户主动下载或安装。正式版清单指向 1.1.4。旧版用户先升级正式版 1.1.4，即可获得预览提示和可选下载入口。
+
+以下为 1.1.3 基线的历史能力和发布说明。
 
 DSH 个人知识库插件：目录绑定、条目管理与检索、资料导入、OCR / ASR 解析、自定义流程及知识库预设。
 
@@ -23,7 +34,7 @@ DSH 个人知识库插件：目录绑定、条目管理与检索、资料导入�
 
 ## 安装
 
-首次安装或从旧版接入新更新器：在 DSH 插件管理器的安装源中填写 `https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-1.1.3.tgz`，由客户端下载和安装；也可安装仓库 `dist/` 下的本地包。旧版自身的下载按钮仍采用旧流程，需先安装本版才能获得新更新器。
+首次安装或从旧版接入新更新器：在 DSH 插件管理器的安装源中填写 `https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-1.1.4.tgz`，由客户端下载和安装；也可安装仓库 `dist/` 下的本地包。旧版自身的下载按钮仍采用旧流程，需先安装本版才能获得新更新器。
 
 安装本版后，插件内「检查更新 → 立即更新」自动完成下载、SHA-256 与包身份校验、安装及加载核对。普通宿主支持时热加载，宿主返回需要重启时再完全退出（含托盘）并重开。核对版本及构建号，摘要见 [发布清单](release-manifest.json)。宿主未提供安装接口时，按钮会说明需使用宿主插件管理器。
 

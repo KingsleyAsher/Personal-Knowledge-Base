@@ -7,6 +7,7 @@ import { gunzipSync } from 'node:zlib'
 // installation and activation belong to the host's pluginManager service.
 export const UPDATE_REPOSITORY = 'https://github.com/KingsleyAsher/Personal-Knowledge-Base'
 export const UPDATE_MANIFEST_URL = 'https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/release-manifest.json'
+export const UPDATE_PREVIEW_MANIFEST_URL = 'https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/preview-manifest.json'
 export const UPDATE_INTERVAL_MS = 6 * 60 * 60 * 1000
 
 export function startAutomaticChecks(checker, timers = globalThis) {
@@ -27,7 +28,33 @@ export function compareStableVersions(a, b) {
   return 0
 }
 
-export function createUpdateChecker({ currentVersion, fetch: fetchFn = globalThis.fetch, now = Date.now, timeoutMs = 8000 } = {}) {
+function versionParts(value) {
+  if (typeof value !== 'string' || value.length > 80 || !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.test(value)) return null
+  const [base, ...suffix] = value.split('-')
+  const pre = suffix.join('-')
+  if (pre && pre.split('.').some(x => /^\d+$/.test(x) && x.length > 1 && x[0] === '0')) return null
+  return { base, pre: pre ? pre.split('.') : [] }
+}
+
+export function compareReleaseVersions(a, b) {
+  const left = versionParts(a), right = versionParts(b)
+  if (!left || !right) throw Error('版本号格式无效')
+  const base = compareStableVersions(left.base, right.base)
+  if (base) return base
+  if (!left.pre.length || !right.pre.length) return left.pre.length ? -1 : right.pre.length ? 1 : 0
+  for (let i = 0; i < Math.max(left.pre.length, right.pre.length); i++) {
+    const x = left.pre[i], y = right.pre[i]
+    if (x === y) continue
+    if (x === undefined || y === undefined) return x === undefined ? -1 : 1
+    const xn = /^\d+$/.test(x), yn = /^\d+$/.test(y)
+    if (xn && yn) return BigInt(x) > BigInt(y) ? 1 : -1
+    if (xn !== yn) return xn ? -1 : 1
+    return x > y ? 1 : -1
+  }
+  return 0
+}
+
+export function createUpdateChecker({ currentVersion, fetch: fetchFn = globalThis.fetch, now = Date.now, timeoutMs = 8000, previewManifestUrl = UPDATE_PREVIEW_MANIFEST_URL } = {}) {
   let cached = null
   let expiresAt = 0
   let inflight = null
@@ -59,11 +86,8 @@ export function createUpdateChecker({ currentVersion, fetch: fetchFn = globalThi
       if (manifest.package !== '@local/dsh-knowledge-base' || !stableParts(manifest.version)
         || manifest.tgz !== 'local-dsh-knowledge-base-' + manifest.version + '.tgz'
         || !/^[a-f0-9]{64}$/.test(manifest.sha256 || '')) throw new Error('GitHub 更新清单无效')
-      // A local preview may compare with the stable feed, while remote
-      // prereleases remain rejected by the manifest validation above.
-      const currentBase = typeof currentVersion === 'string' ? currentVersion.replace(/-preview\.[1-9]\d*$/, '') : currentVersion
-      let comparison = compareStableVersions(manifest.version, currentBase)
-      if (comparison === 0 && currentBase !== currentVersion) comparison = 1
+      // The stable feed stays stable-only; previews have an independent feed.
+      const comparison = compareReleaseVersions(manifest.version, currentVersion)
       return {
         ok: true, currentVersion, latestVersion: manifest.version,
         updateAvailable: comparison > 0, ahead: comparison < 0,
@@ -81,7 +105,31 @@ export function createUpdateChecker({ currentVersion, fetch: fetchFn = globalThi
     check({ force = false } = {}) {
       if (inflight) return inflight
       if (!force && cached && now() < expiresAt) return Promise.resolve({ ...cached, cached: true })
-      inflight = fetchLatest().then(result => {
+      inflight = fetchLatest().then(async result => {
+        if (previewManifestUrl) {
+          const controller = new AbortController(), timer = setTimeout(() => controller.abort(), timeoutMs)
+          try {
+            const response = await fetchFn(previewManifestUrl, { signal: controller.signal, redirect: 'error', cache: 'no-store', headers: { accept: 'application/json' } })
+            if (!response.ok) throw Error('HTTP ' + response.status)
+            const reader = response.body.getReader(), chunks = []; let bytes = 0
+            try {
+              for (;;) {
+                const { done, value } = await reader.read(); if (done) break
+                bytes += value.byteLength
+                if (bytes > 65536) { await reader.cancel(); throw Error('预览版清单过大') }
+                chunks.push(Buffer.from(value))
+              }
+            } finally { reader.releaseLock() }
+            const p = JSON.parse(Buffer.concat(chunks).toString('utf8'))
+            if (p.package !== '@local/dsh-knowledge-base' || !versionParts(p.version)?.pre.length ||
+                p.tgz !== 'local-dsh-knowledge-base-' + p.version + '.tgz' || !/^[a-f0-9]{64}$/.test(p.sha256 || '') ||
+                !/^[a-f0-9]{16}$/.test(p.buildId || '') || !Number.isSafeInteger(p.bytes) || p.bytes < 1 || p.bytes > MAX_UPDATE_BYTES) throw Error('预览版清单无效')
+            result.preview = { ok: true, channel: 'preview', latestVersion: p.version, updateAvailable: compareReleaseVersions(p.version, currentVersion) > 0,
+              tgz: p.tgz, sha256: p.sha256, bytes: p.bytes, buildId: p.buildId,
+              downloadUrl: UPDATE_RAW_ROOT + encodeURIComponent(p.tgz), notesUrl: UPDATE_REPOSITORY + '/releases/tag/v' + encodeURIComponent(p.version) }
+          } catch { result.previewError = '预览版信息暂不可用，可稍后重新检查' }
+          finally { clearTimeout(timer) }
+        }
         cached = result
         expiresAt = now() + (result.ok ? UPDATE_INTERVAL_MS : 5 * 60 * 1000)
         return result
@@ -135,10 +183,11 @@ export function createUpdateDownloader({ checker, cacheDir, fetch: fetchFn = glo
   let inflight = null, inflightVersion = null
   async function download(expectedVersion) {
     if (!cacheDir) throw Error('当前宿主未提供插件更新缓存目录')
-    const release = await checker.check({ force: true })
+    const checked = await checker.check({ force: true })
+    const release = checked.preview?.latestVersion === expectedVersion ? checked.preview : checked
     if (!release.ok) throw Error(release.error)
     if (!release.updateAvailable) throw Error('没有可安装的新版本')
-    if (!stableParts(expectedVersion) || expectedVersion !== release.latestVersion) throw Error('发布版本已变化，请重新检查更新')
+    if (!versionParts(expectedVersion) || expectedVersion !== release.latestVersion) throw Error('发布版本已变化，请重新检查更新')
     if (release.tgz !== 'local-dsh-knowledge-base-' + expectedVersion + '.tgz' || !/^[a-f0-9]{64}$/.test(release.sha256 || '') || !/^[a-f0-9]{16}$/.test(release.buildId || '') || !Number.isSafeInteger(release.bytes) || release.bytes < 1 || release.bytes > MAX_UPDATE_BYTES) throw Error('发布清单缺少有效的大小、摘要或构建号')
     const dir = path.resolve(cacheDir, release.sha256)
     const target = path.join(dir, release.tgz)

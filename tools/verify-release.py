@@ -2,9 +2,9 @@ from pathlib import Path
 import json,hashlib,tarfile,re
 r=Path(__file__).resolve().parents[1]
 version=json.loads((r/'package.json').read_text(encoding='utf-8'))['version']
-release=r.parent/f'知识库产品-OCR-ASR预览-{version}' if '-preview.' in version else r
-m=json.loads((release/'manifest.json' if '-preview.' in version else r/'release-manifest.json').read_text(encoding='utf-8'))
-archive=release/m['tgz'] if '-preview.' in version else r/'dist'/m['tgz']
+release=(r.parent/f'知识库产品-{version}' if (r.parent/f'知识库产品-{version}').exists() else r.parent/f'知识库产品-OCR-ASR预览-{version}') if '-' in version else r
+m=json.loads((release/'manifest.json' if '-' in version else r/'release-manifest.json').read_text(encoding='utf-8'))
+archive=release/m['tgz'] if '-' in version else r/'dist'/m['tgz']
 b=archive.read_bytes()
 assert len(b)==m['bytes'] and hashlib.sha256(b).hexdigest()==m['sha256']
 with tarfile.open(archive,'r:gz') as t:

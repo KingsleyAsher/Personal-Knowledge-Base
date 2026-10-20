@@ -10,7 +10,7 @@ import { buildMap, MAP_RULES_VERSION } from './map.js'
 import os from 'node:os'
 import { fileURLToPath } from 'node:url'
 import crypto from 'node:crypto'
-import { existsSync as fsExists, statSync as fsStat } from 'node:fs'
+import { existsSync as fsExists, statSync as fsStat, readdirSync } from 'node:fs'
 import path from 'node:path'
 import { mkdir, writeFile, readFile, stat, realpath, access, copyFile, readdir } from 'node:fs/promises'
 import { constants as fsConstants } from 'node:fs'
@@ -25,6 +25,8 @@ import { createImportService } from './import-service.js'
 import { inspectFolder } from './importer.js'
 import { createParsingService } from './parsing.js'
 import { createIndexMaintenance } from './index-maintenance.js'
+import { createWorkbench } from './workbench.js'
+import { sharedDraft, captureDocument } from './capture-surface.js'
 
 export const name = 'kb-core'
 // 版本单一来源：kbcore 的 VERSION（package.json 必须与之一致）
@@ -243,6 +245,14 @@ export function apply(ctx, config) {
   let attempts = 0
   let timer = null
   let core = null
+  const workbench = createWorkbench({ stateDir, getCore: () => core, getParsing: () => parsingService, getFlows: () => ensureFlowEngine(), getImports: () => importService,
+    getFileActions: () => ctx.get('sessionController'),
+    log: (level, message) => console[level === 'warn' ? 'warn' : 'log']('[kb-workbench] ' + message) })
+  ctx.effect(() => {
+    const timer = setInterval(() => { void workbench.runAutomatic().catch(error => console.warn('[kb-workbench] ' + error.message)) }, 60000)
+    timer.unref?.()
+    return () => clearInterval(timer)
+  }, 'kb-workbench: opt-in background maintenance')
   const flowWorkspaceManager = createFlowWorkspaceManager({ getRegistry: () => ctx.get('workspaceRegistry') })
   const updateChecker = createUpdateChecker({ currentVersion: PLUGIN_VERSION })
   const updateProfile = ctx.get('profileContext')
@@ -272,7 +282,7 @@ let parsingService = null
   const buildPromise = (async () => {
     // 2026-10-18：新增 gateway.js / flows.js 两个**装载文件** —— buildId 必须覆盖它们，
     // 否则改了流程实现而 buildId 不变，"构建=版本/buildId"这条唯一硬判据就失效了。
-    const list = ['package.json', 'cordis.patch.yml', 'src/host/index.js', 'src/host/kbcore.js', 'src/host/fsindex.js', 'src/host/importer.js', 'src/host/import-service.js', 'src/host/map.js', 'src/host/selftest.js', 'src/host/gateway.js', 'src/host/flows.js', 'src/host/parsing.js', 'src/host/updates.js', 'src/host/flow-workspace.js', 'src/client/index.js', 'src/host/parse-presets.js', 'src/host/parse-credentials.js', 'src/host/parse-native.js', 'src/host/parse-discovery.js', 'src/host/index-maintenance.js', 'tools/kb-local-model.py', 'tools/kb-pdf-pages.py']
+    const list = ['package.json', 'cordis.patch.yml', 'src/host/index.js', 'src/host/kbcore.js', 'src/host/fsindex.js', 'src/host/importer.js', 'src/host/import-service.js', 'src/host/map.js', 'src/host/selftest.js', 'src/host/gateway.js', 'src/host/flows.js', 'src/host/parsing.js', 'src/host/updates.js', 'src/host/flow-workspace.js', 'src/client/index.js', 'src/host/parse-presets.js', 'src/host/parse-credentials.js', 'src/host/parse-native.js', 'src/host/parse-discovery.js', 'src/host/index-maintenance.js', 'tools/kb-local-model.py', 'tools/kb-pdf-pages.py', 'src/host/workbench.js', 'src/host/workbench-state.js', 'src/host/workbench-backup.js', 'src/client/workbench-ui.js', 'src/client/pdfjs/cmaps/78-EUC-H.bcmap', 'src/client/pdfjs/cmaps/78-EUC-V.bcmap', 'src/client/pdfjs/cmaps/78-H.bcmap', 'src/client/pdfjs/cmaps/78-RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/78-RKSJ-V.bcmap', 'src/client/pdfjs/cmaps/78-V.bcmap', 'src/client/pdfjs/cmaps/78ms-RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/78ms-RKSJ-V.bcmap', 'src/client/pdfjs/cmaps/83pv-RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/90ms-RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/90ms-RKSJ-V.bcmap', 'src/client/pdfjs/cmaps/90msp-RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/90msp-RKSJ-V.bcmap', 'src/client/pdfjs/cmaps/90pv-RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/90pv-RKSJ-V.bcmap', 'src/client/pdfjs/cmaps/Add-H.bcmap', 'src/client/pdfjs/cmaps/Add-RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/Add-RKSJ-V.bcmap', 'src/client/pdfjs/cmaps/Add-V.bcmap', 'src/client/pdfjs/cmaps/Adobe-CNS1-0.bcmap', 'src/client/pdfjs/cmaps/Adobe-CNS1-1.bcmap', 'src/client/pdfjs/cmaps/Adobe-CNS1-2.bcmap', 'src/client/pdfjs/cmaps/Adobe-CNS1-3.bcmap', 'src/client/pdfjs/cmaps/Adobe-CNS1-4.bcmap', 'src/client/pdfjs/cmaps/Adobe-CNS1-5.bcmap', 'src/client/pdfjs/cmaps/Adobe-CNS1-6.bcmap', 'src/client/pdfjs/cmaps/Adobe-CNS1-UCS2.bcmap', 'src/client/pdfjs/cmaps/Adobe-GB1-0.bcmap', 'src/client/pdfjs/cmaps/Adobe-GB1-1.bcmap', 'src/client/pdfjs/cmaps/Adobe-GB1-2.bcmap', 'src/client/pdfjs/cmaps/Adobe-GB1-3.bcmap', 'src/client/pdfjs/cmaps/Adobe-GB1-4.bcmap', 'src/client/pdfjs/cmaps/Adobe-GB1-5.bcmap', 'src/client/pdfjs/cmaps/Adobe-GB1-UCS2.bcmap', 'src/client/pdfjs/cmaps/Adobe-Japan1-0.bcmap', 'src/client/pdfjs/cmaps/Adobe-Japan1-1.bcmap', 'src/client/pdfjs/cmaps/Adobe-Japan1-2.bcmap', 'src/client/pdfjs/cmaps/Adobe-Japan1-3.bcmap', 'src/client/pdfjs/cmaps/Adobe-Japan1-4.bcmap', 'src/client/pdfjs/cmaps/Adobe-Japan1-5.bcmap', 'src/client/pdfjs/cmaps/Adobe-Japan1-6.bcmap', 'src/client/pdfjs/cmaps/Adobe-Japan1-UCS2.bcmap', 'src/client/pdfjs/cmaps/Adobe-Korea1-0.bcmap', 'src/client/pdfjs/cmaps/Adobe-Korea1-1.bcmap', 'src/client/pdfjs/cmaps/Adobe-Korea1-2.bcmap', 'src/client/pdfjs/cmaps/Adobe-Korea1-UCS2.bcmap', 'src/client/pdfjs/cmaps/B5-H.bcmap', 'src/client/pdfjs/cmaps/B5-V.bcmap', 'src/client/pdfjs/cmaps/B5pc-H.bcmap', 'src/client/pdfjs/cmaps/B5pc-V.bcmap', 'src/client/pdfjs/cmaps/CNS-EUC-H.bcmap', 'src/client/pdfjs/cmaps/CNS-EUC-V.bcmap', 'src/client/pdfjs/cmaps/CNS1-H.bcmap', 'src/client/pdfjs/cmaps/CNS1-V.bcmap', 'src/client/pdfjs/cmaps/CNS2-H.bcmap', 'src/client/pdfjs/cmaps/CNS2-V.bcmap', 'src/client/pdfjs/cmaps/ETen-B5-H.bcmap', 'src/client/pdfjs/cmaps/ETen-B5-V.bcmap', 'src/client/pdfjs/cmaps/ETenms-B5-H.bcmap', 'src/client/pdfjs/cmaps/ETenms-B5-V.bcmap', 'src/client/pdfjs/cmaps/ETHK-B5-H.bcmap', 'src/client/pdfjs/cmaps/ETHK-B5-V.bcmap', 'src/client/pdfjs/cmaps/EUC-H.bcmap', 'src/client/pdfjs/cmaps/EUC-V.bcmap', 'src/client/pdfjs/cmaps/Ext-H.bcmap', 'src/client/pdfjs/cmaps/Ext-RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/Ext-RKSJ-V.bcmap', 'src/client/pdfjs/cmaps/Ext-V.bcmap', 'src/client/pdfjs/cmaps/GB-EUC-H.bcmap', 'src/client/pdfjs/cmaps/GB-EUC-V.bcmap', 'src/client/pdfjs/cmaps/GB-H.bcmap', 'src/client/pdfjs/cmaps/GB-V.bcmap', 'src/client/pdfjs/cmaps/GBK-EUC-H.bcmap', 'src/client/pdfjs/cmaps/GBK-EUC-V.bcmap', 'src/client/pdfjs/cmaps/GBK2K-H.bcmap', 'src/client/pdfjs/cmaps/GBK2K-V.bcmap', 'src/client/pdfjs/cmaps/GBKp-EUC-H.bcmap', 'src/client/pdfjs/cmaps/GBKp-EUC-V.bcmap', 'src/client/pdfjs/cmaps/GBpc-EUC-H.bcmap', 'src/client/pdfjs/cmaps/GBpc-EUC-V.bcmap', 'src/client/pdfjs/cmaps/GBT-EUC-H.bcmap', 'src/client/pdfjs/cmaps/GBT-EUC-V.bcmap', 'src/client/pdfjs/cmaps/GBT-H.bcmap', 'src/client/pdfjs/cmaps/GBT-V.bcmap', 'src/client/pdfjs/cmaps/GBTpc-EUC-H.bcmap', 'src/client/pdfjs/cmaps/GBTpc-EUC-V.bcmap', 'src/client/pdfjs/cmaps/H.bcmap', 'src/client/pdfjs/cmaps/Hankaku.bcmap', 'src/client/pdfjs/cmaps/Hiragana.bcmap', 'src/client/pdfjs/cmaps/HKdla-B5-H.bcmap', 'src/client/pdfjs/cmaps/HKdla-B5-V.bcmap', 'src/client/pdfjs/cmaps/HKdlb-B5-H.bcmap', 'src/client/pdfjs/cmaps/HKdlb-B5-V.bcmap', 'src/client/pdfjs/cmaps/HKgccs-B5-H.bcmap', 'src/client/pdfjs/cmaps/HKgccs-B5-V.bcmap', 'src/client/pdfjs/cmaps/HKm314-B5-H.bcmap', 'src/client/pdfjs/cmaps/HKm314-B5-V.bcmap', 'src/client/pdfjs/cmaps/HKm471-B5-H.bcmap', 'src/client/pdfjs/cmaps/HKm471-B5-V.bcmap', 'src/client/pdfjs/cmaps/HKscs-B5-H.bcmap', 'src/client/pdfjs/cmaps/HKscs-B5-V.bcmap', 'src/client/pdfjs/cmaps/Katakana.bcmap', 'src/client/pdfjs/cmaps/KSC-EUC-H.bcmap', 'src/client/pdfjs/cmaps/KSC-EUC-V.bcmap', 'src/client/pdfjs/cmaps/KSC-H.bcmap', 'src/client/pdfjs/cmaps/KSC-Johab-H.bcmap', 'src/client/pdfjs/cmaps/KSC-Johab-V.bcmap', 'src/client/pdfjs/cmaps/KSC-V.bcmap', 'src/client/pdfjs/cmaps/KSCms-UHC-H.bcmap', 'src/client/pdfjs/cmaps/KSCms-UHC-HW-H.bcmap', 'src/client/pdfjs/cmaps/KSCms-UHC-HW-V.bcmap', 'src/client/pdfjs/cmaps/KSCms-UHC-V.bcmap', 'src/client/pdfjs/cmaps/KSCpc-EUC-H.bcmap', 'src/client/pdfjs/cmaps/KSCpc-EUC-V.bcmap', 'src/client/pdfjs/cmaps/LICENSE', 'src/client/pdfjs/cmaps/NWP-H.bcmap', 'src/client/pdfjs/cmaps/NWP-V.bcmap', 'src/client/pdfjs/cmaps/RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/RKSJ-V.bcmap', 'src/client/pdfjs/cmaps/Roman.bcmap', 'src/client/pdfjs/cmaps/UniCNS-UCS2-H.bcmap', 'src/client/pdfjs/cmaps/UniCNS-UCS2-V.bcmap', 'src/client/pdfjs/cmaps/UniCNS-UTF16-H.bcmap', 'src/client/pdfjs/cmaps/UniCNS-UTF16-V.bcmap', 'src/client/pdfjs/cmaps/UniCNS-UTF32-H.bcmap', 'src/client/pdfjs/cmaps/UniCNS-UTF32-V.bcmap', 'src/client/pdfjs/cmaps/UniCNS-UTF8-H.bcmap', 'src/client/pdfjs/cmaps/UniCNS-UTF8-V.bcmap', 'src/client/pdfjs/cmaps/UniGB-UCS2-H.bcmap', 'src/client/pdfjs/cmaps/UniGB-UCS2-V.bcmap', 'src/client/pdfjs/cmaps/UniGB-UTF16-H.bcmap', 'src/client/pdfjs/cmaps/UniGB-UTF16-V.bcmap', 'src/client/pdfjs/cmaps/UniGB-UTF32-H.bcmap', 'src/client/pdfjs/cmaps/UniGB-UTF32-V.bcmap', 'src/client/pdfjs/cmaps/UniGB-UTF8-H.bcmap', 'src/client/pdfjs/cmaps/UniGB-UTF8-V.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UCS2-H.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UCS2-HW-H.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UCS2-HW-V.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UCS2-V.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UTF16-H.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UTF16-V.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UTF32-H.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UTF32-V.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UTF8-H.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UTF8-V.bcmap', 'src/client/pdfjs/cmaps/UniJIS2004-UTF16-H.bcmap', 'src/client/pdfjs/cmaps/UniJIS2004-UTF16-V.bcmap', 'src/client/pdfjs/cmaps/UniJIS2004-UTF32-H.bcmap', 'src/client/pdfjs/cmaps/UniJIS2004-UTF32-V.bcmap', 'src/client/pdfjs/cmaps/UniJIS2004-UTF8-H.bcmap', 'src/client/pdfjs/cmaps/UniJIS2004-UTF8-V.bcmap', 'src/client/pdfjs/cmaps/UniJISPro-UCS2-HW-V.bcmap', 'src/client/pdfjs/cmaps/UniJISPro-UCS2-V.bcmap', 'src/client/pdfjs/cmaps/UniJISPro-UTF8-V.bcmap', 'src/client/pdfjs/cmaps/UniJISX0213-UTF32-H.bcmap', 'src/client/pdfjs/cmaps/UniJISX0213-UTF32-V.bcmap', 'src/client/pdfjs/cmaps/UniJISX02132004-UTF32-H.bcmap', 'src/client/pdfjs/cmaps/UniJISX02132004-UTF32-V.bcmap', 'src/client/pdfjs/cmaps/UniKS-UCS2-H.bcmap', 'src/client/pdfjs/cmaps/UniKS-UCS2-V.bcmap', 'src/client/pdfjs/cmaps/UniKS-UTF16-H.bcmap', 'src/client/pdfjs/cmaps/UniKS-UTF16-V.bcmap', 'src/client/pdfjs/cmaps/UniKS-UTF32-H.bcmap', 'src/client/pdfjs/cmaps/UniKS-UTF32-V.bcmap', 'src/client/pdfjs/cmaps/UniKS-UTF8-H.bcmap', 'src/client/pdfjs/cmaps/UniKS-UTF8-V.bcmap', 'src/client/pdfjs/cmaps/V.bcmap', 'src/client/pdfjs/cmaps/WP-Symbol.bcmap', 'src/client/pdfjs/LICENSE', 'src/client/pdfjs/pdf.mjs', 'src/client/pdfjs/pdf.worker.mjs', 'src/client/pdfjs/standard_fonts/FoxitDingbats.pfb', 'src/client/pdfjs/standard_fonts/FoxitFixed.pfb', 'src/client/pdfjs/standard_fonts/FoxitFixedBold.pfb', 'src/client/pdfjs/standard_fonts/FoxitFixedBoldItalic.pfb', 'src/client/pdfjs/standard_fonts/FoxitFixedItalic.pfb', 'src/client/pdfjs/standard_fonts/FoxitSerif.pfb', 'src/client/pdfjs/standard_fonts/FoxitSerifBold.pfb', 'src/client/pdfjs/standard_fonts/FoxitSerifBoldItalic.pfb', 'src/client/pdfjs/standard_fonts/FoxitSerifItalic.pfb', 'src/client/pdfjs/standard_fonts/FoxitSymbol.pfb', 'src/client/pdfjs/standard_fonts/LiberationSans-Bold.ttf', 'src/client/pdfjs/standard_fonts/LiberationSans-BoldItalic.ttf', 'src/client/pdfjs/standard_fonts/LiberationSans-Italic.ttf', 'src/client/pdfjs/standard_fonts/LiberationSans-Regular.ttf', 'src/client/pdfjs/standard_fonts/LICENSE_FOXIT', 'src/client/pdfjs/standard_fonts/LICENSE_LIBERATION', 'src/client/pdfjs/wasm/jbig2.wasm', 'src/client/pdfjs/wasm/LICENSE_JBIG2', 'src/client/pdfjs/wasm/LICENSE_OPENJPEG', 'src/client/pdfjs/wasm/LICENSE_PDFJS_JBIG2', 'src/client/pdfjs/wasm/LICENSE_PDFJS_OPENJPEG', 'src/client/pdfjs/wasm/LICENSE_PDFJS_QCMS', 'src/client/pdfjs/wasm/LICENSE_QCMS', 'src/client/pdfjs/wasm/openjpeg.wasm', 'src/client/pdfjs/wasm/openjpeg_nowasm_fallback.js', 'src/client/pdfjs/wasm/qcms_bg.wasm', 'browser-extension/manifest.json', 'browser-extension/options.html', 'browser-extension/options.js', 'browser-extension/popup.html', 'browser-extension/popup.js', 'browser-extension/style.css', 'src/host/capture-surface.js', 'src/client/capture.html', 'src/client/capture.js', 'src/client/capture.css', 'src/client/capture-sw.js', 'src/client/capture.webmanifest', 'src/client/capture-icon.svg', 'src/client/capture-icon-192.png', 'src/client/capture-icon-512.png']
     const whole = crypto.createHash('sha256')
     for (const rel of list) {
       try {
@@ -786,6 +796,14 @@ let parsingService = null
   function toolDefs() {
     return [
       {
+        name: 'kb_validate_citations',
+        description: '校验本次 @知识库提问中拟使用的 [S编号] 引用，检查来源是否存在、版本是否改变及隐私设置是否仍允许。',
+        parameters: { type: 'object', additionalProperties: false, required: ['questionId', 'answer'], properties: { questionId: { type: 'string' }, answer: { type: 'string' } } },
+        output: { schema: { type: 'object', additionalProperties: true, properties: { ok: { type: 'boolean' } }, required: ['ok'] }, render: (_a, v) => text(JSON.stringify(v)) },
+        isConcurrencySafe: () => true,
+        async execute(args) { try { return await workbench.dispatch({ op: 'search.validate', questionId: args.questionId, answer: args.answer }) } catch (error) { return { ok: false, reason: error.code || 'VALIDATION_FAILED' } } },
+      },
+      {
         name: 'kb_status',
         description: '查看知识库状态：绑定路径、初始化与健康状态（healthy/healthReason）、条目数、配置状态与 revision、状态目录。配置损坏时会明确报 degraded 并给恢复入口。只读。',
         parameters: { type: 'object', additionalProperties: false, properties: {} },
@@ -1234,14 +1252,18 @@ let parsingService = null
     res.end(JSON.stringify(payload))
   }
   const kbReadBody = (req) =>
-    new Promise((resolve) => {
-      let buf = ''
+    new Promise((resolve, reject) => {
+      const chunks = []
+      let bytes = 0, rejected = false
       req.on('data', (chunk) => {
-        buf += chunk
-        if (buf.length > 1_000_000) req.destroy()
+        if (rejected) return
+        const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk)
+        bytes += buffer.length
+        if (bytes > 12 * 1024 * 1024) { rejected = true; chunks.length = 0; reject(new Error('请求超过 12 MiB 上限')); return }
+        chunks.push(buffer)
       })
-      req.on('end', () => resolve(buf))
-      req.on('error', () => resolve(''))
+      req.on('end', () => { if (!rejected) resolve(Buffer.concat(chunks).toString('utf8')) })
+      req.on('error', reject)
     })
   // ── 顶栏页签（审查意见 §四）：统一快照 + 全量清单 ─────────────────────
   // 原则：页面只消费这一份快照，不在前端二次推导；算不出来的显式标 known:false，
@@ -1322,7 +1344,8 @@ let parsingService = null
   const kbSnapshotVersion = (st) => crypto.createHash('sha1').update(kbSnapshotKey(st)).digest('hex').slice(0, 8)
   const kbOverview = async (current, opts = {}) => {
     const st = await current.status()
-    const key = kbSnapshotKey(st)
+    const display = st.kbId ? await workbench.displayPolicy() : { revision: 0, privateDirs: DEFAULT_PRIVATE_DIRS }
+    const key = kbSnapshotKey(st) + '|' + display.revision
     const version = kbSnapshotVersion(st)
     if (opts.fresh !== true && overviewCache.value !== null && overviewCache.key === key && Date.now() - overviewCache.at <= OVERVIEW_TTL_MS) {
       return { ...overviewCache.value, cached: true }
@@ -1333,7 +1356,7 @@ let parsingService = null
     }
     const promise = (async () => {
       const conf = await current.getConfig().catch(() => null)
-      const privateDirs = await kbEffectivePrivateDirs(conf, st.kbPath)
+      const privateDirs = display.privateDirs
       const map = st.kbPath ? await buildMap(st.kbPath, { privateDirs, readOnly: false }) : null
       const sections = (map && map.sections) || []
       const pick = (n) => sections.find((s) => s.name === n) || null
@@ -1602,6 +1625,54 @@ let parsingService = null
   // #endregion kbSummarizeRebuild
 
   if (webServer && typeof webServer.register === 'function') {
+    ctx.effect(() => webServer.register({ kind: 'exact', path: '/kb-core/collect', handler: async (req, res) => {
+      try {
+        const draft = await sharedDraft(req)
+        res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' })
+        res.end(captureDocument(await readFile(path.join(pkgRoot, 'src/client/capture.html'), 'utf8'), draft))
+      } catch (error) { kbSendJson(res, 400, { ok: false, error: '未保存分享内容：' + error.message }) }
+    } }), 'kb-workbench: mobile quick capture')
+    for (const [asset, type] of [['capture.js','text/javascript'], ['capture-sw.js','text/javascript'], ['capture.css','text/css'], ['capture.webmanifest','application/manifest+json'], ['capture-icon.svg','image/svg+xml'], ['capture-icon-192.png','image/png'], ['capture-icon-512.png','image/png']]) {
+      ctx.effect(() => webServer.register({ kind: 'exact', path: '/kb-core/' + asset, handler: async (req, res) => {
+        if (req.method !== 'GET') return kbSendJson(res, 405, { ok: false })
+        res.writeHead(200, { 'content-type': type + '; charset=utf-8', 'cache-control': 'no-cache', 'x-content-type-options': 'nosniff' })
+        res.end(await readFile(path.join(pkgRoot, 'src/client', asset)))
+      } }), 'kb-workbench: capture asset ' + asset)
+    }
+    for (const folder of ['cmaps', 'standard_fonts', 'wasm']) for (const asset of readdirSync(path.join(pkgRoot, 'src/client/pdfjs', folder))) {
+      ctx.effect(() => webServer.register({ kind: 'exact', path: '/kb-core/pdf-assets/' + folder + '/' + asset, handler: async (req, res) => {
+        if (req.method !== 'GET') return kbSendJson(res, 405, { ok: false })
+        res.writeHead(200, { 'content-type': asset.endsWith('.js') ? 'text/javascript' : asset.endsWith('.wasm') ? 'application/wasm' : 'application/octet-stream', 'cache-control': 'private, max-age=3600' })
+        res.end(await readFile(path.join(pkgRoot, 'src/client/pdfjs', folder, asset)))
+      } }), 'kb-workbench: PDF resource ' + folder + '/' + asset)
+    }
+    ctx.effect(() => webServer.register({ kind: 'exact', path: '/kb-core/clip', handler: async (req, res) => {
+      const origin = String(req.headers.origin || '')
+      if (!/^chrome-extension:\/\/[a-p]{32}$/.test(origin)) return kbSendJson(res, 403, { ok: false, error: '只接受浏览器扩展请求' })
+      res.setHeader('access-control-allow-origin', origin)
+      res.setHeader('vary', 'Origin')
+      if (req.method === 'OPTIONS') { res.writeHead(204, { 'access-control-allow-methods': 'POST', 'access-control-allow-headers': 'content-type, authorization', 'access-control-max-age': '600' }); return res.end() }
+      if (req.method !== 'POST') return kbSendJson(res, 405, { ok: false })
+      try {
+        const body = JSON.parse(await kbReadBody(req))
+        const out = await workbench.clipper({ origin, code: body.code, token: String(req.headers.authorization || '').replace(/^Bearer /, ''), item: body.item })
+        return kbSendJson(res, 200, { ok: true, ...out })
+      } catch (error) { return kbSendJson(res, error.code === 'CLIPPER_UNAUTHORIZED' ? 401 : 400, { ok: false, error: error.code ? error.message : '剪藏未完成，请稍后重试' }) }
+    } }), 'kb-workbench: restricted browser capture')
+    for (const asset of ['pdf.mjs', 'pdf.worker.mjs']) ctx.effect(() => webServer.register({ kind: 'exact', path: '/kb-core/' + (asset === 'pdf.mjs' ? 'pdfjs.mjs' : asset), handler: async (req, res) => {
+      if (req.method !== 'GET') return kbSendJson(res, 405, { ok: false })
+      res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'private, max-age=3600', 'x-content-type-options': 'nosniff' })
+      res.end(await readFile(path.join(pkgRoot, 'src', 'client', 'pdfjs', asset)))
+    } }), 'kb-workbench: PDF reader ' + asset)
+    ctx.effect(() => webServer.register({ kind: 'exact', path: '/kb-core/workbench-events', handler: (req, res) => {
+      if (req.method !== 'GET' || req.headers['sec-fetch-site'] === 'cross-site') return kbSendJson(res, 403, { ok: false })
+      res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', 'x-accel-buffering': 'no' })
+      res.write(': workbench connected\n\n')
+      const off = workbench.subscribe(event => res.write('data: ' + JSON.stringify(event) + '\n\n'))
+      const heartbeat = setInterval(() => res.write(': heartbeat\n\n'), 15000)
+      const close = () => { off(); clearInterval(heartbeat) }
+      res.on('close', close)
+    } }), 'kb-workbench: shared policy events')
     ctx.effect(
       () =>
         webServer.register({
@@ -1614,6 +1685,16 @@ let parsingService = null
               if (req.method === 'GET') return kbSendJson(res, 200, { ok: true, status: { ...(await current.status()), build: buildInfo } })
               if (req.method !== 'POST') return kbSendJson(res, 405, { ok: false, error: 'method not allowed' })
               const body = JSON.parse((await kbReadBody(req)) || '{}')
+              if (typeof body.op === 'string' && /^(preferences|onboarding|atlas|capture|search|backup|reading|review|tasks)\./.test(body.op)) {
+                const origin = req.headers.origin
+                if (req.headers['sec-fetch-site'] === 'cross-site' ||
+                  String(req.headers['content-type'] || '').toLowerCase().split(';')[0].trim() !== 'application/json' ||
+                  (origin && (() => { try { return new URL(origin).host !== req.headers.host } catch { return true } })())) {
+                  return kbSendJson(res, 403, { ok: false, error: '工作台请求必须来自当前客户端' })
+                }
+                try { return kbSendJson(res, 200, await workbench.dispatch(body)) }
+                catch (error) { return kbSendJson(res, 200, { ok: false, code: error.code || 'WORKBENCH_ERROR', error: error.code ? error.message : '工作台操作未完成，请重试；用户数据已保留' }) }
+              }
               if (body.op === 'status') return kbSendJson(res, 200, { ok: true, status: { ...(await current.status()), build: buildInfo } })
               if (body.op === 'updates.check') return kbSendJson(res, 200, {
                 ...await updateChecker.check({ force: body.force === true }),
@@ -1699,7 +1780,7 @@ let parsingService = null
                   return kbSendJson(res, 400, { ok: false, error: escape ? 'prefix 越界（必须在库内）' : 'prefix 不可用：' + safe.reason, reason: safe.reason })
                 }
                 const conf = await current.getConfig().catch(() => null)
-                const privateDirs = await kbEffectivePrivateDirs(conf, cur.kbPath)
+                const privateDirs = (await workbench.displayPolicy()).privateDirs
                 const walk = await walkTree(safe.abs, cur.kbPath, { maxFiles: KB_LIST_MAX, followLinks: conf?.followLinks === true })
                 const q = String(body.q ?? '').trim().toLowerCase()
                 const matched = []
@@ -1850,6 +1931,10 @@ let parsingService = null
                 const admin = { viaAdmin: true }
                 try {
                   let out
+                  if (['job', 'result', 'cancel', 'retry', 'land'].includes(sub)) {
+                    const target = await parsingService.readJob(String(body.jobId ?? ''))
+                    if (target?.source?.relPath) await workbench.assertDisplay(target.source.relPath)
+                  }
                   if (sub === 'providers') out = await parsingService.providersPublic()
                   else if (sub === 'provider.save') out = await parsingService.saveProvider(body.provider, { ...admin, credentialInput: body.credentials, clearCredential: body.clearCredential === true })
                   else if (sub === 'scan.start') out = await parsingService.scanStart({ mode: body.mode, directory: body.directory }, admin)
@@ -1862,7 +1947,7 @@ let parsingService = null
                   else if (sub === 'test-connection') out = await parsingService.testConnection(String(body.providerId ?? ''))
                   else if (sub === 'test-parse') out = await parsingService.testParse({ providerId: body.providerId, sourceRel: body.sourceRel, kind: body.kind }, { requestedBy: uiCaller })
                   else if (sub === 'submit') out = await parsingService.submit({ sourceRel: body.sourceRel, kind: body.kind, providerId: body.providerId, purpose: body.purpose }, { requestedBy: uiCaller })
-                  else if (sub === 'jobs') out = await parsingService.listJobs({ limit: body.limit, kind: body.kind ?? null, status: body.status ?? null })
+                  else if (sub === 'jobs') { out = await parsingService.listJobs({ limit: body.limit, kind: body.kind ?? null, status: body.status ?? null }); out.jobs = await workbench.filterJobs(out.jobs ?? []) }
                   else if (sub === 'job') {
                     const job = await parsingService.readJob(String(body.jobId ?? ''))
                     out = job ? { ok: true, job: parsingService.publicJob(job) } : { ok: false, reason: 'not-found' }

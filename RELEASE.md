@@ -1,3 +1,19 @@
+# 1.1.4 正式版：可选更新通道
+
+基于 1.1.3，仅增加正式版和预览版分别检查、显示及由用户选择下载/安装的能力。知识工作台功能仅在 2.0.1-beta1 预览版提供。
+
+- 旧版用户通过现有“检查更新”入口获得正式版 1.1.4。
+- 安装 1.1.4 后，同时查看正式版状态和可选预览更新。
+- 检查本身不下载、不安装；选择预览版后才执行对应操作。
+- 预览清单不可用时保留正式版检查；安装前重新校验版本、包身份、大小和 SHA256。
+- 保留原有资料、绑定和设置；不增加工作台引导。
+
+[下载正式版 1.1.4](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-1.1.4.tgz) · [下载预览版 2.0.1-beta1](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.0.1-beta1.tgz)
+
+更新通道、原有更新安装流程和导入授权回归使用模拟服务通过；真实 DSH 安装尚待实机验收。
+
+---
+
 # 个人知识库 1.1.3
 
 本版修复两个缺口：`kb_import action=parse` 过去没有经过 `kb_parse` 的调用者授权与 H1 状态检查；现在只有宿主确认的知识库根会话或仍有效的知识库子代理可以解析，且 H1 必须就绪。任务记录保存授权来源，模型传入的 provider ID 不会改变设置默认值。
