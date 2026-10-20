@@ -19,5 +19,6 @@ h=hashlib.sha256()
 for rel in build:h.update((rel+'\0'+hashlib.sha256(files[rel]).hexdigest()+'\n').encode())
 assert h.hexdigest()[:16]==m['buildId']
 assert json.loads(files['package.json'])['version']==m['version']==version
+assert ("const RELEASE_VERSION = '"+version+"'").encode() in files['src/client/index.js'], 'Client installed-version tracker must match package version; do not change the announcement registry automatically'
 assert ("export const VERSION = '"+m['version']+"'").encode() in files['src/host/kbcore.js']
 print(f"PASS: {version} / {m['buildId']}; source/package {len(files)}/{len(files)}; SHA256 {m['sha256']}")
