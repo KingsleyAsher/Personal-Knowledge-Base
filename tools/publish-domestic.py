@@ -6,7 +6,7 @@ from pathlib import Path
 import base64, concurrent.futures, hashlib, json, subprocess, time, urllib.request, urllib.error, urllib.parse, sys, shutil
 
 repo = Path(__file__).resolve().parents[1]
-version = '2.0.1-beta2'
+version = '2.0.1-beta3'
 delivery = repo.parent / ('知识库产品-' + version)
 manifest = json.loads((delivery / 'manifest.json').read_text(encoding='utf-8'))
 assert manifest['version'] == version
@@ -18,7 +18,7 @@ feed['channel'] = 'preview'
 shutil.copyfile(archive, repo / 'dist' / archive.name)
 shutil.copyfile(archive, repo / 'website/downloads' / archive.name)
 stable = json.loads((repo / 'release-manifest.json').read_text(encoding='utf-8'))
-assert stable['version'] == '1.1.5'
+assert stable['version'] == '1.1.6'
 assert hashlib.sha256((repo / 'dist' / stable['tgz']).read_bytes()).hexdigest() == stable['sha256']
 
 tracked = subprocess.check_output(['git', 'ls-files', '-z'], cwd=repo).decode().split('\0')
@@ -28,7 +28,7 @@ for folder in ['src', 'browser-extension']:
 paths.update(['WORKBENCH.md', 'WORKBENCH-IMPLEMENTATION.md', 'PREVIEW.md', 'preview-manifest.json', 'dist/' + archive.name, 'website/downloads/' + archive.name,
               'dist/' + stable['tgz'], 'website/downloads/' + stable['tgz'],
               'tests/workbench.test.mjs', 'tests/workbench-ui.mjs', 'tests/preview-updates.test.mjs',
-              'tools/package-workbench.py', 'tools/sync-workbench-build.py', 'tools/sync-workbench-client.py', 'tools/validate-workbench.py', 'tools/publish-beta.py', 'tools/prepare-stable-bridge.py', 'tools/validate-stable-bridge.py', 'tools/prepare-release-feeds.py', 'tests/mirror-updates.test.mjs', 'tools/live-update-mirrors.mjs', 'tools/probe-update-mirrors.py', 'tools/prepare-domestic.py', 'tools/assemble-domestic.py', 'tools/prepare-stable-domestic.py', 'tools/validate-stable-domestic.py', 'tools/publish-domestic.py'])
+              'tools/package-workbench.py', 'tools/sync-workbench-build.py', 'tools/sync-workbench-client.py', 'tools/validate-workbench.py', 'tools/publish-beta.py', 'tools/prepare-stable-bridge.py', 'tools/validate-stable-bridge.py', 'tools/prepare-release-feeds.py', 'tests/mirror-updates.test.mjs', 'tools/live-update-mirrors.mjs', 'tools/probe-update-mirrors.py', 'tools/prepare-domestic.py', 'tools/assemble-domestic.py', 'tools/prepare-stable-domestic.py', 'tools/validate-stable-domestic.py', 'tools/publish-domestic.py', 'tools/prepare-quiet-update.py'])
 assert not any('fixes-probe-' in p or '__pycache__' in p for p in paths)
 print(json.dumps({'version':version,'sourceFiles':len(paths),'stable':stable['version'],'betaBytes':manifest['bytes']},ensure_ascii=False),flush=True)
 if '--execute' not in sys.argv: sys.exit(0)
@@ -72,27 +72,27 @@ def upload(item):
 with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
     entries=list(pool.map(upload,changed))
 tree=api('/git/trees','POST',{'base_tree':commit['tree']['sha'],'tree':entries})
-new=api('/git/commits','POST',{'message':'Release 2.0.1-beta2 knowledge workbench with domestic update mirrors','tree':tree['sha'],'parents':[head]})
+new=api('/git/commits','POST',{'message':'Release 2.0.1-beta3 knowledge workbench with domestic update mirrors','tree':tree['sha'],'parents':[head]})
 assert api('/git/ref/heads/main?ts='+str(time.time()))['object']['sha']==head,'Remote changed; rerun against new head'
 api('/git/refs/heads/main','PATCH',{'sha':new['sha'],'force':False})
 print('Published source commit:',new['sha'],flush=True)
 
 # Tag the bridge from its own exact source tree; never label beta sources as stable.
-stable_source=repo.parent/'stable-bridge-1.1.5'
+stable_source=repo.parent/'stable-bridge-1.1.6'
 stable_entries=[]
 for item in stable['files']:
     rel=item['path']; data=(stable_source/rel).read_bytes()
     expected=hashlib.sha1(b'blob '+str(len(data)).encode()+b'\0'+data).hexdigest()
     stable_entries.append(upload((rel,data,expected)))
 stable_tree=api('/git/trees','POST',{'tree':stable_entries})
-stable_commit=api('/git/commits','POST',{'message':'Release stable 1.1.5: domestic update sources only','tree':stable_tree['sha'],'parents':[head]})
+stable_commit=api('/git/commits','POST',{'message':'Release stable 1.1.6: domestic update sources only','tree':stable_tree['sha'],'parents':[head]})
 release_list=api('/releases?per_page=100&ts='+str(time.time()))
-formal=next((x for x in release_list if x['tag_name']=='v1.1.5'),None)
+formal=next((x for x in release_list if x['tag_name']=='v1.1.6'),None)
 formal_body=(repo/'RELEASE.md').read_text(encoding='utf-8').split('\n---\n')[0]+'\n\n构建号：`'+stable['buildId']+'`\n\nSHA256：`'+stable['sha256']+'`\n'
 if formal is None:
-    formal=api('/releases','POST',{'tag_name':'v1.1.5','target_commitish':stable_commit['sha'],'name':'1.1.5 · 国内更新源','body':formal_body,'draft':True,'prerelease':False,'make_latest':'true'})
+    formal=api('/releases','POST',{'tag_name':'v1.1.6','target_commitish':stable_commit['sha'],'name':'1.1.6 · 国内更新源','body':formal_body,'draft':True,'prerelease':False,'make_latest':'true'})
 assert not formal['prerelease']
-formal_dir=repo.parent/'知识库产品-1.1.5'
+formal_dir=repo.parent/'知识库产品-1.1.6'
 known={x['name']:x for x in api('/releases/'+str(formal['id'])+'/assets')}
 for file in [formal_dir/stable['tgz'],formal_dir/'manifest.json',formal_dir/'SHA256SUMS',formal_dir/'validation.json']:
     if file.name not in known:
@@ -107,7 +107,7 @@ release=next((x for x in releases if x['tag_name']==tag),None)
 body=(repo/'PREVIEW.md').read_text(encoding='utf-8').replace('(WORKBENCH.md)','(https://github.com/KingsleyAsher/Personal-Knowledge-Base/blob/main/WORKBENCH.md)')
 body+='\n构建号：`'+manifest['buildId']+'`\n\nSHA256：`'+manifest['sha256']+'`\n'
 if release is None:
-    release=api('/releases','POST',{'tag_name':tag,'target_commitish':new['sha'],'name':'2.0.1-beta2 · 国内源与知识工作台预览','body':body,'draft':True,'prerelease':True,'make_latest':'false'})
+    release=api('/releases','POST',{'tag_name':tag,'target_commitish':new['sha'],'name':'2.0.1-beta3 · 国内源与知识工作台预览','body':body,'draft':True,'prerelease':True,'make_latest':'false'})
 assert release['prerelease'], 'Existing release is not a prerelease'
 assets=[archive, delivery/'知识库快速收集-浏览器扩展.zip', delivery/'使用说明.md', delivery/'manifest.json',delivery/'SHA256SUMS',delivery/'validation.json']
 existing_assets={x['name']:x for x in api('/releases/'+str(release['id'])+'/assets')}

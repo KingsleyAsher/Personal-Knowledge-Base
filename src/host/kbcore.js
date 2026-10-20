@@ -18,7 +18,7 @@ import path from 'node:path'
 import { readImportSources, derivedPrivatePartitions, effectivePrivateDirs, foldGeneratedPairs } from './fsindex.js'
 
 // 版本单一来源：package.json 的 version 必须与此一致（详见 INSTALL 说明）
-export const VERSION = '2.0.1-beta2'
+export const VERSION = '2.0.1-beta3'
 
 export const REQUIRED_FIELDS = ['title', 'type', 'tags', 'status', 'updated']
 export const SCHEMA_VERSION = 1

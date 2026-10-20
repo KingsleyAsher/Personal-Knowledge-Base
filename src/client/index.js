@@ -2061,7 +2061,10 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       }
       const serialized = (task) => {
         if (running) return running
-        running = Promise.resolve().then(task).catch((error) => show(String(error.message || error))).finally(() => { running = null })
+        running = Promise.resolve().then(task).catch((error) => {
+          const message = String(error.message || error)
+          show(message, { allSourcesFailed: message.startsWith('安装包下载失败：') })
+        }).finally(() => { running = null })
         return running
       }
       return {
@@ -2146,14 +2149,18 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         : !update.ok ? update.error || '检查更新失败，请稍后重试'
           : update.updateAvailable ? '发现新版本 ' + update.latestVersion
             : update.ahead ? '当前使用预览版；最新正式版 ' + update.latestVersion : '已是最新正式版'
+      const allCheckSourcesFailed = update?.sourceStatus?.length > 0 && ![...(update.sourceStatus || []), ...(update.preview?.sourceStatus || update.previewSourceStatus || [])].some(s => s.ok)
+      const showSourceFailures = !checking && (allCheckSourcesFailed || updating.allSourcesFailed)
       return e('div', { style: { marginLeft: 'auto', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 10px', fontSize: 12 }, 'aria-label': '插件版本与更新' },
         e('span', { style: { opacity: .75 } }, version ? '版本 ' + version : '版本读取中或暂不可用'),
         e('button', { className: 'kbc-btn kbc-btn-ghost', style: { padding: '3px 8px', fontSize: 12 }, disabled: checking, onClick: () => { refreshVersion(); check(true) } }, checking ? '检查中…' : '检查更新'),
         label ? e('span', { role: 'status', style: { opacity: .8, overflowWrap: 'anywhere' } }, label) : null,
-        !checking && update ? e('details', { style: { width: '100%' } },
-          e('summary', null, '下载源：Gitee / GitCode / GitHub' + (update.sourceName ? ' · 当前 ' + update.sourceName : '')),
-          e('div', null, '自动比较可用源版本；下载失败或校验不通过时切换其他源。'),
+        showSourceFailures ? e('details', { open: true, style: { width: '100%' } },
+          e('summary', null, '所有更新源均不可用，查看原因与备用入口'),
+          e('div', null, '已自动尝试全部更新源，请稍后重试或使用以下备用入口。'),
+          updating.allSourcesFailed ? e('div', null, updating.message) : null,
           ...[...(update.sourceStatus || []).map(s => ({ ...s, channel: '正式版' })), ...(update.preview?.sourceStatus || update.previewSourceStatus || []).map(s => ({ ...s, channel: '预览版' }))].map(s => e('div', { key: s.channel + s.id }, s.channel + ' · ' + s.name + '：' + (s.ok ? '可连接 ' + s.version : s.error || '暂不可用'))),
+          ...[{ name: 'Gitee', url: 'https://gitee.com/KingsleyAsher/Personal-Knowledge-Base' }, { name: 'GitCode', url: 'https://gitcode.com/KingsleyAsher/Personal-Knowledge-Base' }, { name: 'GitHub', url: 'https://github.com/KingsleyAsher/Personal-Knowledge-Base' }].map(s => e('a', { key: 'repo-' + s.name, href: s.url, target: '_blank', rel: 'noopener noreferrer', style: { marginRight: 12 } }, s.name + ' 仓库')),
           ...(update.downloadSources || []).map(s => e('a', { key: s.id, href: s.url, target: '_blank', rel: 'noopener noreferrer', style: { marginRight: 12 } }, s.name + ' 正式版下载')),
           ...(update.preview?.downloadSources || []).map(s => e('a', { key: 'preview-' + s.id, href: s.url, target: '_blank', rel: 'noopener noreferrer', style: { marginRight: 12 } }, s.name + ' 预览版下载'))) : null,
         !checking && update?.ok && update.downloadUrl ? e('a', { href: update.downloadUrl, target: '_blank', rel: 'noopener noreferrer', className: 'kbc-btn kbc-btn-ghost' }, '下载正式版 ' + update.latestVersion) : null,
@@ -2928,7 +2935,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         toast?e('div',{className:'kbm-toast'},toast):null)
     }
 
-    const RELEASE_VERSION = '2.0.1-beta2'
+    const RELEASE_VERSION = '2.0.1-beta3'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Only owner-designated announcements belong here. A package version bump
     // must never add an announcement or change an existing announcement ID.

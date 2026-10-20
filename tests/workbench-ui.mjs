@@ -12,6 +12,7 @@ const runtime = 'C:/Users/Kingsley Asher/.cache/codex-runtimes/codex-primary-run
 const { chromium } = require(runtime + 'playwright')
 const { PDFDocument, StandardFonts } = require(runtime + 'pdf-lib')
 const output = await mkdtemp(path.resolve('../workbench-ui-qa-'))
+let failUpdates = false
 const root = path.join(output, 'library'), stateDir = path.join(output, 'state')
 await mkdir(root)
 const core = createCore({ stateDir }, () => {})
@@ -64,11 +65,11 @@ const server = http.createServer(async (req, res) => {
     if (url.pathname === '/kb-core/api') {
       let body = ''; for await (const chunk of req) body += chunk
       const args = JSON.parse(body || '{}'); let result
-      if (args.op === 'status') result = { ok: true, status: { ...await core.status(), build: { version: '2.0.1-beta2' } } }
+      if (args.op === 'status') result = { ok: true, status: { ...await core.status(), build: { version: '2.0.1-beta3' } } }
       else if (args.op === 'parse.providers') result = { ok: true, providers: [], defaultOcr: null, defaultAsr: null }
-      else if (args.op === 'updates.check') result = { ok: true, currentVersion: '2.0.1-beta2', latestVersion: '1.1.5', sourceName: 'Gitee', updateAvailable: false,
-        sourceStatus: [{ id: 'gitee', name: 'Gitee', ok: true, version: '1.1.5' }, { id: 'gitcode', name: 'GitCode', ok: true, version: '1.1.5' }, { id: 'github', name: 'GitHub', ok: false, error: '连接超时' }],
-        downloadSources: [{ id: 'gitee', name: 'Gitee', url: 'https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-1.1.5.tgz' }, { id: 'gitcode', name: 'GitCode', url: 'https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-1.1.5.tgz?ref=main' }] }
+      else if (args.op === 'updates.check') result = failUpdates ? { ok: false, error: '检查更新失败：所有更新源暂不可用，请稍后重试', sourceStatus: ['gitee','gitcode','github'].map((id, i) => ({ id, name: ['Gitee','GitCode','GitHub'][i], ok: false, error: '连接超时' })) } : { ok: true, currentVersion: '2.0.1-beta3', latestVersion: '1.1.6', sourceName: 'Gitee', updateAvailable: false,
+        sourceStatus: [{ id: 'gitee', name: 'Gitee', ok: true, version: '1.1.6' }, { id: 'gitcode', name: 'GitCode', ok: true, version: '1.1.6' }, { id: 'github', name: 'GitHub', ok: false, error: '连接超时' }],
+        downloadSources: [{ id: 'gitee', name: 'Gitee', url: 'https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-1.1.6.tgz' }, { id: 'gitcode', name: 'GitCode', url: 'https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-1.1.6.tgz?ref=main' }] }
       else result = await workbench.dispatch(args)
       res.writeHead(200, { 'content-type': 'application/json' }); return res.end(JSON.stringify(result))
     }
@@ -93,12 +94,20 @@ try {
   await page.getByRole('button', { name: '下一步', exact: true }).click()
   await page.getByRole('button', { name: '保存并开始使用' }).click()
   await page.getByRole('dialog').waitFor({ state: 'hidden' })
-  await page.getByText('下载源：Gitee / GitCode / GitHub · 当前 Gitee', { exact: true }).click()
-  await page.getByText('正式版 · GitCode：可连接 1.1.5', { exact: true }).waitFor()
-  assert((await page.getByRole('link', { name: 'GitCode 正式版下载', exact: true }).getAttribute('href')).startsWith('https://api.gitcode.com/'))
+  await page.getByRole('button', { name: '检查更新', exact: true }).click()
+  await page.getByText('已是最新正式版', { exact: true }).waitFor()
+  assert.equal(await page.getByText('所有更新源均不可用，查看原因与备用入口', { exact: true }).count(), 0)
+  assert.equal(await page.getByRole('link', { name: 'Gitee 正式版下载', exact: true }).count(), 0)
+  failUpdates = true
+  await page.getByRole('button', { name: '检查更新', exact: true }).click()
+  await page.getByText('所有更新源均不可用，查看原因与备用入口', { exact: true }).waitFor()
+  await page.getByText('正式版 · GitCode：连接超时', { exact: true }).waitFor()
+  assert.equal(await page.getByRole('link', { name: 'Gitee 仓库', exact: true }).count(), 1)
   await page.screenshot({ path: path.join(output, 'desktop-update-sources.png') })
-  await page.getByText('下载源：Gitee / GitCode / GitHub · 当前 Gitee', { exact: true }).click()
-  cases.push('更新界面显示 Gitee / GitCode / GitHub 状态及国内下载入口')
+  failUpdates = false
+  await page.getByRole('button', { name: '检查更新', exact: true }).click()
+  await page.getByText('所有更新源均不可用，查看原因与备用入口', { exact: true }).waitFor({ state: 'hidden' })
+  cases.push('正常更新隐藏下载源，仅全部源失败时自动列出原因和备用入口，恢复后清除')
   await page.getByRole('textbox', { name: '搜索知识库' }).fill('完全不存在的验收关键词')
   await page.getByRole('button', { name: '搜索', exact: true }).click()
   await page.locator('.kbw-list').getByText('当前范围没有匹配的内容', { exact: true }).waitFor()

@@ -24,7 +24,7 @@ function setup(options = {}, data = new Map()) {
   }
   const flow = factory({ api: async (request) => {
     if (request.op === 'status') return { status: { build: installed ? { version: target.latestVersion, buildId: target.buildId } : { version: '1.1.2', buildId: 'd881ed4ff0990f64' } } }
-    prepares++; if (options.downloadFails) throw Error('hash mismatch')
+    prepares++; if (options.downloadFails) throw Error(options.downloadError || 'hash mismatch')
     return { ok: true, spec: '/verified/cache/hash/package.tgz', ...target, ...(options.prepared || {}) }
   }, manager: () => manager, storage, clientVersion: () => installed && options.clientLoads !== false ? target.latestVersion : '1.1.2', notify: (state) => states.push(state), delay: async () => {} })
   return { flow, states, data, get installs() { return installs }, get prepares() { return prepares }, get waits() { return waits }, get final() { return states.at(-1) } }
@@ -43,6 +43,14 @@ test('missing native service, download failure, stale metadata or storage failur
 test('native installation failure is visible and never reported as applied', async () => {
   const s = setup({ application: 'failed', loads: false }); await s.flow.install('1.1.3')
   assert.match(s.final.message, /安装失败/); assert.equal(JSON.parse(s.data.get(key)), null)
+})
+
+test('source details are requested only after all package sources fail', async () => {
+  const failed = setup({ downloadFails: true, downloadError: '安装包下载失败：Gitee：HTTP 403；GitCode：HTTP 429；GitHub：连接超时' })
+  await failed.flow.install('1.1.3')
+  assert.equal(failed.final.allSourcesFailed, true); assert.equal(failed.installs, 0)
+  const other = setup({ downloadFails: true, downloadError: '发布版本已变化，请重新检查更新' })
+  await other.flow.install('1.1.3'); assert.equal(other.final.allSourcesFailed, false)
 })
 test('restart-required survives a module reload and does not reinstall', async () => {
   const s = setup({ application: 'restart-required', loads: false }); await s.flow.install('1.1.3')
