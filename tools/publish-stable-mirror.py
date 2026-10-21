@@ -10,6 +10,9 @@ import os
 import subprocess
 import sys
 import tempfile
+import time
+import urllib.request
+from urllib.parse import urlsplit
 
 
 def publish(platform):
@@ -47,6 +50,43 @@ def publish(platform):
             raise RuntimeError(platform + ' git ' + args[0] + ' failed: ' + detail.strip())
         return result.stdout
 
+    def synced(env=None):
+        refs = dict(line.split()[::-1] for line in git('ls-remote', remote, 'refs/heads/main', 'refs/tags/' + tag, env=env).decode().splitlines())
+        return refs.get('refs/heads/main') == head and refs.get('refs/tags/' + tag) == git('rev-parse', tag).decode().strip()
+
+    if synced():
+        print(platform + ': main and ' + tag + ' already synced at ' + head)
+        return
+
+    if platform == 'gitcode':
+        # Imported mirror repositories reject git push. Use the documented
+        # source-sync API, then verify actual refs rather than trusting HTTP 200.
+        def api(endpoint, method='GET'):
+            request = urllib.request.Request(
+                'https://api.gitcode.com/api/v5/repos/' + project + '/' + endpoint,
+                data=b'{}' if method == 'PUT' else None, method=method,
+                headers={'Authorization': 'Bearer ' + token, 'PRIVATE-TOKEN': token, 'Content-Type': 'application/json'},
+            )
+            with urllib.request.urlopen(request, timeout=45) as response:
+                return json.load(response)
+
+        mirror = api('repo_remote_mirror')
+        if mirror.get('mirroring_enabled'):
+            source = urlsplit(mirror.get('url', ''))
+            if source.hostname != 'github.com' or source.path.rstrip('/').removesuffix('.git').lower() != ('/' + project).lower():
+                raise RuntimeError('GitCode mirror source does not match this GitHub project; configuration was not changed')
+            print('gitcode: source mirror status=' + str(mirror.get('update_status')) + ', failures=' + str(mirror.get('number_of_failures')))
+            result = api('sync_repo', 'PUT')
+            print('gitcode: source-sync request accepted=' + str(result.get('repo_sync_result')))
+            for _ in range(36):
+                if synced():
+                    print('gitcode: main and ' + tag + ' synced at ' + head)
+                    return
+                if result.get('repo_sync_result') is False:
+                    raise RuntimeError('GitCode source-sync rejected: ' + str(result.get('repo_sync_message', 'no detail')))
+                time.sleep(10)
+            raise RuntimeError('GitCode source-sync did not produce the expected main and stable tag within 6 minutes')
+
     # Git asks this short-lived helper for credentials; the token is never
     # written to .git/config or included in a process argument.
     with tempfile.TemporaryDirectory() as directory:
@@ -68,11 +108,13 @@ def publish(platform):
         old = git('rev-parse', 'FETCH_HEAD').decode().strip()
         # Never overwrite mirror-only work or divergent history.
         git('merge-base', '--is-ancestor', old, head)
-        git('push', remote, 'HEAD:refs/heads/main', 'refs/tags/' + tag + ':refs/tags/' + tag, env=env)
-        remote_main = git('ls-remote', remote, 'refs/heads/main', env=env).decode().split()[0]
-        remote_tag = git('ls-remote', remote, 'refs/tags/' + tag, env=env).decode().split()[0]
-        local_tag = git('rev-parse', tag).decode().strip()
-        if remote_main != head or remote_tag != local_tag:
+        try:
+            git('push', remote, 'HEAD:refs/heads/main', 'refs/tags/' + tag + ':refs/tags/' + tag, env=env)
+        except RuntimeError:
+            # A platform's automatic mirror may have won the same update race.
+            if not synced(env):
+                raise
+        if not synced(env):
             raise RuntimeError(platform + ' mirror ref verification failed')
 
     print(platform + ': main and ' + tag + ' synced at ' + head)
