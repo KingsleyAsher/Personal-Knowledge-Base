@@ -46,3 +46,9 @@ body:not([data-ds-dark-theme]) .kbc-set .kbc-btn-primary,body:not([data-ds-dark-
 .kbw-clipper-help code{overflow-wrap:anywhere;white-space:normal;user-select:text}.kbw-clipper-help .kbw-summary{margin:12px 0;white-space:normal}
 .kbw-clipper-help dt{font-weight:600;margin-top:12px}.kbw-clipper-help dd{margin:4px 0 14px;color:var(--kbw-muted)}
 @container(max-width:650px){.kbw-clipper-help{padding:14px}.kbw-clipper-help .kbw-button{white-space:normal;height:auto;min-height:36px;max-width:100%}}
+.kbw-relations .kbw-overview-graph{height:auto;min-height:350px;touch-action:auto}
+.kbw-relation-sections{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:18px 0}
+.kbw-relation-section{min-width:0;padding:14px;border:1px solid var(--kbw-line);border-radius:10px;background:var(--kbw-surface)}
+.kbw-relation-section h3{margin:0 0 6px;overflow-wrap:anywhere}.kbw-relation-section .kbw-actions{align-items:stretch}
+.kbw-relation-section .kbw-button{height:auto;min-height:36px;white-space:normal;overflow-wrap:anywhere}
+@container(max-width:650px){.kbw-relation-sections{grid-template-columns:1fr}}
