@@ -30,3 +30,19 @@ body:not([data-ds-dark-theme]) .kbw{color-scheme:light}
 
 .kbw-relations>.kbw-home-head{margin-bottom:12px}.kbw-relations .kbw-toolbar{padding:8px 0}.kbw-relations .kbw-toolbar .kbw-field{max-width:260px}.kbw-relations>details{margin:8px 0 12px}.kbw-relations>details>summary{cursor:pointer;color:var(--kbw-muted);font-size:13px}
 body:not([data-ds-dark-theme]) .kbc-set .kbc-btn-primary,body:not([data-ds-dark-theme]) .kbw .kbc-btn-primary{color:var(--kbw-accent-fg);background:var(--kbw-accent);border-color:var(--kbw-accent)}
+
+.kbw-relations .kbw-relation-filters{align-items:flex-end;gap:12px}
+.kbw-relations .kbw-relation-filters .kbw-check{min-height:36px;margin:0;display:flex;align-items:center}
+.kbw-relations .kbw-relation-filters .kbw-field{margin:0;min-width:160px}
+.kbw-relations .kbw-actions .kbw-button,.kbw-relations .kbw-toolbar .kbw-button{height:36px;min-height:36px;margin:0}
+.kbw-relations .kbw-empty{border:1px solid var(--kbw-line);border-radius:12px;background:var(--kbw-surface);padding:28px;text-align:left}
+.kbw-relations .kbw-empty h3{margin-top:0}.kbw-relations .kbw-path{overflow-wrap:anywhere}
+.kbw-graph g[data-node]:focus rect{stroke:var(--kbw-accent);stroke-width:3}
+
+.kbw-clipper-help{margin:24px 0;padding:20px;border:1px solid var(--kbw-line);border-radius:10px;background:var(--kbw-surface)}
+.kbw .kbw-clipper-help h3{margin:0 0 10px}.kbw-clipper-help h4{font-size:14px;margin:0 0 8px}
+.kbw-clipper-help details{margin:14px 0}.kbw-clipper-help summary{cursor:pointer;font-weight:600;line-height:1.7}
+.kbw-clipper-steps{padding-left:22px}.kbw-clipper-steps>li{padding:14px 0;border-bottom:1px solid var(--kbw-line)}.kbw-clipper-steps>li:last-child{border:0}
+.kbw-clipper-help code{overflow-wrap:anywhere;white-space:normal;user-select:text}.kbw-clipper-help .kbw-summary{margin:12px 0;white-space:normal}
+.kbw-clipper-help dt{font-weight:600;margin-top:12px}.kbw-clipper-help dd{margin:4px 0 14px;color:var(--kbw-muted)}
+@container(max-width:650px){.kbw-clipper-help{padding:14px}.kbw-clipper-help .kbw-button{white-space:normal;height:auto;min-height:36px;max-width:100%}}

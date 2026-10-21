@@ -279,6 +279,10 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     const navigation = p => /(^|\/)(INDEX|AGENTS|README)\.md$/.test(p)
     const archive = p => /(^|\/)(_archive|原件归档)(\/|$)/.test(p)
     let selected = collected.edges.filter(e => (!args.type || e.type === args.type) && (args.includeArchive || !archive(e.from) && !archive(e.to)) && (args.includeNavigation || !navigation(e.from) && !navigation(e.to)))
+    const degree = new Map()
+    for (const edge of selected) for (const p of new Set([edge.from, edge.to])) degree.set(p, (degree.get(p) || 0) + 1)
+    const suggestedCenters = [...degree].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([p, count]) => ({ path: p, title: accessible.find(f => f.path === p)?.title || path.posix.basename(p), count }))
+    const unfilteredTotal = args.path ? collected.edges.filter(e => e.from === args.path || e.to === args.path).length : collected.edges.length
     if (args.path) {
       assertVisible(b, args.path)
       const reached = new Set([args.path]), result = new Map()
@@ -293,7 +297,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     const nodePaths = [...new Set([...(args.path ? [args.path] : []), ...selected.flatMap(e => [e.from, e.to])])]
     const nodeSet = new Set(nodePaths.slice(0, 200))
     return { ...slicePage(selected, args), nodes: [...nodeSet].map(p => accessible.find(f => f.path === p) || { path: p, title: path.posix.basename(p), layer: 'directory' }), edges: selected.filter(e => nodeSet.has(e.from) && nodeSet.has(e.to)).slice(0, 500),
-      graphLimited: nodePaths.length > 200, issues: args.allIssues ? collected.issues : collected.issues.slice(0, 5), issueTotal: collected.issues.length, ...(args.allIssues ? { allFiles: accessible } : {}), revision: data.revision, kbId: b.st.kbId, policyVersion: versionOf(b), coverage: snap.coverage }
+      suggestedCenters, unfilteredTotal, centerIssueTotal: collected.issues.filter(i => i.path === args.path).length, graphLimited: nodePaths.length > 200 || selected.length > 500, issues: args.allIssues ? collected.issues : collected.issues.slice(0, 5), issueTotal: collected.issues.length, ...(args.allIssues ? { allFiles: accessible } : {}), revision: data.revision, kbId: b.st.kbId, policyVersion: versionOf(b), coverage: snap.coverage }
   }
 
   async function questionContext(b, args) {
