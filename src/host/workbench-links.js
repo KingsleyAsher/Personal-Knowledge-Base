@@ -172,16 +172,25 @@ export function createRepairService({ binding, versionOf, relations, userData, m
         let group = groups.get(issue.path)
         if (!group) { group = { path: issue.path, before: content, revision: digest(content), edits: [] }; groups.set(issue.path, group) }
         const target = path.posix.relative(path.posix.dirname(issue.path), change.target) + (issue.reason === 'anchor-missing' ? '' : issue.anchor)
-        group.edits.push({ ...issue, target })
+        group.edits.push({ ...issue, target, targetPath: change.target })
       }
       const files = [...groups.values()].map(g => { let after = g.before; for (const edit of g.edits.sort((a, z) => z.start - a.start)) after = after.slice(0, edit.start) + edit.target + after.slice(edit.end); return { ...g, after } })
+      const changes = files.flatMap(file => file.edits.map(edit => ({ id: edit.id, kind: 'file-link', sourcePath: file.path, targetPath: edit.targetPath, line: edit.line, type: edit.type, reason: edit.reason, rawTarget: edit.rawTarget, target: edit.target, context: redactReferences(b, file.path, edit.context || '') }))).concat(manual.map(({ issue, target }) => ({
+        id: issue.id, kind: issue.newRelation ? 'new-relation' : 'manual-link', sourcePath: issue.path, targetPath: target, line: issue.line || null,
+        type: 'manual', reason: issue.reason, rawTarget: issue.rawTarget || '', target,
+        beforeFrom: issue.newRelation ? '' : issue.missing === 'from' ? issue.rawTarget : issue.path,
+        beforeTo: issue.newRelation ? '' : issue.missing === 'to' ? issue.rawTarget : issue.path,
+        afterFrom: issue.newRelation ? issue.path : issue.missing === 'from' ? target : issue.path,
+        afterTo: issue.newRelation ? target : issue.missing === 'to' ? target : issue.path,
+        context: redactReferences(b, issue.path, issue.context || '')
+      })))
       const previewId = randomUUID(), data = await userData(b)
-      previews.set(previewId, { key: b.key, version: versionOf(b), expires: now() + 600000, files, manual, revision: data.revision })
-      return { previewId, revision: data.revision, files: files.map(f => ({ path: f.path, before: redactReferences(b, f.path, f.before), after: redactReferences(b, f.path, f.after) })), manual, count: selected.length }
+      previews.set(previewId, { key: b.key, version: versionOf(b), expires: now() + 600000, files, manual, changes, revision: data.revision })
+      return { previewId, revision: data.revision, files: files.map(f => ({ path: f.path, before: redactReferences(b, f.path, f.before), after: redactReferences(b, f.path, f.after) })), manual, changes, count: selected.length }
     }
     if (args.op === 'links.apply' || args.op === 'links.undo' || args.op === 'links.history') return locked(stateFile(b), async () => {
       const history = await readJson(stateFile(b), { items: [] })
-      if (args.op === 'links.history') return { items: history.items.filter(i => !i.failed && [...i.files.map(f=>f.path), ...(i.manual||[]).flatMap(m=>[m.issue.path,m.target])].every(p => { try { assertVisible(b, p); return true } catch { return false } })).map(({ id, at, undone, pending, files, manual=[] }) => ({ id, at, undone, pending, paths: [...new Set([...files.map(f => f.path),...manual.map(m=>m.issue.path)])] })) }
+      if (args.op === 'links.history') return { items: history.items.filter(i => !i.failed && [...i.files.map(f=>f.path), ...(i.manual||[]).flatMap(m=>[m.issue.path,m.target]), ...(i.changes||[]).flatMap(c=>[c.sourcePath,c.targetPath,c.beforeFrom,c.beforeTo,c.afterFrom,c.afterTo])].filter(Boolean).every(p => { try { assertVisible(b, p); return true } catch { return false } })).map(i => ({ id: i.id, at: i.at, undone: i.undone, pending: i.pending, paths: [...new Set([...i.files.map(f => f.path), ...(i.manual||[]).flatMap(m => [m.issue.path,m.target]), ...(i.changes||[]).flatMap(c => [c.sourcePath,c.targetPath,c.beforeFrom,c.beforeTo,c.afterFrom,c.afterTo])].filter(Boolean))], changes: i.changes || [], count: i.changes?.length || i.manual?.length || 0, fileCount: i.files.length, relationCount: i.manual?.length || 0 })) }
       if (args.expectedKbId !== b.st.kbId) throw fail('IDENTITY_REQUIRED', '请确认目标知识库')
       if (args.op === 'links.apply') {
         const p = previews.get(args.previewId)
@@ -189,7 +198,7 @@ export function createRepairService({ binding, versionOf, relations, userData, m
         const data = await userData(b)
         if (data.revision !== p.revision) throw fail('CONFLICT', '关联记录已改变，请重新预览')
         for (const f of p.files) { assertVisible(b, f.path); if (digest(await readFile(await safePath(b.root, f.path))) !== f.revision) throw fail('FILE_CHANGED', '文件已改变，未应用修复') }
-        const record = { id: randomUUID(), at: new Date(now()).toISOString(), files: p.files.map(f => ({ path: f.path, before: f.before, after: f.after })), manual: p.manual, pending: true }
+        const record = { id: randomUUID(), at: new Date(now()).toISOString(), files: p.files.map(f => ({ path: f.path, before: f.before, after: f.after })), manual: p.manual, changes: p.changes, pending: true }
         history.items.push(record); await atomicJson(stateFile(b), history)
         const written = []
         try {
@@ -203,7 +212,7 @@ export function createRepairService({ binding, versionOf, relations, userData, m
           })
         } catch (error) { for (const f of written.reverse()) await replace(b, f, digest(f.after), f.before); record.failed = true; record.pending = false; await atomicJson(stateFile(b), history); throw error }
         record.pending = false; await atomicJson(stateFile(b), history); previews.delete(args.previewId)
-        return { repairId: record.id, applied: p.files.length + p.manual.length }
+        return { repairId: record.id, applied: p.changes.length, fileCount: p.files.length, relationCount: p.manual.length, affectedPaths: [...new Set(p.changes.flatMap(c => [c.sourcePath, c.targetPath, c.beforeFrom, c.beforeTo, c.afterFrom, c.afterTo]).filter(Boolean))] }
       }
       const item = history.items.find(i => i.id === args.repairId && !i.undone && !i.failed)
       if (!item) throw fail('NOT_FOUND', '可撤销记录不存在')

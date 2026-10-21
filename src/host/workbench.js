@@ -282,6 +282,47 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     const degree = new Map()
     for (const edge of selected) for (const p of new Set([edge.from, edge.to])) degree.set(p, (degree.get(p) || 0) + 1)
     const suggestedCenters = [...degree].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([p, count]) => ({ path: p, title: accessible.find(f => f.path === p)?.title || path.posix.basename(p), count }))
+    if (args.mode === 'overview') {
+      const files = accessible.filter(f => f.layer !== 'directory')
+      const sectionPath = p => p.includes('/') ? p.split('/')[0] : ''
+      const sectionTitle = p => sectionPath(p) || '根目录'
+      const sections = new Map()
+      for (const file of files) {
+        const key = sectionPath(file.path)
+        if (!sections.has(key)) sections.set(key, { path: key, title: sectionTitle(file.path), fileCount: 0, linkedFiles: new Set(), internalRelations: 0, relationCount: 0, centers: [] })
+        sections.get(key).fileCount++
+      }
+      const sectionEdges = new Map()
+      for (const edge of selected) {
+        const from = sectionPath(edge.from), to = sectionPath(edge.to)
+        if (!sections.has(from)) sections.set(from, { path: from, title: sectionTitle(edge.from), fileCount: 0, linkedFiles: new Set(), internalRelations: 0, relationCount: 0, centers: [] })
+        if (!sections.has(to)) sections.set(to, { path: to, title: sectionTitle(edge.to), fileCount: 0, linkedFiles: new Set(), internalRelations: 0, relationCount: 0, centers: [] })
+        const fromSection = sections.get(from), toSection = sections.get(to)
+        fromSection.relationCount++
+        fromSection.linkedFiles.add(edge.from)
+        toSection.linkedFiles.add(edge.to)
+        if (to !== from) {
+          toSection.relationCount++
+          const key = from + '\0' + to
+          const row = sectionEdges.get(key) || { from, to, count: 0, types: {} }
+          row.count++
+          row.types[edge.type] = (row.types[edge.type] || 0) + 1
+          sectionEdges.set(key, row)
+        } else fromSection.internalRelations++
+      }
+      const fileByPath = new Map(files.map(f => [f.path, f]))
+      for (const [p, count] of degree) {
+        const section = sections.get(sectionPath(p))
+        if (!section || !fileByPath.has(p)) continue
+        section.centers.push({ path: p, title: fileByPath.get(p).title, count })
+      }
+      const overviewSections = [...sections.values()].map(section => ({ ...section, linkedFiles: section.linkedFiles.size, centers: section.centers.sort((a, b) => b.count - a.count || a.title.localeCompare(b.title, 'zh-CN')).slice(0, 4) }))
+      collected.issues = collected.issues.map(i => ({ ...i, context: redactReferences(b, i.path, i.context || '') }))
+      return { mode: 'overview', sections: overviewSections, sectionEdges: [...sectionEdges.values()], suggestedCenters,
+        totalNodes: files.length, totalRelations: selected.length, connectedFiles: files.filter(f => degree.has(f.path)).length,
+        unfilteredTotal: collected.edges.length, issueTotal: collected.issues.length, issues: args.allIssues ? collected.issues : collected.issues.slice(0, 5),
+        ...(args.allIssues ? { allFiles: accessible } : {}), revision: data.revision, kbId: b.st.kbId, policyVersion: versionOf(b), coverage: snap.coverage }
+    }
     const unfilteredTotal = args.path ? collected.edges.filter(e => e.from === args.path || e.to === args.path).length : collected.edges.length
     if (args.path) {
       assertVisible(b, args.path)

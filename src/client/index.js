@@ -93,6 +93,12 @@ window.__ModuleLoader__.load({
     .kbw-clipper-help code{overflow-wrap:anywhere;white-space:normal;user-select:text}.kbw-clipper-help .kbw-summary{margin:12px 0;white-space:normal}
     .kbw-clipper-help dt{font-weight:600;margin-top:12px}.kbw-clipper-help dd{margin:4px 0 14px;color:var(--kbw-muted)}
     @container(max-width:650px){.kbw-clipper-help{padding:14px}.kbw-clipper-help .kbw-button{white-space:normal;height:auto;min-height:36px;max-width:100%}}
+    .kbw-relations .kbw-overview-graph{height:auto;min-height:350px;touch-action:auto}
+    .kbw-relation-sections{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:18px 0}
+    .kbw-relation-section{min-width:0;padding:14px;border:1px solid var(--kbw-line);border-radius:10px;background:var(--kbw-surface)}
+    .kbw-relation-section h3{margin:0 0 6px;overflow-wrap:anywhere}.kbw-relation-section .kbw-actions{align-items:stretch}
+    .kbw-relation-section .kbw-button{height:auto;min-height:36px;white-space:normal;overflow-wrap:anywhere}
+    @container(max-width:650px){.kbw-relation-sections{grid-template-columns:1fr}}
         `
         document.head.appendChild(style)
       }
@@ -202,22 +208,39 @@ window.__ModuleLoader__.load({
       function LinkRepairs({ snapshot, navigate }) {
         const [data, setData] = R.useState(null), [offset, setOffset] = R.useState(0), [choices, setChoices] = R.useState({}), [targets, setTargets] = R.useState([]), [query, setQuery] = R.useState(''), [preview, setPreview] = R.useState(null), [error, setError] = R.useState(''), [message, setMessage] = R.useState(''), [busy, setBusy] = R.useState(false), [history, setHistory] = R.useState([]), [requestId, setRequestId] = R.useState(''), [suggestions, setSuggestions] = R.useState([])
         const base = { expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion }
-        const refresh = async () => { const r = await api({ ...base, op: 'links.issues', offset }); setData(r); const h = await api({ ...base, op: 'links.history' }); setHistory(h.items); const latest=await api({...base,op:'links.ai.latest'}); if(latest.requestId) setRequestId(latest.requestId) }
+        const refresh = async () => { const [r, h, latest] = await Promise.all([api({ ...base, op: 'links.issues', offset }), api({ ...base, op: 'links.history' }), api({ ...base, op: 'links.ai.latest' })]); setData(r); setHistory(h.items); if (latest.requestId) setRequestId(latest.requestId) }
         R.useEffect(() => { setChoices({}); setPreview(null); void refresh().catch(e => setError(e.message)) }, [snapshot.kbId, snapshot.policyVersion, offset])
         const run = async action => { setBusy(true); setError(''); try { await action() } catch (e) { setError(e.message) } finally { setBusy(false) } }
         const changes = Object.entries(choices).filter(([,target]) => target).map(([id,target]) => ({ id,target }))
-        return e('section', { className: 'kbw-content' }, e('h2', null, '链接检查与修复'), e('p', { className: 'kbw-meta' }, '检查原始链接、选择正确目标，预览后确认。AI 只提供建议。'),
-          data ? e('p', null, '共 ' + data.total + ' 项 · 失效 ' + data.counts.unresolved + ' · 歧义 ' + data.counts.ambiguous + ' · 手动关联目标丢失 ' + data.counts['manual-target-missing'] + ' · 锚点失效 ' + (data.counts['anchor-missing'] || 0) + ' · 新关联建议 ' + (data.counts['new-relation'] || 0)) : null,
+        const reason = { unresolved: '目标不存在或无法匹配', ambiguous: '找到了多个可能目标，需要你选择', 'manual-target-missing': '手动关联的一端已不在当前可展示资料中', 'new-relation': 'AI 提出的新关系，尚未写入知识库', 'anchor-missing': '目标资料存在，但其中的标题锚点或行号已失效' }
+        const origin = issue => issue.newRelation ? 'AI 新关系建议' : issue.manual ? '手动关联记录' : issue.type === 'source' ? '资料来源链接' : '文中链接引用'
+        const renderIssue = issue => e('article', { key: issue.id, className: 'kbw-issue' }, btn(issue.path + (issue.line ? ' · 第 ' + issue.line + ' 行' : ''), () => navigate('map', issue.path)),
+          e('p', { className: 'kbw-meta' }, origin(issue)), e('p', null, '识别原因：' + (reason[issue.reason] || issue.reason)),
+          e('p', null, issue.manual ? '当前端点：' + issue.path + (issue.missing === 'from' ? ' ← ' : ' → ') + issue.rawTarget : '原始链接目标：' + issue.rawTarget), issue.context ? e('pre', null, issue.context) : null,
+          select('修复为（选择目标后仍需预览确认）', choices[issue.id] || '', target => { setChoices(old => ({ ...old, [issue.id]: target })); setPreview(null) }, [['', '选择候选目标'], ...[...new Set([...(issue.candidates || []), ...targets.map(t => t.path), choices[issue.id]].filter(Boolean))].map(p => [p,p])]),
+          suggestions.filter(p => p.id === issue.id).map(p => e('p', { key: p.id, className: 'kbw-meta' }, 'AI 建议依据：' + p.reason)))
+        const repairKind = change => change.kind === 'new-relation' ? '新增关系' : change.kind === 'manual-link' ? '更新手动关系' : change.type === 'source' ? '修正来源链接' : '修正文中链接'
+        return e('section', { className: 'kbw-content' }, e('h2', null, '链接检查与修复'), e('p', { className: 'kbw-meta' }, '这里分开展示已有链接的问题和 AI 提议的新关系。自动检查不会改文件；只有你选择目标、查看预览并确认后才会修复。'),
+          data ? e('p', null, '共 ' + data.total + ' 项 · 失效目标 ' + data.counts.unresolved + ' · 多个候选 ' + data.counts.ambiguous + ' · 手动关联端点缺失 ' + data.counts['manual-target-missing'] + ' · 锚点失效 ' + (data.counts['anchor-missing'] || 0) + ' · AI 新关系建议 ' + (data.counts['new-relation'] || 0)) : null,
           e('form', { className: 'kbw-toolbar', onSubmit: ev => { ev.preventDefault(); void run(async () => setTargets((await api({ ...base, op: 'links.targets', query })).items)) } }, field('搜索可用目标', query, setQuery, { placeholder: '输入标题或路径' }), e('button', { className: 'kbw-button', type: 'submit' }, '查找目标')),
           e('div', { className: 'kbw-actions' }, btn('刷新检查', () => run(refresh), busy), btn('预览所选修复（' + changes.length + '）', () => run(async () => setPreview(await api({ ...base, op: 'links.preview', changes }))), busy || !changes.length),
             btn('与 AI 讨论本页问题', () => run(async () => { setRequestId(await launchRepairChat(snapshot, data.items.map(i => i.id))); setMessage('讨论已在新会话打开。提交建议后，回到此页读取建议。') }), busy || !data?.items.length),
             requestId ? btn('读取 AI 建议', () => run(async () => { const r = await api({ ...base, op: 'links.ai.status', requestId }); setSuggestions(r.proposals); setChoices(old => ({ ...old, ...Object.fromEntries(r.proposals.map(p => [p.id, p.target])) })); setMessage(r.proposals.length ? '已填入候选目标，请核对并生成预览。' : 'AI 尚未提交建议，可在讨论会话继续补充。') }), busy) : null),
-          data?.items.map(issue => e('article', { key: issue.id, className: 'kbw-issue' }, btn(issue.path + (issue.line ? ' · 第 ' + issue.line + ' 行' : ''), () => navigate('map', issue.path)), e('p', null, ({unresolved:'目标不存在',ambiguous:'存在多个同名目标','manual-target-missing':'手动关联目标丢失','new-relation':'AI 新关联建议','anchor-missing':'目标文档存在，锚点不存在（选定文档后移除失效锚点）'}[issue.reason]) + '：' + issue.rawTarget), e('pre', null, issue.context),
-            select('修复为', choices[issue.id] || '', target => { setChoices(old => ({ ...old, [issue.id]: target })); setPreview(null) }, [['', '选择候选目标'], ...[...new Set([...(issue.candidates || []), ...targets.map(t => t.path), choices[issue.id]].filter(Boolean))].map(p => [p,p])]),
-            suggestions.filter(p => p.id === issue.id).map(p => e('p', { key: p.id, className: 'kbw-meta' }, 'AI 建议依据：' + p.reason)))),
+          data?.items.some(i => i.reason !== 'new-relation') ? e('h3', null, '已有链接的问题') : null,
+          data?.items.filter(i => i.reason !== 'new-relation').map(renderIssue),
+          data?.items.some(i => i.reason === 'new-relation') ? e('h3', null, 'AI 提议的新关系') : null,
+          data?.items.filter(i => i.reason === 'new-relation').map(renderIssue),
+          data?.total === 0 ? e('p', { className: 'kbw-empty' }, '当前没有待处理链接问题或 AI 关系建议。') : null,
           data ? e('div', { className: 'kbw-actions' }, btn('上一页', () => setOffset(Math.max(0, offset - 30)), !offset), e('span', { className: 'kbw-meta' }, (offset + 1) + '–' + Math.min(offset + 30, data.total)), btn('下一页', () => setOffset(offset + 30), offset + 30 >= data.total)) : null,
-          preview ? e('div', { className: 'kbw-summary' }, e('h3', null, '修复预览 · ' + preview.count + ' 项'), preview.files.map(f => e('div', { key: f.path }, e('strong', null, f.path), e('div', { className: 'kbw-diff' }, e('pre', { className: 'kbw-preview' }, f.before), e('pre', { className: 'kbw-preview' }, f.after)))), preview.manual.map(m => e('p', { key: m.issue.id }, m.issue.rawTarget + ' → ' + m.target)), btn('确认应用此预览', () => run(async () => { const r = await api({ ...base, op: 'links.apply', previewId: preview.previewId }); setMessage('已应用修复，记录号 ' + r.repairId); setPreview(null); setChoices({}); await refresh() }), busy, { className: 'kbw-button kbw-primary' }), btn('取消预览', () => setPreview(null), busy)) : null,
-          e('details', null, e('summary', null, '修复记录与撤销'), history.map(h => e('div', { key: h.id, className: 'kbw-annotation' }, date(h.at) + ' · ' + h.paths.join('，'), btn(h.undone ? '已撤销' : h.pending ? '恢复未完成修复' : '撤销此修复', () => run(async () => { await api({ ...base, op: 'links.undo', repairId: h.id }); await refresh(); setMessage('已恢复修复前内容') }), busy || h.undone)))),
+          preview ? e('div', { className: 'kbw-summary' }, e('h3', null, '修复预览 · ' + preview.count + ' 项'), e('p', null, '下面逐项说明将改变的链接。文本链接会改来源文件中的目标文字；手动关系会更新关系记录；AI 新关系会新增一条手动关系。'),
+            preview.changes.map(change => e('article', { className: 'kbw-annotation', key: change.id }, e('strong', null, repairKind(change)), e('p', { className: 'kbw-meta' }, change.sourcePath + (change.line ? ' · 第 ' + change.line + ' 行' : '') + (change.targetPath ? ' → ' + change.targetPath : '')),
+              change.kind === 'file-link' ? e('p', null, change.rawTarget + ' → ' + change.target) : e('p', null, (change.beforeFrom ? change.beforeFrom + ' → ' + change.beforeTo : '尚无此关系') + ' ⇒ ' + change.afterFrom + ' → ' + change.afterTo), change.context ? e('pre', null, change.context) : null)),
+            preview.files.map(f => e('details', { key: f.path }, e('summary', null, '查看文件修改前后全文：' + f.path), e('div', { className: 'kbw-diff' }, e('pre', { className: 'kbw-preview' }, f.before), e('pre', { className: 'kbw-preview' }, f.after)))),
+            btn('确认应用此预览', () => run(async () => { const r = await api({ ...base, op: 'links.apply', previewId: preview.previewId }); setMessage('已完成 ' + r.applied + ' 项修复：修改 ' + r.fileCount + ' 个文件，更新或新增 ' + r.relationCount + ' 条关系。受影响资料：' + r.affectedPaths.join('，') + '。记录号 ' + r.repairId); setPreview(null); setChoices({}); await refresh() }), busy, { className: 'kbw-button kbw-primary' }), btn('取消预览', () => setPreview(null), busy)) : null,
+          e('details', null, e('summary', null, '修复记录与撤销'), history.map(h => e('article', { key: h.id, className: 'kbw-issue' }, e('p', null, date(h.at) + (h.changes?.length ? ' · 处理 ' + h.count + ' 项' : ' · 旧记录（无逐条明细）') + ' · 修改 ' + h.fileCount + ' 个文件 · 更新/新增 ' + h.relationCount + ' 条关系'),
+            e('p', { className: 'kbw-meta' }, '受影响资料：' + h.paths.join('，')),
+            h.changes?.length ? h.changes.map(change => e('p', { className: 'kbw-meta', key: change.id }, repairKind(change) + ' · ' + change.sourcePath + (change.line ? ' · 第 ' + change.line + ' 行' : '') + ' · ' + (change.rawTarget || change.beforeFrom || '') + ' → ' + (change.targetPath || change.target || change.afterTo || ''))) : e('p', { className: 'kbw-meta' }, '此为旧版记录，仅保存文件前后内容和路径，没有逐条链接说明。'),
+            btn(h.undone ? '已撤销' : h.pending ? '恢复未完成修复' : '撤销此修复', () => run(async () => { await api({ ...base, op: 'links.undo', repairId: h.id }); await refresh(); setMessage('已撤销此修复记录，恢复修复前内容：' + h.paths.join('，')) }), busy || h.undone)))),
           message ? e('p', { role: 'status' }, message) : null, error ? e('p', { role: 'alert', className: 'kbw-error' }, error) : null)
       }
       function ProductImport({ snapshot }) {
@@ -462,23 +485,23 @@ window.__ModuleLoader__.load({
           error ? e('p', { className: 'kbw-error', role: 'alert' }, error) : null)
       }
 
-      function Relations({ snapshot, focus, navigate }) {
-        const [center, setCenter] = R.useState(focus || ''), [history, setHistory] = R.useState([]), [data, setData] = R.useState(null), [error, setError] = R.useState(''), [type, setType] = R.useState(''), [archive, setArchive] = R.useState(false), [navigation, setNavigation] = R.useState(false), [depth, setDepth] = R.useState('1'), [count, setCount] = R.useState(4), [hover, setHover] = R.useState(''), [issues, setIssues] = R.useState(false), [query, setQuery] = R.useState(''), [matches, setMatches] = R.useState([]), [transform, setTransform] = R.useState({ x: 0, y: 0, zoom: 1 })
+      function Relations({ snapshot, focus, active = true, navigate }) {
+        const [center, setCenter] = R.useState(focus || ''), [history, setHistory] = R.useState([]), [data, setData] = R.useState(null), [error, setError] = R.useState(''), [type, setType] = R.useState(''), [archive, setArchive] = R.useState(false), [navigation, setNavigation] = R.useState(false), [depth, setDepth] = R.useState('1'), [count, setCount] = R.useState(4), [hover, setHover] = R.useState(''), [issues, setIssues] = R.useState(false), [query, setQuery] = R.useState(''), [matches, setMatches] = R.useState([]), [transform, setTransform] = R.useState({ x: 0, y: 0, zoom: 1 }), [graphMode, setGraphMode] = R.useState(focus ? 'center' : 'overview')
         const [searched, setSearched] = R.useState(false), [searching, setSearching] = R.useState(false), [retry, setRetry] = R.useState(0), [aiBusy, setAiBusy] = R.useState(false)
         const svg = R.useRef(null), drag = R.useRef(null), moved = R.useRef(false), searchRequest = R.useRef(0)
         const resetView = () => setTransform({ x: 0, y: 0, zoom: 1 })
-        R.useEffect(() => { setCenter(focus || ''); setHistory([]); resetView() }, [focus, snapshot.kbId])
+        R.useEffect(() => { setCenter(focus || ''); setGraphMode(focus ? 'center' : 'overview'); setHistory([]); resetView() }, [snapshot.kbId, focus])
         R.useEffect(() => {
+          if (!active) return
           let live = true; setData(null); setError('')
-          api({ op: 'atlas.relations', expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion, path: center || undefined, type: type || undefined, includeArchive: archive, includeNavigation: navigation, depth: Number(depth), limit: 500 }).then(d => {
+          api({ op: 'atlas.relations', expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion, mode: graphMode === 'overview' ? 'overview' : undefined, path: graphMode === 'center' ? center || undefined : undefined, type: type || undefined, includeArchive: archive, includeNavigation: navigation, depth: Number(depth), limit: 500 }).then(d => {
             if (!live) return
-            if (!center && d.suggestedCenters?.length) { setCenter(d.suggestedCenters[0].path); return }
             setData(d)
           }).catch(err => { if (live) setError(err.message) })
           return () => { live = false }
-        }, [center, type, depth, archive, navigation, snapshot.kbId, snapshot.policyVersion, snapshot.version, snapshot.revision, retry])
+        }, [active, graphMode, center, type, depth, archive, navigation, snapshot.kbId, snapshot.policyVersion, snapshot.version, snapshot.revision, retry])
         R.useEffect(() => () => { searchRequest.current++ }, [snapshot.kbId, snapshot.policyVersion])
-        const enter = file => { if (file === center) return; setHistory(h => center ? [...h, center] : h); setCenter(file); setCount(4); setMatches([]); setSearched(false); resetView() }
+        const enter = file => { if (!file) return; if (file === center && graphMode === 'center') return; setHistory(h => center && graphMode === 'center' ? [...h, center] : h); setCenter(file); setGraphMode('center'); setCount(4); setMatches([]); setSearched(false); resetView() }
         const search = async ev => {
           ev.preventDefault(); const seq = ++searchRequest.current; setSearching(true); setError('')
           try { const r = await api({ op: 'atlas.list', expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion, q: query, limit: 12 }); if (seq === searchRequest.current) { setMatches(r.items); setSearched(true) } }
@@ -490,7 +513,7 @@ window.__ModuleLoader__.load({
           const element = svg.current; if (!element) return
           const wheel = ev => { ev.preventDefault(); const p = point(ev); setTransform(t => { const zoom = Math.max(.25, Math.min(4, t.zoom * Math.exp(-ev.deltaY * .0015))), ratio = zoom / t.zoom; return { zoom, x: p.x - (p.x - t.x) * ratio, y: p.y - (p.y - t.y) * ratio } }) }
           element.addEventListener('wheel', wheel, { passive: false }); return () => element.removeEventListener('wheel', wheel)
-        }, [center, Boolean(data), issues])
+        }, [active, center, Boolean(data), issues])
         if (issues) return e(R.Fragment, null, e('div', { className: 'kbw-toolbar' }, btn('返回关系浏览', () => { setIssues(false); setRetry(n => n + 1) })), e(LinkRepairs, { snapshot, navigate }))
         const edges = data?.edges || data?.items || [], nodes = data?.nodes || [], lookup = new Map(nodes.map(n => [n.path, n]))
         const left = [...new Set(edges.filter(edge => edge.to === center && edge.from !== center).map(edge => edge.from))]
@@ -510,17 +533,35 @@ window.__ModuleLoader__.load({
           return e('div', { key: edge.id, className: 'kbw-annotation', onMouseEnter: () => setHover(target), onMouseLeave: () => setHover('') }, btn(lookup.get(target)?.title || target, () => enter(target), false, { title: '以此资料为中心查看关系' }), e('p', { className: 'kbw-meta' }, relationLabel(edge.type) + ' · ' + edge.evidence), btn('打开资料', () => navigate('map', target)))
         }), !items.length ? e('p', { className: 'kbw-meta' }, '当前筛选下没有此类链接') : null)
         const hasGraph = Boolean(data && edges.length)
+        const overviewSections = data?.sections || []
+        const overviewHeight = Math.max(350, Math.ceil(overviewSections.length / 3) * 112 + 36)
+        const overviewPositions = new Map(overviewSections.map((section, index) => [section.path, { x: 18 + index % 3 * 294, y: 22 + Math.floor(index / 3) * 112 }]))
+        const overviewPanel = !data ? e('p', { role: 'status' }, error ? '关系总览读取失败，请重试。' : '正在汇总全库关系…') : e(R.Fragment, null,
+          e('div', { className: 'kbw-toolbar kbw-relation-filters' }, select('关系类型', type, setType, [['', '全部类型'], ['source', '来源链接'], ['reference', '文中引用'], ['manual', '手动关联']]), check('显示归档资料', archive, setArchive), check('显示目录索引文档', navigation, setNavigation)),
+          e('p', { className: 'kbw-meta', role: 'status' }, '全库 ' + data.totalNodes + ' 份可展示资料 · ' + data.totalRelations + ' 条当前筛选关系 · ' + data.connectedFiles + ' 份资料已连接 · ' + overviewSections.length + ' 个分区。箭头表示跨分区关联方向；下方可选择任意中心资料。'),
+          data.coverage?.errors || data.coverage?.truncated ? e('p', { className: 'kbw-banner', role: 'status' }, '扫描结果不完整：总览只统计已读取内容。') : null,
+          overviewSections.length ? e('svg', { className: 'kbw-graph kbw-overview-graph', viewBox: '0 0 900 ' + overviewHeight, style: { height: overviewHeight + 'px' }, role: 'img', 'aria-label': '全库分区关系总览' },
+            e('defs', null, e('marker', { id: 'kbw-section-arrow', viewBox: '0 0 10 10', refX: 10, refY: 5, markerWidth: 7, markerHeight: 7, orient: 'auto' }, e('polygon', { points: '0,0 10,5 0,10', fill: 'var(--kbw-accent)' }))),
+            overviewSections.flatMap(section => (data.sectionEdges || []).filter(edge => edge.from === section.path).map(edge => {
+              const a = overviewPositions.get(edge.from), b = overviewPositions.get(edge.to)
+              if (!a || !b) return null
+              const x1 = a.x + 135, y1 = a.y + 37, x2 = b.x + 135, y2 = b.y + 37, mx = (x1 + x2) / 2, my = (y1 + y2) / 2
+              return e('g', { key: edge.from + '→' + edge.to }, e('path', { d: `M${x1},${y1} Q${mx},${my - 24} ${x2},${y2}`, markerEnd: 'url(#kbw-section-arrow)' }), e('text', { x: mx, y: my - 12, textAnchor: 'middle' }, edge.count + ' 条'))
+            })),
+            overviewSections.map(section => { const p = overviewPositions.get(section.path); return e('g', { key: 'section:' + section.path }, e('rect', { x: p.x, y: p.y, width: 270, height: 74, rx: 9 }), e('text', { x: p.x + 12, y: p.y + 25 }, section.title.slice(0, 24)), e('text', { x: p.x + 12, y: p.y + 48, style: { fontSize: 10, opacity: .72 } }, section.fileCount + ' 份资料 · ' + section.linkedFiles + ' 份已连接 · ' + section.internalRelations + ' 条区内关系')) })) : e('div', { className: 'kbw-empty' }, e('h3', null, '当前没有可展示的资料分区'), e('p', null, '请检查资料展示范围或刷新知识库扫描。'), btn('重新读取关系', () => setRetry(n => n + 1))),
+          overviewSections.length ? e('div', { className: 'kbw-relation-sections' }, overviewSections.map(section => e('article', { className: 'kbw-relation-section', key: 'section-card:' + section.path }, e('h3', null, section.title), e('p', { className: 'kbw-meta' }, section.fileCount + ' 份资料 · ' + section.linkedFiles + ' 份已连接 · ' + section.internalRelations + ' 条区内关系'), btn('查看本区资料清单', () => navigate('map', section.path, true)), section.centers.length ? e('div', { className: 'kbw-actions' }, section.centers.map(file => btn('以“' + file.title + '”为中心 · ' + file.count, () => enter(file.path), false, { key: file.path, title: file.path }))) : e('p', { className: 'kbw-meta' }, '此分区尚无可用关系中心')))) : null,
+          data.suggestedCenters?.length ? e('div', null, e('h3', null, '全库关系较多的中心资料'), e('div', { className: 'kbw-actions' }, data.suggestedCenters.map(file => btn(file.title + ' · ' + file.count + ' 条', () => enter(file.path), false, { key: file.path, title: file.path })))) : null,
+          !data.totalRelations && data.unfilteredTotal ? e('p', { className: 'kbw-empty', role: 'status' }, '当前筛选隐藏了所有关系，请改为“全部类型”或显示归档资料和目录索引文档。') : !data.totalRelations ? e('p', { className: 'kbw-empty', role: 'status' }, '已读取全库资料，但尚未发现可用关系。关系来自来源链接、文中引用和手动关联；AI 建议只有在预览并确认后才会保存。') : null)
         return e('section', { className: 'kbw-relations' },
-          e('div', { className: 'kbw-home-head' }, e('div', null, e('h2', null, '关系浏览'), e('p', { className: 'kbw-meta' }, '显示资料中已有的来源、引用和手动关联。点击关联节点继续浏览，点击中心节点打开资料。')), btn('检查失效链接' + (data?.issueTotal ? ' · ' + data.issueTotal : ''), () => setIssues(true))),
-          e('details', { open: !center || searched }, e('summary', null, center ? '更换中心资料（搜索标题或路径）' : '选择中心资料'),
-            e('form', { className: 'kbw-toolbar kbw-relation-filters', onSubmit: search }, field('查找资料', query, v => { setQuery(v); setSearched(false) }, { placeholder: '输入标题或路径，按 Enter 查找' }), e('button', { className: 'kbw-button', type: 'submit', disabled: searching }, searching ? '查找中…' : '查找资料')),
-            searched ? matches.length ? e('div', { className: 'kbw-actions' }, matches.map(f => btn(f.title, () => enter(f.path), false, { key: f.path, title: f.path }))) : e('p', { role: 'status', className: 'kbw-meta' }, '没有找到资料，请尝试其他标题或路径。') : null),
-          !center ? e('div', { className: 'kbw-empty' }, e('h3', null, data ? '选择一份资料查看关系' : '正在查找已有链接的资料…'), e('p', null, '没有链接的资料不会自动产生关联。可先打开资料添加引用或手动关联。'), e('div', { className: 'kbw-actions' }, snapshot.recent.filter(f => !/(INDEX|AGENTS)\.md$/i.test(f.path)).slice(0, 4).map(f => btn(f.title, () => enter(f.path), false, { key: f.path })))) : e(R.Fragment, null,
+          e('div', { className: 'kbw-home-head' }, e('div', null, e('h2', null, graphMode === 'overview' ? '全库关系网络' : '中心资料关系'), e('p', { className: 'kbw-meta' }, '先查看全库分区关系，再按标题或路径选择任意资料作为中心。关系来自来源、引用和手动关联；AI 建议需经预览确认。')), btn('检查链接与修复' + (data?.issueTotal ? ' · ' + data.issueTotal : ''), () => setIssues(true))),
+          e('form', { className: 'kbw-toolbar kbw-relation-filters', onSubmit: search }, field('选择中心资料', query, v => { setQuery(v); setSearched(false) }, { placeholder: '输入标题或路径，按 Enter 查找' }), e('button', { className: 'kbw-button', type: 'submit', disabled: searching }, searching ? '查找中…' : '查找资料'), graphMode === 'center' ? btn('返回全库总览', () => { setGraphMode('overview'); setHistory([]); resetView() }) : null),
+          searched ? matches.length ? e('div', { className: 'kbw-actions' }, matches.map(f => btn(f.title, () => enter(f.path), false, { key: f.path, title: f.path }))) : e('p', { role: 'status', className: 'kbw-meta' }, '没有找到资料，请尝试其他标题或路径。') : null,
+          graphMode === 'overview' ? overviewPanel : e(R.Fragment, null,
             e('div', { className: 'kbw-toolbar kbw-relation-filters' }, btn('返回上一份资料', () => { setCenter(history.at(-1) || ''); setHistory(h => h.slice(0, -1)); resetView() }, !history.length), select('显示的链接', type, setType, [['', '全部类型'], ['source', '来源链接'], ['reference', '文中引用'], ['manual', '手动关联']]), select('浏览范围', depth, setDepth, [['1', '直接关联'], ['2', '再展开一层']]), check('显示归档资料', archive, setArchive), check('显示目录索引文档', navigation, setNavigation)),
             e('p', { className: 'kbw-path' }, '当前资料：' + center),
-            e('div', { className: 'kbw-actions', style: { marginBottom: 12 } }, btn('放大', () => zoomBy(1.2), !hasGraph), btn('缩小', () => zoomBy(1 / 1.2), !hasGraph), btn('显示全部节点', fitView, !hasGraph), btn('定位中心资料', recenter, !hasGraph), btn('打开当前资料', () => navigate('map', center)), btn(aiBusy ? '正在创建讨论…' : '与 AI 讨论可能的关联', async () => { setAiBusy(true); setError(''); try { await launchRepairChat(snapshot, [], center); setIssues(true) } catch (err) { setError(err.message) } finally { setAiBusy(false) } }, aiBusy)),
+            e('div', { className: 'kbw-actions', style: { marginBottom: 12 } }, btn('放大', () => zoomBy(1.2), !hasGraph), btn('缩小', () => zoomBy(1 / 1.2), !hasGraph), btn('适配当前图谱', fitView, !hasGraph), btn('定位中心资料', recenter, !hasGraph), btn('打开当前资料', () => navigate('map', center)), btn(aiBusy ? '正在创建讨论…' : '与 AI 讨论可能的关联', async () => { setAiBusy(true); setError(''); try { await launchRepairChat(snapshot, [], center); setIssues(true) } catch (err) { setError(err.message) } finally { setAiBusy(false) } }, aiBusy)),
             e('p', { className: 'kbw-meta' }, '“来源链接”来自资料的来源信息，“文中引用”来自文档内链接；AI 建议需要预览确认后才会保存。'),
-            !data ? e('p', { role: 'status' }, error ? '关系读取失败，请重试。' : '正在读取关系…') : !hasGraph ? e('div', { className: 'kbw-empty', role: 'status' }, e('h3', null, data.unfilteredTotal ? '已有链接被当前筛选隐藏' : '这份资料尚无可用的关联链接'),
+            !data ? e('p', { role: 'status' }, error ? '关系读取失败，请重试。' : '正在读取关系…') : !center ? e('div', { className: 'kbw-empty', role: 'status' }, e('h3', null, '请选择一份资料作为中心'), e('p', null, '可以搜索资料，或从全库总览选择关系较多的资料。')) : !hasGraph ? e('div', { className: 'kbw-empty', role: 'status' }, e('h3', null, data.unfilteredTotal ? '已有链接被当前筛选隐藏' : '这份资料尚无可用的关联链接'),
               e('p', null, data.unfilteredTotal ? '请切换为全部类型，或显示归档资料和目录索引文档。' : '关系图依据文档内的实际链接生成。打开当前资料，添加来源、引用或手动关联后即可显示。'),
               data.centerIssueTotal ? e('p', null, '这份资料有 ' + data.centerIssueTotal + ' 个链接无法解析，请进入“检查失效链接”。') : null,
               data.unfilteredTotal ? btn('显示全部类型及隐藏资料', () => { setType(''); setArchive(true); setNavigation(true) }) : btn('打开资料并添加关联', () => navigate('map', center)),
@@ -691,17 +732,17 @@ window.__ModuleLoader__.load({
 
       function Workbench() {
         styles()
-        const [snapshot, setSnapshot] = R.useState(null), [tab, setTab] = R.useState('map'), [prefix, setPrefix] = R.useState(''), [selected, setSelected] = R.useState('')
+        const [snapshot, setSnapshot] = R.useState(null), [tab, setTab] = R.useState('map'), [prefix, setPrefix] = R.useState(''), [selected, setSelected] = R.useState(''), [relationFocus, setRelationFocus] = R.useState('')
         const [query, setQuery] = R.useState(''), [mode, setMode] = R.useState('path'), [layer, setLayer] = R.useState(''), [extension, setExtension] = R.useState(''), [tag, setTag] = R.useState(''), [after, setAfter] = R.useState(''), [before, setBefore] = R.useState(''), [sort, setSort] = R.useState('name'), [direct, setDirect] = R.useState(false)
         const [view, setView] = R.useState('cards'), [browse, setBrowse] = R.useState(false)
-        const [list, setList] = R.useState(null), [offset, setOffset] = R.useState(0), [error, setError] = R.useState(''), [busy, setBusy] = R.useState(false), [deferred, setDeferred] = R.useState(false), [tasks, setTasks] = R.useState(null), [reminder, setReminder] = R.useState(null)
-        const current = R.useRef(null), generation = R.useRef(0), first = R.useRef(true), request = R.useRef(0)
+        const [list, setList] = R.useState(null), [offset, setOffset] = R.useState(0), [error, setError] = R.useState(''), [busy, setBusy] = R.useState(false), [deferred, setDeferred] = R.useState(false), [tasks, setTasks] = R.useState(null), [reminder, setReminder] = R.useState(null), [canGoBack, setCanGoBack] = R.useState(false), [routeRestore, setRouteRestore] = R.useState(null)
+        const current = R.useRef(null), generation = R.useRef(0), first = R.useRef(true), request = R.useRef(0), routeHistory = R.useRef([]), routePushRef = R.useRef(null)
         const refresh = R.useCallback(async () => {
           const gen = generation.current
           try {
             const next = await api({ op: 'atlas.snapshot' })
             if (gen !== generation.current) return
-            if (current.current && (current.current.kbId !== next.kbId || current.current.policyVersion !== next.policyVersion)) { generation.current++; request.current++; setList(null); setSelected(''); setPrefix(''); setTasks(null) }
+                if (current.current && (current.current.kbId !== next.kbId || current.current.policyVersion !== next.policyVersion)) { generation.current++; request.current++; setList(null); setSelected(''); setRelationFocus(''); setPrefix(''); setTasks(null); routeHistory.current = []; setCanGoBack(false) }
             if (first.current) {
               first.current = false
               let chosen = next.preferences.landing
@@ -717,15 +758,43 @@ window.__ModuleLoader__.load({
           const policy = ev => {
             if (ev.detail?.type === 'links-changed') { void refresh(); return }
             if (ev.detail?.type === 'review-due') { if (ev.detail.kbId === current.current?.kbId) setReminder(ev.detail.count); return }
-            generation.current++; request.current++; current.current = null; setSnapshot(null); setList(null); setSelected(''); setTasks(null); void refresh()
+            generation.current++; request.current++; current.current = null; setSnapshot(null); setList(null); setSelected(''); setRelationFocus(''); setTasks(null); routeHistory.current = []; setCanGoBack(false); void refresh()
           }
           const timer = setInterval(() => { if (!document.hidden) void refresh() }, 5000)
           const defer = () => setDeferred(true)
-          const capture = ev => { if ((ev.ctrlKey || ev.metaKey) && ev.shiftKey && ev.key.toLowerCase() === 'k') { ev.preventDefault(); setTab('inbox') } }
+          const capture = ev => { if ((ev.ctrlKey || ev.metaKey) && ev.shiftKey && ev.key.toLowerCase() === 'k') { ev.preventDefault(); routePushRef.current?.(); setTab('inbox') } }
           window.addEventListener('kbw-policy', policy); window.addEventListener('kbw-deferred', defer); window.addEventListener('keydown', capture)
           return () => { generation.current++; request.current++; clearInterval(timer); window.removeEventListener('kbw-policy', policy); window.removeEventListener('kbw-deferred', defer); window.removeEventListener('keydown', capture) }
         }, [refresh])
-        const navigate = R.useCallback((next, file, directory = false) => { setTab(next); setSelected(directory ? '' : file || ''); if (file) { setBrowse(true); setQuery(''); setOffset(0) }; if (file) setPrefix(directory ? file : file.includes('/') ? file.slice(0, file.lastIndexOf('/')) : '') }, [])
+        const pushRoute = R.useCallback(() => {
+          const scrollSelector = tab === 'relations' ? '.kbw-relations, .kbw-content' : (tab === 'map' || tab === 'reading') && selected ? '.kbw-detail' : tab === 'map' ? '.kbw-list, .kbw-content' : '.kbw-content'
+          const scrollTop = document.querySelector('.kbw ' + scrollSelector)?.scrollTop || 0
+          routeHistory.current = [...routeHistory.current, { tab, prefix, selected, query, mode, layer, extension, tag, after, before, sort, direct, view, browse, offset, scrollSelector, scrollTop }].slice(-50)
+          setCanGoBack(routeHistory.current.length > 0)
+        }, [tab, prefix, selected, query, mode, layer, extension, tag, after, before, sort, direct, view, browse, offset])
+        routePushRef.current = pushRoute
+        const goBack = R.useCallback(() => {
+          const previous = routeHistory.current.pop()
+          if (!previous) { setCanGoBack(false); setSelected(''); return }
+          setCanGoBack(routeHistory.current.length > 0)
+          setTab(previous.tab); setPrefix(previous.prefix); setSelected(previous.selected); setQuery(previous.query); setMode(previous.mode); setLayer(previous.layer); setExtension(previous.extension); setTag(previous.tag); setAfter(previous.after); setBefore(previous.before); setSort(previous.sort); setDirect(previous.direct); setView(previous.view); setBrowse(previous.browse); setOffset(previous.offset)
+          setRouteRestore({ tab: previous.tab, selected: previous.selected, scrollSelector: previous.scrollSelector, scrollTop: previous.scrollTop })
+        }, [])
+        R.useEffect(() => {
+          if (!routeRestore || routeRestore.tab !== tab) return
+          const frame = requestAnimationFrame(() => {
+            const page = document.querySelector('.kbw ' + routeRestore.scrollSelector)
+            if (page) page.scrollTop = routeRestore.scrollTop
+            setRouteRestore(null)
+          })
+          return () => cancelAnimationFrame(frame)
+        }, [tab, routeRestore])
+        const navigate = R.useCallback((next, file, directory = false) => {
+          const nextSelected = directory ? '' : file || ''
+          if (next !== tab || nextSelected !== selected) pushRoute()
+          setTab(next); setSelected(nextSelected); if (next === 'relations') setRelationFocus(file || selected || '')
+          if (file || directory) { setBrowse(true); setQuery(''); setOffset(0); setPrefix(directory ? file || '' : file.includes('/') ? file.slice(0, file.lastIndexOf('/')) : '') }
+        }, [tab, selected, pushRoute])
         const loadList = R.useCallback(async () => {
           if (!snapshot) return
           const seq = ++request.current, gen = generation.current
@@ -739,30 +808,32 @@ window.__ModuleLoader__.load({
         }, [snapshot?.kbId, snapshot?.policyVersion, snapshot?.version, prefix, query, mode, layer, extension, tag, after, before, sort, direct, offset])
         R.useEffect(() => { const timer = setTimeout(() => { void loadList() }, 200); return () => clearTimeout(timer) }, [loadList])
         R.useEffect(() => { if (snapshot) try { localStorage.setItem('kbw-tab:' + snapshot.kbId, tab) } catch {} }, [tab, snapshot?.kbId])
-        const openScope = p => { setTab('map'); setBrowse(true); setQuery(''); setPrefix(p); setSelected(''); setOffset(0) }
+        const openScope = p => { if (tab !== 'map' || selected || prefix !== p || !browse) pushRoute(); setTab('map'); setBrowse(true); setQuery(''); setPrefix(p); setSelected(''); setOffset(0) }
+        const openFile = file => { if (selected !== file) pushRoute(); setSelected(file) }
+        const closeDetail = () => canGoBack ? goBack() : setSelected('')
         const searchSubmit = ev => { ev?.preventDefault(); setOffset(0); void loadList() }
         const tabs = [['overview', '总览'], ['map', '地图'], ['relations', '关系'], ['inbox', '收件箱'], ['reading', '阅读'], ['review', '回顾'], ['flows', '流程']]
         return e('div', { className: 'kbw' },
           e('div', { className: 'kbw-toolbar', style: { flexShrink: 0, borderBottom: '1px solid var(--line)' } }, e(BuildBadge)),
-          e('nav', { className: 'kbw-nav', 'aria-label': '知识库功能' }, tabs.map(([id, label]) => btn(label, () => { setTab(id); if (id !== 'relations') setSelected('') }, false, { key: id, 'aria-current': tab === id })),
-            e('span', { style: { flex: 1 } }), btn('设置', () => event('kbw-settings'))),
+          e('nav', { className: 'kbw-nav', 'aria-label': '知识库功能' }, tabs.map(([id, label]) => btn(label, () => { if (id !== tab) { pushRoute(); setTab(id); if (id === 'relations') setRelationFocus(selected || '') } }, false, { key: id, 'aria-current': tab === id })),
+            e('span', { style: { flex: 1 } }), btn('返回上一页', goBack, !canGoBack, { 'aria-label': '返回上一页' }), btn('设置', () => event('kbw-settings'))),
           deferred ? e('div', { className: 'kbw-banner' }, '必要设置尚未完成', btn('继续设置', () => event('kbw-settings'))) : null,
           snapshot?.needsConfirmation ? e('div', { className: 'kbw-banner' }, '此库尚未确认 profile 默认偏好，当前使用安全默认值。', btn('确认此库设置', () => event('kbw-settings'))) : null,
-          reminder !== null ? e('div', { className: 'kbw-banner' }, '有 ' + reminder + ' 项资料可以回顾', btn('查看回顾', () => { setTab('review'); setReminder(null) }), btn('关闭', () => setReminder(null))) : null,
+          reminder !== null ? e('div', { className: 'kbw-banner' }, '有 ' + reminder + ' 项资料可以回顾', btn('查看回顾', () => { if (tab !== 'review') pushRoute(); setTab('review'); setReminder(null) }), btn('关闭', () => setReminder(null))) : null,
           error ? e('div', { className: 'kbw-error', role: 'alert' }, error, btn('重试', refresh)) : null,
           !snapshot ? e('div', { className: 'kbw-content' }, e('p', null, error ? '请检查绑定或进入设置。' : '正在读取知识库…'), btn('打开设置', () => event('kbw-settings'))) : null,
           snapshot ? e(R.Fragment, null,
             e('div', { className: 'kbw-status' }, '隐私展示：' + (snapshot.preferences.showPrivate ? '开启' : '关闭') + ' · 知识 ' + snapshot.totals.knowledge + ' 条 · 可展示文件 ' + snapshot.totals.visible + ' / 全部文件 ' + snapshot.totals.files, btn('调整', () => event('kbw-settings'))),
             snapshot.coverage.errors || snapshot.coverage.truncated ? e('div', { className: 'kbw-banner', role: 'status' }, '扫描结果不完整：' + snapshot.coverage.errors + ' 处错误' + (snapshot.coverage.truncated ? '，已达到扫描上限' : '') + '。当前统计仅覆盖已读取的内容。') : null,
             tab === 'overview' ? e('section', { className: 'kbw-content' }, e('div', { className: 'kbw-actions' }, btn('快速收集', () => navigate('inbox')), btn('查看地图', () => navigate('map'))),
-              e('h2', null, '知识库分区'), e('div', { className: 'kbw-actions' }, snapshot.sections.filter(s => !s.private || snapshot.preferences.showPrivate).map(s => btn(s.name + ' · ' + s.files, () => { navigate('map'); openScope(s.name) }, false, { key: s.name }))),
+              e('h2', null, '知识库分区'), e('div', { className: 'kbw-actions' }, snapshot.sections.filter(s => !s.private || snapshot.preferences.showPrivate).map(s => btn(s.name + ' · ' + s.files, () => openScope(s.name), false, { key: s.name }))),
               e('h2', null, '最近变更'), snapshot.recent.map(f => e('div', { key: f.path, className: 'kbw-annotation' }, btn(f.title, () => navigate('map', f.path)), e('span', { className: 'kbw-meta' }, ' · ' + date(f.mtimeMs)))),
               e('details', null, e('summary', null, '运行状态、索引与异常'), e(Overview)),
               e(Backups, { snapshot }), e(TaskCenter, { snapshot })) : null,
             tab === 'map' || tab === 'reading' && selected ? e(R.Fragment, null,
               e('form', { className: 'kbw-toolbar', onSubmit: searchSubmit }, e('input', { 'aria-label': '搜索知识库', placeholder: '搜索资料标题、文件或正文', value: query, onChange: ev => { setQuery(ev.target.value); setBrowse(Boolean(ev.target.value)) } }),
                 e('select', { 'aria-label': '搜索方式', value: mode, onChange: ev => { setMode(ev.target.value); setOffset(0) } }, e('option', { value: 'path' }, '文件名与路径'), e('option', { value: 'body' }, '知识正文')),
-                e('button', { type: 'submit', className: 'kbw-button', disabled: busy }, busy ? '查询中…' : '搜索'), btn('刷新', () => { void refresh(); void loadList() }), btn(browse ? '返回地图首页' : '浏览全部资料', () => { setBrowse(!browse); setPrefix(''); setQuery(''); setSelected('') })),
+                e('button', { type: 'submit', className: 'kbw-button', disabled: busy }, busy ? '查询中…' : '搜索'), btn('刷新', () => { void refresh(); void loadList() }), btn(browse ? '返回地图首页' : '浏览全部资料', () => { pushRoute(); setBrowse(!browse); setPrefix(''); setQuery(''); setSelected('') })),
               browse || selected ? e('details', { style: { padding: '0 18px 10px' } }, e('summary', null, '筛选与排序'), e('div', { className: 'kbw-toolbar' },
                 select('范围', layer, v => { setLayer(v); setOffset(0) }, [['', '全部文件'], ['knowledge', '知识条目'], ['deliverable', '任务成品'], ['original', '原件附件'], ['draft', '底稿']]),
                 field('扩展名', extension, setExtension), field('标签', tag, setTag), field('起始日期', after, setAfter, { type: 'date' }), field('截止日期', before, setBefore, { type: 'date' }),
@@ -775,11 +846,11 @@ window.__ModuleLoader__.load({
                   e('div', { className: 'kbw-meta' }, list.total + ' 个结果 · ' + list.coverageNote), list.truncated ? e('p', { role: 'status' }, '结果不完整，扫描已达到上限') : null,
                   e('div', { className:'kbw-actions' }, btn('资料卡片', () => setView('cards'), false, { 'aria-current':view==='cards' }), btn('目录列表', () => setView('list'), false, { 'aria-current':view==='list' })),
                   prefix === '任务成品' ? e(ProductImport, { snapshot }) : null,
-                  e('div', { className:view==='cards'?'kbw-cards':'' }, list.items.map(f => view==='cards' ? e(FileCard, { key:f.path, file:f, active:selected===f.path, onClick:() => setSelected(f.path) }) : e('button', { key:f.path,className:'kbw-row',onClick:() => setSelected(f.path) }, e('strong',null,f.title),e('span',{className:'kbw-path'},f.path),e('div',{className:'kbw-meta'},date(f.mtimeMs))))),
+                  e('div', { className:view==='cards'?'kbw-cards':'' }, list.items.map(f => view==='cards' ? e(FileCard, { key:f.path, file:f, active:selected===f.path, onClick:() => openFile(f.path) }) : e('button', { key:f.path,className:'kbw-row',onClick:() => openFile(f.path) }, e('strong',null,f.title),e('span',{className:'kbw-path'},f.path),e('div',{className:'kbw-meta'},date(f.mtimeMs))))),
                   !list.items.length ? e('p', { className: 'kbw-empty' }, '当前范围没有匹配的内容') : null,
                   e('div', { className: 'kbw-actions' }, btn('上一页', () => setOffset(Math.max(0, offset - 100)), offset === 0), btn('下一页', () => setOffset(offset + 100), offset + list.items.length >= list.total))) : e('p', null, '读取清单…')),
-                selected ? e(Detail, { key: selected + snapshot.policyVersion, file: selected, snapshot, onClose: () => setSelected(''), onNavigate: navigate, onChanged: refresh, readMode: tab === 'reading' }) : null)) : null,
-            tab === 'relations' ? e(Relations, { snapshot, focus: selected, navigate }) : null,
+                  selected ? e(Detail, { key: selected + snapshot.policyVersion, file: selected, snapshot, onClose: closeDetail, onNavigate: navigate, onChanged: refresh, readMode: tab === 'reading' }) : null)) : null,
+            e('div', { style: { display: tab === 'relations' ? 'flex' : 'none', flex: 1, minHeight: 0 } }, e(Relations, { snapshot, focus: relationFocus, active: tab === 'relations', navigate })),
             tab === 'inbox' ? e(Inbox, { snapshot, changed: refresh, navigate }) : null,
             tab === 'reading' && !selected ? e(ReadingLibrary, { snapshot, navigate }) : null,
             tab === 'review' ? e(Review, { snapshot, changed: refresh, navigate }) : null,
