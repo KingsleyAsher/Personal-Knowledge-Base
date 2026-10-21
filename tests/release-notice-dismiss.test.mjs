@@ -4,111 +4,109 @@ import { readFileSync } from 'node:fs'
 import vm from 'node:vm'
 
 const source = readFileSync(new URL('../src/client/index.js', import.meta.url), 'utf8')
-const noticeSource = source.slice(source.indexOf('    const RELEASE_VERSION ='), source.indexOf('    function apply(ctx)'))
-const stateKey = 'dsh-kb-release-state'
-const seenKey = (v) => 'dsh-kb-release-seen:' + v
-function storage(initial = {}) {
-  const data = new Map(Object.entries(initial))
-  return { getItem: (key) => data.get(key) ?? null, setItem: (key, value) => data.set(key, String(value)) }
+const code = source.slice(source.indexOf('    const RELEASE_VERSION ='), source.indexOf('    function apply(ctx)'))
+const key = 'dsh-kb-release-state'
+function storage(version) {
+  const data = new Map(version ? [[key, JSON.stringify({ version })]] : [])
+  return { getItem: k => data.get(k) ?? null, setItem: (k, value) => data.set(k, String(value)) }
 }
-const initial = (version, pending = []) => ({ [stateKey]: JSON.stringify({ version, pending }) })
-const policy = () => vm.runInNewContext(noticeSource + '\n({ loadReleaseNotices, compareReleaseVersions, RELEASE_NOTICES })')
-const versions = (items) => Array.from(items, (item) => item.version)
+const api = () => vm.runInNewContext(code + '\n({ loadReleaseNotices, acknowledgeReleaseNotice, rememberPreviousClientVersion, shouldShowReleaseNotice, compareReleaseVersions, RELEASE_NOTICES })')
+const versions = notice => Array.from(notice?.releases ?? [], entry => entry.version)
 
-test('ordinary upgrade 1.1.2 -> 1.1.3 creates no announcement', () => {
-  const store = storage(initial('1.1.2')), api = policy()
-  assert.deepEqual(versions(api.loadReleaseNotices(store, '1.1.3')), [])
-  assert.deepEqual(versions(api.RELEASE_NOTICES), ['1.1.1'])
-  assert.equal(JSON.parse(store.getItem(stateKey)).version, '1.1.3')
-})
-test('skipping a designated release retains its announcement until acknowledged', () => {
-  const store = storage(initial('1.0.0')), api = policy()
-  assert.deepEqual(versions(api.loadReleaseNotices(store)), ['1.1.1'])
-  assert.deepEqual(versions(api.loadReleaseNotices(store)), ['1.1.1'])
-  store.setItem(seenKey('1.1.1'), '1')
-  assert.deepEqual(versions(api.loadReleaseNotices(store)), [])
-  assert.deepEqual(versions(api.loadReleaseNotices(store, '1.1.4')), [])
-})
-test('fresh install and multiple skipped milestones; future notices wait', () => {
-  const api = policy(), store = storage(initial('1.0.0'))
-  assert.deepEqual(versions(api.loadReleaseNotices(storage())), ['1.1.1'])
-  const notices = [{ version: '2.0.0' }, { version: '1.1.1' }, { version: '1.2.0' }]
-  assert.deepEqual(versions(api.loadReleaseNotices(store, '1.3.0', notices)), ['1.1.1', '1.2.0'])
-  assert.deepEqual(versions(api.loadReleaseNotices(store, '1.3.0', notices)), ['1.1.1', '1.2.0'])
-  store.setItem(seenKey('1.1.1'), '1'); store.setItem(seenKey('1.2.0'), '1')
-  assert.deepEqual(versions(api.loadReleaseNotices(store, '2.0.0', notices)), ['2.0.0'])
-})
-test('legacy seen markers migrate without repeating the popup', () => {
-  for (const v of ['1.1.1', '1.1.2', '1.1.3']) assert.deepEqual(versions(policy().loadReleaseNotices(storage({ [seenKey(v)]: '1' }))), [], v)
-})
-test('withdrawn pending notices and unreadable storage do not trigger popups', () => {
-  assert.deepEqual(versions(policy().loadReleaseNotices(storage(initial('1.1.3', ['1.1.3'])))), [])
-  assert.deepEqual(versions(policy().loadReleaseNotices({ getItem() { throw Error('disabled') } })), [])
-})
-test('numeric/prerelease version ordering and downgrade history', () => {
-  const api = policy(), store = storage(initial('1.2.0'))
-  assert.equal(api.compareReleaseVersions('1.10.0', '1.2.0'), 1)
-  assert.equal(api.compareReleaseVersions('2.0.0-rc.2', '2.0.0-rc.10'), -1)
-  assert.equal(api.compareReleaseVersions('2.0.0-rc.10', '2.0.0'), -1)
-  assert.equal(api.compareReleaseVersions('2.0-beta9', '2.0.0'), -1)
-  assert.equal(api.compareReleaseVersions('2.0-beta10', '2.0-beta9'), 1)
-  assert.equal(api.compareReleaseVersions('2.0.2-beta9', '2.0.0'), -1)
-  assert.deepEqual(versions(api.loadReleaseNotices(store, '2.0-beta9')), [])
-  assert.equal(JSON.parse(store.getItem(stateKey)).version, '2.0-beta9')
-  assert.deepEqual(versions(api.loadReleaseNotices(store, '1.1.3')), [])
-  assert.equal(JSON.parse(store.getItem(stateKey)).version, '2.0-beta9')
+test('stable patch stays quiet; the next minor upgrade includes that patch', () => {
+  const { loadReleaseNotices, acknowledgeReleaseNotice } = api(), store = storage('2.0.0')
+  assert.equal(loadReleaseNotices(store, '2.0.1'), null)
+  const entries = [{ version: '2.0.1', items: ['补丁'] }, { version: '2.1.0', items: ['迭代'] }]
+  const notice = loadReleaseNotices(store, '2.1.0', entries)
+  assert.equal(notice.fromVersion, '2.0.0')
+  assert.deepEqual(versions(notice), ['2.0.1', '2.1.0'])
+  acknowledgeReleaseNotice(store, notice)
+  assert.equal(loadReleaseNotices(store, '2.1.0', entries), null)
 })
 
-// Execute the actual component and event handlers with a minimal hooks harness.
+test('stable major and minor upgrades show one summary without interim previews', () => {
+  const p = api(), store = storage('1.1.6')
+  assert.deepEqual(versions(p.loadReleaseNotices(store, '2.0.0')), ['2.0.0'])
+  assert.equal(p.shouldShowReleaseNotice('2.0.0', '2.0.9'), false)
+  assert.equal(p.shouldShowReleaseNotice('2.0.9', '2.1.0'), true)
+})
+
+test('skipping beta releases gives one combined popup and preserves it until closed', () => {
+  const p = api(), store = storage('2.0.2-beta6')
+  const notice = p.loadReleaseNotices(store, '2.0-beta9')
+  assert.equal(notice.fromVersion, '2.0.2-beta6')
+  assert.deepEqual(versions(notice), ['2.0-beta7', '2.0-beta8', '2.0-beta9'])
+  assert.deepEqual(versions(p.loadReleaseNotices(store, '2.0-beta9')), versions(notice))
+  p.acknowledgeReleaseNotice(store, notice)
+  assert.equal(p.loadReleaseNotices(store, '2.0-beta9'), null)
+})
+
+test('an unclosed beta popup extends through a later stable upgrade', () => {
+  const p = api(), store = storage('2.0-beta7')
+  assert.deepEqual(versions(p.loadReleaseNotices(store, '2.0-beta8')), ['2.0-beta8'])
+  const notice = p.loadReleaseNotices(store, '2.0.0')
+  assert.equal(notice.fromVersion, '2.0-beta7')
+  assert.deepEqual(versions(notice), ['2.0-beta8', '2.0-beta9', '2.0.0'])
+})
+
+test('fresh install, downgrade, bad storage, and legacy markers', () => {
+  const p = api(), fresh = storage()
+  assert.equal(p.loadReleaseNotices(fresh, '2.0.0'), null)
+  assert.equal(JSON.parse(fresh.getItem(key)).version, '2.0.0')
+  assert.equal(p.loadReleaseNotices(fresh, '1.1.6'), null)
+  assert.equal(p.loadReleaseNotices({ getItem() { throw Error('disabled') } }), null)
+  const legacy = storage(); legacy.setItem('dsh-kb-release-seen:1.1.3', '1')
+  assert.equal(p.loadReleaseNotices(legacy, '2.0.0').fromVersion, '1.1.3')
+})
+
+test('hot load captures beta9 as the actual previous version before replacing the client', () => {
+  const p = api(), store = storage('1.1.3')
+  p.rememberPreviousClientVersion(store, '2.0.2-beta9')
+  const note = p.loadReleaseNotices(store, '2.0.0')
+  assert.equal(note.fromVersion, '2.0.2-beta9')
+  assert.deepEqual(versions(note), ['2.0.0'])
+})
+
+test('current release is documented and preview ordering is numeric', () => {
+  const p = api()
+  assert.ok(p.RELEASE_NOTICES.some(entry => entry.version === '2.0.0'))
+  assert.equal(p.compareReleaseVersions('2.0-beta10', '2.0-beta9'), 1)
+  assert.equal(p.compareReleaseVersions('2.0-beta9', '2.0.0'), -1)
+})
+
+// Minimal hooks harness for the actual popup close path.
 function mount(store) {
   let slots = [], cursor = 0, effects = [], dirty = false, output
   const listeners = new Map()
   const react = {
-    useState(initial) {
-      const i = cursor++; slots[i] ??= { value: initial }
-      return [slots[i].value, (value) => { slots[i].value = typeof value === 'function' ? value(slots[i].value) : value; dirty = true }]
-    },
+    useState(initial) { const i = cursor++; slots[i] ??= { value: initial }; return [slots[i].value, value => { slots[i].value = typeof value === 'function' ? value(slots[i].value) : value; dirty = true }] },
     useMemo(fn) { return (slots[cursor++] ??= { value: fn() }).value },
     useRef(value) { return react.useMemo(() => ({ current: value })) },
-    useEffect(fn, deps) {
-      const i = cursor++, old = slots[i]
-      if (!old || deps.some((v, n) => v !== old.deps[n])) effects.push(() => { old?.cleanup?.(); slots[i] = { deps, cleanup: fn() } })
-    },
+    useEffect(fn, deps) { const i = cursor++, old = slots[i]; if (!old || deps.some((v, n) => v !== old.deps[n])) effects.push(() => { old?.cleanup?.(); slots[i] = { deps, cleanup: fn() } }) },
   }
   const context = {
-    react, reactDom: { createPortal: (element) => element }, e: (tag, props, ...children) => ({ tag, props: props || {}, children }),
+    react, reactDom: { createPortal: element => element }, e: (tag, props, ...children) => ({ tag, props: props || {}, children }),
     document: { createElement: () => ({ setAttribute() {}, remove() {} }), body: { appendChild() {} } },
-    window: { localStorage: store, addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: (name) => listeners.delete(name) },
+    window: { localStorage: store, addEventListener: (name, fn) => listeners.set(name, fn), removeEventListener: name => listeners.delete(name) },
   }
-  const Component = vm.runInNewContext('let releaseNoticeClaimed = false;\n' + noticeSource + '\nReleaseNotice', context)
-  function flush() {
-    for (let n = 0; n < 10; n++) {
-      dirty = false; cursor = 0; effects = []; output = Component(); effects.forEach((f) => f())
-      if (!dirty) return
-    }
-    throw Error('render did not settle')
-  }
+  const Component = vm.runInNewContext('let releaseNoticeClaimed = false;\n' + code + '\nReleaseNotice', context)
+  function flush() { for (let n = 0; n < 10; n++) { dirty = false; cursor = 0; effects = []; output = Component(); effects.forEach(fn => fn()); if (!dirty) return } throw Error('render did not settle') }
   flush()
   return { get output() { return output }, flush, listeners }
 }
-function find(element, predicate) {
-  if (!element || typeof element !== 'object') return
-  if (predicate(element)) return element
-  for (const child of (element.children || []).flat()) { const result = find(child, predicate); if (result) return result }
-}
-test('actual component stays hidden on ordinary upgrade', () => {
-  const view = mount(storage(initial('1.1.2')))
-  assert.equal(view.output, null); assert.equal(view.listeners.has('keydown'), false)
-})
-for (const action of ['Escape', 'close', 'backdrop', 'link']) test(`actual component persists ${action} dismissal across reloads`, () => {
-  const store = storage(initial('1.0.0')), view = mount(store)
-  assert.ok(find(view.output, (n) => n.props.role === 'dialog'))
-  assert.ok(find(view.output, (n) => n.props.className === 'kb-release-version').children[0].includes('1.1.1'))
-  assert.ok(mount(store).output, 'unclosed notice survives module reload')
+function find(element, predicate) { if (!element || typeof element !== 'object') return; if (predicate(element)) return element; for (const child of (element.children || []).flat()) { const match = find(child, predicate); if (match) return match } }
+for (const action of ['Escape', 'close', 'backdrop', 'link']) test(`aggregated popup persists ${action} dismissal`, () => {
+  const store = storage('2.0-beta7'), p = api()
+  p.loadReleaseNotices(store, '2.0.0')
+  const view = mount(store)
+  assert.ok(find(view.output, node => node.props.role === 'dialog'))
+  assert.ok(find(view.output, node => node.props.className === 'kb-release-version').children[0].includes('2.0-beta7'))
   if (action === 'Escape') view.listeners.get('keydown')({ key: 'Escape' })
-  if (action === 'close') find(view.output, (n) => n.tag === 'button').props.onClick()
-  if (action === 'link') find(view.output, (n) => n.tag === 'a').props.onClick()
+  if (action === 'close') find(view.output, node => node.tag === 'button').props.onClick()
+  if (action === 'link') find(view.output, node => node.tag === 'a').props.onClick()
   if (action === 'backdrop') { const target = {}; view.output.props.onMouseDown({ target, currentTarget: target }) }
   view.flush()
-  assert.equal(view.output, null); assert.equal(store.getItem(seenKey('1.1.1')), '1'); assert.equal(mount(store).output, null)
+  assert.equal(view.output, null)
+  assert.equal(JSON.parse(store.getItem(key)).explainedVersion, '2.0.0')
+  assert.equal(mount(store).output, null)
 })

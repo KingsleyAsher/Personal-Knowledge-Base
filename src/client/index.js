@@ -1151,6 +1151,9 @@ window.__ModuleLoader__.load({
 .kb-release-version{display:inline-flex;margin:4px 0 20px;padding:3px 10px;border:1px solid #7fe5c44a;border-radius:999px;
   color:#a3efd9;background:#7fe5c411;font-size:12px;font-variant-numeric:tabular-nums}
 .kb-release-intro{margin:0 0 16px;color:#c7d4d3}
+.kb-release-group{margin:0 0 18px;padding:14px 16px;border:1px solid #ffffff1c;border-radius:12px;background:#ffffff06}
+.kb-release-group h3{margin:0 0 10px;color:#8fe9cc;font-size:15px;font-weight:650}
+.kb-release-group .kb-release-list{margin-bottom:0}
 .kb-release-list{display:grid;gap:10px;margin:0 0 24px;padding:0;list-style:none}
 .kb-release-list li{display:flex;gap:10px;align-items:flex-start;color:#e1ecea}
 .kb-release-list li:before{content:"✦";flex:none;color:#8fe9cc}
@@ -3456,16 +3459,25 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
 
     const RELEASE_VERSION = '2.0.0'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
-    // Only owner-designated announcements belong here. A package version bump
-    // must never add an announcement or change an existing announcement ID.
-    const RELEASE_NOTICES = [{
-      version: '1.1.1',
-      intro: '个人知识库新增产品介绍页，提供源码、发布包与使用说明入口。',
-      items: [
-        '提供 GitHub 仓库入口，查看源码、发布包与完整更新记录。',
-        '提供产品展示网页入口，了解资料整理、检索与知识沉淀的使用方式。',
-      ],
-    }]
+    // Keep each shipped release in order. Patch entries are retained for a
+    // later cross-version summary even though patch-only installs stay quiet.
+    const RELEASE_NOTICES = [
+      { version: '1.1.1', items: ['新增产品介绍页、源码、发布包与使用说明入口。'] },
+      { version: '1.1.3', items: ['加强解析调用授权与任务来源记录；加入校验后的一键更新。'] },
+      { version: '1.1.4', items: ['增加正式版与预览版更新通道选择。'] },
+      { version: '1.1.5', items: ['增加国内更新源及下载摘要校验与故障切换。'] },
+      { version: '1.1.6', items: ['更新时自动选择可用来源，简化下载与安装操作。'] },
+      { version: '2.0-beta1', items: ['首次提供知识工作台预览，包含资料检索、阅读摘录、关系、收件箱与备份。'] },
+      { version: '2.0-beta2', items: ['为预览版加入多个更新来源及下载校验与故障切换。'] },
+      { version: '2.0-beta3', items: ['更新时自动选择可用来源，简化预览版安装。'] },
+      { version: '2.0-beta4', items: ['改良工作台地图、关系浏览、链接检查与解析设置。'] },
+      { version: '2.0-beta5', items: ['修复启动时意外恢复到知识库页签的问题，保留会话草稿。'] },
+      { version: '2.0-beta6', items: ['改良关系浏览与本地链接识别，新增浏览器扩展使用指南。'] },
+      { version: '2.0-beta7', items: ['统一知识库工作台导航与页面布局。', '关系图支持拖拽缩放、节点与连线选择、分区下钻。'] },
+      { version: '2.0-beta8', items: ['恢复顶部更新入口，加入可调整分栏与目录换行。', '区分普通资料和系统文件；完善阅读摘录与 30 天回收站。'] },
+      { version: '2.0-beta9', items: ['关系网络使用增量索引；文件条目可直接移入回收站。', '统一 OCR／ASR 解析任务记录，并按安装渠道提示可用更新。'] },
+      { version: '2.0.0', items: ['知识库工作台转为正式版，整合资料目录、关系网络、阅读、回顾与流程。', '完善版本命名、更新判断和发布前稳定性修复。'] },
+    ]
     const LEGACY_RELEASE_NOTICE_VERSIONS = ['1.1.1', '1.1.2', '1.1.3']
     function compareReleaseVersions(left, right) {
       const parse = (value) => {
@@ -3495,31 +3507,68 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       }
       return 0
     }
+    function isPreviewRelease(version) { return /^\d+\.\d+(?:\.\d+)?-beta[1-9]\d*$/.test(version) }
+    function shouldShowReleaseNotice(previous, current) {
+      if (compareReleaseVersions(current, previous) <= 0) return false
+      if (isPreviewRelease(current)) return true
+      const oldStable = /^(\d+)\.(\d+)\.\d+$/.exec(previous)
+      const newStable = /^(\d+)\.(\d+)\.\d+$/.exec(current)
+      if (!newStable) return false
+      return !oldStable || oldStable[1] !== newStable[1] || oldStable[2] !== newStable[2]
+    }
+    function rememberPreviousClientVersion(storage, previousVersion, currentVersion = RELEASE_VERSION) {
+      try {
+        if (!previousVersion || compareReleaseVersions(previousVersion, currentVersion) >= 0) return
+        let state = null
+        try { state = JSON.parse(storage.getItem(RELEASE_NOTICE_STATE_KEY)) } catch { /* old state */ }
+        if (state?.version && compareReleaseVersions(state.version, previousVersion) >= 0) return
+        storage.setItem(RELEASE_NOTICE_STATE_KEY, JSON.stringify(state?.explainedVersion ?
+          { ...state, version: previousVersion } :
+          { version: previousVersion, explainedVersion: previousVersion }))
+      } catch { /* Version evidence or storage may be unavailable. */ }
+    }
     function loadReleaseNotices(storage, currentVersion = RELEASE_VERSION, notices = RELEASE_NOTICES) {
       try {
         let state = null
-        try { state = JSON.parse(storage.getItem(RELEASE_NOTICE_STATE_KEY)) } catch { /* migrate legacy markers */ }
-        let previous = state?.version || '0.0.0'
-        compareReleaseVersions(previous, currentVersion)
-        // Legacy 1.1.2/1.1.3 popups were incorrectly tied to package versions.
-        // Their seen markers also prove that the user already crossed 1.1.1.
-        for (const version of LEGACY_RELEASE_NOTICE_VERSIONS) {
-          if (storage.getItem('dsh-kb-release-seen:' + version) === '1' && compareReleaseVersions(version, previous) > 0) previous = version
+        try { state = JSON.parse(storage.getItem(RELEASE_NOTICE_STATE_KEY)) } catch { /* fresh install */ }
+        let previous = state?.version
+        if (!previous) {
+          for (const version of LEGACY_RELEASE_NOTICE_VERSIONS) {
+            if (storage.getItem('dsh-kb-release-seen:' + version) === '1' && (!previous || compareReleaseVersions(version, previous) > 0)) previous = version
+          }
         }
-        const pending = new Set(Array.isArray(state?.pending) ? state.pending : [])
-        const eligible = notices.filter((notice) =>
-          compareReleaseVersions(notice.version, currentVersion) <= 0 &&
-          (pending.has(notice.version) || compareReleaseVersions(notice.version, previous) > 0) &&
-          storage.getItem('dsh-kb-release-seen:' + notice.version) !== '1'
+        // A fresh installation has no previous installed version to compare.
+        if (!previous) {
+          storage.setItem(RELEASE_NOTICE_STATE_KEY, JSON.stringify({ version: currentVersion, explainedVersion: currentVersion }))
+          return null
+        }
+        compareReleaseVersions(previous, currentVersion)
+        if (compareReleaseVersions(currentVersion, previous) < 0) return null
+        const pendingFrom = typeof state?.pendingFrom === 'string' ? state.pendingFrom : null
+        const explained = typeof state?.explainedVersion === 'string' ? state.explainedVersion : previous
+        const upgraded = compareReleaseVersions(currentVersion, previous) > 0
+        const show = pendingFrom || (upgraded && shouldShowReleaseNotice(previous, currentVersion))
+        if (!show) {
+          storage.setItem(RELEASE_NOTICE_STATE_KEY, JSON.stringify({ version: currentVersion, explainedVersion: explained }))
+          return null
+        }
+        const fromVersion = pendingFrom || explained
+        const releases = notices.filter((entry) =>
+          compareReleaseVersions(entry.version, fromVersion) > 0 &&
+          compareReleaseVersions(entry.version, currentVersion) <= 0 &&
+          // Stable-to-stable upgrades summarize shipped stable changes only.
+          (isPreviewRelease(fromVersion) || isPreviewRelease(currentVersion) || !isPreviewRelease(entry.version))
         ).sort((a, b) => compareReleaseVersions(a.version, b.version))
-        // Save pending IDs before advancing the installed version, so an
-        // unclosed announcement survives a reload and skipped releases.
-        storage.setItem(RELEASE_NOTICE_STATE_KEY, JSON.stringify({
-          version: compareReleaseVersions(previous, currentVersion) > 0 ? previous : currentVersion,
-          pending: eligible.map((notice) => notice.version),
-        }))
-        return eligible
-      } catch { return [] } // Without readable history, avoid unsolicited popups.
+        storage.setItem(RELEASE_NOTICE_STATE_KEY, JSON.stringify({ version: currentVersion, explainedVersion: explained, pendingFrom: fromVersion }))
+        return { fromVersion, version: currentVersion, releases }
+      } catch { return null } // Without readable history, avoid unsolicited popups.
+    }
+    function acknowledgeReleaseNotice(storage, notice) {
+      try {
+        const state = JSON.parse(storage.getItem(RELEASE_NOTICE_STATE_KEY))
+        if (state?.pendingFrom !== notice.fromVersion) return
+        storage.setItem(RELEASE_NOTICE_STATE_KEY, JSON.stringify({ version: state.version, explainedVersion: notice.version }))
+      } catch { /* Storage unavailable: close for this session. */ }
     }
     const RELEASE_GITHUB_URL = 'https://github.com/KingsleyAsher/Personal-Knowledge-Base'
     const RELEASE_SITE_URL = 'https://kingsleyasher.github.io/Personal-Knowledge-Base/'
@@ -3530,9 +3579,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
 
     function ReleaseNotice() {
-      const [pending, setPending] = react.useState([])
-      const notice = pending[0]
-      const RELEASE_NOTICE_KEY = notice ? 'dsh-kb-release-seen:' + notice.version : null
+      const [notice, setNotice] = react.useState(null)
       const portalHost = react.useMemo(() => {
         const host = document.createElement('div')
         host.setAttribute('data-kb-release-host', RELEASE_VERSION)
@@ -3541,8 +3588,8 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       const closeRef = react.useRef(null)
       const dismiss = () => {
         if (!notice) return
-        try { window.localStorage.setItem(RELEASE_NOTICE_KEY, '1') } catch { /* 存储不可用时仅本次关闭 */ }
-        setPending((items) => items.slice(1))
+        acknowledgeReleaseNotice(window.localStorage, notice)
+        setNotice(null)
       }
       react.useEffect(() => {
         if (!portalHost.isConnected) document.body.appendChild(portalHost)
@@ -3551,7 +3598,8 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       react.useEffect(() => {
         if (releaseNoticeClaimed) return
         releaseNoticeClaimed = true
-        try { setPending(loadReleaseNotices(window.localStorage)) } catch { /* storage unavailable */ }
+        try { setNotice(loadReleaseNotices(window.localStorage)) } catch { /* storage unavailable */ }
+        return () => { releaseNoticeClaimed = false }
       }, [])
       react.useEffect(() => {
         if (!notice) return undefined
@@ -3566,10 +3614,14 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           e('section', { className: 'kb-release-card', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'kb-release-title', 'aria-describedby': 'kb-release-intro' },
             e('button', { ref: closeRef, className: 'kb-release-close', type: 'button', 'aria-label': '关闭更新说明', onClick: dismiss }, '×'),
             e('p', { className: 'kb-release-kicker' }, 'PERSONAL KNOWLEDGE · RELEASE NOTES'),
-            e('h2', { id: 'kb-release-title' }, '知识库插件已更新'),
-            e('span', { className: 'kb-release-version' }, '更新说明 ' + notice.version + ' · 当前安装 ' + RELEASE_VERSION),
-            e('p', { id: 'kb-release-intro', className: 'kb-release-intro' }, notice.intro),
-            e('ul', { className: 'kb-release-list' }, notice.items.map((item) => e('li', { key: item }, item))),
+            e('h2', { id: 'kb-release-title' }, '已更新到 ' + notice.version),
+            e('span', { className: 'kb-release-version' }, '从 ' + notice.fromVersion + ' 升级 · ' + notice.releases.length + ' 个版本的变化'),
+            e('p', { id: 'kb-release-intro', className: 'kb-release-intro' }, '以下汇总自上次展示更新说明以来的变更。'),
+            notice.releases.length ? notice.releases.map((release) =>
+              e('section', { className: 'kb-release-group', key: release.version },
+                e('h3', null, release.version),
+                e('ul', { className: 'kb-release-list' }, release.items.map((item) => e('li', { key: item }, item))))) :
+              e('p', { className: 'kb-release-intro' }, '此版本暂无单独的更新条目，请查看完整更新记录。'),
             e('div', { className: 'kb-release-actions' },
               e('a', { href: RELEASE_GITHUB_URL, target: '_blank', rel: 'noopener noreferrer', onClick: dismiss }, '访问 GitHub ↗'),
               e('a', { className: 'secondary', href: RELEASE_SITE_URL, target: '_blank', rel: 'noopener noreferrer', onClick: dismiss }, '访问产品网页 ↗')),
@@ -3597,6 +3649,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
 
     function apply(ctx) {
+      rememberPreviousClientVersion(window.localStorage, document.documentElement.getAttribute('data-kb-client-version'))
       try { resetKnowledgeViewOnStartup(window.localStorage) } catch { /* storage unavailable */ }
       flowClientContext = ctx
       workbenchUI = createWorkbenchUI({ react, e, api: callApi, ctx: () => flowClientContext,
@@ -3629,7 +3682,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         }
       })
       ctx.slots.inject('conversation.input.overlay', () =>
-        ctx.slots.register({ name: 'conversation.input.overlay', id: 'kb-release-notice', order: 999 }, () => e(react.Fragment, null, e(UpdatePrompt), e(workbenchUI.Guide))))
+        ctx.slots.register({ name: 'conversation.input.overlay', id: 'kb-release-notice', order: 999 }, () => e(react.Fragment, null, e(UpdatePrompt), e(ReleaseNotice), e(workbenchUI.Guide))))
       ctx.slots.inject('settings.section', () =>
         ctx.slots.register({ name: 'settings.section', id: 'kb-core', order: 26, label: () => '个人知识库' }, WorkbenchSettings))
       ctx.slots.inject('conversation.view', () =>

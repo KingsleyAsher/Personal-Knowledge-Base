@@ -19,7 +19,7 @@ for folder in ('dist', 'website/downloads'):
     target_dir = repo / folder
     target_dir.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(archive, target_dir / manifest['tgz'])
-(repo / 'release-manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
-(repo / 'SHA256SUMS').write_text(manifest['sha256'] + '  ' + manifest['tgz'] + '\n', encoding='utf-8')
+(repo / 'release-manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf-8', newline='')
+(repo / 'SHA256SUMS').write_text(manifest['sha256'] + '  ' + manifest['tgz'] + '\n', encoding='utf-8', newline='')
 subprocess.run(['python', '-X', 'utf8', 'tools/verify-release.py'], cwd=repo, check=True)
 print('Staged local stable candidate:', version, manifest['buildId'])

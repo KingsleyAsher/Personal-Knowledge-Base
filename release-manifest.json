@@ -1,11 +1,11 @@
 {
   "package": "@local/dsh-knowledge-base",
   "version": "2.0.0",
-  "buildId": "313a1c75743ca05c",
+  "buildId": "783d6cff244f951d",
   "tgz": "local-dsh-knowledge-base-2.0.0.tgz",
-  "bytes": 2794375,
-  "sha256": "52d380cb2c7b9d32bf1442f6c6b8efce06e8bb8565fee537a40efca737d7ec3a",
-  "integrity": "sha512-38ujvuqlEN50QegI2jn2JlvbhEOla2TeLg3WJAwLWJl3Yqg/Abqm2Ysb2fpfQFD0rt9jyCbW9URMSkKFEzlmOQ==",
+  "bytes": 2795856,
+  "sha256": "ad3c4939cac22ad810a788c959004047bbd7ee203ee7748e93cb84149fd0fea1",
+  "integrity": "sha512-P9/lYQpEjR3WkJBXVOfb8eVNPKQDip6GJhma8EN7nExgSPy7QMCG92WGvnXdFpWIdtIwe4M7prs/z/tSlfupqQ==",
   "packageFileCount": 261,
   "buildFileCount": 250,
   "files": [
@@ -46,8 +46,8 @@
     },
     {
       "path": "VERSIONING.md",
-      "bytes": 2214,
-      "sha256": "7f468e6eec3f843c10ae26c159d2f455681afe5c9ca7434a5fed415836bc1264"
+      "bytes": 3614,
+      "sha256": "4feb5c5b682da53800a57ed8e92194784a5acf171f81f90204687bf80500f61e"
     },
     {
       "path": "WORKBENCH.md",
@@ -146,8 +146,8 @@
     },
     {
       "path": "src/client/index.js",
-      "bytes": 349078,
-      "sha256": "b68a0772eb371d1c70329d24f73a67dcf75071aba97ade99a84d2652ee98f1b7"
+      "bytes": 353723,
+      "sha256": "9d29e905c6a61c8c7a922f7547d1aa797677a9637393ed88b4fd7956d5894c80"
     },
     {
       "path": "src/client/pdfjs/LICENSE",
