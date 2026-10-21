@@ -1,0 +1,85 @@
+# dsh-knowledge-base bundle patch（2.0.2）
+#
+# 这一行只在 **加载本插件的那个 profile** 里生效。
+# 0.1.0-p7 起：默认值不再写死开发者机器上的绝对路径（审查意见 §四 第 5 条）：
+#   · stateDir 留空 → 按 profile 自动隔离：<profile>/kb-state
+#       （装在 profile 里时用该 profile 目录；否则用 <DSH_HOME>/profiles/<profile>）
+#   · kbPath 留空 → 首次使用走「设置 → 个人知识库」：
+#       「选择知识库文件夹」→「自动建库 / 识别」。
+#       空目录新建标准库；已有的本插件库直接接入；普通资料夹识别结构后分类导入。
+#       默认候选 = <DSH 安装目录>\KnowledgeBase（不可写时提示另选）。
+#       **已绑定过的用户不受影响**：stateDir/config.json 一旦存在，绑定以它为准。
+#
+# 注意：stateDir/config.json 生成后**优先于**这里的默认值；
+# 之后要改 kbPath / excludeFromSearch 请用设置页 / kb_bind / kb_check，或改 config.json 后重启。
+- insert:
+    - id: kb-core
+      name: '@local/dsh-knowledge-base'
+      config:
+        # 知识库根目录。留空 = 未绑定，由设置页的两个主动作决定（不会自动迁库）。
+        kbPath: ''
+        # 插件状态目录。留空 = 按 profile 自动隔离（<profile>/kb-state）。
+        stateDir: ''
+        # 默认分类（可配置；初始化只建这些，不建空壳文件）
+        categories:
+          - 00-画像
+          - 10-项目
+          - 20-知识笔记
+          - 30-人物关系
+          - 40-素材资源
+          - 90-收件箱
+        # 隐私分区：默认只给统计；工作台设置可开启展示，问答另有独立授权。
+        # 私密标记不随展示开关改变，按每条返回路径进行统一过滤。
+        privateDirs:
+          - 00-画像
+          - 30-人物关系
+        # 不参与检索的目录。必须与库的检索层规则一致：
+        #   .kb/.kbmeta/.kb-state      工具与元数据
+        #   00-知识库请求通道          跨 agent 入口（不是条目）
+        #   50-底稿                    库自用加工件（OCR 全文、页码索引、生成脚本）
+        #   _archive/_工具             历史快照与工具
+        #   知识库地图                 生成物目录
+        # 另在代码里跳过根目录的 AGENTS.md / README.md / INDEX.md / 知识库清单.md，
+        # 且 INDEX.md 在任何层级都跳过。
+        excludeFromSearch:
+          - .kb
+          - .kbmeta
+          - .kb-state
+          - 00-知识库请求通道
+          - 50-底稿
+          - _archive
+          - _工具
+          - 知识库地图
+        # P1-A 链接策略：false = 库内链接/重解析点一律拒绝写入（默认）；
+        # true = 仅允许指向库内的链接，指向库外仍然拒绝。
+        # 知识库**根目录本身**允许是链接，解析 realpath 后作为权威路径。
+        # R5：没有 mapRoot —— 顶栏页签扫描的根 = 当前绑定的 kbPath（与工具同源）。
+        followLinks: false
+        # 日志级别：debug | info | warn（正式环境用 info）
+        logLevel: info
+
+        # ── 第二轮：解析（OCR/ASR）的入口闸门（2026-10-18 定向修复新增）──
+        # parse.allowWithoutIsolation 默认 false：**没有启用 H1 隔离后端的 profile 上，
+        # kb_parse 一律拒绝**（fail closed，返回 H1_REQUIRED），并且不会退回宿主执行。
+        # 只有管理员明确接受"无隔离运行"时才在这个 profile 里显式打开；打开后工具返回的
+        # gate 字段会写成 non-h1-explicit，便于事后区分——这种部署不得当作严格隔离交付。
+        #
+        # parse:
+        #   allowWithoutIsolation: true
+        # 开启后仍要求知识库根会话或实时委派授权；gate.isolation=none，不提供系统级读隔离。
+
+        # ── 合并后的委派工具（原 @local/dsh-agent-gateway 的配置在此）──
+        # 不写 targets 时，自动用一个自带的知识库目标：
+        #   id=knowledge / preset=knowledge / cwd=上面的 kbPath（未绑定则用调用方工作目录）
+        #   toolName=knowledge_request（旧入口名，保持不变）
+        # 如需额外目标（例如写作 agent），在 targets 里显式列；名称不要重复。
+        gateway:
+          # 同一调用方同时在跑的委派上限（不是插件生命周期累计次数）
+          maxCalls: 5
+          # 单次委派最长等待（毫秒）；超时请求停止子代理，清理另有5秒上限
+          timeoutMs: 300000
+          # 委派深度上限（父 delegationDepth + 1 超过即拒绝）
+          maxDepth: 3
+          # descriptor 版本：0.1.5/0.2.x 宿主 = 3；旧 vendor 0.1.1 宿主 = 2
+          descriptorVersion: 3
+          # 旧版插件是否仍在组合里由代码检测（检测到就跳过合并注册，避免双注册）

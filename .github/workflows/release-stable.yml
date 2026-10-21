@@ -1,0 +1,77 @@
+name: Validate and publish stable release
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    tags: ['v*.*.*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: stable-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    runs-on: windows-latest
+    env:
+      PYTHONUTF8: '1'
+      RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || '' }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Require the tagged commit on main
+        if: github.event_name == 'push'
+        run: |
+          git fetch origin main
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ((git rev-parse HEAD) -ne (git rev-parse origin/main)) { throw 'Stable tag must point to the current main commit' }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Verify version, archive, source and checksums
+        run: python -X utf8 tools/verify-release.py
+      - name: Focused release checks
+        run: |
+          node --check src/client/index.js
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node --check src/host/index.js
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node --test tests/import-parse-auth.test.mjs tests/startup-view.test.mjs tests/release-notice-dismiss.test.mjs tests/preview-updates.test.mjs tests/update-download.test.mjs tests/update-notification.test.mjs tests/index-maintenance.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tests/beta8-smoke.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tests/beta9-smoke.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  release:
+    if: github.event_name == 'push'
+    needs: validate
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - name: Publish verified archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          python tools/verify-release.py
+          archive=$(python -c "import json; print(json.load(open('release-manifest.json', encoding='utf-8'))['tgz'])")
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            gh release upload "$RELEASE_TAG" "dist/$archive" release-manifest.json SHA256SUMS --clobber
+            gh release edit "$RELEASE_TAG" --title "${RELEASE_TAG#v} · 个人知识库" --notes-file RELEASE.md
+          else
+            gh release create "$RELEASE_TAG" "dist/$archive" release-manifest.json SHA256SUMS \
+              --verify-tag --latest --title "${RELEASE_TAG#v} · 个人知识库" --notes-file RELEASE.md
+          fi

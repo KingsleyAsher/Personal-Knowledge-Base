@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="DSH 个人知识库，让文件、想法与经历成为可持续使用的知识。资料导入、OCR、ASR、检索与自定义流程，尽在你的掌控。">
+  <meta name="theme-color" content="#040b0e"><title>个人知识库 · 让知识持续生长</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 4v32M4 20h32M9 9l22 22M9 31 31 9' stroke='%238cf4d5' stroke-width='1.5'/%3E%3C/svg%3E">
+  <link rel="preload" href="assets/knowledge-serif.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="readability.css">
+</head>
+<body>
+  <svg class="icon-defs" aria-hidden="true" xmlns="http://www.w3.org/2000/svg"><defs>
+    <symbol id="i-star" viewBox="0 0 32 32"><path d="M16 2v28M2 16h28M6 6l20 20M6 26 26 6"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H5v18h14V8Z M14 3v5h5M8 12h8M8 16h6"/></symbol>
+    <symbol id="i-book" viewBox="0 0 24 24"><path d="M12 5v16M12 5C9 3 5 3 2 4v15c3-1 7-1 10 2 3-3 7-3 10-2V4c-3-1-7-1-10 1Z M5 8l4 1M15 9l4-1M5 12l4 1M15 13l4-1"/></symbol>
+    <symbol id="i-people" viewBox="0 0 24 24"><circle cx="12" cy="7" r="4"/><path d="M3 22v-4a9 9 0 0 1 18 0v4"/></symbol>
+    <symbol id="i-image" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8" cy="8" r="1.5"/><path d="m3 17 5-5 4 4 4-6 5 7"/></symbol>
+    <symbol id="i-audio" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v4M8 23h8"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 24 24"><path d="M2 6V4h7l3 3h10v14H2ZM2 10h20"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8" y="7" width="12" height="14" rx="2"/><path d="M16 7V3H4v14h4"/></symbol>
+    <symbol id="i-disk" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="4"/><path d="M3 15h18M7 18h1M11 18h1M6 7h12M6 10h8"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M2 6h7M13 6h9M2 12h13M19 12h3M2 18h3M9 18h13"/><circle cx="11" cy="6" r="2"/><circle cx="17" cy="12" r="2"/><circle cx="7" cy="18" r="2"/></symbol>
+    <symbol id="i-history" viewBox="0 0 24 24"><path d="M4 7a9 9 0 1 1-1 8M4 2v6h6M12 6v7l4 2"/></symbol>
+    <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 2v13m-5-5 5 5 5-5M3 16v6h18v-6"/></symbol>
+    <symbol id="i-github" viewBox="0 0 24 24"><path d="M9 21c-5 2-5-3-7-3m14 5v-4c0-1-.4-2-1-2 4 0 7-2 7-6 0-2-.7-3-2-4 0-1 0-3-.5-4-2 0-4 1-5 2a16 16 0 0 0-5 0C8 4 6 3 4 3c-.5 1-.5 3-.5 4C2 8 2 9 2 11c0 4 3 6 7 6-.6.5-1 1-1 2v4"/></symbol>
+  </defs></svg>
+  <a class="skip" href="#main">跳转到正文</a>
+  <div class="pointer-light" aria-hidden="true"></div>
+  <header class="header wrap">
+    <a class="brand" href="#top"><svg><use href="#i-star"/></svg><span>个人知识库</span></a>
+    <nav aria-label="主导航"><a href="#capabilities">产品能力</a><a href="#workflow">工作方式</a><a href="#control">安全与掌控</a></nav>
+    <a class="button outline nav-cta" href="#download">开始使用 <span>↗</span></a>
+  </header>
+  <main id="main">
+    <section class="hero wrap" id="top" aria-labelledby="hero-title">
+      <div class="hero-art" aria-hidden="true"><img src="assets/knowledge-orbit.webp" alt="" fetchpriority="high"><canvas id="network"></canvas></div>
+      <div class="hero-copy"><h1 id="hero-title">让积累的知识，<br>成为下一次的灵感。</h1><p>把散落的文件、想法与经历，连接成可以持续使用的个人知识库。</p><div class="hero-actions"><a class="button mint" href="#capabilities">探索产品 <span>→</span></a><a class="underlined" href="#workflow">体验工作流程</a></div></div>
+      <div class="knowledge-cards" aria-label="知识库的组织方式">
+        <div class="knowledge-card card-project"><svg><use href="#i-file"/></svg><div><h2>项目</h2><p>从想法到成果</p></div></div>
+        <div class="knowledge-card card-book"><svg><use href="#i-book"/></svg><div><h2>知识</h2><p>连接与沉淀</p></div></div>
+        <div class="knowledge-card card-people"><svg><use href="#i-people"/></svg><div><h2>人物</h2><p>合作与成长</p></div></div>
+        <div class="knowledge-card card-image"><svg><use href="#i-image"/></svg><div><h2>素材</h2><p>灵感与引用</p></div></div>
+      </div>
+      <div class="hero-foot"><span>YOUR KNOWLEDGE, CONNECTED.</span><button id="motion-toggle" aria-pressed="false" aria-label="暂停页面动效">Ⅱ 暂停动效</button></div>
+    </section>
+
+    <section id="capabilities" class="capabilities section-divider">
+      <div class="wrap">
+        <h2 class="section-title reveal">从一份资料，到一整个知识体系。</h2>
+        <ol class="journey reveal" aria-label="资料进入知识库的四个阶段">
+          <li><i></i><span>01</span><div><h3>收集</h3><p>多种来源，轻松导入</p></div></li>
+          <li><i></i><span>02</span><div><h3>解析</h3><p>理解内容，提取信息</p></div></li>
+          <li><i></i><span>03</span><div><h3>整理</h3><p>清晰归类，保留来源</p></div></li>
+          <li><i></i><span>04</span><div><h3>复用</h3><p>随时调用，激发新想法</p></div></li>
+        </ol>
+        <div class="parsing-layout reveal">
+          <div class="parse-copy"><h2>读懂图片，也听懂声音。</h2><p>无论是扫描的文档、手写笔记，还是会议录音与音频，都能被提取并转化为可搜索、可关联的知识内容。</p><div class="parse-tabs" role="tablist" aria-label="资料解析方式"><button id="tab-ocr" role="tab" aria-selected="true" aria-controls="parse-panel" data-mode="ocr">OCR <span>图片与文档识别</span></button><button id="tab-asr" role="tab" aria-selected="false" aria-controls="parse-panel" data-mode="asr" tabindex="-1">ASR <span>音频与语音转写</span></button></div></div>
+          <div class="product-window" id="parse-panel" role="tabpanel" aria-labelledby="tab-ocr">
+            <div class="window-bar"><span class="traffic"><i></i><i></i><i></i></span><span>个人知识库</span><span class="window-edition">概念界面</span></div>
+            <div class="product-body">
+              <aside class="product-sidebar" aria-label="示意文件分类"><div class="mini-brand"><svg><use href="#i-star"/></svg><span>个人知识库</span></div><span><svg><use href="#i-folder"/></svg>全部内容</span><span><svg><use href="#i-file"/></svg>文档</span><span class="selected" id="side-image"><svg><use href="#i-image"/></svg>图片</span><span id="side-audio"><svg><use href="#i-audio"/></svg>音频</span><span><svg><use href="#i-book"/></svg>笔记</span></aside>
+              <div class="source-panel"><div class="pane-title"><svg><use href="#i-file"/></svg><span id="source-filename">研究资料.pdf</span></div><div class="paper-viewport" id="paper-viewport"><article class="paper" id="paper"><div class="paper-journal">FIELD NOTES / 01</div><img src="assets/research-mountain.webp" alt="黑白山地与冰川谷地研究图片" width="600" height="400"><h3>山地生态系统的<br>演变与适应</h3><p>山地生态系统是地球上最复杂、最独特的自然系统之一。地形、气候与物种之间的相互作用，塑造了丰富的生态环境。</p><h4>1 · 研究背景</h4><p>在气候变化与人类活动的共同影响下，研究者需要长期记录、对照不同时间的观察结果。</p><img class="paper-detail" src="assets/research-mountain.webp" alt="" width="600" height="400"><div class="paper-lines"></div></article><div class="scan-beam" aria-hidden="true"></div></div><div class="audio-source" id="audio-source" hidden><span class="record-label">语音随记.wav</span><div class="waveform" aria-hidden="true"></div><p>“下次做研究时，先确定问题，<br>再把资料按主题整理……”</p><small>音频片段 · 转写示例</small></div><div class="source-toolbar"><span id="source-format">PDF · 第 1 页</span><div class="zoom-controls"><button id="zoom-out" aria-label="缩小文档">−</button><span id="zoom-value">80%</span><button id="zoom-in" aria-label="放大文档">＋</button></div></div></div>
+              <div class="text-panel"><div class="pane-title"><span id="result-tab-title">识别结果</span><button id="copy-result" aria-label="复制识别结果" title="复制结果"><svg><use href="#i-copy"/></svg></button></div><div class="recognized" id="recognized"><small>提取的文字内容</small><h3>山地生态系统的演变与适应</h3><p>山地生态系统是地球上最复杂、最独特的自然系统之一。地形、气候与物种之间的相互作用，塑造了丰富的生态环境。</p><h4>1 · 研究背景</h4><p>在气候变化与人类活动的共同影响下，研究者需要长期记录、对照不同时间的观察结果。</p><div class="result-source"><span>来源</span>研究资料.pdf · 第 1 页</div></div><span id="copy-status" role="status"></span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="workflow" class="workflow section-divider">
+      <div class="wrap"><div class="workflow-heading reveal"><div><h2 class="section-title">把一次整理，<br>变成下一次的起点。</h2></div><p>好流程的价值，体现在留下的成果里。<br>选择一个场景，看看散落的输入如何变成可复用的知识。</p></div>
+        <div class="case-tabs reveal" role="tablist" aria-label="整理成果示例"><button id="case-research" role="tab" aria-selected="true" aria-controls="case-panel" data-case="research">研究资料整理</button><button id="case-review" role="tab" aria-selected="false" aria-controls="case-panel" data-case="review" tabindex="-1">项目阶段复盘</button><button id="case-inspiration" role="tab" aria-selected="false" aria-controls="case-panel" data-case="inspiration" tabindex="-1">创作灵感归集</button></div>
+        <div class="case-board reveal" id="case-panel" role="tabpanel" aria-labelledby="case-research">
+          <div class="case-before"><div class="case-label"><span>整理前</span><span>散落的原始资料</span></div><div class="source-files" id="source-files"></div><blockquote id="case-excerpt"></blockquote><p class="case-input-note" id="case-input-note"></p></div>
+          <div class="case-after"><div class="case-label"><span>整理后</span><span>可继续使用的成果</span></div><h3 id="case-output-title"></h3><div id="case-output"></div><div class="trace-note"><svg><use href="#i-file"/></svg><span id="case-source"></span></div></div>
+        </div>
+        <div class="workflow-foot reveal"><p><strong>你定义步骤，知识库延续方法。</strong>自定义触发语、参数和输出规则；在 DSH 中启动后，通过新会话查看实际执行过程与结果。</p><span>以上为预制内容对照，展示整理方式；不会执行模型推理。</span></div>
+      </div>
+    </section>
+
+    <section id="control" class="control section-divider">
+      <div class="control-wave" aria-hidden="true"></div><div class="wrap"><div class="control-header reveal"><h2 class="section-title">你的知识，始终由你掌控。</h2><p>所有内容都以你的方式保存与管理，数据在你可控的环境中运行。<br>让知识的积累更安心、更长久。</p></div><div class="control-layout"><div class="shield-art reveal"><img src="assets/knowledge-shield.webp" alt="被精细环形光线围绕的半透明盾牌" loading="lazy" width="1200" height="800"></div><div class="control-list reveal"><article><div class="control-icon"><svg><use href="#i-disk"/></svg></div><div><h3>本地目录</h3><p>知识保存于你指定的本地目录，以 Markdown 条目组织。原件与提炼内容保留关联，长期积累有据可循。</p></div></article><article><div class="control-icon"><svg><use href="#i-sliders"/></svg></div><div><h3>外发可控</h3><p>可设置仅本地策略。添加云端服务不会改变本地默认；本地解析失败，也不会自动把资料转向云端。</p></div></article><article><div class="control-icon"><svg><use href="#i-history"/></svg></div><div><h3>索引可恢复</h3><p>后台增量维护检索索引，保留最近 3 份有效快照。扫描不完整或条目异常减少时，保留旧索引并提示处理。</p></div></article></div></div><p class="control-fine reveal">索引快照只恢复检索索引，不恢复已删除的原文、聊天或其他记忆。原始资料仍需妥善备份。</p></div>
+    </section>
+
+    <section class="details-section section-divider"><div class="wrap details-layout"><div class="details-intro reveal"><h2>适合长期积累，<br>也为下一次使用。</h2><p>学习研究、项目创作与个人成长，<br>让每一次投入，都留下可继续的线索。</p></div><div class="faq-list reveal"><details><summary>已有资料怎么接入？<span>+</span></summary><p>在 DSH 设置中绑定目录。空目录可初始化；普通资料文件夹可以先查看导入计划，再选择原地接入或复制到收件箱。任务支持查看进度、中止与重试。需要 OCR 或 ASR 的资料，先解析，再按需要整理落库。</p></details><details><summary>识别与转写，需要准备什么？<span>+</span></summary><p>在「识别与转写」中配置可用服务。支持本地 PaddleOCR-VL、Qwen3-ASR 等部署，以及已配置的 OpenAI 兼容、Qwen、百度原生接口与 CLI。插件不自动安装模型依赖；云端服务可能产生服务商费用，实际识别效果取决于模型、原件与运行环境。</p></details><details><summary>自定义流程怎样帮我少做重复工作？<span>+</span></summary><p>把固定步骤、触发语、参数及输出规则保存为流程。下一次从流程页启动，会创建知识库会话并发送完整提示词。在会话中查看回复、工具调用与执行结果，也可以停止。实际执行需满足 DSH 宿主、知识库预设与授权要求。</p></details><details><summary>怎样找回曾经整理过的内容？<span>+</span></summary><p>支持标题、标签、类型与正文全文检索，并沿来源定位原始资料。当前能力不是向量语义搜索。索引缺失或损坏时，可回退磁盘扫描；日常变动由后台增量维护，必要时可以手动重建。索引维护不修改正文或原件。</p></details></div></div></section>
+
+    <section id="download" class="download section-divider"><div class="wrap reveal"><h2>让每一次积累，都有下一次回响。</h2><p>个人知识库 2.0.2 正式版：目录、关系网络、阅读摘录与回收站统一进入知识工作台。</p><div class="download-actions"><a class="button mint" href="https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.0.2/local-dsh-knowledge-base-2.0.2.tgz" download="local-dsh-knowledge-base-2.0.2.tgz"><svg><use href="#i-download"/></svg>下载正式版 2.0.2 <span>↓</span></a><a class="button outline" href="https://github.com/KingsleyAsher/Personal-Knowledge-Base" target="_blank" rel="noopener noreferrer"><svg><use href="#i-github"/></svg>GitHub 仓库 <span>↗</span></a></div><div class="download-meta"><span>个人知识库 2.0.2</span><i></i><span>DSH 插件 · 本地安装包</span><button data-install>安装指南 ↗</button></div><a class="release-link" href="https://github.com/KingsleyAsher/Personal-Knowledge-Base/blob/main/RELEASE.md" target="_blank" rel="noopener noreferrer">查看更新说明</a> · <a class="release-link" href="https://github.com/KingsleyAsher/Personal-Knowledge-Base/blob/main/PROJECT-RECORD.md" target="_blank" rel="noopener noreferrer">插件设计与演进记录</a></div></section>
+  </main>
+  <footer class="wrap"><a class="brand" href="#top"><svg><use href="#i-star"/></svg><span>个人知识库</span></a><span>YOUR KNOWLEDGE, CONNECTED.</span><a href="#top">回到顶部 ↑</a></footer>
+  <dialog id="install-dialog" aria-labelledby="install-title"><button class="dialog-close" aria-label="关闭安装指南">×</button><span class="dialog-version">PERSONAL KNOWLEDGE / 2.0.2</span><h2 id="install-title">从这里，开始积累。</h2><ol><li><h3>在客户端安装插件</h3><p>将「下载插件」按钮的链接填入 DSH 插件管理器的安装源，由客户端自动下载；也可选择本地安装包 <code>local-dsh-knowledge-base-2.0.2.tgz</code>。</p></li><li><h3>核对加载结果</h3><p>宿主支持时直接热加载；仅在提示需要重启时，完全退出 DSH（包括托盘）再打开。核对版本为 2.0.2。后续可在插件内点击「检查更新 → 立即更新」。</p></li><li><h3>绑定一个本地文件夹</h3><p>打开「设置 → 个人知识库」，选择目录并点击「自动建库 / 识别」。先预览，再接入已有资料。</p></li><li><h3>按需配置 OCR 与 ASR</h3><p>在「识别与转写」中配置已有本地环境或云端服务，再进行环境检查与解析验证。</p></li></ol><div class="dialog-actions"><a class="button mint" href="https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.0.2/local-dsh-knowledge-base-2.0.2.tgz" download>下载插件 ↓</a><a class="underlined" href="https://github.com/KingsleyAsher/Personal-Knowledge-Base" target="_blank" rel="noopener noreferrer">GitHub ↗</a></div><p class="fine">本地模型与运行依赖需单独准备。安装包来自公开仓库，可通过发布清单核对版本与 SHA-256 摘要。</p></dialog>
+  <script src="app.js"></script>
+</body></html>

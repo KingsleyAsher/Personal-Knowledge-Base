@@ -1,0 +1,43 @@
+name: Sync Git mirrors
+
+on:
+  push:
+    tags: ['v*.*.*']
+  workflow_dispatch:
+    inputs:
+      sanitize_history:
+        description: Remove stale mirror branches and tags after a privacy cleanup
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: git-mirror-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    if: github.event_name == 'workflow_dispatch' || !contains(github.ref_name, '-')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [gitee, gitcode]
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Sync mirror branch and stable tag
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
+          SANITIZE_HISTORY: ${{ inputs.sanitize_history || github.ref_name == 'v2.0.2' }}
+        run: python tools/publish-stable-mirror.py "${{ matrix.platform }}"

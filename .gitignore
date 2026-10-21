@@ -1,0 +1,23 @@
+# 依赖与构建产物
+node_modules/
+*.tgz
+!dist/local-dsh-knowledge-base-*.tgz
+!website/downloads/local-dsh-knowledge-base-*.tgz
+pnpm-lock.yaml
+
+# 日志与临时状态
+*.log
+kb-state/
+.kb-state/
+.kbmeta/
+kbpkg/
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# 备份
+*.bak
+*.orig
