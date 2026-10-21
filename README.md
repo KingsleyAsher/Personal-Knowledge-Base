@@ -10,20 +10,20 @@
 
 ## 选择下载版本
 
-- **正式版 2.0.0**：[GitHub 发布包](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.0.0/local-dsh-knowledge-base-2.0.0.tgz)。
+- **正式版 2.0.0**：[GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.0.0/local-dsh-knowledge-base-2.0.0.tgz) · [Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.0.0.tgz) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.0.0.tgz?ref=main) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.0.0.tgz)。
+- **预览版 2.0-beta9**：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.0-beta9.tgz) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.0-beta9.tgz?ref=main) · [GitHub 下载](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.0-beta9.tgz)。
 - 以下为历史版本，供回退或旧宿主兼容时使用：
 - **正式版 1.1.6**：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-1.1.6.tgz) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-1.1.6.tgz?ref=main) · [GitHub 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v1.1.6/local-dsh-knowledge-base-1.1.6.tgz)。
-- **预览版 2.0.2-beta6**：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.0.2-beta6.tgz) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.0.2-beta6.tgz?ref=main) · [GitHub 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.0.2-beta6/local-dsh-knowledge-base-2.0.2-beta6.tgz)。
 
-新版更新器同时检查正式版和预览版；已安装正式版时只弹出正式版更新，预览版更新在检查更新处显示红点；已安装预览版时两个渠道的更新均可弹窗选择。安装始终由用户点击。正式版清单指向 `2.0.0`。
+新版更新器同时检查正式版和预览版；已安装正式版时只对正式版更新弹窗，预览版更新在设置页和知识库顶部的检查更新入口显示红点；已安装预览版时两个渠道的新版本都会弹出更新提示。安装始终由用户点击。正式版清单指向 `2.0.0`，预览版清单指向规范格式 `2.0-beta9`。
 
-以下为 1.1.3 基线的历史能力和发布说明。
+以下能力沿袭自 1.1.x 并持续迭代至 2.0.0；逐项发布记录见 [正式版说明](RELEASE.md)。
 
 DSH 个人知识库插件：目录绑定、条目管理与检索、资料导入、OCR / ASR 解析、自定义流程及知识库预设。
 
 产品展示页源码位于 [`website/`](website/)，通过 GitHub Pages 自动部署。
 
-## 本版变化
+## 基础能力与演进记录
 
 - 客户端内一键更新：点击「安装新版本」后自动下载并校验安装包，由 DSH 插件管理器安装并尝试热加载；仅当宿主报告需要重启时提示重启。热加载断线后通过安装请求编号与实际构建恢复结果。
 - 1.1.3：修复 `kb_import action=parse` 绕过解析授权门的问题；导入解析现在校验活跃调用方、实时知识库授权和 H1 就绪状态，并记录授权来源。更新公告按 Esc 关闭后也会持久化已读状态。
@@ -48,25 +48,12 @@ DSH 个人知识库插件：目录绑定、条目管理与检索、资料导入�
 
 升级保留绑定和运行数据。不需要另装旧委派网关；真实调用仍须满足宿主知识库预设、委派及隔离授权规则。
 
-## 验证
+## 验证与边界
 
-```text
-python -X utf8 tools/verify-release.py
-node --test tests/parsing-setup.test.mjs tests/index-maintenance.test.mjs tests/parsing-boundaries.test.mjs
-node --test tests/import-parse-auth.test.mjs tests/release-notice-dismiss.test.mjs
-node --test tests/update-download.test.mjs tests/client-update-flow.test.mjs
-python -X utf8 tests/local-model-adapter.py
-node tests/release-fixes-probe.mjs
-node tests/flow-workspace-probe.mjs
-node tests/flow-conversation-probe.mjs
-node tests/updates-probe.mjs
-node tests/rebuild-probe.mjs src/host/index.js
-```
+发布候选的简要验收包括 JavaScript 语法检查、12 项更新说明测试、261 个安装包文件与 SHA-256 校验，以及 beta9 预览包清单和构建号核对。GitHub 正式发布工作流还会运行配置的 Windows 发布检查。自动化使用合成资料和模拟服务；未声称完成真实 DSH 安装、真实模型推理或收费云端接口验收。
 
-自动化使用合成资料及模拟服务。预览阶段本机 OCR 图片与两页 PDF、ASR 短音频与 66 秒分块音频通过；用户确认 preview.4 本机验证通过。1.1.1 新增启动公告和产品页；1.1.2 修复公告弹窗双插槽挂载及过早写入已读标记的问题；1.1.3 让导入解析复用解析授权闸门，并修正 Esc 关闭时未保存已读状态的问题。未进行真实收费云端接口验证或 1.1.3 DSH 实机启动验收。
-
-索引维护只改索引及维护状态，不改知识正文、原件、聊天和其他记忆。快照恢复仅恢复索引。独立脚本或其他插件绕过解析入口的调用，不受本插件默认服务规则控制。
+索引维护只改索引及维护状态，不改知识正文、原件、聊天和其他记忆。快照恢复仅恢复索引。所有受管 Agent、导入和流程解析默认进入统一解析通道；独立脚本或其他插件不受本插件路由控制。
 
 ## 国内更新源
 
-1.1.6 正式版与 2.0.2-beta6 预览版内置 Gitee、GitCode 和 GitHub。三个源并发检查正式/预览清单，采用可用源中的最新版本；同版本摘要冲突时阻止更新。优先使用国内源，下载失败或包校验失败时切换其他源。正常更新自动选择可用源，不展示来源清单；只有全部源失败时才列出原因与备用入口。GitCode 使用官方文件 API，Gitee 使用可重新获取的原始文件链接，不保存临时签名地址。镜像同步可能有延迟；全部源不可用会明确报错，不视为最新。已安装的旧版需要先更新一次才能使用新源。
+2.0.0 正式版与 2.0-beta9 预览版内置 Gitee、GitCode 和 GitHub。三个源并发检查正式/预览清单，采用可用源中的最新版本；同版本摘要冲突时阻止更新。优先使用国内源，下载失败或包校验失败时切换其他源。正常更新自动选择可用源，不展示来源清单；只有全部源失败时才列出原因与备用入口。GitCode 使用官方文件 API，Gitee 使用可重新获取的原始文件链接，不保存临时签名地址。镜像同步可能有延迟；全部源不可用会明确报错，不视为最新。旧版需要先安装支持新源的更新器。

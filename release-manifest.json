@@ -1,11 +1,11 @@
 {
   "package": "@local/dsh-knowledge-base",
   "version": "2.0.0",
-  "buildId": "783d6cff244f951d",
+  "buildId": "99eb20243674926b",
   "tgz": "local-dsh-knowledge-base-2.0.0.tgz",
-  "bytes": 2795856,
-  "sha256": "ad3c4939cac22ad810a788c959004047bbd7ee203ee7748e93cb84149fd0fea1",
-  "integrity": "sha512-P9/lYQpEjR3WkJBXVOfb8eVNPKQDip6GJhma8EN7nExgSPy7QMCG92WGvnXdFpWIdtIwe4M7prs/z/tSlfupqQ==",
+  "bytes": 2796257,
+  "sha256": "65788622ce1ecf8b136f39633f37c07a8fdfe210f72c24c06f9aca4b01576ce7",
+  "integrity": "sha512-Uyu8qtTDaQik5MNxUz9qGW8yIzPtEWZZfN24G2s0oA1I2/LRqxWk7DS3wTal4uyjrUlBbtrZlDLC40C9HGk/EA==",
   "packageFileCount": 261,
   "buildFileCount": 250,
   "files": [
@@ -26,8 +26,8 @@
     },
     {
       "path": "BETA9.md",
-      "bytes": 4266,
-      "sha256": "eb186912560ab3a319e1fffe88e5437e2a5a0e2b6b99d071eab644639ffe9162"
+      "bytes": 4803,
+      "sha256": "7942cc1c795d813203f39e11f4c3491f7582bdcb41d366460950c28f9f7fd433"
     },
     {
       "path": "LICENSE",
@@ -36,13 +36,13 @@
     },
     {
       "path": "PARSING-PREVIEW.md",
-      "bytes": 9154,
-      "sha256": "dfe6aa742d7b8f59168fc4b0946bf5d12faf089a702d60fdf39123186e39b728"
+      "bytes": 9755,
+      "sha256": "c8a3b7ca4d2a97866ee2a060f746170fb6e981fc84aea3ed2f459c3ec2bb95b3"
     },
     {
       "path": "README.md",
-      "bytes": 7211,
-      "sha256": "3f9ad4841396273d787f2a2e249b5e3d304fd797cd70d68a188e311bb5082073"
+      "bytes": 7152,
+      "sha256": "8534b73d3951d89db61bcc0a07547b85adf6f66a6121f1c28d99c1cb4c64cefe"
     },
     {
       "path": "VERSIONING.md",
@@ -51,8 +51,8 @@
     },
     {
       "path": "WORKBENCH.md",
-      "bytes": 11943,
-      "sha256": "6ccdf28f3d8dcf3e6e0feaa9a8b089e6b68282977b943a9dd3dd083868105690"
+      "bytes": 12080,
+      "sha256": "72024856475797a568707fb369e233ea65364208348b85f2c9ca0ac81384508f"
     },
     {
       "path": "browser-extension/manifest.json",
@@ -146,8 +146,8 @@
     },
     {
       "path": "src/client/index.js",
-      "bytes": 353723,
-      "sha256": "9d29e905c6a61c8c7a922f7547d1aa797677a9637393ed88b4fd7956d5894c80"
+      "bytes": 355111,
+      "sha256": "76e5f2b63a5e2687bf2792251c87202d84c16af1049a48faab17b63d7f1ee704"
     },
     {
       "path": "src/client/pdfjs/LICENSE",

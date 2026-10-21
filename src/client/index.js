@@ -3483,9 +3483,9 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       const parse = (value) => {
         const text = String(value)
         const canonicalPreview = /^(\d+)\.(\d+)-beta([1-9]\d*)$/.exec(text)
-        if (canonicalPreview) return [text, canonicalPreview[1], canonicalPreview[2], '0', 'beta' + canonicalPreview[3]]
+        if (canonicalPreview) return [text, canonicalPreview[1], canonicalPreview[2], '0', 'beta' + canonicalPreview[3], false]
         const legacyPreview = /^(\d+)\.(\d+)\.\d+-beta([1-9]\d*)$/.exec(text)
-        if (legacyPreview) return [text, legacyPreview[1], legacyPreview[2], '0', 'beta' + legacyPreview[3]]
+        if (legacyPreview) return [text, legacyPreview[1], legacyPreview[2], '0', 'beta' + legacyPreview[3], true]
         return /^(\d+)\.(\d+)\.(\d+)(?:-([\w.-]+))?$/.exec(text)
       }
       const a = parse(left), b = parse(right)
@@ -3495,7 +3495,12 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       }
       if (!a[4] || !b[4]) return a[4] === b[4] ? 0 : a[4] ? -1 : 1
       const abeta = /^beta([1-9]\d*)$/.exec(a[4]), bbeta = /^beta([1-9]\d*)$/.exec(b[4])
-      if (abeta && bbeta) return Number(abeta[1]) === Number(bbeta[1]) ? 0 : Number(abeta[1]) < Number(bbeta[1]) ? -1 : 1
+      if (abeta && bbeta) {
+        const betaOrder = Number(abeta[1]) === Number(bbeta[1]) ? 0 : Number(abeta[1]) < Number(bbeta[1]) ? -1 : 1
+        if (betaOrder) return betaOrder
+        if (a[5] !== undefined && b[5] !== undefined && a[5] !== b[5]) return a[5] ? -1 : 1
+        return 0
+      }
       const ap = a[4].split('.'), bp = b[4].split('.')
       for (let i = 0; i < Math.max(ap.length, bp.length); i++) {
         if (ap[i] === bp[i]) continue
@@ -3508,8 +3513,22 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       return 0
     }
     function isPreviewRelease(version) { return /^\d+\.\d+(?:\.\d+)?-beta[1-9]\d*$/.test(version) }
+    function isSamePreviewSequence(left, right) {
+      const canonical = /^(\d+)\.(\d+)-beta([1-9]\d*)$/.exec(String(left))
+      const legacy = /^(\d+)\.(\d+)\.\d+-beta([1-9]\d*)$/.exec(String(right))
+      const reverseCanonical = /^(\d+)\.(\d+)-beta([1-9]\d*)$/.exec(String(right))
+      const reverseLegacy = /^(\d+)\.(\d+)\.\d+-beta([1-9]\d*)$/.exec(String(left))
+      const a = canonical || reverseCanonical, b = legacy || reverseLegacy
+      return !!a && !!b && a[1] === b[1] && a[2] === b[2] && a[3] === b[3]
+    }
+    function isCanonicalPreviewMigration(previous, current) {
+      const canonical = /^(\d+)\.(\d+)-beta([1-9]\d*)$/.exec(String(current))
+      const legacy = /^(\d+)\.(\d+)\.\d+-beta([1-9]\d*)$/.exec(String(previous))
+      return !!canonical && !!legacy && canonical[1] === legacy[1] && canonical[2] === legacy[2] && canonical[3] === legacy[3]
+    }
     function shouldShowReleaseNotice(previous, current) {
-      if (compareReleaseVersions(current, previous) <= 0) return false
+      const formatMigration = isCanonicalPreviewMigration(previous, current)
+      if (!formatMigration && compareReleaseVersions(current, previous) <= 0) return false
       if (isPreviewRelease(current)) return true
       const oldStable = /^(\d+)\.(\d+)\.\d+$/.exec(previous)
       const newStable = /^(\d+)\.(\d+)\.\d+$/.exec(current)
@@ -3546,7 +3565,8 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         if (compareReleaseVersions(currentVersion, previous) < 0) return null
         const pendingFrom = typeof state?.pendingFrom === 'string' ? state.pendingFrom : null
         const explained = typeof state?.explainedVersion === 'string' ? state.explainedVersion : previous
-        const upgraded = compareReleaseVersions(currentVersion, previous) > 0
+        const formatMigration = isCanonicalPreviewMigration(previous, currentVersion)
+        const upgraded = compareReleaseVersions(currentVersion, previous) > 0 || formatMigration
         const show = pendingFrom || (upgraded && shouldShowReleaseNotice(previous, currentVersion))
         if (!show) {
           storage.setItem(RELEASE_NOTICE_STATE_KEY, JSON.stringify({ version: currentVersion, explainedVersion: explained }))
@@ -3554,7 +3574,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         }
         const fromVersion = pendingFrom || explained
         const releases = notices.filter((entry) =>
-          compareReleaseVersions(entry.version, fromVersion) > 0 &&
+          ((compareReleaseVersions(entry.version, fromVersion) > 0 && !isSamePreviewSequence(entry.version, fromVersion)) || (formatMigration && entry.version === currentVersion)) &&
           compareReleaseVersions(entry.version, currentVersion) <= 0 &&
           // Stable-to-stable upgrades summarize shipped stable changes only.
           (isPreviewRelease(fromVersion) || isPreviewRelease(currentVersion) || !isPreviewRelease(entry.version))

@@ -5,6 +5,7 @@ import vm from 'node:vm'
 
 const source = readFileSync(new URL('../src/client/index.js', import.meta.url), 'utf8')
 const code = source.slice(source.indexOf('    const RELEASE_VERSION ='), source.indexOf('    function apply(ctx)'))
+const currentReleaseVersion = /const RELEASE_VERSION = '([^']+)'/.exec(code)?.[1]
 const key = 'dsh-kb-release-state'
 function storage(version) {
   const data = new Map(version ? [[key, JSON.stringify({ version })]] : [])
@@ -72,6 +73,16 @@ test('current release is documented and preview ordering is numeric', () => {
   assert.ok(p.RELEASE_NOTICES.some(entry => entry.version === '2.0.0'))
   assert.equal(p.compareReleaseVersions('2.0-beta10', '2.0-beta9'), 1)
   assert.equal(p.compareReleaseVersions('2.0-beta9', '2.0.0'), -1)
+  assert.equal(p.compareReleaseVersions('2.0-beta9', '2.0.2-beta9'), 1)
+  assert.equal(p.compareReleaseVersions('2.0.2-beta9', '2.0-beta9'), -1)
+})
+
+test('canonical beta9 migration from legacy beta9 produces an update summary', () => {
+  const p = api(), store = storage('2.0.2-beta9')
+  const notice = p.loadReleaseNotices(store, '2.0-beta9')
+  assert.equal(notice.fromVersion, '2.0.2-beta9')
+  assert.equal(notice.version, '2.0-beta9')
+  assert.deepEqual(versions(notice), ['2.0-beta9'])
 })
 
 // Minimal hooks harness for the actual popup close path.
@@ -97,7 +108,7 @@ function mount(store) {
 function find(element, predicate) { if (!element || typeof element !== 'object') return; if (predicate(element)) return element; for (const child of (element.children || []).flat()) { const match = find(child, predicate); if (match) return match } }
 for (const action of ['Escape', 'close', 'backdrop', 'link']) test(`aggregated popup persists ${action} dismissal`, () => {
   const store = storage('2.0-beta7'), p = api()
-  p.loadReleaseNotices(store, '2.0.0')
+  p.loadReleaseNotices(store, currentReleaseVersion)
   const view = mount(store)
   assert.ok(find(view.output, node => node.props.role === 'dialog'))
   assert.ok(find(view.output, node => node.props.className === 'kb-release-version').children[0].includes('2.0-beta7'))
@@ -107,6 +118,6 @@ for (const action of ['Escape', 'close', 'backdrop', 'link']) test(`aggregated p
   if (action === 'backdrop') { const target = {}; view.output.props.onMouseDown({ target, currentTarget: target }) }
   view.flush()
   assert.equal(view.output, null)
-  assert.equal(JSON.parse(store.getItem(key)).explainedVersion, '2.0.0')
+  assert.equal(JSON.parse(store.getItem(key)).explainedVersion, currentReleaseVersion)
   assert.equal(mount(store).output, null)
 })
