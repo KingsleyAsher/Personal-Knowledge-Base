@@ -364,7 +364,7 @@ export function createImportService({ stateDir, getBaseConfig, getCurrentCore = 
     const submitted = await parsing.submit(
       { sourceRel, kind: kindUse, providerId, purpose: 'import-item' },
       { requestedBy: requestedBy?.via === 'tool'
-        ? { via: 'tool', importId, gate: requestedBy.gate ?? null, session: requestedBy.session ?? null }
+        ? { via: 'tool', origin: 'import', importId, gate: requestedBy.gate ?? null, session: requestedBy.session ?? null, agent: requestedBy.agent ?? null }
         : { via: 'import', importId } },
     )
     if (submitted.ok !== true) return { ...submitted, rel: item.rel }

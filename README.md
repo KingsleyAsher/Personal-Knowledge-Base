@@ -1,17 +1,21 @@
-# 个人知识库 2.0.2-beta6
+# 个人知识库 2.0.0
 
 ## 🌐 [访问产品展示网页 →](https://kingsleyasher.github.io/Personal-Knowledge-Base/)
 
 了解产品功能、查看界面展示与使用场景，快速找到下载和安装入口。
 
-知识工作台预览：可控隐私、首次及跨版本设置引导、目录与关系地图、快速收集、PDF 阅读摘录、原生 @ 知识库提问和默认关闭的完整备份。完整使用与边界见 [工作台说明](WORKBENCH.md)。
+知识工作台提供可控隐私、首次及跨版本设置引导、目录与关系地图、快速收集、PDF 阅读摘录、原生 @ 知识库提问和默认关闭的完整备份。完整使用与边界见 [工作台说明](WORKBENCH.md)。
+
+关系索引加速、回收站、统一解析记录和更新弹窗规则见 [正式版说明](RELEASE.md)；版本命名及旧预览版迁移规则见 [VERSIONING.md](VERSIONING.md)。
 
 ## 选择下载版本
 
+- **正式版 2.0.0**：[GitHub 发布包](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.0.0/local-dsh-knowledge-base-2.0.0.tgz)。
+- 以下为历史版本，供回退或旧宿主兼容时使用：
 - **正式版 1.1.6**：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-1.1.6.tgz) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-1.1.6.tgz?ref=main) · [GitHub 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v1.1.6/local-dsh-knowledge-base-1.1.6.tgz)。
 - **预览版 2.0.2-beta6**：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.0.2-beta6.tgz) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.0.2-beta6.tgz?ref=main) · [GitHub 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.0.2-beta6/local-dsh-knowledge-base-2.0.2-beta6.tgz)。
 
-新版更新器同时检查正式版和预览版；预览更新仅作可选提示，由用户主动下载或安装。正式版清单指向 1.1.6。旧版用户先升级正式版 1.1.6，即可获得预览提示和可选下载入口。
+新版更新器同时检查正式版和预览版；已安装正式版时只弹出正式版更新，预览版更新在检查更新处显示红点；已安装预览版时两个渠道的更新均可弹窗选择。安装始终由用户点击。正式版清单指向 `2.0.0`。
 
 以下为 1.1.3 基线的历史能力和发布说明。
 
@@ -38,7 +42,7 @@ DSH 个人知识库插件：目录绑定、条目管理与检索、资料导入�
 
 ## 安装
 
-首次安装或从旧版接入新更新器：在 DSH 插件管理器的安装源中填写 `https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-1.1.6.tgz`，由客户端下载和安装；也可安装仓库 `dist/` 下的本地包。旧版自身的下载按钮仍采用旧流程，需先安装本版才能获得新更新器。
+首次安装或从旧版接入新更新器：在 DSH 插件管理器的安装源中填写 `https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.0.0.tgz`，由客户端下载和安装；也可安装仓库 `dist/` 下的本地包。旧版自身的下载按钮仍采用旧流程，需先安装本版才能获得新更新器。
 
 安装本版后，插件内「检查版本更新 → 安装新版本 / 安装预览版」自动完成下载、SHA-256 与包身份校验、安装及加载核对。普通宿主支持时热加载，宿主返回需要重启时再完全退出（含托盘）并重开。核对版本及构建号，摘要见 [发布清单](release-manifest.json)。宿主未提供安装接口时，按钮会说明需使用宿主插件管理器。
 

@@ -22,6 +22,7 @@
  *  解析成功与落库成功分开记录（job.status 与 job.land.status 相互独立）。
  */
 import { spawn } from 'node:child_process'
+import { atomicJson as atomicWriteJson, safePath } from './workbench-state.js'
 import { createHash, randomUUID } from 'node:crypto'
 import { promises as dnsPromises } from 'node:dns'
 import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises'
@@ -416,8 +417,9 @@ async function listJobFiles(dir) {
   try {
     const names = await readdir(dir)
     return names.filter((n) => n.endsWith('.json'))
-  } catch {
-    return []
+  } catch (error) {
+    if (error.code === 'ENOENT') return []
+    throw error
   }
 }
 
@@ -430,7 +432,7 @@ async function listJobFiles(dir) {
  * @param {function} [deps.lookup]    DNS 解析器（默认 dns.promises.lookup）。**只给受控桩测试用**：
  *                                    作用是让"域名解析到公网地址 → 发正文前拦下"可以被离线证明。
  */
-export function createParsingService({ stateDir, log = () => {}, getCore, getBinding, lookup = null, credentialStore = null, nativeRequest = null }) {
+export function createParsingService({ stateDir, log = () => {}, getCore, getBinding, lookup = null, credentialStore = null, nativeRequest = null, onEvent = () => {} }) {
   const root = path.join(stateDir, 'parse')
   const credentials = credentialStore || createParseCredentials(stateDir)
   // nativeRequest is a transport fixture for offline tests; never exposed in settings.
@@ -1203,6 +1205,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
           await new Promise(resolve => setTimeout(resolve, 20 * (attempt + 1)))
         }
       }
+      onEvent({ type: 'parse-jobs-changed', kbId: binding.kbId, jobId: job.jobId })
       return job
     } finally {
       release()
@@ -1217,7 +1220,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
       status: job.status,
       stage: job.stage,
       purpose: job.purpose,
-      source: { relPath: job.source.relPath, sha256: job.source.sha256, bytes: job.source.bytes, format: job.source.format },
+      source: { relPath: job.source.relPath, external: job.source.external === true, sha256: job.source.sha256, bytes: job.source.bytes, format: job.source.format },
       provider: job.provider,
       progress: job.progress,
       attempts: job.attempts,
@@ -1279,8 +1282,43 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     return { ok: true, abs, rel: toPosix(rel), bytes: st.size, rootAbs }
   }
 
+  async function jobSource(job, binding) {
+    if (!job.source.external) return resolveSource(job.source.relPath, binding)
+    if (!/^[a-f0-9-]{36}\.[a-z0-9]+$/.test(job.source.storedName || '')) return { ok: false, code: 'SOURCE_DENIED', message: '外部原件快照无效' }
+    try {
+      const abs = await safePath(kbDir(binding), 'sources/' + job.source.storedName), st = await stat(abs)
+      return { ok: st.isFile(), abs, bytes: st.size }
+    } catch { return { ok: false, code: 'SOURCE_MISSING', message: '外部原件快照不存在' } }
+  }
+
   // ── 提交任务 ────────────────────────────────────────────────────────────
-  async function submit(input, { requestedBy } = {}) {
+  async function submit(input, options = {}) {
+    const binding = snapshotBinding(await getBinding()), requestId = randomUUID(), requestedBy = options.requestedBy || { via: 'unknown' }
+    if (!binding) return { ok: false, requestId, reason: 'KB_UNBOUND', detail: '请先绑定知识库，以确定解析服务与记录归属' }
+    const record = { requestId, kbId: binding.kbId, binding, kind: ['ocr', 'asr'].includes(input?.kind) ? input.kind : null, createdAt: nowIso(), status: 'submitted', requestedBy,
+      source: { relPath: options.authorizedSource ? options.authorizedSource.name : String(input?.sourceRel || ''), external: Boolean(options.authorizedSource) } }
+    const recordPath = path.join(kbDir(binding), 'requests', requestId + '.json')
+    await atomicWriteJson(recordPath, record)
+    let out
+    try { out = await submitExecution(input, options) }
+    catch (error) { out = { ok: false, reason: error.code || 'SUBMIT_FAILED', detail: error.message } }
+    Object.assign(record, { status: out.ok ? out.deduped ? 'reused' : 'accepted' : 'rejected', jobId: out.jobId || null, reason: out.reason || null, detail: out.detail || null })
+    try { await atomicWriteJson(recordPath, record) }
+    catch (error) { out = { ...out, warning: '任务状态已返回，但提交记录更新失败；请凭任务编号查看任务。' }; log('warn', '解析提交记录更新失败：' + (error.code || 'write-error')) }
+    onEvent({ type: 'parse-jobs-changed', kbId: binding.kbId })
+    return { ...out, requestId }
+  }
+
+  async function recordRejection({ kind, requestedBy, failure }) {
+    const binding = snapshotBinding(await getBinding()), requestId = randomUUID()
+    if (!binding) return { requestId }
+    // Unauthorized paths are deliberately not retained in rejection history.
+    await atomicWriteJson(path.join(kbDir(binding), 'requests', requestId + '.json'), { requestId, kbId: binding.kbId, binding, kind: ['ocr', 'asr'].includes(kind) ? kind : null, createdAt: nowIso(), status: 'rejected', requestedBy, source: { relPath: '', external: true }, reason: failure.reason, detail: failure.detail, jobId: null })
+    onEvent({ type: 'parse-jobs-changed', kbId: binding.kbId })
+    return { requestId }
+  }
+
+  async function submitExecution(input, { requestedBy, authorizedSource } = {}) {
     const binding = snapshotBinding(await getBinding())
     if (!binding || !binding.kbId) return { ok: false, reason: 'KB_UNBOUND', detail: '知识库未绑定或未初始化' }
     const kindIn = String(input?.kind ?? '').trim()
@@ -1292,7 +1330,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     const picked = pickProvider(conf, kindIn, toolDefault ? undefined : input?.providerId)
     if (picked.error) return { ok: false, reason: picked.error.code, detail: picked.error.message }
     const provider = picked.provider
-    const src = await resolveSource(input?.sourceRel, binding)
+    const src = authorizedSource ? { ok: true, ...authorizedSource, rel: authorizedSource.name } : await resolveSource(input?.sourceRel, binding)
     if (!src.ok) return { ok: false, reason: src.code, detail: src.message }
     const format = path.extname(src.rel).slice(1).toLowerCase()
     if (!provider.formats.includes(format)) {
@@ -1305,16 +1343,25 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     if (src.bytes > provider.maxBytes) {
       return { ok: false, reason: 'FILE_TOO_LARGE', detail: `原件 ${src.bytes} 字节超过提供方上限 ${provider.maxBytes} 字节` }
     }
-    const sha = sha256(await readFile(src.abs))
+    const sha = sha256(src.data || await readFile(src.abs))
     const cfgVer = providerConfigVersion(provider)
     const dedupeKey = sha256(Buffer.from([sha, kindIn, provider.id, cfgVer, provider.model].join('|'), 'utf8')).slice(0, 24)
 
     // 去重：同原件 + 同类型 + 同提供方/配置版本 + 已成功/部分成功 → 直接复用，不重复计费/重复建条目
-    const existing = await findJobByDedupe(binding, dedupeKey, { reuseTerminalOnly: true })
+    const existing = await findJobByDedupe(binding, dedupeKey, { reuseTerminalOnly: true, requestedBy, external: Boolean(authorizedSource) })
     if (existing) {
       return { ok: true, deduped: true, jobId: existing.jobId, status: existing.status, job: publicJob(existing), detail: '同一原件与同一提供方配置已有解析结果，复用（未重复请求引擎）' }
     }
 
+    let externalStored = null
+    if (authorizedSource) {
+      externalStored = randomUUID() + '.' + format
+      const storage = path.join(kbDir(binding), 'sources')
+      await mkdir(storage, { recursive: true })
+      const bytes = src.data || await readFile(src.abs)
+      if (sha256(bytes) !== sha) return { ok: false, reason: 'SOURCE_CHANGED', detail: '文件在提交期间发生变化，请重新选择' }
+      await writeFile(path.join(storage, externalStored), bytes, { flag: 'wx' })
+    }
     const job = {
       schemaVersion: PARSING_SCHEMA_VERSION,
       jobId: newJobId(kindIn),
@@ -1323,7 +1370,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
       kind: kindIn,
       purpose: typeof input?.purpose === 'string' ? input.purpose.slice(0, 200) : '',
       requestedBy: requestedBy ?? { via: 'unknown' },
-      source: { relPath: src.rel, absPath: src.abs, sha256: sha, bytes: src.bytes, format },
+      source: { relPath: src.rel, absPath: authorizedSource ? undefined : src.abs, external: Boolean(authorizedSource), storedName: externalStored, sha256: sha, bytes: src.bytes, format },
       provider: {
         id: provider.id,
         selectionSource: toolDefault || !input?.providerId ? 'settings-default' : 'explicit',
@@ -1361,7 +1408,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     return { ok: true, deduped: false, jobId: job.jobId, status: 'queued', job: publicJob(job) }
   }
 
-  async function findJobByDedupe(binding, dedupeKey, { reuseTerminalOnly } = {}) {
+  async function findJobByDedupe(binding, dedupeKey, { reuseTerminalOnly, requestedBy, external } = {}) {
     const dir = jobsDir(binding)
     const files = await listJobFiles(dir)
     let best = null
@@ -1370,6 +1417,8 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
         const j = JSON.parse(await readFile(path.join(dir, f), 'utf8'))
         if (j.kbId !== binding.kbId || j.binding && !sameBinding(j.binding, binding)) continue
         if (j.dedupeKey !== dedupeKey) continue
+        if (Boolean(j.source?.external) !== Boolean(external)) continue
+        if (requestedBy?.via === 'tool' && j.requestedBy?.session !== requestedBy.session) continue
         if (reuseTerminalOnly && !['succeeded', 'partial'].includes(j.status)) continue
         if (best === null || String(j.createdAt) > String(best.createdAt)) best = j
       } catch {
@@ -1446,10 +1495,10 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
         if (job.cancelRequestedAt !== null) return { ok: false, code: 'CANCELED', detail: '已取消' }
         const gate = await executionGate(provider, conf)
         if (!gate.ok) return gate
-        const source = await resolveSource(job.source.relPath, binding)
+        const source = await jobSource(job, binding)
         if (!source.ok) return { ok: false, code: source.code, detail: source.message }
         const bytes = await readFile(source.abs)
-        const verified = await resolveSource(job.source.relPath, binding)
+        const verified = await jobSource(job, binding)
         if (!verified.ok) return { ok: false, code: verified.code, detail: verified.message }
         if (sha256(bytes) !== job.source.sha256) return { ok: false, code: 'SOURCE_CHANGED', detail: '原件已变化，请新建解析任务；不复用旧片段' }
         // Engines consume an immutable task copy, never a live source link.
@@ -1833,6 +1882,23 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     }
     if (!job.result) return { ok: false, reason: 'no-result', detail: `解析还没有结果（status=${job.status}）` }
     if (job.status === 'failed' || job.status === 'canceled') return { ok: false, reason: 'parse-not-successful', status: job.status }
+    let sourceRel = job.source.relPath
+    if (job.source.external) {
+      // Explicit land imports an immutable original before creating a KB reference.
+      sourceRel = '90-收件箱/解析原件/' + job.jobId + '.' + job.source.format
+      await core._internal.withMutationLock(binding.kbPath, async () => {
+        if (!sameBinding(binding, await getBinding())) throw Object.assign(new Error('知识库绑定已改变，未入库'), { code: 'BINDING_CHANGED' })
+        const original = await jobSource(job, binding)
+        if (!original.ok) throw Object.assign(new Error(original.message), { code: original.code })
+        const bytes = await readFile(original.abs)
+        if (sha256(bytes) !== job.source.sha256) throw Object.assign(new Error('解析原件快照已变化'), { code: 'SOURCE_CHANGED' })
+        const directory = await safePath(binding.kbPath, '90-收件箱/解析原件', { missing: true })
+        await mkdir(directory, { recursive: true })
+        const destination = await safePath(binding.kbPath, sourceRel, { missing: true })
+        try { await writeFile(destination, bytes, { flag: 'wx' }) }
+        catch (error) { if (error.code !== 'EEXIST' || sha256(await readFile(destination)) !== job.source.sha256) throw error }
+      })
+    }
     const title = typeof opts.title === 'string' && opts.title.trim() !== ''
       ? opts.title.trim()
       : `${job.kind === 'ocr' ? 'OCR' : '语音转写'}底稿 · ${path.posix.basename(job.source.relPath)}`
@@ -1843,7 +1909,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
       '---',
       '## 解析来源',
       '',
-      `- 原件：\`${job.source.relPath}\`（sha256 \`${job.source.sha256}\`）`,
+      `- 原件：\`${sourceRel}\`（sha256 \`${job.source.sha256}\`）`,
       `- 解析类型：${job.kind === 'ocr' ? 'OCR' : '语音转写'}；提供方：${job.provider.id}（${job.provider.protocol} / ${job.provider.locality} / ${job.provider.model || '未标模型'}）`,
       `- 配置版本：\`${job.provider.configVersion}\`；任务：\`${job.jobId}\`；状态：${job.status}${job.partial ? '（部分失败：' + (job.partial.failedUnits ?? []).length + ' 处）' : ''}`,
       job.result.pages?.length ? `- 覆盖页：${job.result.pages.map((p) => p.page).join(', ')}（时长/页数：${job.result.pageCount ?? '未知'}）` : '',
@@ -1853,12 +1919,12 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
       '> 这是可追溯底稿，不是已校订知识；逐字引用请回原件。',
     ].filter(Boolean).join('\n')
     const content = `${String(job.result.plainText ?? job.result.text).trim()}\n${provenance}\n`
-    const args = { kind, title, content, tags, source: job.source.relPath, requestId: 'parse-' + job.jobId, expectedBinding: snapshotBinding(binding) }
+    const args = { kind, title, content, tags, source: sourceRel, requestId: 'parse-' + job.jobId, expectedBinding: snapshotBinding(binding) }
     const r = await (opts.entryId
       ? core.updateEntry({
           entryId: opts.entryId,
           expectedRevision: opts.expectedRevision,
-          patch: { title, tags, source: job.source.relPath },
+          patch: { title, tags, source: sourceRel },
           content,
           requestId: 'parse-' + job.jobId + '-upd',
           expectedBinding: snapshotBinding(binding),
@@ -1875,12 +1941,12 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
   }
 
   // ── 列表 / 恢复 ─────────────────────────────────────────────────────────
-  async function listJobs({ limit = 20, kind = null, status = null } = {}) {
+  async function listJobs({ limit = 20, offset = 0, kind = null, status = null, filter = null } = {}) {
     const binding = await getBinding()
     if (!binding || !binding.kbId) return { ok: true, jobs: [], note: '未绑定知识库' }
     const dir = jobsDir(binding)
     const files = await listJobFiles(dir)
-    const jobs = []
+    let jobs = [], unreadable = 0
     for (const f of files) {
       try {
         const j = JSON.parse(await readFile(path.join(dir, f), 'utf8'))
@@ -1889,11 +1955,28 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
         if (status && j.status !== status) continue
         jobs.push(publicJob(j))
       } catch {
-        continue
+        unreadable++; continue
       }
     }
     jobs.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)))
-    return { ok: true, jobs: jobs.slice(0, clampInt(limit, 1, JOBS_KEPT, 20)), total: jobs.length }
+    if (filter) jobs = await filter(jobs)
+    const start = clampInt(offset, 0, Number.MAX_SAFE_INTEGER, 0), pageSize = clampInt(limit, 1, JOBS_KEPT, 20)
+    return { ok: true, jobs: jobs.slice(start, start + pageSize), total: jobs.length, offset: start, limit: pageSize, ...(unreadable ? { warning: `${unreadable} 条任务记录无法读取，原记录已保留` } : {}) }
+  }
+
+  async function listRequests({ limit = 20, offset = 0, kind = null, filter = null } = {}) {
+    const binding = await getBinding()
+    if (!binding?.kbId) return { ok: true, requests: [], total: 0 }
+    const dir = path.join(kbDir(binding), 'requests'), files = await listJobFiles(dir)
+    let rows = [], unreadable = 0
+    for (const file of files) {
+      try { const r = JSON.parse(await readFile(path.join(dir, file), 'utf8')); if (sameBinding(r.binding, binding) && (!kind || r.kind === kind)) rows.push(r) }
+      catch { unreadable++ }
+    }
+    if (filter) rows = await filter(rows)
+    rows.sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+    const start = clampInt(offset, 0, Number.MAX_SAFE_INTEGER, 0), pageSize = clampInt(limit, 1, 200, 20)
+    return { ok: true, requests: rows.slice(start, start + pageSize), total: rows.length, offset: start, limit: pageSize, ...(unreadable ? { warning: '部分提交记录无法读取，原记录已保留' } : {}) }
   }
 
   /** 启动恢复：running 的记录不可能还活着，必须明确结局，不能永久挂起。 */
@@ -2040,17 +2123,15 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
   }
 
   /** 真实小样本解析：走同一条任务服务（不是另开一条捷径）。 */
-  async function testParse({ providerId, sourceRel, kind } = {}, { requestedBy } = {}) {
+  async function testParse({ providerId, sourceRel, kind } = {}, { requestedBy, authorizedSource } = {}) {
     const conf = await readParsingConfig()
     const toolDefault = requestedBy?.via === 'tool'
-    if (toolDefault && !PARSE_KINDS.includes(kind)) return { ok: false, reason: 'BAD_KIND', detail: '会话测试解析必须指定 ocr 或 asr，服务由当前默认设置决定' }
     const selectedId = toolDefault ? (kind === 'ocr' ? conf.defaultOcr : conf.defaultAsr) : providerId
     const provider = conf.providers.find((p) => p.id === selectedId)
-    if (!provider) return { ok: false, reason: 'not-found' }
-    const submitted = await submit({ kind: kind ?? provider.kind, providerId, sourceRel, purpose: 'provider-test' }, { requestedBy: requestedBy ?? { via: 'test' } })
+    const submitted = await submit({ kind: kind ?? (toolDefault ? undefined : provider?.kind), providerId, sourceRel, purpose: 'provider-test' }, { requestedBy: requestedBy ?? { via: 'test' }, authorizedSource })
     if (!submitted.ok) return submitted
     const jobId = submitted.jobId
-    const deadline = Date.now() + Math.min(provider.timeoutMs + 30_000, 10 * 60_000)
+    const deadline = Date.now() + Math.min((provider?.timeoutMs || 600000) + 30_000, 10 * 60_000)
     while (Date.now() < deadline) {
       const j = await readJob(jobId)
       if (j && ['succeeded', 'partial', 'failed', 'canceled'].includes(j.status)) {
@@ -2058,6 +2139,8 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
         return {
           ok: j.status === 'succeeded' || j.status === 'partial',
           jobId,
+          requestId: submitted.requestId,
+          deduped: submitted.deduped,
           status: j.status,
           textChars: j.result?.textChars ?? 0,
           preview,
@@ -2067,7 +2150,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
       }
       await new Promise((r) => setTimeout(r, 500))
     }
-    return { ok: false, jobId, status: 'timeout-wait', detail: '等待解析超过上限；任务仍在后台（去任务列表看状态）' }
+    return { ok: false, requestId: submitted.requestId, jobId, status: 'timeout-wait', detail: '等待解析超过上限；任务仍在后台（去任务列表看状态）' }
   }
 
   return {
@@ -2085,7 +2168,9 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     setDefaults,
     setPolicy,
     submit,
+    recordRejection,
     listJobs,
+    listRequests,
     readResult,
     cancel,
     retry,

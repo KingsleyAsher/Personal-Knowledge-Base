@@ -11,7 +11,7 @@ repo = Path(__file__).resolve().parents[1]
 feed = json.loads((repo / 'preview-manifest.json').read_text())
 version = json.loads((repo / 'package.json').read_text())['version']
 assert feed['version'] == version and feed['channel'] == 'preview'
-assert re.fullmatch(r'\d+\.\d+\.\d+-beta\d+', version)
+assert re.fullmatch(r'(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)-beta[1-9]\d*', version)
 assert os.environ.get('RELEASE_TAG', 'v' + version) == 'v' + version
 assert feed['tgz'] == 'local-dsh-knowledge-base-' + version + '.tgz'
 archive = repo / 'dist' / feed['tgz']

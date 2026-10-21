@@ -228,7 +228,7 @@ export async function walkTree(dir, root, opts = {}) {
         truncated = { reason: 'max-files', limit: maxFiles }
         return
       }
-      files.push({ path: toPosix(path.relative(base, abs)), bytes: info.size, mtimeMs: info.mtimeMs })
+      files.push({ path: toPosix(path.relative(base, abs)), bytes: info.size, mtimeMs: info.mtimeMs, ctimeMs: info.ctimeMs, writable: Boolean(info.mode & 0o222) })
     }
   }
 

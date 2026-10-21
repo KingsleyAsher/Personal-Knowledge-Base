@@ -50,8 +50,13 @@ test('numeric/prerelease version ordering and downgrade history', () => {
   assert.equal(api.compareReleaseVersions('1.10.0', '1.2.0'), 1)
   assert.equal(api.compareReleaseVersions('2.0.0-rc.2', '2.0.0-rc.10'), -1)
   assert.equal(api.compareReleaseVersions('2.0.0-rc.10', '2.0.0'), -1)
+  assert.equal(api.compareReleaseVersions('2.0-beta9', '2.0.0'), -1)
+  assert.equal(api.compareReleaseVersions('2.0-beta10', '2.0-beta9'), 1)
+  assert.equal(api.compareReleaseVersions('2.0.2-beta9', '2.0.0'), -1)
+  assert.deepEqual(versions(api.loadReleaseNotices(store, '2.0-beta9')), [])
+  assert.equal(JSON.parse(store.getItem(stateKey)).version, '2.0-beta9')
   assert.deepEqual(versions(api.loadReleaseNotices(store, '1.1.3')), [])
-  assert.equal(JSON.parse(store.getItem(stateKey)).version, '1.2.0')
+  assert.equal(JSON.parse(store.getItem(stateKey)).version, '2.0-beta9')
 })
 
 // Execute the actual component and event handlers with a minimal hooks harness.

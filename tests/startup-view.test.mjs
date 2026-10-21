@@ -61,10 +61,11 @@ test('actual plugin apply resets saved selection before registering the knowledg
   const registered = []
   const applySource = source.slice(source.indexOf('    function apply(ctx)'), source.indexOf("    exports.name = 'kb-core'"))
   const context = {
-    window: { localStorage: store }, document: { documentElement: { setAttribute() {} } },
+    window: { localStorage: store, setInterval() { return 1 }, clearInterval() {} }, document: { hidden: false, addEventListener() {}, removeEventListener() {}, documentElement: { setAttribute() {} } },
     createWorkbenchUI: () => ({ dispose() {}, registerReferences() {} }),
     react: {}, e() {}, callApi() {}, Overview() {}, Flows() {}, ParseSection() {}, BuildBadge() {},
     reactDom: {}, RELEASE_VERSION: 'test', ensureStyle() {}, WorkbenchSettings() {}, KbView() {},
+    patchBuildBadge() {}, refreshBuildVersion() {}, checkBuildUpdates() {}, buildVersionRequest: { current: 0 }, buildUpdateRequest: { current: 0 },
   }
   const apply = vm.runInNewContext('let flowClientContext, workbenchUI;\n' + source.slice(start, source.indexOf('    function apply(ctx)', start)) + applySource + '\napply', context)
   apply({

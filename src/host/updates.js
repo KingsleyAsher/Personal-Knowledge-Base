@@ -2,6 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { mkdir, readFile, rename, stat, unlink, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { gunzipSync } from 'node:zlib'
+import { parseKnowledgeVersion, compareKnowledgeVersions } from './versioning.js'
 
 // Checking remains read-only. Downloads require a separate user-triggered action;
 // installation and activation belong to the host's pluginManager service.
@@ -16,42 +17,13 @@ export function startAutomaticChecks(checker, timers = globalThis) {
   return () => { timers.clearTimeout(startup); timers.clearInterval(interval) }
 }
 
-function stableParts(version) {
-  if (typeof version !== 'string' || !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version) || version.length > 50) return null
-  return version.split('.').map(BigInt)
-}
-
 export function compareStableVersions(a, b) {
-  const left = stableParts(a), right = stableParts(b)
-  if (!left || !right) throw new Error('版本号格式无效')
-  for (let i = 0; i < 3; i++) if (left[i] !== right[i]) return left[i] > right[i] ? 1 : -1
-  return 0
-}
-
-function versionParts(value) {
-  if (typeof value !== 'string' || value.length > 80 || !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.test(value)) return null
-  const [base, ...suffix] = value.split('-')
-  const pre = suffix.join('-')
-  if (pre && pre.split('.').some(x => /^\d+$/.test(x) && x.length > 1 && x[0] === '0')) return null
-  return { base, pre: pre ? pre.split('.') : [] }
+  if (parseKnowledgeVersion(a)?.channel !== 'stable' || parseKnowledgeVersion(b)?.channel !== 'stable') throw Error('版本号格式无效')
+  return compareKnowledgeVersions(a, b)
 }
 
 export function compareReleaseVersions(a, b) {
-  const left = versionParts(a), right = versionParts(b)
-  if (!left || !right) throw Error('版本号格式无效')
-  const base = compareStableVersions(left.base, right.base)
-  if (base) return base
-  if (!left.pre.length || !right.pre.length) return left.pre.length ? -1 : right.pre.length ? 1 : 0
-  for (let i = 0; i < Math.max(left.pre.length, right.pre.length); i++) {
-    const x = left.pre[i], y = right.pre[i]
-    if (x === y) continue
-    if (x === undefined || y === undefined) return x === undefined ? -1 : 1
-    const xn = /^\d+$/.test(x), yn = /^\d+$/.test(y)
-    if (xn && yn) return BigInt(x) > BigInt(y) ? 1 : -1
-    if (xn !== yn) return xn ? -1 : 1
-    return x > y ? 1 : -1
-  }
-  return 0
+  return compareKnowledgeVersions(a, b)
 }
 
 const REPO_PATH = 'KingsleyAsher/Personal-Knowledge-Base'
@@ -120,9 +92,10 @@ export function createUpdateChecker({ currentVersion, fetch: fetchFn = globalThi
       try {
         const raw = await sourceBytes(fetchFn, source, preview ? 'preview-manifest.json' : 'release-manifest.json', 65536, timeoutMs)
         const m = JSON.parse(raw.toString('utf8'))
-        if (m.package !== '@local/dsh-knowledge-base' || !(preview ? versionParts(m.version)?.pre.length : stableParts(m.version)) ||
+        const parsedVersion = parseKnowledgeVersion(m.version, { allowLegacyPreview: preview })
+        if (m.package !== '@local/dsh-knowledge-base' || parsedVersion?.channel !== (preview ? 'preview' : 'stable') ||
             m.tgz !== 'local-dsh-knowledge-base-' + m.version + '.tgz' || !/^[a-f0-9]{64}$/.test(m.sha256 || '')) throw Error('更新清单无效')
-        if (preview && (!/^[a-f0-9]{16}$/.test(m.buildId || '') || !Number.isSafeInteger(m.bytes) || m.bytes < 1 || m.bytes > MAX_UPDATE_BYTES)) throw Error('预览版清单无效')
+        if (!/^[a-f0-9]{16}$/.test(m.buildId || '') || !Number.isSafeInteger(m.bytes) || m.bytes < 1 || m.bytes > MAX_UPDATE_BYTES) throw Error('更新清单缺少有效的构建号或大小')
         return { source, manifest: m, ok: true }
       } catch (error) { return { source, ok: false, error: error instanceof SyntaxError ? '更新清单无效' : String(error.message || error).slice(0,180) } }
     }))
@@ -144,7 +117,7 @@ export function createUpdateChecker({ currentVersion, fetch: fetchFn = globalThi
   }
   async function latest() {
     const [stable, preview] = await Promise.all([channel(false), previewManifestUrl ? channel(true) : null])
-    const result = { ...stable, currentVersion, checkedAt: new Date(now()).toISOString() }
+    const result = { ...stable, currentVersion, currentChannel: parseKnowledgeVersion(currentVersion, { allowLegacyPreview: true })?.channel || 'unknown', checkedAt: new Date(now()).toISOString() }
     if (preview?.ok) result.preview = preview
     else if (preview) { result.previewError = '预览版信息暂不可用，可稍后重新检查'; result.previewSourceStatus = preview.sourceStatus }
     return result
@@ -202,7 +175,7 @@ export function createUpdateDownloader({ checker, cacheDir, fetch: fetchFn = glo
     const release = checked.preview?.latestVersion === expectedVersion ? checked.preview : checked
     if (!release.ok) throw Error(release.error)
     if (!release.updateAvailable) throw Error('没有可安装的新版本')
-    if (!versionParts(expectedVersion) || expectedVersion !== release.latestVersion) throw Error('发布版本已变化，请重新检查更新')
+    if (!parseKnowledgeVersion(expectedVersion, { allowLegacyPreview: true }) || expectedVersion !== release.latestVersion) throw Error('发布版本已变化，请重新检查更新')
     if (release.tgz !== 'local-dsh-knowledge-base-' + expectedVersion + '.tgz' || !/^[a-f0-9]{64}$/.test(release.sha256 || '') || !/^[a-f0-9]{16}$/.test(release.buildId || '') || !Number.isSafeInteger(release.bytes) || release.bytes < 1 || release.bytes > MAX_UPDATE_BYTES) throw Error('发布清单缺少有效的大小、摘要或构建号')
     const dir = path.resolve(cacheDir, release.sha256)
     const target = path.join(dir, release.tgz)

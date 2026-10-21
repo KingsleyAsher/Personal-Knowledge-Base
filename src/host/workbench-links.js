@@ -50,39 +50,41 @@ export function extractHtmlReferences(text) {
   return refs
 }
 
-export async function collectRelations({ files, readText, visible, links, type }) {
+export async function collectRelations({ files, readText, readDocument, visible, links, type, trashedPaths = new Set(), trashedFiles = [] }) {
   const paths = new Set(files.map(f => f.path)), names = new Map(), edges = [], issues = [], seen = new Set()
+  const trashNames = new Set(trashedFiles.flatMap(f => [path.posix.basename(f.path), path.posix.basename(f.path, path.posix.extname(f.path)), f.title].filter(Boolean).map(n => n.toLowerCase())))
   for (const f of files) for (const n of new Set([path.posix.basename(f.path), path.posix.basename(f.path, path.posix.extname(f.path)), f.title])) {
     const k = n.toLowerCase(); names.set(k, [...(names.get(k) || []), f.path])
   }
   const add = e => { const k = [e.from, e.to, e.type].join('|'); if (!seen.has(k)) { seen.add(k); edges.push({ ...e, id: e.id || digest(k).slice(0, 20) }) } }
   if (type === 'directory') for (const f of files) { const parent = path.posix.dirname(f.path); if (parent !== '.') add({ from: parent, to: f.path, type: 'directory', evidence: '实际目录' }) }
   for (const f of files.filter(f => /\.(md|html?)$/i.test(f.path))) {
-    const content = await readText(f.path).catch(() => null)
+    const content = await (readDocument ? readDocument(f.path) : readText(f.path)).catch(() => null)
     if (!content) continue
-    for (const ref of (/\.html?$/i.test(f.path) ? extractHtmlReferences(content.text) : extractReferences(content.text))) {
+    for (const ref of (content.refs || (/\.html?$/i.test(f.path) ? extractHtmlReferences(content.text) : extractReferences(content.text)))) {
       let decoded
       try { decoded = decodeURIComponent(ref.target).replaceAll('\\', '/') } catch { decoded = ref.target }
       const relative = path.posix.normalize(path.posix.join(path.posix.dirname(f.path), decoded)).replace(/\/$/, ''), root = path.posix.normalize(decoded).replace(/\/$/, '')
       const exact = [relative, relative + '.md'].filter(p => paths.has(p))
       const roots = [root, root + '.md'].filter(p => paths.has(p))
-      const candidates = [...new Set(exact.length ? exact : roots.length ? roots : (names.get(decoded.toLowerCase()) || []))]
+      const inTrash = !exact.length && !roots.length && ([relative, relative + '.md', root, root + '.md'].some(p => trashedPaths.has(p)) || trashNames.has(decoded.toLowerCase()))
+      const candidates = inTrash ? [] : [...new Set(exact.length ? exact : roots.length ? roots : (names.get(decoded.toLowerCase()) || []))]
       if (!visible(relative) || !visible(root) || candidates.some(p => !visible(p))) continue
       let anchorMissing = false
       if (candidates.length === 1 && ref.anchor && candidates[0].endsWith('.md')) {
-        const target = await readText(candidates[0]).catch(()=>null)
+        const target = await (readDocument ? readDocument(candidates[0]) : readText(candidates[0])).catch(()=>null)
         if (target) {
           let anchor=ref.anchor.slice(1);try{anchor=decodeURIComponent(anchor)}catch{}
           const slug = s => s.trim().toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu,'').replace(/\s/g,'-')
-          const ids=[...target.text.matchAll(/^#{1,6}\s+(.+)$/gm)].map(m=>slug(m[1]))
-          anchorMissing = /^L\d+(?:-L\d+)?$/.test(anchor) ? Number(anchor.slice(1).split('-')[0])>target.text.split('\n').length : !ids.includes(anchor.toLowerCase()) && !target.text.includes('id="'+anchor+'"') && !target.text.includes("id='"+anchor+"'")
+          const ids=target.anchors || [...target.text.matchAll(/^#{1,6}\s+(.+)$/gm)].map(m=>slug(m[1]))
+          anchorMissing = /^L\d+(?:-L\d+)?$/.test(anchor) ? Number(anchor.slice(1).split('-')[0])>(target.lineCount ?? target.text.split('\n').length) : !ids.includes(anchor.toLowerCase()) && !(target.anchors ? target.anchors.includes(anchor) : target.text.includes('id="'+anchor+'"') || target.text.includes("id='"+anchor+"'"))
         }
       }
       if (candidates.length === 1 && !anchorMissing) add({ from: f.path, to: candidates[0], type: ref.type, line: ref.line, evidence: '第 ' + ref.line + ' 行' })
       else {
         const id = digest([f.path, ref.start, ref.rawTarget].join('|')).slice(0, 24)
-        const hints = [...names.entries()].filter(([k]) => k.includes(path.posix.basename(decoded).replace(/\.md$/, '').toLowerCase())).flatMap(([, v]) => v)
-        issues.push({ ...ref, id, path: f.path, revision: content.revision, context: content.text.split('\n')[ref.line - 1]?.slice(0, 1000), candidates: candidates.length ? candidates : [...new Set(hints)].slice(0, 12), reason: anchorMissing ? 'anchor-missing' : candidates.length > 1 ? 'ambiguous' : 'unresolved' })
+        const hints = (inTrash ? [] : [...names.entries()]).filter(([k]) => k.includes(path.posix.basename(decoded).replace(/\.md$/, '').toLowerCase())).flatMap(([, v]) => v)
+        issues.push({ ...ref, id, path: f.path, revision: content.revision, context: ref.context ?? content.text.split('\n')[ref.line - 1]?.slice(0, 1000), candidates: candidates.length ? candidates : [...new Set(hints)].slice(0, 12), reason: inTrash ? 'target-in-trash' : anchorMissing ? 'anchor-missing' : candidates.length > 1 ? 'ambiguous' : 'unresolved' })
       }
     }
   }
@@ -113,14 +115,14 @@ export function createRepairService({ binding, versionOf, relations, userData, m
   return { async dispatch(b, args, caller) {
     if (args.op === 'links.issues') {
       const data = await graph(b), offset = Math.max(0, Number(args.offset) || 0), limit = 30
-      return { items: data.issues.slice(offset, offset + limit), total: data.issues.length, offset, limit, counts: Object.fromEntries(['unresolved', 'ambiguous', 'manual-target-missing','new-relation','anchor-missing'].map(r => [r, data.issues.filter(i => i.reason === r).length])), revision: data.revision }
+      return { items: data.issues.slice(offset, offset + limit), total: data.issues.length, offset, limit, counts: Object.fromEntries(['unresolved', 'ambiguous', 'manual-target-missing','new-relation','anchor-missing','target-in-trash'].map(r => [r, data.issues.filter(i => i.reason === r).length])), revision: data.revision }
     }
     if (args.op === 'links.targets') {
       const data = await graph(b), q = String(args.query || '').toLowerCase()
       return { items: data.allFiles.filter(f => f.path.toLowerCase().includes(q) || f.title.toLowerCase().includes(q)).slice(0, 30).map(f => ({ path: f.path, title: f.title })) }
     }
     if (args.op === 'links.ai.create') {
-      const g = await graph(b), selected = g.issues.filter(i => (args.ids || []).includes(i.id)).slice(0, 20)
+      const g = await graph(b), selected = g.issues.filter(i => i.reason !== 'target-in-trash' && (args.ids || []).includes(i.id)).slice(0, 20)
       if (args.focus) {
         assertVisible(b, args.focus)
         const file = g.allFiles.find(f => f.path === args.focus && f.layer !== 'directory')
@@ -161,6 +163,7 @@ export function createRepairService({ binding, versionOf, relations, userData, m
     if (args.op === 'links.preview') {
       const g = await graph(b), selected = args.changes || []
       if (!selected.length || selected.length > 100) throw fail('BAD_CHANGES', '请选择 1–100 项修复')
+      if (selected.some(change => g.issues.some(issue => issue.id === change.id && issue.reason === 'target-in-trash'))) throw fail('RESTORE_REQUIRED', '目标已在回收站，请先恢复文件')
       const groups = new Map(), manual = [], ids = new Set()
       for (const change of selected) {
         if (ids.has(change.id)) throw fail('DUPLICATE_CHANGE', '同一问题不能重复修复'); ids.add(change.id)
@@ -169,6 +172,7 @@ export function createRepairService({ binding, versionOf, relations, userData, m
         assertVisible(b, issue.path); assertVisible(b, change.target)
         if (issue.manual) { manual.push({ issue, target: change.target }); continue }
         const content = await readFile(await safePath(b.root, issue.path), 'utf8')
+        if (digest(content) !== issue.revision) throw fail('FILE_CHANGED', '原文已变化，请刷新链接检查后重新预览')
         let group = groups.get(issue.path)
         if (!group) { group = { path: issue.path, before: content, revision: digest(content), edits: [] }; groups.set(issue.path, group) }
         const target = path.posix.relative(path.posix.dirname(issue.path), change.target) + (issue.reason === 'anchor-missing' ? '' : issue.anchor)

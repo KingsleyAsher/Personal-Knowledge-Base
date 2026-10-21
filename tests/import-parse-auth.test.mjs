@@ -73,7 +73,7 @@ test('live knowledge grant can parse imports, preserves gate provenance, and ign
     })
     assert.equal(result.ok, true)
     assert.deepEqual(call[0], { importId: 'imp-1234567890', rel: 'scan.png', kind: 'ocr' })
-    assert.deepEqual(call[1], { requestedBy: { via: 'tool', gate: 'knowledge-subagent', session: 'session-child' } })
+    assert.deepEqual(call[1], { requestedBy: { via: 'tool', origin: 'import', gate: 'knowledge-subagent', session: 'session-child', agent: 'child' } })
   } finally {
     noteKnowledgeRevoke(child)
   }
@@ -111,5 +111,5 @@ test('import service carries verified tool provenance into the parsing job reque
   )
   assert.equal(parsed.ok, true)
   assert.equal(submitCall[0].providerId, 'remembered-old-provider')
-  assert.deepEqual(submitCall[1], { requestedBy: { via: 'tool', importId: plan.importId, gate: 'knowledge-subagent', session: 'session-child' } })
+  assert.deepEqual(submitCall[1], { requestedBy: { via: 'tool', origin: 'import', importId: plan.importId, gate: 'knowledge-subagent', session: 'session-child', agent: null } })
 })

@@ -18,7 +18,7 @@ import path from 'node:path'
 import { readImportSources, derivedPrivatePartitions, effectivePrivateDirs, foldGeneratedPairs } from './fsindex.js'
 
 // 版本单一来源：package.json 的 version 必须与此一致（详见 INSTALL 说明）
-export const VERSION = '2.0.2-beta6'
+export const VERSION = '2.0.0'
 
 export const REQUIRED_FIELDS = ['title', 'type', 'tags', 'status', 'updated']
 export const SCHEMA_VERSION = 1
@@ -1405,7 +1405,9 @@ export function createCore(cfg, logger) {
     const oldCount = Array.isArray(old.value?.entries) ? old.value.entries.filter(e => e && typeof e.path === 'string').length : 0
     const drop = oldCount - entries.length
     const token = sha12(Buffer.from(JSON.stringify([old.value?.meta?.fingerprint, payload.meta.fingerprint, oldCount, entries.length])))
-    if ((oldCount > 0 && !entries.length || oldCount >= 20 && drop / oldCount >= .2) && options.confirmDrop !== token) {
+    const nextPaths = new Set(entries.map(e => e.path)), known = new Set(options.knownRemovedPaths || [])
+    const onlyKnownRemovals = known.size > 0 && (old.value?.entries || []).filter(e => e && typeof e.path === 'string' && !nextPaths.has(e.path)).every(e => known.has(e.path))
+    if ((oldCount > 0 && !entries.length || oldCount >= 20 && drop / oldCount >= .2) && options.confirmDrop !== token && !onlyKnownRemovals) {
       throw Object.assign(new Error('条目数量明显下降，已保留旧索引；请核对差异后确认'), { code: 'index-drop-confirmation', confirmationToken: token, oldCount, newCount: entries.length })
     }
     if (options.snapshot !== false && old.state === 'ok' && validIndexPayload(old.value) && old.value.meta?.kbId === payload.meta.kbId) {
@@ -1422,7 +1424,7 @@ export function createCore(cfg, logger) {
 
   let maintenanceState = { state: 'idle', reason: null, lastCompletedAt: null, diff: null }
   const maintenanceStatus = () => ({ ...maintenanceState })
-  async function maintainIndex({ expectedKbId, expectedRevision, paths = [], full = false, confirmDrop, automatic = false, signal } = {}) {
+  async function maintainIndex({ expectedKbId, expectedRevision, paths = [], full = false, confirmDrop, knownRemovedPaths = [], automatic = false, signal } = {}) {
     const gate = await configGate()
     if (!gate.ok) return { ok: false, reason: gate.refusal.reason }
     const conf = gate.conf, root = kbRootOf(conf)
@@ -1470,7 +1472,7 @@ export function createCore(cfg, logger) {
         if (signal?.aborted) throw Object.assign(new Error('维护已取消'), { code: 'canceled' })
         let mode = 'unchanged'
         if (!incremental || changed || metadataChanged || snap.freshness.reason === 'index-excludes-changed') {
-          await writeIndex(conf, entries, { confirmDrop, snapshot: !incremental || Boolean(changed) })
+          await writeIndex(conf, entries, { confirmDrop, knownRemovedPaths, snapshot: !incremental || Boolean(changed) })
           mode = !incremental ? 'full' : changed ? 'incremental' : 'metadata'
         }
         maintenanceState = { state: 'synced', reason: null, mode, lastCompletedAt: nowIso(), diff, entries: entries.length }
