@@ -1,72 +1,87 @@
-  function Relations({ snapshot, focus, navigate }) {
-    const [center, setCenter] = R.useState(focus || ''), [history, setHistory] = R.useState([]), [data, setData] = R.useState(null), [error, setError] = R.useState(''), [type, setType] = R.useState(''), [archive, setArchive] = R.useState(false), [navigation, setNavigation] = R.useState(false), [depth, setDepth] = R.useState('1'), [count, setCount] = R.useState(4), [hover, setHover] = R.useState(''), [issues, setIssues] = R.useState(false), [query, setQuery] = R.useState(''), [matches, setMatches] = R.useState([]), [transform, setTransform] = R.useState({ x: 0, y: 0, zoom: 1 })
-    const [searched, setSearched] = R.useState(false), [searching, setSearching] = R.useState(false), [retry, setRetry] = R.useState(0), [aiBusy, setAiBusy] = R.useState(false)
-    const svg = R.useRef(null), drag = R.useRef(null), moved = R.useRef(false), searchRequest = R.useRef(0)
-    const resetView = () => setTransform({ x: 0, y: 0, zoom: 1 })
-    R.useEffect(() => { setCenter(focus || ''); setHistory([]); resetView() }, [focus, snapshot.kbId])
-    R.useEffect(() => {
-      let live = true; setData(null); setError('')
-      api({ op: 'atlas.relations', expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion, path: center || undefined, type: type || undefined, includeArchive: archive, includeNavigation: navigation, depth: Number(depth), limit: 500 }).then(d => {
-        if (!live) return
-        if (!center && d.suggestedCenters?.length) { setCenter(d.suggestedCenters[0].path); return }
-        setData(d)
-      }).catch(err => { if (live) setError(err.message) })
-      return () => { live = false }
-    }, [center, type, depth, archive, navigation, snapshot.kbId, snapshot.policyVersion, snapshot.version, snapshot.revision, retry])
-    R.useEffect(() => () => { searchRequest.current++ }, [snapshot.kbId, snapshot.policyVersion])
-    const enter = file => { if (file === center) return; setHistory(h => center ? [...h, center] : h); setCenter(file); setCount(4); setMatches([]); setSearched(false); resetView() }
-    const search = async ev => {
-      ev.preventDefault(); const seq = ++searchRequest.current; setSearching(true); setError('')
-      try { const r = await api({ op: 'atlas.list', expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion, q: query, limit: 12 }); if (seq === searchRequest.current) { setMatches(r.items); setSearched(true) } }
-      catch (err) { if (seq === searchRequest.current) setError(err.message) }
-      finally { if (seq === searchRequest.current) setSearching(false) }
+  const relationPositions = (nodes, center) => {
+    const positions = new Map()
+    if (center) {
+      positions.set(center, { x: 395, y: 278 })
+      const others = nodes.filter(n => n.path !== center), radius = Math.max(215, others.length * 19)
+      others.forEach((node, i) => { const angle = i * Math.PI * 2 / Math.max(1, others.length) - Math.PI / 2; positions.set(node.path, { x: 395 + Math.cos(angle) * radius * 1.55, y: 278 + Math.sin(angle) * radius }) })
+    } else {
+      const columns = Math.max(1, Math.ceil(Math.sqrt(nodes.length * 1.5))), rows = Math.ceil(nodes.length / columns)
+      nodes.forEach((node, i) => positions.set(node.path, { x: (1000 - columns * 265) / 2 + 25 + i % columns * 265, y: Math.max(30, (620 - rows * 120) / 2) + Math.floor(i / columns) * 120 }))
     }
+    return positions
+  }
+  const relationFit = positions => {
+    const ps = [...positions.values()]; if (!ps.length) return { x: 0, y: 0, zoom: 1 }
+    const x = Math.min(...ps.map(p => p.x)), y = Math.min(...ps.map(p => p.y)), w = Math.max(...ps.map(p => p.x + 210)) - x, h = Math.max(...ps.map(p => p.y + 64)) - y
+    const zoom = Math.max(.25, Math.min(1, 920 / w, 540 / h))
+    return { zoom, x: (1000 - w * zoom) / 2 - x * zoom, y: (620 - h * zoom) / 2 - y * zoom }
+  }
+  function Relations({ snapshot, focus, active = true, navigate }) {
+    const [scope, setScope] = R.useState(''), [center, setCenter] = R.useState(focus || ''), [graphMode, setGraphMode] = R.useState(focus ? 'center' : 'overview')
+    const [data, setData] = R.useState(null), [error, setError] = R.useState(''), [type, setType] = R.useState(''), [archive, setArchive] = R.useState(false), [navigation, setNavigation] = R.useState(false), [depth, setDepth] = R.useState('1')
+    const [selected, setSelected] = R.useState(null), [hover, setHover] = R.useState(null), [history, setHistory] = R.useState([]), [issues, setIssues] = R.useState(false), [retry, setRetry] = R.useState(0)
+    const [query, setQuery] = R.useState(''), [matches, setMatches] = R.useState(null), [searching, setSearching] = R.useState(false), [transform, setTransform] = R.useState({ x: 0, y: 0, zoom: 1 })
+    const svg = R.useRef(null), drag = R.useRef(null), moved = R.useRef(false), searchRequest = R.useRef(0), autoFit = R.useRef(true)
+    const resetView = () => setTransform({ x: 0, y: 0, zoom: 1 })
+    R.useEffect(() => { setCenter(focus || ''); setScope(''); setGraphMode(focus ? 'center' : 'overview'); setData(null); setSelected(null); setHover(null); setHistory([]); setMatches(null); searchRequest.current++; autoFit.current = true; resetView() }, [snapshot.kbId, snapshot.policyVersion, focus])
+    R.useEffect(() => {
+      if (!active || issues) return
+      let live = true; setError('')
+      api({ op: 'atlas.relations', expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion, mode: graphMode === 'overview' ? 'overview' : undefined, prefix: graphMode === 'overview' ? scope : undefined, path: graphMode === 'center' ? center : undefined, type: type || undefined, includeArchive: archive, includeNavigation: navigation, depth: Number(depth), limit: 500 }).then(d => { if (live) { setData(d); if (autoFit.current) { setTransform(relationFit(relationPositions((graphMode === 'overview' ? d.sections : d.nodes) || [], graphMode === 'center' ? center : ''))); autoFit.current = false } setSelected(s => s && (s.kind === 'node' ? (d.sections || d.nodes || []).some(n => n.path === s.id) : (d.sectionEdges || d.edges || []).some(edge => (edge.id || edge.from + '→' + edge.to) === s.id)) ? s : null) } }).catch(err => { if (live) { setData(null); setError(err.message) } })
+      return () => { live = false }
+    }, [active, issues, graphMode, scope, center, type, depth, archive, navigation, snapshot.kbId, snapshot.policyVersion, snapshot.version, snapshot.revision, retry])
+    const remember = () => setHistory(h => [...h, { scope, center, graphMode, depth, selected, transform }].slice(-40))
+    const changeScope = (mode, path = '') => { remember(); autoFit.current = true; setData(null); setGraphMode(mode); if (mode === 'center') setCenter(path); else setScope(path); setDepth('1'); setSelected(null); setHover(null); setMatches(null); resetView() }
+    const back = () => { const previous = history.at(-1); if (!previous) return; autoFit.current = false; setHistory(h => h.slice(0, -1)); setScope(previous.scope); setCenter(previous.center); setGraphMode(previous.graphMode); setDepth(previous.depth); setSelected(previous.selected); setTransform(previous.transform); setData(null); setHover(null) }
     const point = ev => { const matrix = svg.current?.getScreenCTM(); if (!matrix) return { x: 0, y: 0 }; const p = new DOMPoint(ev.clientX, ev.clientY).matrixTransform(matrix.inverse()); return { x: p.x, y: p.y } }
     R.useEffect(() => {
-      const element = svg.current; if (!element) return
+      const element = svg.current; if (!element || !active) return
       const wheel = ev => { ev.preventDefault(); const p = point(ev); setTransform(t => { const zoom = Math.max(.25, Math.min(4, t.zoom * Math.exp(-ev.deltaY * .0015))), ratio = zoom / t.zoom; return { zoom, x: p.x - (p.x - t.x) * ratio, y: p.y - (p.y - t.y) * ratio } }) }
       element.addEventListener('wheel', wheel, { passive: false }); return () => element.removeEventListener('wheel', wheel)
-    }, [center, Boolean(data), issues])
-    if (issues) return e(R.Fragment, null, e('div', { className: 'kbw-toolbar' }, btn('返回关系浏览', () => { setIssues(false); setRetry(n => n + 1) })), e(LinkRepairs, { snapshot, navigate }))
-    const edges = data?.edges || data?.items || [], nodes = data?.nodes || [], lookup = new Map(nodes.map(n => [n.path, n]))
-    const left = [...new Set(edges.filter(edge => edge.to === center && edge.from !== center).map(edge => edge.from))]
-    const right = [...new Set(edges.filter(edge => edge.from === center && edge.to !== center).map(edge => edge.to))].filter(p => !left.includes(p))
-    const second = [...new Set(edges.flatMap(edge => [edge.from, edge.to]))].filter(p => p !== center && !left.includes(p) && !right.includes(p))
-    const shownLeft = left.slice(0, count), shownRight = [...right, ...second].slice(0, count), rows = Math.max(shownLeft.length, shownRight.length, 2), height = Math.max(420, rows * 78 + 70), positions = new Map([[center, { x: 335, y: height / 2 - 26 }]])
-    shownLeft.forEach((p, i) => positions.set(p, { x: 20, y: 45 + i * 78 })); shownRight.forEach((p, i) => positions.set(p, { x: 650, y: 45 + i * 78 }))
-    const zoomBy = factor => setTransform(t => { const zoom = Math.max(.25, Math.min(4, t.zoom * factor)), ratio = zoom / t.zoom; return { zoom, x: 450 - (450 - t.x) * ratio, y: height / 2 - (height / 2 - t.y) * ratio } })
-    const fitView = () => {
-      const points = [...positions.values()], x = Math.min(...points.map(p => p.x)), y = Math.min(...points.map(p => p.y)), width = Math.max(...points.map(p => p.x + 230)) - x, h = Math.max(...points.map(p => p.y + 52)) - y
-      const zoom = Math.min(1.6, 860 / width, (height - 40) / h)
-      setTransform({ zoom, x: (900 - width * zoom) / 2 - x * zoom, y: (height - h * zoom) / 2 - y * zoom })
-    }
-    const recenter = () => setTransform(t => ({ ...t, x: 450 - 450 * t.zoom, y: height / 2 - height / 2 * t.zoom }))
-    const group = (label, items) => e('section', null, e('h3', null, label), items.map(edge => {
-      const target = edge.from === center ? edge.to : edge.from
-      return e('div', { key: edge.id, className: 'kbw-annotation', onMouseEnter: () => setHover(target), onMouseLeave: () => setHover('') }, btn(lookup.get(target)?.title || target, () => enter(target), false, { title: '以此资料为中心查看关系' }), e('p', { className: 'kbw-meta' }, relationLabel(edge.type) + ' · ' + edge.evidence), btn('打开资料', () => navigate('map', target)))
-    }), !items.length ? e('p', { className: 'kbw-meta' }, '当前筛选下没有此类链接') : null)
-    const hasGraph = Boolean(data && edges.length)
+    }, [active, Boolean(data), issues])
+    R.useEffect(() => { if (!active) return; const key = ev => { if (ev.key === 'Escape') { setSelected(null); setHover(null) } }; window.addEventListener('keydown', key); return () => window.removeEventListener('keydown', key) }, [active])
+    const search = async ev => { ev.preventDefault(); const seq = ++searchRequest.current; setSearching(true); setError(''); try { const r = await api({ op: 'atlas.list', expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion, q: query, limit: 20 }); if (seq === searchRequest.current) setMatches(r.items) } catch (err) { if (seq === searchRequest.current) setError(err.message) } finally { if (seq === searchRequest.current) setSearching(false) } }
+    if (issues) return e('section', { className: 'kbw-content' }, btn('返回关系网络', () => { setIssues(false); setRetry(n => n + 1) }), e(LinkRepairs, { snapshot, navigate }))
+    const overview = graphMode === 'overview', nodes = data ? (overview ? data.sections : data.nodes) || [] : [], edges = data ? (overview ? data.sectionEdges : data.edges) || [] : []
+    const edgeId = edge => edge.id || edge.from + '→' + edge.to
+    const lookup = new Map(nodes.map(n => [n.path, n])), currentSelection = hover || selected
+    const activeEdges = new Set(currentSelection ? edges.filter(edge => currentSelection.kind === 'edge' ? edgeId(edge) === currentSelection.id : edge.from === currentSelection.id || edge.to === currentSelection.id).map(edgeId) : [])
+    const activeNodes = new Set(currentSelection?.kind === 'node' ? [currentSelection.id] : [])
+    for (const edge of edges) if (activeEdges.has(edgeId(edge))) { activeNodes.add(edge.from); activeNodes.add(edge.to) }
+    const width = 1000, height = 620, nodeWidth = 210, nodeHeight = 64, positions = relationPositions(nodes, !overview && graphMode === 'center' ? center : '')
+    const fitView = () => setTransform(relationFit(positions))
+    const chooseNode = id => setSelected({ kind: 'node', id }), chooseEdge = edge => setSelected({ kind: 'edge', id: edgeId(edge) })
+    const pickedNode = selected?.kind === 'node' ? lookup.get(selected.id) : null, pickedEdge = selected?.kind === 'edge' ? edges.find(edge => edgeId(edge) === selected.id) : null
+    const related = selected ? edges.filter(edge => selected.kind === 'edge' ? edgeId(edge) === selected.id : edge.from === selected.id || edge.to === selected.id) : edges
     return e('section', { className: 'kbw-relations' },
-      e('div', { className: 'kbw-home-head' }, e('div', null, e('h2', null, '关系浏览'), e('p', { className: 'kbw-meta' }, '显示资料中已有的来源、引用和手动关联。点击关联节点继续浏览，点击中心节点打开资料。')), btn('检查失效链接' + (data?.issueTotal ? ' · ' + data.issueTotal : ''), () => setIssues(true))),
-      e('details', { open: !center || searched }, e('summary', null, center ? '更换中心资料（搜索标题或路径）' : '选择中心资料'),
-        e('form', { className: 'kbw-toolbar kbw-relation-filters', onSubmit: search }, field('查找资料', query, v => { setQuery(v); setSearched(false) }, { placeholder: '输入标题或路径，按 Enter 查找' }), e('button', { className: 'kbw-button', type: 'submit', disabled: searching }, searching ? '查找中…' : '查找资料')),
-        searched ? matches.length ? e('div', { className: 'kbw-actions' }, matches.map(f => btn(f.title, () => enter(f.path), false, { key: f.path, title: f.path }))) : e('p', { role: 'status', className: 'kbw-meta' }, '没有找到资料，请尝试其他标题或路径。') : null),
-      !center ? e('div', { className: 'kbw-empty' }, e('h3', null, data ? '选择一份资料查看关系' : '正在查找已有链接的资料…'), e('p', null, '没有链接的资料不会自动产生关联。可先打开资料添加引用或手动关联。'), e('div', { className: 'kbw-actions' }, snapshot.recent.filter(f => !/(INDEX|AGENTS)\.md$/i.test(f.path)).slice(0, 4).map(f => btn(f.title, () => enter(f.path), false, { key: f.path })))) : e(R.Fragment, null,
-        e('div', { className: 'kbw-toolbar kbw-relation-filters' }, btn('返回上一份资料', () => { setCenter(history.at(-1) || ''); setHistory(h => h.slice(0, -1)); resetView() }, !history.length), select('显示的链接', type, setType, [['', '全部类型'], ['source', '来源链接'], ['reference', '文中引用'], ['manual', '手动关联']]), select('浏览范围', depth, setDepth, [['1', '直接关联'], ['2', '再展开一层']]), check('显示归档资料', archive, setArchive), check('显示目录索引文档', navigation, setNavigation)),
-        e('p', { className: 'kbw-path' }, '当前资料：' + center),
-        e('div', { className: 'kbw-actions', style: { marginBottom: 12 } }, btn('放大', () => zoomBy(1.2), !hasGraph), btn('缩小', () => zoomBy(1 / 1.2), !hasGraph), btn('显示全部节点', fitView, !hasGraph), btn('定位中心资料', recenter, !hasGraph), btn('打开当前资料', () => navigate('map', center)), btn(aiBusy ? '正在创建讨论…' : '与 AI 讨论可能的关联', async () => { setAiBusy(true); setError(''); try { await launchRepairChat(snapshot, [], center); setIssues(true) } catch (err) { setError(err.message) } finally { setAiBusy(false) } }, aiBusy)),
-        e('p', { className: 'kbw-meta' }, '“来源链接”来自资料的来源信息，“文中引用”来自文档内链接；AI 建议需要预览确认后才会保存。'),
-        !data ? e('p', { role: 'status' }, error ? '关系读取失败，请重试。' : '正在读取关系…') : !hasGraph ? e('div', { className: 'kbw-empty', role: 'status' }, e('h3', null, data.unfilteredTotal ? '已有链接被当前筛选隐藏' : '这份资料尚无可用的关联链接'),
-          e('p', null, data.unfilteredTotal ? '请切换为全部类型，或显示归档资料和目录索引文档。' : '关系图依据文档内的实际链接生成。打开当前资料，添加来源、引用或手动关联后即可显示。'),
-          data.centerIssueTotal ? e('p', null, '这份资料有 ' + data.centerIssueTotal + ' 个链接无法解析，请进入“检查失效链接”。') : null,
-          data.unfilteredTotal ? btn('显示全部类型及隐藏资料', () => { setType(''); setArchive(true); setNavigation(true) }) : btn('打开资料并添加关联', () => navigate('map', center)),
-          data.suggestedCenters?.length ? e('div', null, e('p', null, '也可以查看已有链接的资料：'), e('div', { className: 'kbw-actions' }, data.suggestedCenters.filter(f => f.path !== center).slice(0, 4).map(f => btn(f.title + ' · ' + f.count + ' 条链接', () => enter(f.path), false, { key: f.path })))) : null) : e(R.Fragment, null,
-          e('p', { className: 'kbw-meta', role: 'status' }, '当前范围共 ' + data.total + ' 条链接；图中显示 ' + positions.size + ' 个节点。箭头指向被引用的资料。滚轮缩放，拖动画布平移；下方列表可逐条打开资料。'),
-          e('svg', { ref: svg, className: 'kbw-graph', viewBox: '0 0 900 ' + height, role: 'group', 'aria-label': '知识关系地图', onPointerDown: ev => { moved.current = false; if (ev.target.closest('[data-node]')) return; drag.current = { ...point(ev), original: transform }; ev.currentTarget.setPointerCapture(ev.pointerId) }, onPointerMove: ev => { if (drag.current) { const p = point(ev), dx = p.x - drag.current.x, dy = p.y - drag.current.y; if (Math.abs(dx) + Math.abs(dy) > 3) moved.current = true; setTransform({ ...drag.current.original, x: drag.current.original.x + dx, y: drag.current.original.y + dy }) } }, onPointerUp: () => { drag.current = null }, onPointerCancel: () => { drag.current = null } }, e('defs', null, e('marker', { id: 'kbw-relation-arrow', viewBox: '0 0 10 10', refX: 10, refY: 5, markerWidth: 7, markerHeight: 7, orient: 'auto' }, e('polygon', { points: '0,0 10,5 0,10', fill: 'var(--kbw-accent)' }))), e('g', { transform: `translate(${transform.x} ${transform.y}) scale(${transform.zoom})` },
-            edges.map(edge => { const a = positions.get(edge.from), b = positions.get(edge.to); if (!a || !b) return null; const fromX = a.x < b.x ? a.x + 230 : a.x, toX = a.x < b.x ? b.x : b.x + 230, middle = (fromX + toX) / 2; return e('path', { key: edge.id, markerEnd: 'url(#kbw-relation-arrow)', 'data-active': hover === edge.from || hover === edge.to, d: `M${fromX},${a.y + 26} C${middle},${a.y + 26} ${middle},${b.y + 26} ${toX},${b.y + 26}` }, e('title', null, relationLabel(edge.type) + ' · ' + edge.evidence)) }),
-            [...positions].map(([file, p]) => { const activate = () => file === center ? navigate('map', file) : enter(file); return e('g', { key: file, 'data-node': true, 'data-center': file === center, role: 'button', tabIndex: 0, 'aria-label': (file === center ? '打开资料：' : '查看关联：') + (lookup.get(file)?.title || file), transform: `translate(${p.x} ${p.y})`, onClick: () => { if (!moved.current) activate(); moved.current = false }, onKeyDown: ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); activate() } }, onMouseEnter: () => setHover(file), onMouseLeave: () => setHover('') }, e('rect', { width: 230, height: 52, rx: 9 }), e('text', { x: 12, y: 23 }, (lookup.get(file)?.title || file).slice(0, 16)), e('text', { x: 12, y: 41, style: { fontSize: 10, opacity: .6 } }, file === center ? '点击打开资料' : '点击以此资料为中心'), e('title', null, file)) }))),
-          left.length > count || right.length + second.length > count ? btn('再显示 6 份关联资料', () => setCount(c => c + 6)) : null,
-          e('div', { className: 'kbw-relation-columns' }, group('当前资料指向的链接', edges.filter(edge => edge.from === center)), group('指向当前资料的链接', edges.filter(edge => edge.to === center))))),
-      data?.graphLimited ? e('p', { className: 'kbw-meta' }, '当前图谱达到显示上限，请选择关联节点或缩小浏览范围。') : null,
-      error ? e('div', { role: 'alert', className: 'kbw-error' }, error, btn('重新读取关系', () => setRetry(n => n + 1))) : null)
+      e('div', { className: 'kbw-home-head' }, e('div', null, e('h2', null, '关系网络'), e('p', { className: 'kbw-meta' }, '从全库到分区，再到一份资料。点击卡片或连线，查看它们之间的真实联系。')), btn('检查链接与修复' + (data?.issueTotal ? ' · ' + data.issueTotal : ''), () => setIssues(true))),
+      e('div', { className: 'kbw-network-toolbar' }, e('div', { className: 'kbw-actions' }, btn('全库分区', () => changeScope('overview'), false, { 'aria-current': overview && !scope }), btn('全部已连接资料', () => changeScope('connected'), false, { 'aria-current': graphMode === 'connected' }), btn('返回上一步', back, !history.length)),
+        e('form', { className: 'kbw-actions', onSubmit: search }, e('input', { value: query, 'aria-label': '选择中心资料', placeholder: '搜索标题或路径，选择任意中心资料', onChange: ev => setQuery(ev.target.value) }), e('button', { type: 'submit', className: 'kbw-button', disabled: searching }, searching ? '查找中…' : '查找资料'))),
+      matches ? e('div', { className: 'kbw-search-results' }, matches.length ? matches.map(file => e('button', { key: file.path, className: 'kbw-row', onClick: () => changeScope('center', file.path) }, e('strong', null, file.title), e('span', { className: 'kbw-path' }, file.path))) : e('p', { role: 'status' }, '没有找到资料，请换一个标题或路径。'), btn('关闭搜索结果', () => setMatches(null))) : null,
+      e('div', { className: 'kbw-toolbar kbw-relation-filters' }, select('关系类型', type, setType, [['', '全部类型'], ['source', '来源链接'], ['reference', '文中引用'], ['manual', '手动关联']]), graphMode === 'center' ? select('浏览范围', depth, setDepth, [['1', '直接关联'], ['2', '再展开一层']]) : null, check('显示归档资料', archive, setArchive), check('显示目录索引文档', navigation, setNavigation)),
+      e('div', { className: 'kbw-breadcrumb' }, btn('全库', () => changeScope('overview')), overview && scope ? scope.split('/').map((part, i, all) => btn(part, () => changeScope('overview', all.slice(0, i + 1).join('/')), false, { key: i })) : null, !overview ? e('span', { className: 'kbw-path' }, graphMode === 'center' ? '中心资料：' + center : '全部已连接资料') : null),
+      e(SplitPanels, { id: 'relations', kbId: snapshot.kbId, className: 'kbw-network-workspace' },
+        e('div', { className: 'kbw-network-stage' },
+          e('div', { className: 'kbw-network-summary', role: 'status' }, data ? `${nodes.length} 个可见节点 · ${edges.length} 条可见连线` + (overview ? ` · ${data.totalNodes} 份资料` : '') : error ? '读取失败' : '正在读取关系…'),
+          e('svg', { ref: svg, className: 'kbw-graph', viewBox: `0 0 ${width} ${height}`, role: 'group', 'aria-label': '知识关系地图', onPointerDown: ev => { moved.current = false; drag.current = { ...point(ev), original: transform }; if (!ev.target.closest('[data-node],[data-edge]')) ev.currentTarget.setPointerCapture(ev.pointerId) }, onPointerMove: ev => { if (!drag.current) return; const p = point(ev), dx = p.x - drag.current.x, dy = p.y - drag.current.y; if (Math.abs(dx) + Math.abs(dy) > 4) { moved.current = true; setTransform({ ...drag.current.original, x: drag.current.original.x + dx, y: drag.current.original.y + dy }) } }, onPointerUp: ev => { drag.current = null; if (!moved.current && !ev.target.closest('[data-node],[data-edge]')) { setSelected(null); setHover(null) } }, onPointerLeave: () => { drag.current = null; setHover(null) }, onPointerCancel: () => { drag.current = null } },
+            e('defs', null, e('marker', { id: 'kbw-net-arrow', viewBox: '0 0 10 10', refX: 10, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto-start-reverse' }, e('polygon', { points: '0,0 10,5 0,10', fill: 'var(--kbw-accent)' }))),
+            e('g', { 'data-viewport': true, transform: `translate(${transform.x} ${transform.y}) scale(${transform.zoom})` },
+              edges.map(edge => { const a = positions.get(edge.from), b = positions.get(edge.to); if (!a || !b) return null; const forward = a.x <= b.x, x1 = a.x + (forward ? nodeWidth : 0), x2 = b.x + (forward ? 0 : nodeWidth), mid = (x1 + x2) / 2, d = edge.from === edge.to ? `M${a.x + nodeWidth},${a.y + 20} C${a.x + nodeWidth + 65},${a.y - 35} ${a.x + nodeWidth + 65},${a.y + 95} ${a.x + nodeWidth},${a.y + 45}` : `M${x1},${a.y + 32} C${mid},${a.y + 32} ${mid},${b.y + 32} ${x2},${b.y + 32}`; return e('g', { key: edgeId(edge), 'data-edge': edgeId(edge), 'data-dimmed': Boolean(currentSelection && !activeEdges.has(edgeId(edge))), 'data-active': activeEdges.has(edgeId(edge)), role: 'button', tabIndex: 0, 'aria-label': (lookup.get(edge.from)?.title || edge.from) + ' → ' + (lookup.get(edge.to)?.title || edge.to), onClick: () => { if (!moved.current) chooseEdge(edge) }, onKeyDown: ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); chooseEdge(edge) } }, onMouseEnter: () => setHover({ kind: 'edge', id: edgeId(edge) }), onMouseLeave: () => setHover(null) }, e('path', { d, className: 'kbw-edge-hit' }), e('path', { d, markerEnd: 'url(#kbw-net-arrow)' }), e('title', null, overview ? edge.count + ' 条跨分区关系' : relationLabel(edge.type) + ' · ' + (edge.evidence || '未记录定位'))) }),
+              nodes.map(node => { const p = positions.get(node.path); if (!p) return null; const name = node.title || node.path || '根目录', lines = [name.slice(0, 10), name.slice(10, 20) + (name.length > 20 ? '…' : '')]; return e('g', { key: node.path, 'data-node': node.path, 'data-selected': selected?.kind === 'node' && selected.id === node.path, 'data-active': activeNodes.has(node.path), 'data-center': !overview && node.path === center, 'data-dimmed': Boolean(currentSelection && !activeNodes.has(node.path)), transform: `translate(${p.x} ${p.y})`, role: 'button', tabIndex: 0, 'aria-label': '选择：' + name, onClick: () => { if (!moved.current) chooseNode(node.path) }, onKeyDown: ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); chooseNode(node.path) } }, onMouseEnter: () => setHover({ kind: 'node', id: node.path }), onMouseLeave: () => setHover(null) }, e('rect', { width: nodeWidth, height: nodeHeight, rx: 8 }), e('text', { x: 13, y: 24 }, lines[0]), e('text', { x: 13, y: 43 }, lines[1]), e('text', { x: nodeWidth - 10, y: 57, textAnchor: 'end', className: 'kbw-node-meta' }, overview && !node.leaf ? node.fileCount + ' 份资料' : node.path === center ? '中心' : '资料'), e('title', null, name + '\n' + node.path)) }))),
+          data && !nodes.length ? e('div', { className: 'kbw-network-empty' }, '当前筛选下没有关系节点。请调整筛选，或搜索一份资料作为中心。') : null,
+          e('div', { className: 'kbw-canvas-controls' }, btn('−', () => setTransform(t => { const zoom = Math.max(.25, t.zoom / 1.2), ratio = zoom / t.zoom; return { zoom, x: 500 - (500 - t.x) * ratio, y: 310 - (310 - t.y) * ratio } }), false, { 'aria-label': '缩小' }), e('span', null, Math.round(transform.zoom * 100) + '%'), btn('+', () => setTransform(t => { const zoom = Math.min(4, t.zoom * 1.2), ratio = zoom / t.zoom; return { zoom, x: 500 - (500 - t.x) * ratio, y: 310 - (310 - t.y) * ratio } }), false, { 'aria-label': '放大' }), btn('适配画布', fitView), btn('重置视图', resetView), btn('清除选择', () => { setSelected(null); setHover(null) }, !selected)),
+          e('p', { className: 'kbw-canvas-hint' }, '拖动画布平移 · 滚轮缩放 · 点击节点或连线查看关联 · Esc 清除选择')),
+        e('aside', { className: 'kbw-network-inspector', 'aria-label': '关联详情' },
+          e('h3', null, pickedNode ? pickedNode.title || '根目录' : pickedEdge ? '所选连线' : '探索关系'),
+          pickedNode ? e(R.Fragment, null, e('p', { className: 'kbw-path' }, pickedNode.path || '根目录'), e('div', { className: 'kbw-actions' }, overview && !pickedNode.leaf ? btn('展开下一级', () => changeScope('overview', pickedNode.path), false, { className: 'kbw-button kbw-primary' }) : btn('以此为中心', () => changeScope('center', pickedNode.path), false, { className: 'kbw-button kbw-primary' }), overview && !pickedNode.leaf ? btn('查看资料清单', () => navigate('map', pickedNode.path, true)) : btn('开始阅读', () => navigate('reading', pickedNode.path)), !overview ? btn('展开下一层', () => { remember(); setDepth('2') }, depth === '2') : null)) : !pickedEdge ? e('p', { className: 'kbw-meta' }, '点击图中一张卡片，它与相邻资料的卡片和连线会一起高亮。点击连线，可查看两端资料与联系依据。') : null,
+          e('h4', null, selected ? '与所选内容相连 · ' + related.length : '当前范围的联系 · ' + edges.length),
+          related.slice(0, 100).map(edge => e('article', { key: edgeId(edge), className: 'kbw-evidence', 'data-active': activeEdges.has(edgeId(edge)), 'data-dimmed': Boolean(currentSelection && !activeEdges.has(edgeId(edge))) }, e('button', { className: 'kbw-row', onClick: () => chooseEdge(edge), 'aria-pressed': selected?.kind === 'edge' && selected.id === edgeId(edge) }, e('strong', null, (lookup.get(edge.from)?.title || edge.from || '根目录') + ' → ' + (lookup.get(edge.to)?.title || edge.to || '根目录')), e('span', { className: 'kbw-meta' }, overview ? edge.count + ' 条跨分区关系' : relationLabel(edge.type) + ' · ' + (edge.evidence || '未记录定位'))), !overview ? e('p', { className: 'kbw-path' }, edge.from + '\n→ ' + edge.to) : null, !overview ? btn('查看来源资料', () => navigate('reading', edge.from)) : null)),
+          related.length > 100 ? e('p', { className: 'kbw-meta' }, '详情显示前 100 条，请缩小范围查看。') : null,
+          !related.length ? e('p', { className: 'kbw-meta' }, '没有跨节点连线。可展开目录查看内部资料；资料关系来自来源、引用或手动关联。') : null,
+          pickedNode?.centers?.length ? e('div', null, e('h4', null, '分区中的关联资料'), pickedNode.centers.map(file => e('button', { key: file.path, className: 'kbw-row', onClick: () => changeScope('center', file.path) }, e('strong', null, file.title), e('span', { className: 'kbw-meta' }, file.count + ' 条关系')))) : null)),
+      data?.graphLimited ? e('p', { className: 'kbw-banner' }, '图谱达到显示上限（200 个节点 / 500 条连线）。请进入分区或选择中心资料继续浏览。') : null,
+      data?.coverage && (data.coverage.errors || data.coverage.truncated) ? e('p', { className: 'kbw-banner' }, '扫描不完整，当前图谱仅覆盖已读取资料。') : null,
+      error ? e('div', { role: 'alert', className: 'kbw-error' }, error, btn('重新读取', () => setRetry(n => n + 1))) : null)
   }
+
+\n

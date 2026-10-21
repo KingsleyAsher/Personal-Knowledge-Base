@@ -1,5 +1,5 @@
 from pathlib import Path
-import subprocess, json, re, sys
+import subprocess, json, re, sys, hashlib
 
 repo = Path(__file__).resolve().parents[1]
 version = json.loads((repo / 'package.json').read_text(encoding='utf-8'))['version']
@@ -38,7 +38,11 @@ for command in commands:
 passed = len(results) == len(commands) and all(item['exitCode'] == 0 for item in results)
 suite = next((item['stdout'] for item in results if '--test' in item['command']), '')
 match = re.search(r'tests\s+(\d+)', suite)
-report = {'version': version, 'passed': passed, 'testCount': int(match.group(1)) if match else None,
+inventory = re.search(r'const list = (\[.*?\])', (repo / 'src/host/index.js').read_text(encoding='utf-8')).group(1)
+digest = hashlib.sha256()
+for rel in re.findall(r"'([^']+)'", inventory):
+    digest.update((rel + '\0' + hashlib.sha256((repo / rel).read_bytes()).hexdigest() + '\n').encode())
+report = {'version': version, 'buildId': digest.hexdigest()[:16], 'passed': passed, 'testCount': int(match.group(1)) if match else None,
           'uiRun': '--ui' in sys.argv, 'omittedSuites': omitted, 'formalRuntimeVerified': False, 'realModelAnswerVerified': False, 'commands': results}
 (delivery / 'validation.json').write_text(json.dumps(report, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 print(json.dumps({key: report[key] for key in ['version','passed','testCount','uiRun']}, ensure_ascii=False), flush=True)

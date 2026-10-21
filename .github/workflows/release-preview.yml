@@ -87,7 +87,7 @@ jobs:
         run: |
           gh release create "$RELEASE_TAG" /tmp/preview-assets/* \
             --verify-tag --prerelease --latest=false \
-            --title "${RELEASE_TAG#v} · 关系浏览与剪藏使用指引" --notes-file PREVIEW.md
+            --title "${RELEASE_TAG#v} · 个人知识库预览版" --notes-file PREVIEW.md
   mirrors:
     if: github.event_name == 'push'
     needs: release

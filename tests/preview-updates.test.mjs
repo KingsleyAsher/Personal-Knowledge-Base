@@ -7,26 +7,28 @@ import { gzipSync } from 'node:zlib'
 import { createHash } from 'node:crypto'
 import { createUpdateChecker, createUpdateDownloader, compareReleaseVersions } from '../src/host/updates.js'
 
-const stable = { package: '@local/dsh-knowledge-base', version: '1.1.3', tgz: 'local-dsh-knowledge-base-1.1.3.tgz', sha256: 'a'.repeat(64) }
-const preview = { ...stable, version: '2.0.1-beta1', tgz: 'local-dsh-knowledge-base-2.0.1-beta1.tgz', buildId: 'b'.repeat(16), bytes: 100 }
+const stable = { package: '@local/dsh-knowledge-base', version: '1.1.3', tgz: 'local-dsh-knowledge-base-1.1.3.tgz', sha256: 'a'.repeat(64), buildId: 'b'.repeat(16), bytes: 100 }
+const preview = { ...stable, version: '2.0-beta1', tgz: 'local-dsh-knowledge-base-2.0-beta1.tgz', buildId: 'b'.repeat(16), bytes: 100 }
 test('stable and preview checks are read-only; preview remains an independent user choice', async () => {
   const urls = []
   const checker = createUpdateChecker({ sourceIds: ['github'], currentVersion: '1.1.3', fetch: async url => { urls.push(url); return Response.json(url.endsWith('/preview-manifest.json') ? preview : stable) } })
   const result = await checker.check()
   assert.equal(result.updateAvailable, false)
   assert.equal(result.preview.updateAvailable, true)
-  assert.equal(result.preview.latestVersion, '2.0.1-beta1')
+  assert.equal(result.preview.latestVersion, '2.0-beta1')
   assert.equal(urls.length, 2)
   assert(urls.every(url => url.endsWith('manifest.json')))
-  assert.equal(compareReleaseVersions('2.0.1-beta1', '2.0.1-beta1'), 0)
-  assert.equal(compareReleaseVersions('2.0.1', '2.0.1-beta1'), 1)
-  assert.equal(compareReleaseVersions('2.0.2-beta1', '2.0.1-beta1'), 1)
-  assert.equal(compareReleaseVersions('2.0.1-beta.10', '2.0.1-beta.2'), 1)
-  assert.throws(() => compareReleaseVersions('2.0.1-01', '2.0.1'))
+  assert.equal(compareReleaseVersions('2.0-beta1', '2.0-beta1'), 0)
+  assert.equal(compareReleaseVersions('2.0.0', '2.0-beta1'), 1)
+  assert.equal(compareReleaseVersions('2.1-beta1', '2.0-beta9'), 1)
+  assert.equal(compareReleaseVersions('2.0-beta10', '2.0-beta2'), 1)
+  assert.equal(compareReleaseVersions('2.0.0', '2.0.2-beta9'), 1)
+  assert.equal(compareReleaseVersions('2.0-beta9', '2.0.2-beta9'), 1)
+  assert.throws(() => compareReleaseVersions('2.0-beta01', '2.0.0'))
 })
 test('unavailable or unsafe preview metadata does not break the stable channel', async () => {
   for (const bad of [null, { ...preview, tgz: '../bad.tgz' }, { ...preview, version: '2.0.1' }, { ...preview, bytes: 20 * 1024 * 1024 }]) {
-    const checker = createUpdateChecker({ sourceIds: ['github'], currentVersion: '2.0.1-beta1', fetch: async url => {
+    const checker = createUpdateChecker({ sourceIds: ['github'], currentVersion: '2.0-beta1', fetch: async url => {
       if (!url.endsWith('/preview-manifest.json')) return Response.json(stable)
       return bad ? Response.json(bad) : new Response('', { status: 404 })
     } })
@@ -35,7 +37,7 @@ test('unavailable or unsafe preview metadata does not break the stable channel',
   }
 })
 test('current preview does not repeat an update and stable successor is offered', async () => {
-  const checker = createUpdateChecker({ sourceIds: ['github'], currentVersion: '2.0.1-beta1', fetch: async url => Response.json(url.endsWith('/preview-manifest.json') ? preview : { ...stable, version: '2.0.1', tgz: 'local-dsh-knowledge-base-2.0.1.tgz' }) })
+  const checker = createUpdateChecker({ sourceIds: ['github'], currentVersion: '2.0-beta1', fetch: async url => Response.json(url.endsWith('/preview-manifest.json') ? preview : { ...stable, version: '2.0.0', tgz: 'local-dsh-knowledge-base-2.0.0.tgz' }) })
   const result = await checker.check()
   assert.equal(result.preview.updateAvailable, false); assert.equal(result.updateAvailable, true)
 })
@@ -51,6 +53,6 @@ test('explicit preview selection downloads and verifies that exact package; stal
     fetch: async url => { calls++; assert(url.endsWith('/' + preview.tgz)); return new Response(raw) } })
   assert.equal((await downloader.prepare({ expectedVersion: preview.version })).latestVersion, preview.version)
   assert.equal(calls, 1)
-  await assert.rejects(downloader.prepare({ expectedVersion: '2.0.1-beta2' }))
+  await assert.rejects(downloader.prepare({ expectedVersion: '2.0-beta2' }))
   assert.equal(calls, 1)
 })

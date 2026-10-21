@@ -93,6 +93,32 @@ window.__ModuleLoader__.load({
     .kbw-clipper-help code{overflow-wrap:anywhere;white-space:normal;user-select:text}.kbw-clipper-help .kbw-summary{margin:12px 0;white-space:normal}
     .kbw-clipper-help dt{font-weight:600;margin-top:12px}.kbw-clipper-help dd{margin:4px 0 14px;color:var(--kbw-muted)}
     @container(max-width:650px){.kbw-clipper-help{padding:14px}.kbw-clipper-help .kbw-button{white-space:normal;height:auto;min-height:36px;max-width:100%}}
+    .kbw-relations .kbw-overview-graph{height:auto;min-height:350px;touch-action:auto}
+    .kbw-relation-sections{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;margin:18px 0}
+    .kbw-relation-section{min-width:0;padding:14px;border:1px solid var(--kbw-line);border-radius:10px;background:var(--kbw-surface)}
+    .kbw-relation-section h3{margin:0 0 6px;overflow-wrap:anywhere}.kbw-relation-section .kbw-actions{align-items:stretch}
+    .kbw-relation-section .kbw-button{height:auto;min-height:36px;white-space:normal;overflow-wrap:anywhere}
+    @container(max-width:650px){.kbw-relation-sections{grid-template-columns:1fr}}
+
+    /* Unified knowledge workspace: shared shell, resilient lists and graph inspector. */
+    body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4;--kbw-muted:#a7afb8;--kbw-line:#343a41;--kbw-soft:#252b30;--kbw-accent:#70c8b2;--kbw-accent-fg:#10251e}
+    .kbw{isolation:isolate;overflow:hidden;min-width:0}.kbw h2,.kbw-home-head h2{font-size:24px}.kbw h4{font-size:13px;margin:20px 0 10px;color:var(--kbw-muted)}
+    .kbw-app-header{display:flex;gap:24px;align-items:center;padding:18px 24px;border-bottom:1px solid var(--line);flex-shrink:0}.kbw-app-header>div:first-child{display:flex;align-items:baseline;gap:14px}.kbw-app-header strong{font-size:21px;white-space:nowrap}.kbw-global-search{display:flex;gap:8px;max-width:520px;flex:1;margin-left:auto}.kbw-global-search input{width:100%}.kbw-app-header>.kbw-actions{flex-shrink:0}.kbw-nav{padding:8px 20px}.kbw-status{border-bottom:1px solid var(--line);min-height:38px}.kbw-content{padding:24px 24px max(32px,var(--kbw-composer-inset,32px))}.kbw-content>h2{margin-bottom:8px}.kbw-content>p.kbw-meta{margin-bottom:24px}
+    .kbw .kbw-button{max-width:100%;min-width:0}.kbw-annotation .kbw-button,.kbw-issue .kbw-button,.kbw-service .kbw-button{height:auto;min-height:36px;white-space:normal;overflow-wrap:anywhere;flex-shrink:1;text-align:left;padding-top:7px;padding-bottom:7px}.kbw-annotation{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:16px 4px;min-width:0}.kbw-annotation>blockquote,.kbw-annotation>p,.kbw-annotation>.kbw-path{flex-basis:100%;min-width:0}.kbw-annotation>button:first-child{justify-content:flex-start}.kbw-content>details{margin-top:20px}.kbw-content>details>summary{padding:12px 0;cursor:pointer}.kbw-annotation strong,.kbw-row strong,.kbw-card strong{overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;line-height:1.6}.kbw-row{min-width:0;border-radius:7px;padding:14px 12px}.kbw-row[aria-current=true],.kbw-row[aria-pressed=true]{background:var(--kbw-soft);box-shadow:inset 3px 0 var(--kbw-accent)}.kbw-cards{grid-template-columns:1fr;gap:0}.kbw-card{min-height:0;border-width:0 0 1px;border-radius:0;padding:16px 8px;gap:5px}.kbw-home .kbw-cards{grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:16px}.kbw-home .kbw-card{border:1px solid var(--line);border-radius:8px;padding:18px}.kbw-service,.kbw-section,.kbw-modal{border-radius:8px}.kbw-content>h3{margin-top:28px}.kbw-settings-layout{display:grid;grid-template-columns:210px minmax(0,1fr);gap:28px}.kbw-settings-nav{display:flex;flex-direction:column;align-items:stretch;gap:6px}.kbw-settings-nav .kbw-button{justify-content:flex-start}.kbw-settings-panel{border:1px solid var(--line);border-radius:8px;background:var(--kbw-surface);padding:24px;min-width:0}.kbw-settings-panel>h3{margin-top:0}.kbw-management>details>summary{display:none}.kbw-management>details{margin-top:20px}.kbw-content .kbw-form{max-width:1100px}.kbw-content .kbw-form>h2{font-size:24px}.kbw-content .kbw-form>.kbw-toolbar{padding-left:0;padding-right:0}
+    .kbw-relations{padding:24px;min-width:0;min-height:0;overflow:auto}.kbw-network-toolbar{display:flex;gap:16px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:8px}.kbw-network-toolbar form{flex:1;max-width:500px}.kbw-network-toolbar input{flex:1;width:220px}.kbw-relations .kbw-breadcrumb{padding:4px 0 12px;align-items:center}.kbw-network-workspace{display:grid;grid-template-columns:minmax(0,1fr) 310px;border:1px solid var(--line);border-radius:8px;overflow:hidden;min-height:550px;background:var(--kbw-surface)}.kbw-network-stage{position:relative;min-width:0;display:flex;flex-direction:column}.kbw-network-stage .kbw-graph{height:100%;min-height:440px;flex:1;border:0;border-radius:0;touch-action:none;background:var(--kbw-bg)}.kbw-network-summary{position:absolute;left:16px;top:12px;font-size:12px;color:var(--kbw-muted);pointer-events:none;z-index:1}.kbw-network-inspector{min-width:0;border-left:1px solid var(--line);padding:18px;max-height:680px;overflow:auto;background:var(--kbw-surface)}.kbw-network-inspector h3{margin:0 0 8px;font-size:16px;overflow-wrap:anywhere}.kbw-network-inspector .kbw-actions{align-items:stretch;flex-direction:column}.kbw-network-inspector .kbw-button{white-space:normal;height:auto;min-height:36px;overflow-wrap:anywhere}.kbw-network-inspector .kbw-path{white-space:pre-wrap;font-size:11px;margin:8px 0}.kbw-evidence{border:1px solid var(--line);border-radius:7px;padding:10px;margin:8px 0;transition:opacity .1s,border-color .1s;min-width:0}.kbw-evidence .kbw-row{padding:0;border:0}.kbw-evidence .kbw-row strong{font-size:12px}.kbw-evidence[data-active=true]{border-color:var(--kbw-accent);background:var(--kbw-soft)}.kbw-evidence[data-dimmed=true]{opacity:.42}.kbw-canvas-controls{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;padding:12px;border-top:1px solid var(--line)}.kbw-canvas-controls span{font-size:12px;min-width:44px;text-align:center;font-variant-numeric:tabular-nums}.kbw-canvas-controls .kbw-button{font-size:12px;padding:0 10px}.kbw-canvas-hint{font-size:11px;text-align:center;color:var(--kbw-muted);margin:0!important;padding:0 12px 12px}.kbw-network-empty{position:absolute;top:42%;left:10%;width:80%;text-align:center;color:var(--kbw-muted);pointer-events:none}.kbw-search-results{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:12px;margin:12px 0}.kbw-graph [data-node],.kbw-graph [data-edge]{transition:opacity .12s}.kbw-graph [data-dimmed=true]{opacity:.25}.kbw-graph [data-node][data-selected=true] rect{stroke:var(--kbw-accent);stroke-width:3;fill:var(--kbw-soft)}.kbw-graph [data-center=true] rect{stroke:var(--kbw-muted);stroke-dasharray:5 3}.kbw-graph [data-node][data-selected=true] rect{stroke-dasharray:none}.kbw-graph [data-edge]{cursor:pointer;outline:none}.kbw-graph [data-edge] path{opacity:.45;stroke-width:1.5}.kbw-graph [data-edge][data-active=true] path:not(.kbw-edge-hit),.kbw-graph [data-edge]:focus-visible path:not(.kbw-edge-hit){opacity:1;stroke-width:3}.kbw-graph [data-edge] .kbw-edge-hit{stroke:transparent;stroke-width:18;opacity:1;pointer-events:stroke}.kbw-graph .kbw-node-meta{font-size:9px;fill:var(--kbw-muted)}.kbw-graph [data-node] rect{fill:var(--kbw-surface)}.kbw-graph [data-node]:hover rect{stroke-width:2}.kbw-network-inspector .kbw-row:hover{background:transparent}
+    @container(max-width:1000px){.kbw-app-header{gap:12px;flex-wrap:wrap}.kbw-app-header>div:first-child .kbw-meta{display:none}.kbw-network-workspace{grid-template-columns:minmax(0,1fr) 260px}.kbw-settings-layout{grid-template-columns:175px minmax(0,1fr);gap:16px}.kbw-network-inspector{padding:14px}}
+    @container(max-width:700px){.kbw-app-header{padding:12px}.kbw-global-search{order:3;flex-basis:100%;max-width:none}.kbw-app-header>.kbw-actions{margin-left:auto}.kbw-app-header strong{font-size:18px}.kbw-content,.kbw-relations{padding:16px}.kbw-network-workspace{grid-template-columns:1fr}.kbw-network-inspector{border-left:0;border-top:1px solid var(--line);max-height:320px}.kbw-network-stage .kbw-graph{height:380px;min-height:380px;flex:none}.kbw-settings-layout{grid-template-columns:1fr}.kbw-settings-nav{flex-direction:row;overflow:auto}.kbw-settings-nav .kbw-button{flex-shrink:0}.kbw-network-toolbar form{max-width:none;width:100%}.kbw-canvas-controls .kbw-button{min-height:40px}.kbw-nav .kbw-button{padding:0 10px}.kbw-network-toolbar input{min-width:120px;width:120px}.kbw-section{min-width:0}}
+    @media(pointer:coarse){.kbw .kbw-button,.kbw input:not([type=checkbox]),.kbw select{min-height:44px}}
+
+    .kbw-master-detail{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(280px,1fr);gap:20px;align-items:start}.kbw-panel{padding:20px;min-width:0;background:var(--kbw-surface);border:1px solid var(--line);border-radius:8px}.kbw-panel>h3{margin:0 0 16px}.kbw-panel blockquote{margin:12px 0;padding:10px 14px;border-left:3px solid var(--kbw-accent);overflow-wrap:anywhere}.kbw-panel>.kbw-actions{margin-top:16px}.kbw-secondary-panels{margin-top:20px}.kbw-section-tabs{margin:0 0 16px}.kbw-reading-row{display:flex;justify-content:space-between;align-items:center;gap:16px}.kbw-reading-row>span:first-child{min-width:0}.kbw-reading-row>.kbw-meta{flex-shrink:0}.kbw-excerpt-row{display:flex;gap:10px;align-items:flex-start}.kbw-excerpt-row>input{margin-top:20px}.kbw-batch-panel{display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);margin-top:24px;padding-top:16px}.kbw-batch-panel>.kbw-field{margin:0;flex:1;min-width:180px}.kbw-capture-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);min-width:0}.kbw-capture-row>.kbw-check{font-size:0;width:18px;margin:0}.kbw-capture-row>.kbw-row{flex:1;min-width:100px}.kbw-capture-row>.kbw-meta{display:none}.kbw-capture-row>.kbw-button{height:auto;min-height:36px;white-space:normal;flex-shrink:1;overflow-wrap:anywhere}.kbw-clipper-help>summary{cursor:pointer;font-weight:600}.kbw-graph [data-node][data-active=true] rect{stroke:var(--kbw-accent);stroke-width:2}.kbw-graph [data-node][data-selected=true] rect{stroke-width:3}
+    @container(max-width:800px){.kbw-master-detail{grid-template-columns:1fr}.kbw-panel{padding:16px}.kbw-reading-row{align-items:start;flex-direction:column;gap:4px}}
+
+    .kbw-relations{display:flex;flex-direction:column;padding-bottom:max(24px,var(--kbw-composer-inset,24px))}.kbw-relations>.kbw-home-head{flex-shrink:0;align-items:center;margin-bottom:12px}.kbw-relations>.kbw-home-head h2{margin:0}.kbw-relations>.kbw-home-head p{display:none}.kbw-relations>.kbw-toolbar,.kbw-network-toolbar,.kbw-relations>.kbw-breadcrumb{flex-shrink:0}.kbw-relation-filters .kbw-field>span{display:none}.kbw-network-workspace{flex:1;min-height:420px;max-height:740px}.kbw-network-stage{min-height:0}.kbw-network-stage .kbw-graph{height:0;min-height:0}.kbw-network-inspector{max-height:none;height:100%;min-height:0}.kbw-graph [data-node]{outline:none}.kbw-graph text{font-size:18px}.kbw-graph .kbw-node-meta{font-size:11px}.kbw-graph [data-dimmed=true]{opacity:.5}.kbw-canvas-controls{flex-shrink:0}.kbw-canvas-hint{flex-shrink:0}.kbw-network-stage .kbw-graph{min-height:300px}.kbw-content .kbw-panel .kbw-button{height:auto;min-height:36px;white-space:normal;overflow-wrap:anywhere;flex-shrink:1}
+    @container(max-width:700px){.kbw-network-workspace{flex:none;max-height:none}.kbw-network-stage .kbw-graph{height:380px;min-height:380px}.kbw-network-inspector{max-height:320px;height:auto}.kbw-home-head .kbw-button{white-space:normal}.kbw-app-header>.kbw-actions .kbw-button{padding:0 10px}}
+
+    /* beta8: shared splitter, long directory labels, file actions and reading feedback */
+    .kbw-update-bar{padding:6px 24px;border-bottom:1px solid var(--line);flex-shrink:0;min-width:0}.kbw-update-bar>[aria-label]{justify-content:flex-start;margin-left:0!important}.kbw .kbw-update-bar .kbc-btn{min-height:30px;height:auto}.kbw-split{display:grid!important;gap:0!important;min-width:0;min-height:0;position:relative}.kbw-split>.kbw-pane{min-width:0;min-height:0;overflow:auto}.kbw-split.kbw-grid{border-top:1px solid var(--line)}.kbw-grid>.kbw-pane>:is(.kbw-tree,.kbw-list,.kbw-detail){height:100%;border-left:0;border-right:0}.kbw-split.kbw-master-detail{height:clamp(280px,50vh,580px);align-items:stretch}.kbw-master-detail>.kbw-pane>.kbw-panel{min-height:100%;border-radius:0;border:0}.kbw-split.kbw-master-detail{border:1px solid var(--line);border-radius:8px;overflow:hidden}.kbw-split.kbw-network-workspace>.kbw-pane{overflow:hidden}.kbw-split.kbw-network-workspace>.kbw-pane>*{height:100%}.kbw-split .kbw-network-inspector{border-left:0}.kbw-separator{width:8px;cursor:col-resize;touch-action:none;position:relative;background:var(--kbw-bg);border-inline:1px solid var(--line);z-index:2;outline-offset:-2px!important}.kbw-separator:hover,.kbw-separator:focus-visible{background:var(--kbw-accent)}.kbw-separator:after{content:'';position:absolute;top:calc(50% - 18px);height:36px;left:2px;width:2px;background:var(--kbw-muted);border-radius:2px}.kbw-resizing,.kbw-resizing *{cursor:col-resize!important;user-select:none!important}.kbw-pane-switch{padding:8px;border-bottom:1px solid var(--line);grid-column:1/-1}.kbw-split[data-compact=true]{display:flex!important;flex-direction:column}.kbw-split[data-compact=true]>.kbw-pane{flex:1}.kbw-split[data-compact=true]>.kbw-pane>*{height:100%}.kbw .kbw-tree .kbw-dir{align-items:flex-start;min-width:0}.kbw .kbw-tree .kbw-dir>button:first-child{flex:0 0 28px}.kbw .kbw-tree .kbw-dir>button:last-child{width:0;min-width:0;flex:1 1 0%;white-space:normal;overflow-wrap:anywhere;word-break:normal;height:auto;line-height:1.7;justify-content:flex-start;text-align:left;padding:6px 4px}.kbw .kbw-tree{display:block!important}.kbw-tree .kbw-dir-children{padding-left:10px}.kbw-file-row{display:flex;gap:8px;align-items:start;border-bottom:1px solid var(--line);min-width:0}.kbw-file-row>.kbw-row,.kbw-file-row>.kbw-card{flex:1;min-width:0;border-bottom:0}.kbw-file-menu{flex-shrink:0;max-width:50%;padding:14px 0;font-size:12px}.kbw-file-menu>summary{cursor:pointer;color:var(--kbw-muted)}.kbw-file-menu[open]{flex-shrink:1}.kbw-file-menu .kbw-button{white-space:normal;height:auto;min-height:36px;margin-top:8px}.kbw .kbw-danger-button{color:var(--kbw-danger);border-color:var(--kbw-danger)}.kbw-delete-confirm{border:1px solid var(--kbw-danger);border-radius:8px;background:var(--kbw-surface);padding:16px;margin:12px 0;max-width:100%;font-size:13px;white-space:normal;overflow-wrap:anywhere}.kbw-delete-confirm p{margin:8px 0}.kbw-detail>.kbw-delete-confirm{margin-bottom:20px}.kbw-trash-row{display:flex;justify-content:space-between;align-items:center;gap:20px;margin:12px 0}.kbw-trash-row>div:first-child{min-width:0}.kbw-trash-row strong{overflow-wrap:anywhere}.kbw-reading-help{padding:12px 16px;border:1px solid var(--line);border-radius:8px;margin:12px 0 18px;color:var(--kbw-muted);font-size:13px}.kbw-reading-help>summary{cursor:pointer;color:var(--kbw-fg)}.kbw-reading-help li{margin:8px 0}.kbw-system-recent>summary{cursor:pointer;padding:12px 0}.kbw-preview.kbw-markdown{max-height:60vh;overflow:auto;scrollbar-gutter:stable}.kbw-pane .kbw-panel .kbw-actions{margin-top:16px}
+    @container(max-width:700px){.kbw-update-bar{padding:6px 12px}.kbw-app-header>.kbw-actions{flex-wrap:wrap;flex-shrink:1}.kbw-trash-row{align-items:flex-start;flex-direction:column}.kbw-split.kbw-network-workspace{min-height:520px}.kbw-split.kbw-master-detail{height:440px}}
         `
         document.head.appendChild(style)
       }
@@ -113,6 +139,83 @@ window.__ModuleLoader__.load({
         return btoa(binary)
       }
 
+      function SplitPanels({ id, kbId, className = '', children, directory = false }) {
+        const panels = R.Children.toArray(children), count = panels.length, root = R.useRef(null), dragging = R.useRef(null)
+        const key = 'kbw-panels-v1:' + kbId + ':' + id
+        const [available, setAvailable] = R.useState(1200), [sizes, setSizes] = R.useState([]), [mobilePanel, setMobilePanel] = R.useState(count - 1), [resizing, setResizing] = R.useState(false)
+        R.useEffect(() => { try { const saved = JSON.parse(localStorage.getItem(key) || '[]'); setSizes(Array.isArray(saved) ? saved.map(n => Number.isFinite(n) ? n : null) : []) } catch { setSizes([]) } }, [key])
+        R.useEffect(() => { const timer = setTimeout(() => { try { localStorage.setItem(key, JSON.stringify(sizes)) } catch {} }, 200); return () => clearTimeout(timer) }, [key, sizes])
+        R.useEffect(() => { const element = root.current; const observer = new ResizeObserver(() => setAvailable(element.clientWidth)); observer.observe(element); setAvailable(element.clientWidth); return () => observer.disconnect() }, [])
+        R.useEffect(() => { setMobilePanel(count - 1) }, [count])
+        const minimum = directory ? count === 3 ? [180, 280, 360] : [180, 280] : [280, 280]
+        const compact = available < minimum.reduce((a, b) => a + b, 0) + (count - 1) * 8
+        const space = Math.max(0, available - (count - 1) * 8), widths = []
+        let remaining = space
+        for (let i = 0; i < count - 1; i++) {
+          const rest = minimum.slice(i + 1).reduce((a, b) => a + b, 0), fallback = directory ? i === 0 ? 240 : Math.round(remaining * .52) : Math.max(280, remaining - 320)
+          widths[i] = Math.max(minimum[i], Math.min(sizes[i] ?? fallback, directory && i === 0 ? 420 : Infinity, remaining - rest)); remaining -= widths[i]
+        }
+        widths[count - 1] = Math.max(minimum[count - 1] || 0, remaining)
+        const adjust = (index, value) => {
+          const pairTotal = widths[index] + widths[index + 1], max = Math.min(directory && index === 0 ? 420 : Infinity, pairTotal - minimum[index + 1])
+          const next = [...sizes]; next[index] = Math.max(minimum[index], Math.min(max, value)); if (index + 1 < count - 1) next[index + 1] = pairTotal - next[index]; setSizes(next)
+        }
+        const labels = directory ? ['目录', '清单', '详情'] : ['内容', '详情']
+        return e('div', { ref: root, className: className + ' kbw-split' + (resizing ? ' kbw-resizing' : ''), 'data-compact': compact, style: { gridTemplateColumns: compact ? 'minmax(0,1fr)' : widths.flatMap((n, i) => i < count - 1 ? [n + 'px', '8px'] : [n + 'px']).join(' ') } },
+          compact ? e('div', { className: 'kbw-pane-switch kbw-actions' }, panels.map((_, i) => btn(labels[i] || '详情', () => setMobilePanel(i), false, { key: i, 'aria-current': mobilePanel === i }))) : null,
+          panels.flatMap((panel, i) => [e('div', { key: 'pane-' + i, className: 'kbw-pane', style: compact && mobilePanel !== i ? { display: 'none' } : {} }, panel), !compact && i < count - 1 ? e('div', {
+            key: 'separator-' + i, role: 'separator', 'aria-label': (labels[i] || '内容') + '与' + (labels[i + 1] || '详情') + '宽度', 'aria-orientation': 'vertical', 'aria-valuemin': minimum[i], 'aria-valuemax': Math.min(directory && i === 0 ? 420 : widths[i] + widths[i + 1], widths[i] + widths[i + 1] - minimum[i + 1]), 'aria-valuenow': Math.round(widths[i]), tabIndex: 0, className: 'kbw-separator', title: '拖动调整宽度；方向键调整；双击恢复默认',
+            onPointerDown: ev => { ev.preventDefault(); dragging.current = { index: i, x: ev.clientX, width: widths[i] }; setResizing(true); ev.currentTarget.setPointerCapture(ev.pointerId) },
+            onPointerMove: ev => { if (dragging.current?.index === i) adjust(i, dragging.current.width + ev.clientX - dragging.current.x) }, onPointerUp: () => { dragging.current = null; setResizing(false) }, onPointerCancel: () => { dragging.current = null; setResizing(false) }, onLostPointerCapture: () => { dragging.current = null; setResizing(false) },
+            onKeyDown: ev => { if (ev.key === 'ArrowLeft' || ev.key === 'ArrowRight') { ev.preventDefault(); adjust(i, widths[i] + (ev.key === 'ArrowLeft' ? -1 : 1) * (ev.shiftKey ? 50 : 10)) } }, onDoubleClick: () => setSizes([]),
+          }) : null]))
+      }
+
+      function DeleteFile({ file, snapshot, onDeleted }) {
+        const [busy, setBusy] = R.useState(false), [error, setError] = R.useState(''), [preview, setPreview] = R.useState(null)
+        if (!file?.canDelete) return e('span', { className: 'kbw-meta', title: file?.deleteReason }, file?.deleteReason || '')
+        const remove = async () => {
+          setBusy(true); setError('')
+          try {
+            const result = await api({ op: 'trash.move', path: file.path, expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion })
+            setPreview(result)
+          } catch (err) { setError(err.message) } finally { setBusy(false) }
+        }
+        const confirm = async () => {
+          setBusy(true); setError('')
+          try {
+            const result = await api({ op: 'trash.move', path: preview.path, confirm: true, expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion, expectedRevision: preview.revision, fileRevision: preview.fileRevision })
+            setPreview(null); event('kbw-policy', { type: 'files-changed', kbId: snapshot.kbId, path: preview.path, operation: 'trash.move' }); event('kbw-toast', result.note + (result.indexWarning ? '；' + result.indexWarning : '')); onDeleted?.()
+          } catch (err) { setError(err.message) } finally { setBusy(false) }
+        }
+        return e(R.Fragment, null, btn(busy ? '处理中…' : '移入回收站', remove, busy, { className: 'kbw-button kbw-danger-button' }),
+          preview ? e('div', { className: 'kbw-delete-confirm', role: 'group', 'aria-label': '确认移入回收站' }, e('strong', null, '移入回收站？'), e('p', { className: 'kbw-path' }, preview.path), e('p', null, '30 天内可恢复。' + (preview.relatedCount ? '影响 ' + preview.relatedCount + ' 条关系；其他文件中的引用文字会保留。' : '')), e('div', { className: 'kbw-actions' }, btn('取消', () => setPreview(null), busy), btn('确认移入回收站', confirm, busy, { className: 'kbw-button kbw-danger-button' }))) : null,
+          error ? e('span', { role: 'alert', className: 'kbw-error' }, error) : null)
+      }
+
+      function Trash({ snapshot, changed }) {
+        const [data, setData] = R.useState(null), [error, setError] = R.useState(''), [message, setMessage] = R.useState(''), [busy, setBusy] = R.useState(false)
+        const refresh = R.useCallback(async () => { try { setData(await api({ op: 'trash.list', expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion })) } catch (err) { setError(err.message) } }, [snapshot.kbId, snapshot.policyVersion])
+        R.useEffect(() => { void refresh() }, [refresh, snapshot.revision])
+        const act = async (item, op) => {
+          if (op === 'trash.purge' && !window.confirm('永久删除“' + item.path + '”？文件及其专属摘录、阅读和回顾记录将无法从回收站恢复。')) return
+          setBusy(true); setError(''); setMessage('')
+          try { const result = await api({ op, id: item.id, confirm: op === 'trash.purge', expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion, expectedRevision: data.revision }); setMessage(result.note + (result.indexWarning ? '；' + result.indexWarning : '')); await refresh(); changed() } catch (err) { setError(err.message); await refresh() } finally { setBusy(false) }
+        }
+        return e('section', { className: 'kbw-content' }, e('div', { className: 'kbw-home-head' }, e('div', null, e('h2', null, '回收站'), e('p', { className: 'kbw-meta' }, '保留 30 天。恢复到原路径，不覆盖同名文件；到期后自动清理。')), btn('刷新', refresh, busy)),
+          e('p', { className: 'kbw-meta' }, '客户端关闭期间到期的内容将在下次启动时清理。永久删除不会追溯删除已有的独立备份。'),
+          data?.items.map(item => e('article', { key: item.id, className: 'kbw-trash-row kbw-panel' }, e('div', null, e('strong', null, item.title), e('p', { className: 'kbw-path' }, item.path), e('p', { className: 'kbw-meta' }, size(item.bytes) + ' · 删除于 ' + date(item.deletedAt) + ' · ' + (item.daysRemaining ? '剩余 ' + item.daysRemaining + ' 天' : '已到期，等待清理') + (item.state !== 'stored' ? ' · 操作尚未完成，请刷新或重启后重试' : ''))), e('div', { className: 'kbw-actions' }, btn('恢复', () => act(item, 'trash.restore'), busy || !item.canRestore), btn('永久删除', () => act(item, 'trash.purge'), busy || item.state !== 'stored', { className: 'kbw-button kbw-danger-button' })))),
+          data && !data.items.length ? e('p', { className: 'kbw-empty' }, '回收站为空。被移入回收站的普通资料会显示在这里。') : null, message ? e('p', { role: 'status' }, message) : null, error ? e('p', { role: 'alert', className: 'kbw-error' }, error) : null)
+      }
+
+      function ReadingHelp() {
+        return e('details', { className: 'kbw-reading-help' }, e('summary', null, '阅读与摘录怎么用？'), e('ol', null,
+          e('li', null, '从资料目录打开文件，选择阅读状态后点击“保存阅读位置”；PDF 会保存当前页码。'),
+          e('li', null, '选中原文，展开“高亮摘录与批注”，填写批注、按需标记重要，然后保存。扫描 PDF 可选择区域摘录，区域图片不会自动转成文字。'),
+          e('li', null, '回到“阅读与摘录”，点击摘录查看详情；勾选多条摘录可生成带来源的知识笔记，或导出 Markdown。'),
+          e('li', null, '希望稍后复习时，点击“加入回顾”。返回来源时会尝试定位；原文变化或定位失败会明确提示。')))
+      }
+
       function PreferencesFields({ prefs, setPrefs }) {
         const patch = part => setPrefs(old => ({ ...old, ...part }))
         const backup = part => setPrefs(old => ({ ...old, backup: { ...old.backup, ...part } }))
@@ -130,7 +233,7 @@ window.__ModuleLoader__.load({
           check('采集后自动提交解析', prefs.autoParse, value => patch({ autoParse: value })),
           check('开启回顾提醒', prefs.reviewReminders, value => patch({ reviewReminders: value })),
           prefs.reviewReminders ? select('回顾频率', prefs.reviewFrequency, value => patch({ reviewFrequency: value }), [['daily', '每天'], ['weekly', '每周']]) : null,
-          select('默认进入页面', prefs.landing, value => patch({ landing: value }), [['map', '地图'], ['overview', '总览'], ['remember', '记住上次页面']]))
+          select('默认进入页面', prefs.landing, value => patch({ landing: value }), [['map', '资料目录'], ['overview', '总览'], ['remember', '记住上次页面']]))
       }
 
       const relationLabel = type => ({ source: '来源', reference: '引用', manual: '手动关联', directory: '目录归属' }[type] || '关联')
@@ -147,7 +250,7 @@ window.__ModuleLoader__.load({
         const sections = snapshot.sections.filter(s => names[s.name] && (!s.private || snapshot.preferences.showPrivate))
         if (!sections.some(s => s.name === '任务成品')) sections.push({ name: '任务成品', files: 0 })
         const recent = snapshot.recent.filter(f => !/(^|\/)(INDEX|README|AGENTS)\.md$/.test(f.path) && !/(^|\/)(_archive|50-底稿|90-收件箱|_手册|_模板)\//.test(f.path))
-        return e('div', { className: 'kbw-home' }, e('div', { className: 'kbw-home-head' }, e('div', null, e('h2', null, '知识地图'), e('p', { className: 'kbw-meta' }, '从分区找到资料，沿来源继续探索。')), btn('快速收集', () => navigate('inbox'), false, { className: 'kbw-button kbw-primary' })),
+        return e('div', { className: 'kbw-home' }, e('div', { className: 'kbw-home-head' }, e('div', null, e('h2', null, '资料目录'), e('p', { className: 'kbw-meta' }, '从分区找到资料，沿来源继续探索。')), btn('快速收集', () => navigate('inbox'), false, { className: 'kbw-button kbw-primary' })),
           e('div', { className: 'kbw-sections' }, sections.map((s, i) => e('button', { key: s.name, className: 'kbw-section', onClick: () => openScope(s.name) }, e('span', { className: 'kbw-section-icon', 'aria-hidden': true }, e('svg', {viewBox:'0 0 24 24','aria-hidden':true}, e('path',{d:['M3 6h7l2 2h9v12H3z M3 6V4h7l2 2','M6 3h9l4 4v14H6z M14 3v5h5 M9 12h7 M9 16h7','M3 4h18v16H3z M5 17l5-6 4 4 3-3 4 5 M15 8h.01','M5 3h14v18H5z M8 12l3 3 5-6'][i%4]}))), e('strong', null, names[s.name]), e('span', { className: 'kbw-meta' }, s.files + ' 份资料')))),
           e('h3', null, '最近资料'), e('div', { className: 'kbw-cards' }, recent.map(f => e(FileCard, { key: f.path, file: f, onClick: () => navigate('map', f.path) }))),
           !recent.length ? e('p', { className: 'kbw-empty' }, '从快速收集开始，添加第一份资料。') : null)
@@ -202,22 +305,39 @@ window.__ModuleLoader__.load({
       function LinkRepairs({ snapshot, navigate }) {
         const [data, setData] = R.useState(null), [offset, setOffset] = R.useState(0), [choices, setChoices] = R.useState({}), [targets, setTargets] = R.useState([]), [query, setQuery] = R.useState(''), [preview, setPreview] = R.useState(null), [error, setError] = R.useState(''), [message, setMessage] = R.useState(''), [busy, setBusy] = R.useState(false), [history, setHistory] = R.useState([]), [requestId, setRequestId] = R.useState(''), [suggestions, setSuggestions] = R.useState([])
         const base = { expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion }
-        const refresh = async () => { const r = await api({ ...base, op: 'links.issues', offset }); setData(r); const h = await api({ ...base, op: 'links.history' }); setHistory(h.items); const latest=await api({...base,op:'links.ai.latest'}); if(latest.requestId) setRequestId(latest.requestId) }
+        const refresh = async () => { const [r, h, latest] = await Promise.all([api({ ...base, op: 'links.issues', offset }), api({ ...base, op: 'links.history' }), api({ ...base, op: 'links.ai.latest' })]); setData(r); setHistory(h.items); if (latest.requestId) setRequestId(latest.requestId) }
         R.useEffect(() => { setChoices({}); setPreview(null); void refresh().catch(e => setError(e.message)) }, [snapshot.kbId, snapshot.policyVersion, offset])
         const run = async action => { setBusy(true); setError(''); try { await action() } catch (e) { setError(e.message) } finally { setBusy(false) } }
         const changes = Object.entries(choices).filter(([,target]) => target).map(([id,target]) => ({ id,target }))
-        return e('section', { className: 'kbw-content' }, e('h2', null, '链接检查与修复'), e('p', { className: 'kbw-meta' }, '检查原始链接、选择正确目标，预览后确认。AI 只提供建议。'),
-          data ? e('p', null, '共 ' + data.total + ' 项 · 失效 ' + data.counts.unresolved + ' · 歧义 ' + data.counts.ambiguous + ' · 手动关联目标丢失 ' + data.counts['manual-target-missing'] + ' · 锚点失效 ' + (data.counts['anchor-missing'] || 0) + ' · 新关联建议 ' + (data.counts['new-relation'] || 0)) : null,
+        const reason = { unresolved: '目标不存在或无法匹配', ambiguous: '找到了多个可能目标，需要你选择', 'manual-target-missing': '手动关联的一端已不在当前可展示资料中', 'new-relation': 'AI 提出的新关系，尚未写入知识库', 'target-in-trash': '目标文件已移入回收站，可在 30 天内恢复', 'anchor-missing': '目标资料存在，但其中的标题锚点或行号已失效' }
+        const origin = issue => issue.newRelation ? 'AI 新关系建议' : issue.manual ? '手动关联记录' : issue.type === 'source' ? '资料来源链接' : '文中链接引用'
+        const renderIssue = issue => e('article', { key: issue.id, className: 'kbw-issue' }, btn(issue.path + (issue.line ? ' · 第 ' + issue.line + ' 行' : ''), () => navigate('map', issue.path)),
+          e('p', { className: 'kbw-meta' }, origin(issue)), e('p', null, '识别原因：' + (reason[issue.reason] || issue.reason)),
+          e('p', null, issue.manual ? '当前端点：' + issue.path + (issue.missing === 'from' ? ' ← ' : ' → ') + issue.rawTarget : '原始链接目标：' + issue.rawTarget), issue.context ? e('pre', null, issue.context) : null,
+          issue.reason === 'target-in-trash' ? btn('前往回收站恢复', () => navigate('trash')) : select('修复为（选择目标后仍需预览确认）', choices[issue.id] || '', target => { setChoices(old => ({ ...old, [issue.id]: target })); setPreview(null) }, [['', '选择候选目标'], ...[...new Set([...(issue.candidates || []), ...targets.map(t => t.path), choices[issue.id]].filter(Boolean))].map(p => [p,p])]),
+          suggestions.filter(p => p.id === issue.id).map(p => e('p', { key: p.id, className: 'kbw-meta' }, 'AI 建议依据：' + p.reason)))
+        const repairKind = change => change.kind === 'new-relation' ? '新增关系' : change.kind === 'manual-link' ? '更新手动关系' : change.type === 'source' ? '修正来源链接' : '修正文中链接'
+        return e('section', { className: 'kbw-content' }, e('h2', null, '链接检查与修复'), e('p', { className: 'kbw-meta' }, '这里分开展示已有链接的问题和 AI 提议的新关系。自动检查不会改文件；只有你选择目标、查看预览并确认后才会修复。'),
+          data ? e('p', null, '共 ' + data.total + ' 项 · 失效目标 ' + data.counts.unresolved + ' · 多个候选 ' + data.counts.ambiguous + ' · 手动关联端点缺失 ' + data.counts['manual-target-missing'] + ' · 锚点失效 ' + (data.counts['anchor-missing'] || 0) + ' · 回收站目标 ' + (data.counts['target-in-trash'] || 0) + ' · AI 新关系建议 ' + (data.counts['new-relation'] || 0)) : null,
           e('form', { className: 'kbw-toolbar', onSubmit: ev => { ev.preventDefault(); void run(async () => setTargets((await api({ ...base, op: 'links.targets', query })).items)) } }, field('搜索可用目标', query, setQuery, { placeholder: '输入标题或路径' }), e('button', { className: 'kbw-button', type: 'submit' }, '查找目标')),
           e('div', { className: 'kbw-actions' }, btn('刷新检查', () => run(refresh), busy), btn('预览所选修复（' + changes.length + '）', () => run(async () => setPreview(await api({ ...base, op: 'links.preview', changes }))), busy || !changes.length),
-            btn('与 AI 讨论本页问题', () => run(async () => { setRequestId(await launchRepairChat(snapshot, data.items.map(i => i.id))); setMessage('讨论已在新会话打开。提交建议后，回到此页读取建议。') }), busy || !data?.items.length),
+            btn('与 AI 讨论本页问题', () => run(async () => { setRequestId(await launchRepairChat(snapshot, data.items.filter(i => i.reason !== 'target-in-trash').map(i => i.id))); setMessage('讨论已在新会话打开。提交建议后，回到此页读取建议。') }), busy || !data?.items.length),
             requestId ? btn('读取 AI 建议', () => run(async () => { const r = await api({ ...base, op: 'links.ai.status', requestId }); setSuggestions(r.proposals); setChoices(old => ({ ...old, ...Object.fromEntries(r.proposals.map(p => [p.id, p.target])) })); setMessage(r.proposals.length ? '已填入候选目标，请核对并生成预览。' : 'AI 尚未提交建议，可在讨论会话继续补充。') }), busy) : null),
-          data?.items.map(issue => e('article', { key: issue.id, className: 'kbw-issue' }, btn(issue.path + (issue.line ? ' · 第 ' + issue.line + ' 行' : ''), () => navigate('map', issue.path)), e('p', null, ({unresolved:'目标不存在',ambiguous:'存在多个同名目标','manual-target-missing':'手动关联目标丢失','new-relation':'AI 新关联建议','anchor-missing':'目标文档存在，锚点不存在（选定文档后移除失效锚点）'}[issue.reason]) + '：' + issue.rawTarget), e('pre', null, issue.context),
-            select('修复为', choices[issue.id] || '', target => { setChoices(old => ({ ...old, [issue.id]: target })); setPreview(null) }, [['', '选择候选目标'], ...[...new Set([...(issue.candidates || []), ...targets.map(t => t.path), choices[issue.id]].filter(Boolean))].map(p => [p,p])]),
-            suggestions.filter(p => p.id === issue.id).map(p => e('p', { key: p.id, className: 'kbw-meta' }, 'AI 建议依据：' + p.reason)))),
+          data?.items.some(i => i.reason !== 'new-relation') ? e('h3', null, '已有链接的问题') : null,
+          data?.items.filter(i => i.reason !== 'new-relation').map(renderIssue),
+          data?.items.some(i => i.reason === 'new-relation') ? e('h3', null, 'AI 提议的新关系') : null,
+          data?.items.filter(i => i.reason === 'new-relation').map(renderIssue),
+          data?.total === 0 ? e('p', { className: 'kbw-empty' }, '当前没有待处理链接问题或 AI 关系建议。') : null,
           data ? e('div', { className: 'kbw-actions' }, btn('上一页', () => setOffset(Math.max(0, offset - 30)), !offset), e('span', { className: 'kbw-meta' }, (offset + 1) + '–' + Math.min(offset + 30, data.total)), btn('下一页', () => setOffset(offset + 30), offset + 30 >= data.total)) : null,
-          preview ? e('div', { className: 'kbw-summary' }, e('h3', null, '修复预览 · ' + preview.count + ' 项'), preview.files.map(f => e('div', { key: f.path }, e('strong', null, f.path), e('div', { className: 'kbw-diff' }, e('pre', { className: 'kbw-preview' }, f.before), e('pre', { className: 'kbw-preview' }, f.after)))), preview.manual.map(m => e('p', { key: m.issue.id }, m.issue.rawTarget + ' → ' + m.target)), btn('确认应用此预览', () => run(async () => { const r = await api({ ...base, op: 'links.apply', previewId: preview.previewId }); setMessage('已应用修复，记录号 ' + r.repairId); setPreview(null); setChoices({}); await refresh() }), busy, { className: 'kbw-button kbw-primary' }), btn('取消预览', () => setPreview(null), busy)) : null,
-          e('details', null, e('summary', null, '修复记录与撤销'), history.map(h => e('div', { key: h.id, className: 'kbw-annotation' }, date(h.at) + ' · ' + h.paths.join('，'), btn(h.undone ? '已撤销' : h.pending ? '恢复未完成修复' : '撤销此修复', () => run(async () => { await api({ ...base, op: 'links.undo', repairId: h.id }); await refresh(); setMessage('已恢复修复前内容') }), busy || h.undone)))),
+          preview ? e('div', { className: 'kbw-summary' }, e('h3', null, '修复预览 · ' + preview.count + ' 项'), e('p', null, '下面逐项说明将改变的链接。文本链接会改来源文件中的目标文字；手动关系会更新关系记录；AI 新关系会新增一条手动关系。'),
+            preview.changes.map(change => e('article', { className: 'kbw-annotation', key: change.id }, e('strong', null, repairKind(change)), e('p', { className: 'kbw-meta' }, change.sourcePath + (change.line ? ' · 第 ' + change.line + ' 行' : '') + (change.targetPath ? ' → ' + change.targetPath : '')),
+              change.kind === 'file-link' ? e('p', null, change.rawTarget + ' → ' + change.target) : e('p', null, (change.beforeFrom ? change.beforeFrom + ' → ' + change.beforeTo : '尚无此关系') + ' ⇒ ' + change.afterFrom + ' → ' + change.afterTo), change.context ? e('pre', null, change.context) : null)),
+            preview.files.map(f => e('details', { key: f.path }, e('summary', null, '查看文件修改前后全文：' + f.path), e('div', { className: 'kbw-diff' }, e('pre', { className: 'kbw-preview' }, f.before), e('pre', { className: 'kbw-preview' }, f.after)))),
+            btn('确认应用此预览', () => run(async () => { const r = await api({ ...base, op: 'links.apply', previewId: preview.previewId }); setMessage('已完成 ' + r.applied + ' 项修复：修改 ' + r.fileCount + ' 个文件，更新或新增 ' + r.relationCount + ' 条关系。受影响资料：' + r.affectedPaths.join('，') + '。记录号 ' + r.repairId); setPreview(null); setChoices({}); await refresh() }), busy, { className: 'kbw-button kbw-primary' }), btn('取消预览', () => setPreview(null), busy)) : null,
+          e('details', null, e('summary', null, '修复记录与撤销'), history.map(h => e('article', { key: h.id, className: 'kbw-issue' }, e('p', null, date(h.at) + (h.changes?.length ? ' · 处理 ' + h.count + ' 项' : ' · 旧记录（无逐条明细）') + ' · 修改 ' + h.fileCount + ' 个文件 · 更新/新增 ' + h.relationCount + ' 条关系'),
+            e('p', { className: 'kbw-meta' }, '受影响资料：' + h.paths.join('，')),
+            h.changes?.length ? h.changes.map(change => e('p', { className: 'kbw-meta', key: change.id }, repairKind(change) + ' · ' + change.sourcePath + (change.line ? ' · 第 ' + change.line + ' 行' : '') + ' · ' + (change.rawTarget || change.beforeFrom || '') + ' → ' + (change.targetPath || change.target || change.afterTo || ''))) : e('p', { className: 'kbw-meta' }, '此为旧版记录，仅保存文件前后内容和路径，没有逐条链接说明。'),
+            btn(h.undone ? '已撤销' : h.pending ? '恢复未完成修复' : '撤销此修复', () => run(async () => { await api({ ...base, op: 'links.undo', repairId: h.id }); await refresh(); setMessage('已撤销此修复记录，恢复修复前内容：' + h.paths.join('，')) }), busy || h.undone)))),
           message ? e('p', { role: 'status' }, message) : null, error ? e('p', { role: 'alert', className: 'kbw-error' }, error) : null)
       }
       function ProductImport({ snapshot }) {
@@ -298,9 +418,9 @@ window.__ModuleLoader__.load({
         if (!open) return null
         const content = e('div', { className: 'kbw kbw-backdrop', onMouseDown: ev => { if (ev.target === ev.currentTarget) close() } },
           e('section', { className: 'kbw-modal', role: 'dialog', 'aria-modal': true, 'aria-labelledby': 'kbw-guide-title', ref: root },
-            e('div', { className: 'kbw-step' }, normal ? '知识库设置 · 2.0.2-beta6' : `知识工作台 · ${step + 1} / 3`),
+            e('div', { className: 'kbw-step' }, normal ? '知识库设置 · 2.0.0' : `知识工作台 · ${step + 1} / 3`),
             e('h2', { id: 'kbw-guide-title' }, normal ? '知识库设置' : step === 0 ? '知识库插件已更新' : step === 1 ? '选择适合你的使用方式' : '确认设置'),
-            step === 0 ? e('div', null, e('p', null, '当前版本 2.0.2-beta6' + '：目录地图、可控隐私、快速收集、阅读摘录和知识库提问。'),
+            step === 0 ? e('div', null, e('p', null, '当前版本 2.0.0' + '：目录地图、可控隐私、快速收集、阅读摘录和知识库提问。'),
               e('p', null, '接下来确认隐私展示和备份等选项。已有明确设置会保留，自动完整备份默认关闭。')) : null,
             step === 1 ? e('div', null,
               e('p', { className: 'kbw-meta' }, '当前知识库：' + (status?.kbPath || '尚未绑定，可稍后设置')),
@@ -329,7 +449,7 @@ window.__ModuleLoader__.load({
           setOpen(!open)
           if (!children && !open) try { const r = await api({ op: 'atlas.tree', prefix: path, expectedKbId: kbId, policyVersion: policy }); setChildren(r.items) } catch (err) { setError(err.message) }
         }
-        return e('div', null, e('div', { className: 'kbw-dir' }, btn(open ? '−' : '+', toggle, false, { 'aria-label': (open ? '折叠 ' : '展开 ') + label, 'aria-expanded': open }), btn(label, () => onSelect(path))),
+        return e('div', null, e('div', { className: 'kbw-dir' }, btn(open ? '−' : '+', toggle, false, { 'aria-label': (open ? '折叠 ' : '展开 ') + label, 'aria-expanded': open }), btn(label, () => onSelect(path), false, { title: label })),
           open ? e('div', { className: 'kbw-dir-children' }, error || (children === null ? '读取中…' : children.map(c => e(TreeNode, { key: c.path, path: c.path, label: c.name + ' ' + c.files, onSelect, kbId, policy })))) : null)
       }
 
@@ -388,17 +508,17 @@ window.__ModuleLoader__.load({
             } }) : null)))
       }
 
-      function Detail({ file, snapshot, onClose, onNavigate, onChanged, readMode = false }) {
+      function Detail({ file, snapshot, onClose, onNavigate, onChanged, readMode = false, annotationId = '' }) {
         const [detail, setDetail] = R.useState(null), [error, setError] = R.useState(''), [media, setMedia] = R.useState(null), [quote, setQuote] = R.useState(''), [note, setNote] = R.useState(''), [page, setPage] = R.useState(1), [important, setImportant] = R.useState(false)
-        const [target, setTarget] = R.useState(''), [matches, setMatches] = R.useState([]), [relations, setRelations] = R.useState(null), [readingState, setReadingState] = R.useState('reading'), [region, setRegion] = R.useState(null)
+        const [target, setTarget] = R.useState(''), [matches, setMatches] = R.useState([]), [relations, setRelations] = R.useState(null), [readingState, setReadingState] = R.useState('reading'), [region, setRegion] = R.useState(null), [notice, setNotice] = R.useState('')
         const selection = R.useRef(null), sequence = R.useRef(0)
         const base = { expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion }
         const load = R.useCallback(async () => {
           const seq = ++sequence.current; setDetail(null); setMedia(null); setError(''); setQuote(''); setNote('')
           try {
-            const [d, rel] = await Promise.all([api({ op: 'atlas.detail', path: file, ...base }), api({ op: 'atlas.relations', path: file, ...base })])
+            const d = await api({ op: 'atlas.detail', path: file, ...base })
             if (seq !== sequence.current) return
-            setDetail(d); setRelations(rel); setPage(d.reading?.page || 1); setReadingState(d.reading?.status || 'reading')
+            setDetail(d); setRelations(null); setPage(d.reading?.page || 1); setReadingState(d.reading?.status || 'reading')
             if (/\.(png|jpe?g|webp|pdf)$/i.test(file)) {
               const m = await api({ op: 'atlas.media', path: file, ...base })
               if (seq !== sequence.current) return
@@ -409,7 +529,23 @@ window.__ModuleLoader__.load({
         }, [file, snapshot.kbId, snapshot.policyVersion])
         R.useEffect(() => { void load(); return () => { sequence.current++ } }, [load])
         R.useEffect(() => () => { if (media?.url) URL.revokeObjectURL(media.url) }, [media])
-        const write = async body => { try { const d = await api({ ...body, ...base, expectedRevision: detail?.revision }); onChanged(); await load(); return d } catch (err) { setError(err.message) } }
+        const write = async body => { try { const d = await api({ ...body, ...base, expectedRevision: detail?.revision }); onChanged(); await load(); setNotice(({ 'reading.progress': '阅读位置已保存', 'reading.annotate': '摘录已保存', 'reading.delete': '摘录已删除', 'review.update': '回顾计划已更新' })[body.op] || '操作已完成'); return d } catch (err) { setError(err.message) } }
+        R.useEffect(() => {
+          if (!detail) return
+          const excerpt = annotationId ? detail.annotations.find(a => a.id === annotationId) : null
+          if (excerpt?.page) { setPage(excerpt.page); setNotice('已打开摘录来源第 ' + excerpt.page + ' 页') }
+          const frame = requestAnimationFrame(() => {
+            const element = selection.current
+            if (!element) return
+            if (excerpt) {
+              if (excerpt.revision !== detail.content?.revision) { setNotice('原文已变化，请核对摘录位置'); return }
+              const mark = [...element.querySelectorAll('mark')].find(node => node.textContent === excerpt.quote)
+              if (mark) { element.scrollTop += mark.getBoundingClientRect().top - element.getBoundingClientRect().top - 50; setNotice('已定位到摘录原文') }
+              else setNotice('已打开来源文件，未能精确定位摘录，请核对原文')
+            } else element.scrollTop = detail.reading?.position || 0
+          })
+          return () => cancelAnimationFrame(frame)
+        }, [detail, annotationId])
         if (!detail) return e('aside', { className: 'kbw-detail', 'data-open': true }, btn('返回清单', onClose), e('p', null, error || '读取内容…'))
         const content = detail.content
         function textNodes(text) {
@@ -432,10 +568,12 @@ window.__ModuleLoader__.load({
           parts.push(...links(text.slice(cursor))); return parts
         }
         return e('aside', { className: 'kbw-detail', 'data-open': true },
-          e('div', { className: 'kbw-actions' }, btn('返回清单', onClose), btn('复制路径', () => navigator.clipboard.writeText(snapshot.root.replace(/\\/g, '/') + '/' + file)), btn('查看关系', () => onNavigate('relations', file)),
+          e('div', { className: 'kbw-actions' }, btn('返回清单', onClose), !readMode ? btn('开始阅读', () => onNavigate('reading', file)) : null, btn('复制路径', () => navigator.clipboard.writeText(snapshot.root.replace(/\\/g, '/') + '/' + file)), btn('查看关系', () => onNavigate('relations', file)),
             btn('系统打开', async () => { try { await api({ op: 'atlas.file-action', ...base, path: file, action: 'open' }) } catch(e) { setError(e.message) } }),
             btn('文件夹中显示', async () => { try { await api({ op: 'atlas.file-action', ...base, path: file, action: 'reveal' }) } catch(e) { setError(e.message) } })),
-          e('h2', null, detail.file.title), e('div', { className: 'kbw-path' }, file),
+          e(DeleteFile, { file: detail.file, snapshot, onDeleted: onChanged }),
+          notice ? e('p', { role: 'status', className: 'kbw-banner' }, notice) : null,
+          e(ReadingHelp), e('h2', null, detail.file.title), e('div', { className: 'kbw-path' }, file),
           e('p', { className: 'kbw-meta' }, size(detail.file.bytes) + ' · ' + date(detail.file.mtimeMs) + (detail.file.private ? ' · 隐私内容' : '') + ' · ' + detail.file.tags.join('，')),
           detail.capture?.url ? e('p', null, e('a', { href: detail.capture.url, target: '_blank', rel: 'noopener noreferrer' }, '原始网页')) : null,
           detail.capture?.note ? e('p', { className: 'kbw-preview' }, detail.capture.note) : null,
@@ -447,14 +585,14 @@ window.__ModuleLoader__.load({
             btn('保存阅读位置', () => write({ op: 'reading.progress', path: file, page, status: readingState, position: selection.current?.scrollTop || 0 })),
             btn('加入回顾', () => write({ op: 'review.update', path: file, action: 'add' }))),
           e('details', { open: readMode }, e('summary', null, '高亮摘录与批注'),
-            field('摘录原文（可在上方选中文字）', quote, setQuote), field('批注', note, setNote), check('标记重要', important, setImportant),
+            e('label', { className: 'kbw-field' }, '摘录原文（可在上方选中文字）', e('textarea', { value: quote, onChange: ev => setQuote(ev.target.value) })), field('批注', note, setNote), check('标记重要', important, setImportant),
             btn('保存摘录', () => write({ op: 'reading.annotate', path: file, quote, note, important, page: /\.pdf$/i.test(file) ? page : null, region, fileRevision: content?.revision || media?.revision }), !quote.trim()),
             detail.annotations.map(a => e('div', { key: a.id, className: 'kbw-annotation' }, e('blockquote', null, a.quote), e('p', null, a.note),
               a.region?.image ? e('img', { src: a.region.image, alt: '第 ' + a.page + ' 页摘录区域' }) : null,
               e('span', { className: 'kbw-meta' }, a.page ? '第 ' + a.page + ' 页' : '第 ' + (a.line || '—') + ' 行'),
               a.revision && content && a.revision !== content.revision ? e('p', { role: 'status' }, '原文已更新，需核对摘录位置') : null,
               btn('删除摘录', () => write({ op: 'reading.delete', path: file, id: a.id }))))),
-          e('details', null, e('summary', null, '来源、引用与手动关联'),
+          e('details', { onToggle: ev => { if (ev.currentTarget.open && !relations) { const seq = sequence.current; api({ op: 'atlas.relations', path: file, ...base }).then(d => { if (seq === sequence.current) setRelations(d) }).catch(err => { if (seq === sequence.current) setError(err.message) }) } } }, e('summary', null, '来源、引用与手动关联'),
             relations?.items.map(edge => e('div', { key: edge.id, className: 'kbw-annotation' }, btn(edge.from === file ? edge.to : edge.from, () => onNavigate('map', edge.from === file ? edge.to : edge.from)),
               e('span', { className: 'kbw-meta' }, ' · ' + relationLabel(edge.type) + ' · ' + edge.evidence), edge.type === 'manual' ? btn('解除', () => write({ op: 'atlas.link.delete', id: edge.id })) : null)),
             field('搜索关联目标', target, setTarget), btn('查找', async () => { try { const r = await api({ op: 'atlas.list', q: target, ...base, limit: 10 }); setMatches(r.items.filter(f => f.path !== file)) } catch (err) { setError(err.message) } }),
@@ -462,83 +600,120 @@ window.__ModuleLoader__.load({
           error ? e('p', { className: 'kbw-error', role: 'alert' }, error) : null)
       }
 
-      function Relations({ snapshot, focus, navigate }) {
-        const [center, setCenter] = R.useState(focus || ''), [history, setHistory] = R.useState([]), [data, setData] = R.useState(null), [error, setError] = R.useState(''), [type, setType] = R.useState(''), [archive, setArchive] = R.useState(false), [navigation, setNavigation] = R.useState(false), [depth, setDepth] = R.useState('1'), [count, setCount] = R.useState(4), [hover, setHover] = R.useState(''), [issues, setIssues] = R.useState(false), [query, setQuery] = R.useState(''), [matches, setMatches] = R.useState([]), [transform, setTransform] = R.useState({ x: 0, y: 0, zoom: 1 })
-        const [searched, setSearched] = R.useState(false), [searching, setSearching] = R.useState(false), [retry, setRetry] = R.useState(0), [aiBusy, setAiBusy] = R.useState(false)
-        const svg = R.useRef(null), drag = R.useRef(null), moved = R.useRef(false), searchRequest = R.useRef(0)
-        const resetView = () => setTransform({ x: 0, y: 0, zoom: 1 })
-        R.useEffect(() => { setCenter(focus || ''); setHistory([]); resetView() }, [focus, snapshot.kbId])
-        R.useEffect(() => {
-          let live = true; setData(null); setError('')
-          api({ op: 'atlas.relations', expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion, path: center || undefined, type: type || undefined, includeArchive: archive, includeNavigation: navigation, depth: Number(depth), limit: 500 }).then(d => {
-            if (!live) return
-            if (!center && d.suggestedCenters?.length) { setCenter(d.suggestedCenters[0].path); return }
-            setData(d)
-          }).catch(err => { if (live) setError(err.message) })
-          return () => { live = false }
-        }, [center, type, depth, archive, navigation, snapshot.kbId, snapshot.policyVersion, snapshot.version, snapshot.revision, retry])
-        R.useEffect(() => () => { searchRequest.current++ }, [snapshot.kbId, snapshot.policyVersion])
-        const enter = file => { if (file === center) return; setHistory(h => center ? [...h, center] : h); setCenter(file); setCount(4); setMatches([]); setSearched(false); resetView() }
-        const search = async ev => {
-          ev.preventDefault(); const seq = ++searchRequest.current; setSearching(true); setError('')
-          try { const r = await api({ op: 'atlas.list', expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion, q: query, limit: 12 }); if (seq === searchRequest.current) { setMatches(r.items); setSearched(true) } }
-          catch (err) { if (seq === searchRequest.current) setError(err.message) }
-          finally { if (seq === searchRequest.current) setSearching(false) }
+      const relationPositions = (nodes, center) => {
+        const positions = new Map()
+        if (center) {
+          positions.set(center, { x: 395, y: 278 })
+          const others = nodes.filter(n => n.path !== center), radius = Math.max(215, others.length * 19)
+          others.forEach((node, i) => { const angle = i * Math.PI * 2 / Math.max(1, others.length) - Math.PI / 2; positions.set(node.path, { x: 395 + Math.cos(angle) * radius * 1.55, y: 278 + Math.sin(angle) * radius }) })
+        } else {
+          const columns = Math.max(1, Math.ceil(Math.sqrt(nodes.length * 1.5))), rows = Math.ceil(nodes.length / columns)
+          nodes.forEach((node, i) => positions.set(node.path, { x: (1000 - columns * 265) / 2 + 25 + i % columns * 265, y: Math.max(30, (620 - rows * 120) / 2) + Math.floor(i / columns) * 120 }))
         }
+        return positions
+      }
+      const relationFit = positions => {
+        const ps = [...positions.values()]; if (!ps.length) return { x: 0, y: 0, zoom: 1 }
+        const x = Math.min(...ps.map(p => p.x)), y = Math.min(...ps.map(p => p.y)), w = Math.max(...ps.map(p => p.x + 210)) - x, h = Math.max(...ps.map(p => p.y + 64)) - y
+        const zoom = Math.max(.25, Math.min(1, 920 / w, 540 / h))
+        return { zoom, x: (1000 - w * zoom) / 2 - x * zoom, y: (620 - h * zoom) / 2 - y * zoom }
+      }
+      function Relations({ snapshot, focus, active = true, navigate }) {
+        const [loadingGraph, setLoadingGraph] = R.useState(false), [syncStatus, setSyncStatus] = R.useState(null)
+        const forceScan = R.useRef(false)
+        const [scope, setScope] = R.useState(''), [center, setCenter] = R.useState(focus || ''), [graphMode, setGraphMode] = R.useState(focus ? 'center' : 'overview')
+        const [data, setData] = R.useState(null), [error, setError] = R.useState(''), [type, setType] = R.useState(''), [archive, setArchive] = R.useState(false), [navigation, setNavigation] = R.useState(false), [depth, setDepth] = R.useState('1')
+        const [selected, setSelected] = R.useState(null), [hover, setHover] = R.useState(null), [history, setHistory] = R.useState([]), [issues, setIssues] = R.useState(false), [retry, setRetry] = R.useState(0)
+        const [query, setQuery] = R.useState(''), [matches, setMatches] = R.useState(null), [searching, setSearching] = R.useState(false), [transform, setTransform] = R.useState({ x: 0, y: 0, zoom: 1 })
+        const svg = R.useRef(null), drag = R.useRef(null), moved = R.useRef(false), searchRequest = R.useRef(0), autoFit = R.useRef(true)
+        const resetView = () => setTransform({ x: 0, y: 0, zoom: 1 })
+        R.useEffect(() => { setCenter(focus || ''); setScope(''); setGraphMode(focus ? 'center' : 'overview'); setData(null); setSelected(null); setHover(null); setHistory([]); setMatches(null); searchRequest.current++; autoFit.current = true; resetView() }, [snapshot.kbId, snapshot.policyVersion, focus])
+        R.useEffect(() => {
+          const onChange = ev => {
+            const change = ev.detail || {}
+            if (change.kbId !== snapshot.kbId || !['files-changed', 'links-changed'].includes(change.type)) return
+            setError('')
+            const removesFile = change.type === 'files-changed' && ['trash.move', 'trash.purge'].includes(change.operation)
+            const removesCenter = removesFile && change.path === center
+            // Purging/removing a file hides the stale graph immediately; relation edits retain the canvas until refreshed.
+            if (removesFile) { setData(null); setHover(null) }
+            if (removesCenter) {
+              setCenter(''); setScope(''); setGraphMode('overview'); setSelected(null); setHistory(items => items.filter(item => item.center !== change.path)); autoFit.current = true; resetView()
+            }
+            setRetry(n => n + 1)
+          }
+          window.addEventListener('kbw-policy', onChange)
+          return () => window.removeEventListener('kbw-policy', onChange)
+        }, [center, snapshot.kbId])
+        R.useEffect(() => {
+          if (!active || issues) return
+          let live = true; setError(''); setLoadingGraph(true)
+          const force = forceScan.current; forceScan.current = false
+          const progress = setInterval(() => { api({ op: 'atlas.relations.status', expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion }).then(r => { if (live) setSyncStatus(r.sync) }).catch(() => {}) }, 1000)
+          api({ op: 'atlas.relations', force, background: !force, expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion, mode: graphMode === 'overview' ? 'overview' : undefined, prefix: graphMode === 'overview' ? scope : undefined, path: graphMode === 'center' ? center : undefined, type: type || undefined, includeArchive: archive, includeNavigation: navigation, depth: Number(depth), limit: 500 }).then(d => { if (live) { setData(d); setSyncStatus(d.sync); if (autoFit.current) { setTransform(relationFit(relationPositions((graphMode === 'overview' ? d.sections : d.nodes) || [], graphMode === 'center' ? center : ''))); autoFit.current = false } setSelected(s => s && (s.kind === 'node' ? (d.sections || d.nodes || []).some(n => n.path === s.id) : (d.sectionEdges || d.edges || []).some(edge => (edge.id || edge.from + '→' + edge.to) === s.id)) ? s : null) } }).catch(err => { if (live) { if (graphMode === 'center' && err.code === 'NOT_FOUND') { setCenter(''); setScope(''); setGraphMode('overview'); setSelected(null); setHistory(items => items.filter(item => item.center !== center)); autoFit.current = true; resetView() } else setError(err.message) } }).finally(() => { clearInterval(progress); if (live) setLoadingGraph(false) })
+          return () => { live = false; clearInterval(progress) }
+        }, [active, issues, graphMode, scope, center, type, depth, archive, navigation, snapshot.kbId, snapshot.policyVersion, snapshot.version, snapshot.relationVersion, retry])
+        R.useEffect(() => { if (!active || issues) return; const timer = setInterval(() => { if (!document.hidden) setRetry(n => n + 1) }, 5000); return () => clearInterval(timer) }, [active, issues])
+        const remember = () => setHistory(h => [...h, { scope, center, graphMode, depth, selected, transform }].slice(-40))
+        const changeScope = (mode, path = '') => { remember(); autoFit.current = true; setData(null); setGraphMode(mode); if (mode === 'center') setCenter(path); else setScope(path); setDepth('1'); setSelected(null); setHover(null); setMatches(null); resetView() }
+        const back = () => { const previous = history.at(-1); if (!previous) return; autoFit.current = false; setHistory(h => h.slice(0, -1)); setScope(previous.scope); setCenter(previous.center); setGraphMode(previous.graphMode); setDepth(previous.depth); setSelected(previous.selected); setTransform(previous.transform); setData(null); setHover(null) }
         const point = ev => { const matrix = svg.current?.getScreenCTM(); if (!matrix) return { x: 0, y: 0 }; const p = new DOMPoint(ev.clientX, ev.clientY).matrixTransform(matrix.inverse()); return { x: p.x, y: p.y } }
         R.useEffect(() => {
-          const element = svg.current; if (!element) return
+          const element = svg.current; if (!element || !active) return
           const wheel = ev => { ev.preventDefault(); const p = point(ev); setTransform(t => { const zoom = Math.max(.25, Math.min(4, t.zoom * Math.exp(-ev.deltaY * .0015))), ratio = zoom / t.zoom; return { zoom, x: p.x - (p.x - t.x) * ratio, y: p.y - (p.y - t.y) * ratio } }) }
           element.addEventListener('wheel', wheel, { passive: false }); return () => element.removeEventListener('wheel', wheel)
-        }, [center, Boolean(data), issues])
-        if (issues) return e(R.Fragment, null, e('div', { className: 'kbw-toolbar' }, btn('返回关系浏览', () => { setIssues(false); setRetry(n => n + 1) })), e(LinkRepairs, { snapshot, navigate }))
-        const edges = data?.edges || data?.items || [], nodes = data?.nodes || [], lookup = new Map(nodes.map(n => [n.path, n]))
-        const left = [...new Set(edges.filter(edge => edge.to === center && edge.from !== center).map(edge => edge.from))]
-        const right = [...new Set(edges.filter(edge => edge.from === center && edge.to !== center).map(edge => edge.to))].filter(p => !left.includes(p))
-        const second = [...new Set(edges.flatMap(edge => [edge.from, edge.to]))].filter(p => p !== center && !left.includes(p) && !right.includes(p))
-        const shownLeft = left.slice(0, count), shownRight = [...right, ...second].slice(0, count), rows = Math.max(shownLeft.length, shownRight.length, 2), height = Math.max(420, rows * 78 + 70), positions = new Map([[center, { x: 335, y: height / 2 - 26 }]])
-        shownLeft.forEach((p, i) => positions.set(p, { x: 20, y: 45 + i * 78 })); shownRight.forEach((p, i) => positions.set(p, { x: 650, y: 45 + i * 78 }))
-        const zoomBy = factor => setTransform(t => { const zoom = Math.max(.25, Math.min(4, t.zoom * factor)), ratio = zoom / t.zoom; return { zoom, x: 450 - (450 - t.x) * ratio, y: height / 2 - (height / 2 - t.y) * ratio } })
-        const fitView = () => {
-          const points = [...positions.values()], x = Math.min(...points.map(p => p.x)), y = Math.min(...points.map(p => p.y)), width = Math.max(...points.map(p => p.x + 230)) - x, h = Math.max(...points.map(p => p.y + 52)) - y
-          const zoom = Math.min(1.6, 860 / width, (height - 40) / h)
-          setTransform({ zoom, x: (900 - width * zoom) / 2 - x * zoom, y: (height - h * zoom) / 2 - y * zoom })
-        }
-        const recenter = () => setTransform(t => ({ ...t, x: 450 - 450 * t.zoom, y: height / 2 - height / 2 * t.zoom }))
-        const group = (label, items) => e('section', null, e('h3', null, label), items.map(edge => {
-          const target = edge.from === center ? edge.to : edge.from
-          return e('div', { key: edge.id, className: 'kbw-annotation', onMouseEnter: () => setHover(target), onMouseLeave: () => setHover('') }, btn(lookup.get(target)?.title || target, () => enter(target), false, { title: '以此资料为中心查看关系' }), e('p', { className: 'kbw-meta' }, relationLabel(edge.type) + ' · ' + edge.evidence), btn('打开资料', () => navigate('map', target)))
-        }), !items.length ? e('p', { className: 'kbw-meta' }, '当前筛选下没有此类链接') : null)
-        const hasGraph = Boolean(data && edges.length)
+        }, [active, Boolean(data), issues])
+        R.useEffect(() => { if (!active) return; const key = ev => { if (ev.key === 'Escape') { setSelected(null); setHover(null) } }; window.addEventListener('keydown', key); return () => window.removeEventListener('keydown', key) }, [active])
+        const search = async ev => { ev.preventDefault(); const seq = ++searchRequest.current; setSearching(true); setError(''); try { const r = await api({ op: 'atlas.list', expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion, q: query, limit: 20 }); if (seq === searchRequest.current) setMatches(r.items) } catch (err) { if (seq === searchRequest.current) setError(err.message) } finally { if (seq === searchRequest.current) setSearching(false) } }
+        if (issues) return e('section', { className: 'kbw-content' }, btn('返回关系网络', () => { setIssues(false); setRetry(n => n + 1) }), e(LinkRepairs, { snapshot, navigate }))
+        const overview = graphMode === 'overview', nodes = data ? (overview ? data.sections : data.nodes) || [] : [], edges = data ? (overview ? data.sectionEdges : data.edges) || [] : []
+        const edgeId = edge => edge.id || edge.from + '→' + edge.to
+        const lookup = new Map(nodes.map(n => [n.path, n])), currentSelection = hover || selected
+        const activeEdges = new Set(currentSelection ? edges.filter(edge => currentSelection.kind === 'edge' ? edgeId(edge) === currentSelection.id : edge.from === currentSelection.id || edge.to === currentSelection.id).map(edgeId) : [])
+        const activeNodes = new Set(currentSelection?.kind === 'node' ? [currentSelection.id] : [])
+        for (const edge of edges) if (activeEdges.has(edgeId(edge))) { activeNodes.add(edge.from); activeNodes.add(edge.to) }
+        const width = 1000, height = 620, nodeWidth = 210, nodeHeight = 64, positions = relationPositions(nodes, !overview && graphMode === 'center' ? center : '')
+        const fitView = () => setTransform(relationFit(positions))
+        const chooseNode = id => setSelected({ kind: 'node', id }), chooseEdge = edge => setSelected({ kind: 'edge', id: edgeId(edge) })
+        const pickedNode = selected?.kind === 'node' ? lookup.get(selected.id) : null, pickedEdge = selected?.kind === 'edge' ? edges.find(edge => edgeId(edge) === selected.id) : null
+        const related = selected ? edges.filter(edge => selected.kind === 'edge' ? edgeId(edge) === selected.id : edge.from === selected.id || edge.to === selected.id) : edges
         return e('section', { className: 'kbw-relations' },
-          e('div', { className: 'kbw-home-head' }, e('div', null, e('h2', null, '关系浏览'), e('p', { className: 'kbw-meta' }, '显示资料中已有的来源、引用和手动关联。点击关联节点继续浏览，点击中心节点打开资料。')), btn('检查失效链接' + (data?.issueTotal ? ' · ' + data.issueTotal : ''), () => setIssues(true))),
-          e('details', { open: !center || searched }, e('summary', null, center ? '更换中心资料（搜索标题或路径）' : '选择中心资料'),
-            e('form', { className: 'kbw-toolbar kbw-relation-filters', onSubmit: search }, field('查找资料', query, v => { setQuery(v); setSearched(false) }, { placeholder: '输入标题或路径，按 Enter 查找' }), e('button', { className: 'kbw-button', type: 'submit', disabled: searching }, searching ? '查找中…' : '查找资料')),
-            searched ? matches.length ? e('div', { className: 'kbw-actions' }, matches.map(f => btn(f.title, () => enter(f.path), false, { key: f.path, title: f.path }))) : e('p', { role: 'status', className: 'kbw-meta' }, '没有找到资料，请尝试其他标题或路径。') : null),
-          !center ? e('div', { className: 'kbw-empty' }, e('h3', null, data ? '选择一份资料查看关系' : '正在查找已有链接的资料…'), e('p', null, '没有链接的资料不会自动产生关联。可先打开资料添加引用或手动关联。'), e('div', { className: 'kbw-actions' }, snapshot.recent.filter(f => !/(INDEX|AGENTS)\.md$/i.test(f.path)).slice(0, 4).map(f => btn(f.title, () => enter(f.path), false, { key: f.path })))) : e(R.Fragment, null,
-            e('div', { className: 'kbw-toolbar kbw-relation-filters' }, btn('返回上一份资料', () => { setCenter(history.at(-1) || ''); setHistory(h => h.slice(0, -1)); resetView() }, !history.length), select('显示的链接', type, setType, [['', '全部类型'], ['source', '来源链接'], ['reference', '文中引用'], ['manual', '手动关联']]), select('浏览范围', depth, setDepth, [['1', '直接关联'], ['2', '再展开一层']]), check('显示归档资料', archive, setArchive), check('显示目录索引文档', navigation, setNavigation)),
-            e('p', { className: 'kbw-path' }, '当前资料：' + center),
-            e('div', { className: 'kbw-actions', style: { marginBottom: 12 } }, btn('放大', () => zoomBy(1.2), !hasGraph), btn('缩小', () => zoomBy(1 / 1.2), !hasGraph), btn('显示全部节点', fitView, !hasGraph), btn('定位中心资料', recenter, !hasGraph), btn('打开当前资料', () => navigate('map', center)), btn(aiBusy ? '正在创建讨论…' : '与 AI 讨论可能的关联', async () => { setAiBusy(true); setError(''); try { await launchRepairChat(snapshot, [], center); setIssues(true) } catch (err) { setError(err.message) } finally { setAiBusy(false) } }, aiBusy)),
-            e('p', { className: 'kbw-meta' }, '“来源链接”来自资料的来源信息，“文中引用”来自文档内链接；AI 建议需要预览确认后才会保存。'),
-            !data ? e('p', { role: 'status' }, error ? '关系读取失败，请重试。' : '正在读取关系…') : !hasGraph ? e('div', { className: 'kbw-empty', role: 'status' }, e('h3', null, data.unfilteredTotal ? '已有链接被当前筛选隐藏' : '这份资料尚无可用的关联链接'),
-              e('p', null, data.unfilteredTotal ? '请切换为全部类型，或显示归档资料和目录索引文档。' : '关系图依据文档内的实际链接生成。打开当前资料，添加来源、引用或手动关联后即可显示。'),
-              data.centerIssueTotal ? e('p', null, '这份资料有 ' + data.centerIssueTotal + ' 个链接无法解析，请进入“检查失效链接”。') : null,
-              data.unfilteredTotal ? btn('显示全部类型及隐藏资料', () => { setType(''); setArchive(true); setNavigation(true) }) : btn('打开资料并添加关联', () => navigate('map', center)),
-              data.suggestedCenters?.length ? e('div', null, e('p', null, '也可以查看已有链接的资料：'), e('div', { className: 'kbw-actions' }, data.suggestedCenters.filter(f => f.path !== center).slice(0, 4).map(f => btn(f.title + ' · ' + f.count + ' 条链接', () => enter(f.path), false, { key: f.path })))) : null) : e(R.Fragment, null,
-              e('p', { className: 'kbw-meta', role: 'status' }, '当前范围共 ' + data.total + ' 条链接；图中显示 ' + positions.size + ' 个节点。箭头指向被引用的资料。滚轮缩放，拖动画布平移；下方列表可逐条打开资料。'),
-              e('svg', { ref: svg, className: 'kbw-graph', viewBox: '0 0 900 ' + height, role: 'group', 'aria-label': '知识关系地图', onPointerDown: ev => { moved.current = false; if (ev.target.closest('[data-node]')) return; drag.current = { ...point(ev), original: transform }; ev.currentTarget.setPointerCapture(ev.pointerId) }, onPointerMove: ev => { if (drag.current) { const p = point(ev), dx = p.x - drag.current.x, dy = p.y - drag.current.y; if (Math.abs(dx) + Math.abs(dy) > 3) moved.current = true; setTransform({ ...drag.current.original, x: drag.current.original.x + dx, y: drag.current.original.y + dy }) } }, onPointerUp: () => { drag.current = null }, onPointerCancel: () => { drag.current = null } }, e('defs', null, e('marker', { id: 'kbw-relation-arrow', viewBox: '0 0 10 10', refX: 10, refY: 5, markerWidth: 7, markerHeight: 7, orient: 'auto' }, e('polygon', { points: '0,0 10,5 0,10', fill: 'var(--kbw-accent)' }))), e('g', { transform: `translate(${transform.x} ${transform.y}) scale(${transform.zoom})` },
-                edges.map(edge => { const a = positions.get(edge.from), b = positions.get(edge.to); if (!a || !b) return null; const fromX = a.x < b.x ? a.x + 230 : a.x, toX = a.x < b.x ? b.x : b.x + 230, middle = (fromX + toX) / 2; return e('path', { key: edge.id, markerEnd: 'url(#kbw-relation-arrow)', 'data-active': hover === edge.from || hover === edge.to, d: `M${fromX},${a.y + 26} C${middle},${a.y + 26} ${middle},${b.y + 26} ${toX},${b.y + 26}` }, e('title', null, relationLabel(edge.type) + ' · ' + edge.evidence)) }),
-                [...positions].map(([file, p]) => { const activate = () => file === center ? navigate('map', file) : enter(file); return e('g', { key: file, 'data-node': true, 'data-center': file === center, role: 'button', tabIndex: 0, 'aria-label': (file === center ? '打开资料：' : '查看关联：') + (lookup.get(file)?.title || file), transform: `translate(${p.x} ${p.y})`, onClick: () => { if (!moved.current) activate(); moved.current = false }, onKeyDown: ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); activate() } }, onMouseEnter: () => setHover(file), onMouseLeave: () => setHover('') }, e('rect', { width: 230, height: 52, rx: 9 }), e('text', { x: 12, y: 23 }, (lookup.get(file)?.title || file).slice(0, 16)), e('text', { x: 12, y: 41, style: { fontSize: 10, opacity: .6 } }, file === center ? '点击打开资料' : '点击以此资料为中心'), e('title', null, file)) }))),
-              left.length > count || right.length + second.length > count ? btn('再显示 6 份关联资料', () => setCount(c => c + 6)) : null,
-              e('div', { className: 'kbw-relation-columns' }, group('当前资料指向的链接', edges.filter(edge => edge.from === center)), group('指向当前资料的链接', edges.filter(edge => edge.to === center))))),
-          data?.graphLimited ? e('p', { className: 'kbw-meta' }, '当前图谱达到显示上限，请选择关联节点或缩小浏览范围。') : null,
-          error ? e('div', { role: 'alert', className: 'kbw-error' }, error, btn('重新读取关系', () => setRetry(n => n + 1))) : null)
+          e('div', { className: 'kbw-home-head' }, e('div', null, e('h2', null, '关系网络'), e('p', { className: 'kbw-meta' }, '从全库到分区，再到一份资料。点击卡片或连线，查看它们之间的真实联系。')), btn('检查链接与修复' + (data?.issueTotal ? ' · ' + data.issueTotal : ''), () => setIssues(true))),
+          e('div', { className: 'kbw-network-toolbar' }, e('div', { className: 'kbw-actions' }, btn('全库分区', () => changeScope('overview'), false, { 'aria-current': overview && !scope }), btn('全部已连接资料', () => changeScope('connected'), false, { 'aria-current': graphMode === 'connected' }), btn('返回上一步', back, !history.length), btn('刷新关系', () => setRetry(n => n + 1), loadingGraph), btn('重新扫描关系', () => { forceScan.current = true; setRetry(n => n + 1) }, loadingGraph)),
+            e('form', { className: 'kbw-actions', onSubmit: search }, e('input', { value: query, 'aria-label': '选择中心资料', placeholder: '搜索标题或路径，选择任意中心资料', onChange: ev => setQuery(ev.target.value) }), e('button', { type: 'submit', className: 'kbw-button', disabled: searching }, searching ? '查找中…' : '查找资料'))),
+          e('p', { role: 'status', className: 'kbw-meta' }, loadingGraph || syncStatus?.status === 'updating' ? '正在更新关系' + (syncStatus?.status === 'updating' ? ' · ' + syncStatus.progress.done + ' / ' + syncStatus.progress.total : '…') : error || syncStatus?.status === 'error' ? '更新失败，可重试' + (syncStatus?.error ? '：' + syncStatus.error : '') : '已同步' + (syncStatus?.updatedAt ? ' · ' + date(syncStatus.updatedAt) : '')),
+          matches ? e('div', { className: 'kbw-search-results' }, matches.length ? matches.map(file => e('button', { key: file.path, className: 'kbw-row', onClick: () => changeScope('center', file.path) }, e('strong', null, file.title), e('span', { className: 'kbw-path' }, file.path))) : e('p', { role: 'status' }, '没有找到资料，请换一个标题或路径。'), btn('关闭搜索结果', () => setMatches(null))) : null,
+          e('div', { className: 'kbw-toolbar kbw-relation-filters' }, select('关系类型', type, setType, [['', '全部类型'], ['source', '来源链接'], ['reference', '文中引用'], ['manual', '手动关联']]), graphMode === 'center' ? select('浏览范围', depth, setDepth, [['1', '直接关联'], ['2', '再展开一层']]) : null, check('显示归档资料', archive, setArchive), check('显示目录索引文档', navigation, setNavigation)),
+          e('div', { className: 'kbw-breadcrumb' }, btn('全库', () => changeScope('overview')), overview && scope ? scope.split('/').map((part, i, all) => btn(part, () => changeScope('overview', all.slice(0, i + 1).join('/')), false, { key: i })) : null, !overview ? e('span', { className: 'kbw-path' }, graphMode === 'center' ? '中心资料：' + center : '全部已连接资料') : null),
+          e(SplitPanels, { id: 'relations', kbId: snapshot.kbId, className: 'kbw-network-workspace' },
+            e('div', { className: 'kbw-network-stage' },
+              e('div', { className: 'kbw-network-summary', role: 'status' }, data ? `${nodes.length} 个可见节点 · ${edges.length} 条可见连线` + (overview ? ` · ${data.totalNodes} 份资料` : '') : error ? '读取失败' : '正在读取关系…'),
+              e('svg', { ref: svg, className: 'kbw-graph', viewBox: `0 0 ${width} ${height}`, role: 'group', 'aria-label': '知识关系地图', onPointerDown: ev => { moved.current = false; drag.current = { ...point(ev), original: transform }; if (!ev.target.closest('[data-node],[data-edge]')) ev.currentTarget.setPointerCapture(ev.pointerId) }, onPointerMove: ev => { if (!drag.current) return; const p = point(ev), dx = p.x - drag.current.x, dy = p.y - drag.current.y; if (Math.abs(dx) + Math.abs(dy) > 4) { moved.current = true; setTransform({ ...drag.current.original, x: drag.current.original.x + dx, y: drag.current.original.y + dy }) } }, onPointerUp: ev => { drag.current = null; if (!moved.current && !ev.target.closest('[data-node],[data-edge]')) { setSelected(null); setHover(null) } }, onPointerLeave: () => { drag.current = null; setHover(null) }, onPointerCancel: () => { drag.current = null } },
+                e('defs', null, e('marker', { id: 'kbw-net-arrow', viewBox: '0 0 10 10', refX: 10, refY: 5, markerWidth: 6, markerHeight: 6, orient: 'auto-start-reverse' }, e('polygon', { points: '0,0 10,5 0,10', fill: 'var(--kbw-accent)' }))),
+                e('g', { 'data-viewport': true, transform: `translate(${transform.x} ${transform.y}) scale(${transform.zoom})` },
+                  edges.map(edge => { const a = positions.get(edge.from), b = positions.get(edge.to); if (!a || !b) return null; const forward = a.x <= b.x, x1 = a.x + (forward ? nodeWidth : 0), x2 = b.x + (forward ? 0 : nodeWidth), mid = (x1 + x2) / 2, d = edge.from === edge.to ? `M${a.x + nodeWidth},${a.y + 20} C${a.x + nodeWidth + 65},${a.y - 35} ${a.x + nodeWidth + 65},${a.y + 95} ${a.x + nodeWidth},${a.y + 45}` : `M${x1},${a.y + 32} C${mid},${a.y + 32} ${mid},${b.y + 32} ${x2},${b.y + 32}`; return e('g', { key: edgeId(edge), 'data-edge': edgeId(edge), 'data-dimmed': Boolean(currentSelection && !activeEdges.has(edgeId(edge))), 'data-active': activeEdges.has(edgeId(edge)), role: 'button', tabIndex: 0, 'aria-label': (lookup.get(edge.from)?.title || edge.from) + ' → ' + (lookup.get(edge.to)?.title || edge.to), onClick: () => { if (!moved.current) chooseEdge(edge) }, onKeyDown: ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); chooseEdge(edge) } }, onMouseEnter: () => setHover({ kind: 'edge', id: edgeId(edge) }), onMouseLeave: () => setHover(null) }, e('path', { d, className: 'kbw-edge-hit' }), e('path', { d, markerEnd: 'url(#kbw-net-arrow)' }), e('title', null, overview ? edge.count + ' 条跨分区关系' : relationLabel(edge.type) + ' · ' + (edge.evidence || '未记录定位'))) }),
+                  nodes.map(node => { const p = positions.get(node.path); if (!p) return null; const name = node.title || node.path || '根目录', lines = [name.slice(0, 10), name.slice(10, 20) + (name.length > 20 ? '…' : '')]; return e('g', { key: node.path, 'data-node': node.path, 'data-selected': selected?.kind === 'node' && selected.id === node.path, 'data-active': activeNodes.has(node.path), 'data-center': !overview && node.path === center, 'data-dimmed': Boolean(currentSelection && !activeNodes.has(node.path)), transform: `translate(${p.x} ${p.y})`, role: 'button', tabIndex: 0, 'aria-label': '选择：' + name, onClick: () => { if (!moved.current) chooseNode(node.path) }, onKeyDown: ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); chooseNode(node.path) } }, onMouseEnter: () => setHover({ kind: 'node', id: node.path }), onMouseLeave: () => setHover(null) }, e('rect', { width: nodeWidth, height: nodeHeight, rx: 8 }), e('text', { x: 13, y: 24 }, lines[0]), e('text', { x: 13, y: 43 }, lines[1]), e('text', { x: nodeWidth - 10, y: 57, textAnchor: 'end', className: 'kbw-node-meta' }, overview && !node.leaf ? node.fileCount + ' 份资料' : node.path === center ? '中心' : '资料'), e('title', null, name + '\n' + node.path)) }))),
+              data && !nodes.length ? e('div', { className: 'kbw-network-empty' }, '当前筛选下没有关系节点。请调整筛选，或搜索一份资料作为中心。') : null,
+              e('div', { className: 'kbw-canvas-controls' }, btn('−', () => setTransform(t => { const zoom = Math.max(.25, t.zoom / 1.2), ratio = zoom / t.zoom; return { zoom, x: 500 - (500 - t.x) * ratio, y: 310 - (310 - t.y) * ratio } }), false, { 'aria-label': '缩小' }), e('span', null, Math.round(transform.zoom * 100) + '%'), btn('+', () => setTransform(t => { const zoom = Math.min(4, t.zoom * 1.2), ratio = zoom / t.zoom; return { zoom, x: 500 - (500 - t.x) * ratio, y: 310 - (310 - t.y) * ratio } }), false, { 'aria-label': '放大' }), btn('适配画布', fitView), btn('重置视图', resetView), btn('清除选择', () => { setSelected(null); setHover(null) }, !selected)),
+              e('p', { className: 'kbw-canvas-hint' }, '拖动画布平移 · 滚轮缩放 · 点击节点或连线查看关联 · Esc 清除选择')),
+            e('aside', { className: 'kbw-network-inspector', 'aria-label': '关联详情' },
+              e('h3', null, pickedNode ? pickedNode.title || '根目录' : pickedEdge ? '所选连线' : '探索关系'),
+              pickedNode ? e(R.Fragment, null, e('p', { className: 'kbw-path' }, pickedNode.path || '根目录'), e('div', { className: 'kbw-actions' }, overview && !pickedNode.leaf ? btn('展开下一级', () => changeScope('overview', pickedNode.path), false, { className: 'kbw-button kbw-primary' }) : btn('以此为中心', () => changeScope('center', pickedNode.path), false, { className: 'kbw-button kbw-primary' }), overview && !pickedNode.leaf ? btn('查看资料清单', () => navigate('map', pickedNode.path, true)) : btn('开始阅读', () => navigate('reading', pickedNode.path)), !overview ? btn('展开下一层', () => { remember(); setDepth('2') }, depth === '2') : null)) : !pickedEdge ? e('p', { className: 'kbw-meta' }, '点击图中一张卡片，它与相邻资料的卡片和连线会一起高亮。点击连线，可查看两端资料与联系依据。') : null,
+              e('h4', null, selected ? '与所选内容相连 · ' + related.length : '当前范围的联系 · ' + edges.length),
+              related.slice(0, 100).map(edge => e('article', { key: edgeId(edge), className: 'kbw-evidence', 'data-active': activeEdges.has(edgeId(edge)), 'data-dimmed': Boolean(currentSelection && !activeEdges.has(edgeId(edge))) }, e('button', { className: 'kbw-row', onClick: () => chooseEdge(edge), 'aria-pressed': selected?.kind === 'edge' && selected.id === edgeId(edge) }, e('strong', null, (lookup.get(edge.from)?.title || edge.from || '根目录') + ' → ' + (lookup.get(edge.to)?.title || edge.to || '根目录')), e('span', { className: 'kbw-meta' }, overview ? edge.count + ' 条跨分区关系' : relationLabel(edge.type) + ' · ' + (edge.evidence || '未记录定位'))), !overview ? e('p', { className: 'kbw-path' }, edge.from + '\n→ ' + edge.to) : null, !overview ? btn('查看来源资料', () => navigate('reading', edge.from)) : null)),
+              related.length > 100 ? e('p', { className: 'kbw-meta' }, '详情显示前 100 条，请缩小范围查看。') : null,
+              !related.length ? e('p', { className: 'kbw-meta' }, '没有跨节点连线。可展开目录查看内部资料；资料关系来自来源、引用或手动关联。') : null,
+              pickedNode?.centers?.length ? e('div', null, e('h4', null, '分区中的关联资料'), pickedNode.centers.map(file => e('button', { key: file.path, className: 'kbw-row', onClick: () => changeScope('center', file.path) }, e('strong', null, file.title), e('span', { className: 'kbw-meta' }, file.count + ' 条关系')))) : null)),
+          data?.graphLimited ? e('p', { className: 'kbw-banner' }, '图谱达到显示上限（200 个节点 / 500 条连线）。请进入分区或选择中心资料继续浏览。') : null,
+          data?.coverage && (data.coverage.errors || data.coverage.truncated) ? e('p', { className: 'kbw-banner' }, '扫描不完整，当前图谱仅覆盖已读取资料。') : null,
+          error ? e('div', { role: 'alert', className: 'kbw-error' }, error, btn('重新读取', () => setRetry(n => n + 1))) : null)
       }
+
 
       function Inbox({ snapshot, changed, navigate }) {
         const [data, setData] = R.useState(null), [text, setText] = R.useState(''), [title, setTitle] = R.useState(''), [url, setUrl] = R.useState(''), [upload, setUpload] = R.useState(null), [status, setStatus] = R.useState(''), [error, setError] = R.useState(''), [busy, setBusy] = R.useState(false)
         const [selected, setSelected] = R.useState([]), [tags, setTags] = R.useState(''), [dir, setDir] = R.useState(''), [pair, setPair] = R.useState(null), [extensionOrigin, setExtensionOrigin] = R.useState(''), [connections, setConnections] = R.useState(null)
-        const [captureMode, setCaptureMode] = R.useState('text')
+        const [captureMode, setCaptureMode] = R.useState('text'), [inspect, setInspect] = R.useState(null)
         const [pairBusy, setPairBusy] = R.useState(false), [pairError, setPairError] = R.useState(''), [pairMessage, setPairMessage] = R.useState('')
         R.useEffect(() => { setPair(null); setConnections(null); setPairError(''); setPairMessage('') }, [snapshot.kbId])
         const draftKey = 'kbw-capture-draft:' + snapshot.kbId
@@ -565,14 +740,14 @@ window.__ModuleLoader__.load({
           } catch (err) { setError(err.message); await refresh() } finally { setBusy(false) }
         }
         return e('section', { className: 'kbw-content' }, e('div', { className: 'kbw-form' },
-          e('h2', null, '快速收集'), e('div', { className: 'kbw-steps' }, ['1 保存到收件箱','2 按需识别／转写','3 预览结果','4 整理入库'].map(s => e('span', { key:s }, s))), e('div', { className: 'kbw-actions' }, [['text','记文字'],['web','存网页'],['file','上传文件']].map(([id,label]) => btn(label, () => { setCaptureMode(id); setUpload(null); setUrl('') }, false, { key:id, 'aria-current':captureMode===id }))), e('p', { className: 'kbw-meta' }, '文字、网页和文件保存到 90-收件箱/快速收集/，整理后保留原件。离线文字草稿保存在此浏览器，恢复连接后主动提交。'),
+          e('h2', null, '收件箱'), e('div', { className: 'kbw-steps' }, ['1 保存到收件箱','2 按需识别／转写','3 预览结果','4 整理入库'].map(s => e('span', { key:s }, s))), e('div', { className: 'kbw-actions' }, [['text','记文字'],['web','存网页'],['file','上传文件']].map(([id,label]) => btn(label, () => { setCaptureMode(id); setUpload(null); setUrl('') }, false, { key:id, 'aria-current':captureMode===id }))), e('p', { className: 'kbw-meta' }, '文字、网页和文件保存到 90-收件箱/快速收集/，整理后保留原件。离线文字草稿保存在此浏览器，恢复连接后主动提交。'),
           
           field('标题（可留空）', title, setTitle), captureMode === 'web' ? field('网页地址', url, setUrl, { type: 'url', placeholder: 'https://…' }) : null,
           captureMode !== 'file' ? e('label', { className: 'kbw-field' }, captureMode === 'web' ? '网页正文或备注（可选）' : '记录内容', e('textarea', { value: text, onChange: ev => setText(ev.target.value), placeholder: captureMode === 'web' ? '可粘贴网页正文；仅保存网址时不会自动抓取全文。' : '例如：今天学到的方法、稍后想整理的灵感…' })) : null,
           captureMode === 'file' ? e('div', null, e('p', { className: 'kbw-meta' }, '选择图片、文档或录音。保存后可识别文字或转写音频，原件会保留。'), e('input', { type: 'file', 'aria-label': '上传资料', onChange: ev => setUpload(ev.target.files?.[0] || null) })) : null,
           btn(busy ? '处理中…' : '保存到快速收集', () => create(false), busy || !data || !(upload || text.trim() || url.trim())),
-          e('section', { className: 'kbw-clipper-help', 'aria-label': '浏览器扩展使用指南' },
-            e('h3', null, '用浏览器扩展收集网页'),
+          e('details', { className: 'kbw-clipper-help', 'aria-label': '浏览器扩展使用指南' },
+            e('summary', null, '浏览器扩展：安装、连接与使用说明'),
             e('p', null, '浏览网页时，把选中的一段文字或页面正文一键送到当前知识库的收件箱，同时保留标题和原网址，稍后整理成知识笔记。'),
             e('p', { className: 'kbw-meta' }, '使用顺序：安装扩展 → 连接当前知识库 → 在网页中点击保存 → 回到本页预览、整理。只需首次连接；切换知识库后要重新配对。'),
             e('details', null, e('summary', null, '首次使用：安装与连接（按 4 步完成）'),
@@ -619,8 +794,8 @@ window.__ModuleLoader__.load({
           e('hr'), btn('刷新收件箱', () => { void refresh() }), select('处理状态', status, setStatus, [['', '全部'], ['pending', '待处理'], ['processing', '处理中'], ['done', '已处理'], ['failed', '失败'], ['ignored', '已忽略']]),
           selected.length ? e('div', { className: 'kbw-actions' }, select('整理到分区', dir, setDir, [['', '默认知识笔记'], ['20-知识笔记','知识笔记'], ['10-项目','项目'], ['40-素材资源','素材资源'], ...snapshot.preferences.showPrivate ? [['30-人物关系','人物关系'],['00-画像','画像']] : []]), field('标签（逗号分隔）', tags, setTags),
             btn('整理所选', () => batch('organize'), busy || !selected.length), btn('忽略所选', () => batch('ignored'), busy || !selected.length), btn('重新待处理', () => batch('pending'), busy || !selected.length)) : null,
-          data?.items.map(c => e('div', { key: c.id, className: 'kbw-annotation' }, check(c.title, selected.includes(c.id), value => setSelected(old => value ? [...old, c.id] : old.filter(id => id !== c.id))),
-            e('span', { className: 'kbw-meta' }, stateLabel(c.status) + ' · ' + date(c.createdAt)), btn('预览原件', () => navigate('map', c.path)), ['pending','failed'].includes(c.status) ? btn(/\.(wav|mp3|m4a|mp4|flac|ogg)$/i.test(c.path) ? '开始音频转写' : /\.(pdf|png|jpe?g|docx)$/i.test(c.path) ? '开始识别文字' : '整理为知识笔记', async () => { setBusy(true); try { const current = await api({ op:'capture.list', ...base }); await api({ op:'capture.organize', ...base, id:c.id, expectedRevision:current.revision }); await refresh(); changed() } catch (e) { setError(e.message) } finally { setBusy(false) } }, busy) : null, c.error ? e('p', { className:'kbw-error' }, c.error) : null, c.entryPath ? btn('查看知识条目', () => navigate('map', c.entryPath)) : null)),
+          e(SplitPanels, { id: 'inbox-detail', kbId: snapshot.kbId, className: 'kbw-master-detail' }, e('section', { className: 'kbw-panel' }, data?.items.map(c => e('div', { key: c.id, className: 'kbw-capture-row' }, check('选择条目', selected.includes(c.id), value => setSelected(old => value ? [...old, c.id] : old.filter(id => id !== c.id))), e('button', { className: 'kbw-row', 'aria-current': inspect?.id === c.id, onClick: () => setInspect(c) }, e('strong', null, c.title || '未命名收集'), e('span', { className: 'kbw-meta' }, stateLabel(c.status) + ' · ' + date(c.createdAt))),
+            e('span', { className: 'kbw-meta' }, stateLabel(c.status) + ' · ' + date(c.createdAt)), btn('预览原件', () => navigate('map', c.path)), ['pending','failed'].includes(c.status) ? btn(/\.(wav|mp3|m4a|mp4|flac|ogg)$/i.test(c.path) ? '开始音频转写' : /\.(pdf|png|jpe?g|docx)$/i.test(c.path) ? '开始识别文字' : '整理为知识笔记', async () => { setBusy(true); try { const current = await api({ op:'capture.list', ...base }); await api({ op:'capture.organize', ...base, id:c.id, expectedRevision:current.revision }); await refresh(); changed() } catch (e) { setError(e.message) } finally { setBusy(false) } }, busy) : null, c.error ? e('p', { className:'kbw-error' }, c.error) : null, c.entryPath ? btn('查看知识条目', () => navigate('map', c.entryPath)) : null))), e('aside', { className: 'kbw-panel' }, e('h3', null, inspect ? inspect.title : '选择收集条目'), inspect ? e(R.Fragment, null, e('p', { className: 'kbw-path' }, inspect.path), e('p', { className: 'kbw-meta' }, stateLabel(inspect.status)), btn('预览原件', () => navigate('map', inspect.path)), inspect.entryPath ? btn('查看知识条目', () => navigate('map', inspect.entryPath)) : null, e('p', null, '勾选条目可指定目标分区和标签，然后整理所选；原件会保留。')) : e('p', { className: 'kbw-meta' }, '点击标题查看资料信息；复选框仅用于批量整理。'))),
           e('details', null, e('summary', null, '手机收集帮助'), e('p', null, e('a', { href: '/kb-core/collect', target: '_blank', rel: 'noopener noreferrer' }, '打开快速收集页，可添加到手机主屏幕')), e('p', { className: 'kbw-meta' }, '手机可在快速收集页粘贴文字、分享网址或上传文件，确认后保存。浏览器扩展的安装与连接请查看上方独立使用指南。')),
           error ? e('p', { className: 'kbw-error', role: 'alert' }, error) : null))
       }
@@ -628,7 +803,7 @@ window.__ModuleLoader__.load({
       function Backups({ snapshot }) {
         const [directory, setDirectory] = R.useState(snapshot.preferences.backup.directory), [items, setItems] = R.useState([]), [message, setMessage] = R.useState(''), [busy, setBusy] = R.useState(false), [destination, setDestination] = R.useState(''), [restorePath, setRestorePath] = R.useState(''), [comparison, setComparison] = R.useState(null)
         const run = async body => { setBusy(true); try { const r = await api({ ...body, expectedKbId: snapshot.kbId, directory }); setMessage(r.valid === false ? '校验失败：' + JSON.stringify(r.errors) : r.manifest?.complete === false ? '备份不完整，请查看报告' : r.note || '操作完成'); if (r.items) setItems(r.items); if (r.manifest) setMessage('备份 ' + r.name + ' · ' + (r.manifest.complete ? '完整' : '不完整') + ' · ' + r.manifest.files.length + ' 个文件'); return r } catch (err) { setMessage(err.message) } finally { setBusy(false) } }
-        return e('details', null, e('summary', null, '完整备份、恢复与导出'), e('p', { className: 'kbw-meta' }, '自动备份：' + (snapshot.preferences.backup.enabled ? '开启' : '关闭') + '。手动备份不打开自动开关。'),
+        return e('details', { open: true, className: 'kbw-service' }, e('summary', null, '完整备份、恢复与导出'), e('p', { className: 'kbw-meta' }, '自动备份：' + (snapshot.preferences.backup.enabled ? '开启' : '关闭') + '。手动备份不打开自动开关。'),
           field('备份目录', directory, setDirectory), e('div', { className: 'kbw-actions' }, btn('手动备份一次', () => run({ op: 'backup.create' }), busy || !directory), btn('列出备份', () => run({ op: 'backup.list' }), busy || !directory),
             btn('导出可见原文与附件', () => run({ op: 'backup.export', format: 'files' }), busy || !directory),
             btn('导出目录 CSV', async () => { const r = await run({ op: 'backup.export', format: 'csv' }); if (r) download(r.filename, r.text) }, busy),
@@ -644,22 +819,26 @@ window.__ModuleLoader__.load({
       }
 
       function Review({ snapshot, navigate, changed }) {
-        const [data, setData] = R.useState(null), [error, setError] = R.useState(''), [days, setDays] = R.useState('7')
-        const refresh = R.useCallback(() => api({ op: 'review.list', expectedKbId: snapshot.kbId, days: Number(days) }).then(setData).catch(e => setError(e.message)), [snapshot.kbId, snapshot.policyVersion, days])
+        const [data, setData] = R.useState(null), [error, setError] = R.useState(''), [days, setDays] = R.useState('7'), [selected, setSelected] = R.useState(''), [busy, setBusy] = R.useState(false)
+        const refresh = R.useCallback(() => api({ op: 'review.list', expectedKbId: snapshot.kbId, days: Number(days) }).then(setData).catch(err => setError(err.message)), [snapshot.kbId, snapshot.policyVersion, days])
         R.useEffect(() => { void refresh() }, [refresh, snapshot.revision])
-        const update = async (file, action) => { try { await api({ op: 'review.update', path: file, action, expectedKbId: snapshot.kbId, expectedRevision: data.revision }); changed(); await refresh() } catch (e) { setError(e.message) } }
-        return e('section', { className: 'kbw-content' }, e('h2', null, '回顾'), select('时间范围', days, setDays, [['1', '每日'], ['7', '每周']]),
-          e('h3', null, '待整理'), data?.pending.map(i => e('div', { key: i.id }, btn(i.title, () => navigate('inbox')))),
-          e('h3', null, '到期回顾'), data?.due.map(i => e('div', { key: i.path, className: 'kbw-annotation' }, btn(i.path, () => navigate('reading', i.path)), btn('下一次', () => update(i.path, 'next')), btn('稍后一天', () => update(i.path, 'later')), btn('已掌握', () => update(i.path, 'mastered')), btn('取消回顾', () => update(i.path, 'remove')))),
-          e('h3', null, '最近内容'), data?.recent.map(f => e('div', { key: f.path }, btn(f.title, () => navigate('reading', f.path)))),
-          e('h3', null, '重要摘录'), data?.annotations.map(a => e('div', { key: a.id, className: 'kbw-annotation' }, e('blockquote', null, a.quote), btn(a.path, () => navigate('reading', a.path)))), error ? e('p', { role: 'alert' }, error) : null)
+        const update = async action => { setBusy(true); setError(''); try { await api({ op: 'review.update', path: selected, action, expectedKbId: snapshot.kbId, expectedRevision: data.revision }); setSelected(''); changed(); await refresh() } catch (err) { setError(err.message) } finally { setBusy(false) } }
+        const chosen = data?.due.find(item => item.path === selected)
+        return e('section', { className: 'kbw-content' }, e('div', { className: 'kbw-home-head' }, e('div', null, e('h2', null, '回顾'), e('p', { className: 'kbw-meta' }, '按自己的节奏复习资料；完成本次、稍后提醒和已掌握分别记录。')), select('时间范围', days, setDays, [['1', '今天'], ['7', '本周']])),
+          e(SplitPanels, { id: 'review-detail', kbId: snapshot.kbId, className: 'kbw-master-detail' }, e('section', { className: 'kbw-panel' }, e('h3', null, '到期回顾 · ' + (data?.due.length || 0)), data?.due.map(item => e('button', { key: item.path, className: 'kbw-row', 'aria-current': selected === item.path, onClick: () => setSelected(item.path) }, e('strong', null, item.title || item.path.split('/').at(-1)), e('span', { className: 'kbw-path' }, item.path))), data && !data.due.length ? e('p', { className: 'kbw-empty' }, '当前没有到期回顾。阅读资料时可加入回顾。') : null),
+            e('aside', { className: 'kbw-panel' }, e('h3', null, chosen ? chosen.title || chosen.path.split('/').at(-1) : '选择一份资料'), chosen ? e(R.Fragment, null, e('p', { className: 'kbw-path' }, chosen.path), e('p', { className: 'kbw-meta' }, '打开原文阅读后，选择适合的回顾结果。完成本次会按现有计划安排下一次；稍后会延后一天。'), btn('打开原文', () => navigate('reading', selected), false, { className: 'kbw-button kbw-primary' }), e('div', { className: 'kbw-actions' }, btn('完成本次回顾', () => update('next'), busy), btn('稍后一天', () => update('later'), busy), btn('已掌握', () => update('mastered'), busy), btn('取消回顾', () => update('remove'), busy))) : e('p', { className: 'kbw-meta' }, '选择左侧资料查看操作。'))),
+          e(SplitPanels, { id: 'review-secondary', kbId: snapshot.kbId, className: 'kbw-master-detail kbw-secondary-panels' }, e('section', { className: 'kbw-panel' }, e('h3', null, '最近内容'), data?.recent.map(file => e('button', { key: file.path, className: 'kbw-row', onClick: () => navigate('reading', file.path) }, e('strong', null, file.title), e('span', { className: 'kbw-path' }, file.path)))), e('section', { className: 'kbw-panel' }, e('h3', null, '重要摘录'), data?.annotations.map(a => e('article', { key: a.id, className: 'kbw-annotation' }, e('blockquote', null, a.quote), btn('回到来源', () => navigate('reading', a.path)))), data && !data.annotations.length ? e('p', { className: 'kbw-meta' }, '尚无重要摘录。') : null)),
+          e('details', { className: 'kbw-system-recent' }, e('summary', null, '最近内容（系统） · ' + (data?.recentSystem?.length || 0)), data?.recentSystem?.map(file => e('button', { key: file.path, className: 'kbw-row', onClick: () => navigate('reading', file.path) }, e('strong', null, file.title), e('span', { className: 'kbw-path' }, file.path), e('span', { className: 'kbw-meta' }, date(file.mtimeMs)))), data && !data.recentSystem?.length ? e('p', { className: 'kbw-meta' }, '此时间范围内没有系统文件改动。') : null),
+          data?.pending.length ? e('p', { className: 'kbw-meta' }, '另有 ' + data.pending.length + ' 条收集内容待整理。', btn('前往收件箱', () => navigate('inbox'))) : null,
+          error ? e('p', { role: 'alert', className: 'kbw-error' }, error) : null)
       }
 
       function TaskCenter({ snapshot }) {
         const [data, setData] = R.useState(null), [error, setError] = R.useState('')
         const refresh = async () => { try { setData(await api({ op: 'tasks.list', expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion })) } catch (e) { setError(e.message) } }
         const act = async (op, jobId) => { try { await api({ op, jobId }); await refresh() } catch (e) { setError(e.message) } }
-        return e('details', null, e('summary', null, '任务中心'), btn('刷新任务', refresh),
+        R.useEffect(() => { void refresh() }, [snapshot.kbId, snapshot.policyVersion])
+        return e('details', { open: true, className: 'kbw-service' }, e('summary', null, '任务记录'), btn('刷新任务', refresh),
           data?.tasks.map((t, i) => e('div', { key: t.id || i }, t.type + ' · ' + t.state + ' · ' + (t.copied || 0))),
           data?.imports?.map(i => e('div', { key: i.importId, className: 'kbw-annotation' }, '导入 · ' + i.stage + ' · 成功 ' + (i.counts?.done || 0) + ' / ' + (i.counts?.total || 0),
             btn(i.running ? '中止导入' : '继续 / 重试', async () => { try { await api({ op: i.running ? 'import-cancel' : 'import-run', importId: i.importId }); await refresh() } catch(e) { setError(e.message) } }))),
@@ -680,28 +859,76 @@ window.__ModuleLoader__.load({
       }
 
       function ReadingLibrary({ snapshot, navigate }) {
-        const [data, setData] = R.useState(null), [selected, setSelected] = R.useState([]), [error, setError] = R.useState(''), [title, setTitle] = R.useState('阅读摘录')
-        R.useEffect(() => { let live = true; api({ op: 'reading.list', expectedKbId: snapshot.kbId }).then(d => { if (live) setData(d) }).catch(e => setError(e.message)); return () => { live = false } }, [snapshot.kbId, snapshot.policyVersion, snapshot.revision])
-        return e('section', { className: 'kbw-content' }, e('h2', null, '阅读与摘录'), btn('选择资料开始阅读', () => navigate('map')),
-          data?.items.map(r => e('div', { key: r.path, className: 'kbw-annotation' }, btn(r.path, () => navigate('reading', r.path)), e('span', null, ' · ' + stateLabel(r.status) + ' · 第 ' + r.page + ' 页'))),
-          e('h3', null, '摘录'), data?.annotations.map(a => e('div', { key: a.id, className: 'kbw-annotation' }, check(a.quote, selected.includes(a.id), v => setSelected(old => v ? [...old, a.id] : old.filter(id => id !== a.id))), e('p', null, a.note), btn(a.path, () => navigate('reading', a.path)))),
-          field('生成笔记标题', title, setTitle), btn('从所选摘录生成笔记', async () => { try { const r = await api({ op: 'reading.note', title, ids: selected, expectedKbId: snapshot.kbId, expectedRevision: data.revision, requestId: crypto.randomUUID() }); navigate('map', r.entry.path) } catch (e) { setError(e.message) } }, !selected.length),
-          btn('导出摘录 Markdown', async () => { try { const r = await api({ op: 'reading.export', expectedKbId: snapshot.kbId }); download(r.filename, r.text) } catch (e) { setError(e.message) } }), error ? e('p', { role: 'alert' }, error) : null)
+        const [data, setData] = R.useState(null), [selected, setSelected] = R.useState([]), [error, setError] = R.useState(''), [title, setTitle] = R.useState('阅读摘录'), [filter, setFilter] = R.useState(''), [activeExcerpt, setActiveExcerpt] = R.useState(''), [busy, setBusy] = R.useState(false)
+        R.useEffect(() => { let live = true; api({ op: 'reading.list', expectedKbId: snapshot.kbId }).then(d => { if (live) setData(d) }).catch(err => { if (live) setError(err.message) }); return () => { live = false } }, [snapshot.kbId, snapshot.policyVersion, snapshot.revision])
+        const items = (data?.items || []).filter(item => !filter || item.status === filter), excerpt = data?.annotations.find(a => a.id === activeExcerpt)
+        return e('section', { className: 'kbw-content' }, e('div', { className: 'kbw-home-head' }, e('div', null, e('h2', null, '阅读与摘录'), e('p', { className: 'kbw-meta' }, '继续上次阅读，查看已保存的摘录，并整理成自己的笔记。')), btn('选择资料开始阅读', () => navigate('map'), false, { className: 'kbw-button kbw-primary' })),
+          e(ReadingHelp), e('div', { className: 'kbw-actions kbw-section-tabs' }, [['', '全部'], ['reading', '在读'], ['unread', '未读'], ['done', '已读']].map(([id, label]) => btn(label, () => setFilter(id), false, { key: id, 'aria-current': filter === id }))),
+          e('section', { className: 'kbw-panel' }, items.map(item => e('button', { key: item.path, className: 'kbw-row kbw-reading-row', onClick: () => navigate('reading', item.path) }, e('span', null, e('strong', null, item.title || item.path.split('/').at(-1)), e('span', { className: 'kbw-path' }, item.path)), e('span', { className: 'kbw-meta' }, stateLabel(item.status) + (item.page ? ' · 第 ' + item.page + ' 页' : '')))), data && !items.length ? e('div', { className: 'kbw-empty' }, '当前没有此状态的阅读资料。', btn('从资料目录选择', () => navigate('map'))) : null),
+          e('h3', null, '我的摘录 · ' + (data?.annotations.length || 0)),
+          e(SplitPanels, { id: 'reading-detail', kbId: snapshot.kbId, className: 'kbw-master-detail' }, e('section', { className: 'kbw-panel' }, data?.annotations.map(a => e('article', { key: a.id, className: 'kbw-excerpt-row' }, e('input', { type: 'checkbox', 'aria-label': '选择摘录：' + a.quote, checked: selected.includes(a.id), onChange: ev => setSelected(old => ev.target.checked ? [...old, a.id] : old.filter(id => id !== a.id)) }), e('button', { className: 'kbw-row', 'aria-current': activeExcerpt === a.id, onClick: () => setActiveExcerpt(a.id) }, e('strong', null, a.quote || '区域摘录'), e('span', { className: 'kbw-path' }, a.path)))), data && !data.annotations.length ? e('p', { className: 'kbw-meta' }, '阅读时选择文字或 PDF 区域，即可保存摘录。') : null),
+            e('aside', { className: 'kbw-panel' }, e('h3', null, excerpt ? '摘录详情' : '选择摘录查看'), excerpt ? e(R.Fragment, null, e('blockquote', null, excerpt.quote || 'PDF 区域摘录'), e('p', null, excerpt.note || '尚未填写笔记。'), e('p', { className: 'kbw-path' }, excerpt.path), btn('回到来源', () => navigate('reading', excerpt.path, false, excerpt.id))) : e('p', { className: 'kbw-meta' }, '点击摘录查看内容；左侧复选框用于选择多条摘录生成笔记。'))),
+          e('div', { className: 'kbw-batch-panel' }, e('span', { className: 'kbw-meta' }, '已选择 ' + selected.length + ' 条摘录'), field('生成笔记标题', title, setTitle), btn(busy ? '正在生成…' : '从所选摘录生成笔记', async () => { setBusy(true); setError(''); try { const r = await api({ op: 'reading.note', title, ids: selected, expectedKbId: snapshot.kbId, expectedRevision: data.revision, requestId: crypto.randomUUID() }); navigate('map', r.entry.path) } catch (err) { setError(err.message) } finally { setBusy(false) } }, busy || !selected.length), btn('导出摘录 Markdown', async () => { try { const r = await api({ op: 'reading.export', expectedKbId: snapshot.kbId }); download(r.filename, r.text) } catch (err) { setError(err.message) } })),
+          error ? e('p', { role: 'alert', className: 'kbw-error' }, error) : null)
+      }
+
+
+      function Dashboard({ snapshot, navigate, openScope }) {
+        const [reading, setReading] = R.useState(null), [review, setReview] = R.useState(null)
+        R.useEffect(() => {
+          let live = true
+          api({ op: 'reading.list', expectedKbId: snapshot.kbId }).then(d => { if (live) setReading(d) }).catch(() => {})
+          api({ op: 'review.list', expectedKbId: snapshot.kbId, days: 7 }).then(d => { if (live) setReview(d) }).catch(() => {})
+          return () => { live = false }
+        }, [snapshot.kbId, snapshot.policyVersion, snapshot.revision])
+        return e('section', { className: 'kbw-content' }, e('div', { className: 'kbw-home-head' }, e('div', null, e('h2', null, '总览'), e('p', { className: 'kbw-meta' }, '从上次阅读继续，找到最近资料，处理待办。')), btn('浏览全部资料', () => openScope(''))),
+          e(SplitPanels, { id: 'overview-detail', kbId: snapshot.kbId, className: 'kbw-master-detail' }, e('section', { className: 'kbw-panel' }, e('h3', null, '继续阅读'), (reading?.items || []).filter(item => item.status === 'reading').slice(0, 3).map(item => e('button', { className: 'kbw-row', key: item.path, onClick: () => navigate('reading', item.path) }, e('strong', null, item.path.split('/').at(-1)), e('span', { className: 'kbw-meta' }, item.page ? '上次读到第 ' + item.page + ' 页' : '继续上次阅读'))), reading && !reading.items.some(item => item.status === 'reading') ? e('p', { className: 'kbw-meta' }, '还没有在读资料，从资料目录选择一份开始。') : null), e('section', { className: 'kbw-panel' }, e('h3', null, '待处理'), e('button', { className: 'kbw-row', onClick: () => navigate('inbox') }, e('strong', null, '收件箱'), e('span', { className: 'kbw-meta' }, review ? review.pending.length + ' 条待整理内容' : '查看待整理内容')), e('button', { className: 'kbw-row', onClick: () => navigate('review') }, e('strong', null, '本周回顾'), e('span', { className: 'kbw-meta' }, review ? review.due.length + ' 份资料到期' : '查看回顾计划')))),
+          e('h3', null, '最近变更'), e('section', { className: 'kbw-panel' }, snapshot.recent.slice(0, 8).map(file => e('button', { className: 'kbw-row kbw-reading-row', key: file.path, onClick: () => navigate('reading', file.path) }, e('span', null, e('strong', null, file.title), e('span', { className: 'kbw-path' }, file.path)), e('span', { className: 'kbw-meta' }, date(file.mtimeMs)))), !snapshot.recent.length ? e('p', { className: 'kbw-meta' }, '暂无最近资料。') : null),
+          e('h3', null, '资料分区'), e('div', { className: 'kbw-sections' }, snapshot.sections.filter(section => !section.private || snapshot.preferences.showPrivate).map(section => e('button', { className: 'kbw-section', key: section.name, onClick: () => openScope(section.name) }, e('strong', null, section.name), e('span', { className: 'kbw-meta' }, section.files + ' 份资料')))),
+          e('div', { className: 'kbw-actions' }, btn('任务中心', () => navigate('tasks')), btn('备份与恢复', () => navigate('backups'))))
+      }
+
+      function SettingsHub({ snapshot, navigate }) {
+        const [section, setSection] = R.useState('preferences')
+        const sections = [['preferences', '使用偏好与隐私'], ['parsing', '解析服务'], ['capture', '采集与连接'], ['backup', '备份与恢复'], ['version', '版本与诊断']]
+        return e('section', { className: 'kbw-content' }, e('div', { className: 'kbw-home-head' }, e('div', null, e('h2', null, '知识库设置'), e('p', { className: 'kbw-meta' }, '管理当前知识库的使用方式、连接与数据保护。'))), e('div', { className: 'kbw-settings-layout' }, e('nav', { className: 'kbw-settings-nav', 'aria-label': '设置分类' }, sections.map(([id, label]) => btn(label, () => setSection(id), false, { key: id, 'aria-current': section === id }))), e('div', { className: 'kbw-settings-panel' },
+          section === 'preferences' ? e(R.Fragment, null, e('h3', null, '使用偏好与隐私'), e('p', null, '隐私展示：' + (snapshot.preferences.showPrivate ? '开启' : '关闭')), e('p', null, '私密资料用于问答：' + (snapshot.preferences.allowPrivateQuestions ? '允许' : '不允许')), e('p', null, '自动解析：' + (snapshot.preferences.autoParse ? '开启' : '关闭')), e('p', null, '回顾提醒：' + (snapshot.preferences.reviewReminders ? '开启' : '关闭')), btn('修改使用偏好', () => event('kbw-settings'))) : null,
+          section === 'parsing' ? e(R.Fragment, null, e('h3', null, '解析服务'), e(ParseSummary)) : null,
+          section === 'capture' ? e(R.Fragment, null, e('h3', null, '采集与连接'), e('p', null, '网页剪藏、粘贴文本和文件上传统一进入收件箱。可在收件箱查看连接并整理资料。'), btn('打开收件箱与连接说明', () => navigate('inbox'))) : null,
+          section === 'backup' ? e(R.Fragment, null, e('h3', null, '备份与恢复'), e('p', null, '自动完整备份：' + (snapshot.preferences.backup.enabled ? '开启' : '关闭')), btn('打开备份与恢复', () => navigate('backups')), btn('设置自动备份', () => event('kbw-settings'))) : null,
+          section === 'version' ? e(R.Fragment, null, e('h3', null, '版本与诊断'), e(BuildBadge, { passive: true }), e('details', { className: 'kbw-service' }, e('summary', null, '运行状态、索引与异常'), e(Overview)), btn('打开任务中心', () => navigate('tasks'))) : null)))
       }
 
       function Workbench() {
         styles()
-        const [snapshot, setSnapshot] = R.useState(null), [tab, setTab] = R.useState('map'), [prefix, setPrefix] = R.useState(''), [selected, setSelected] = R.useState('')
+        const workspaceRoot = R.useRef(null)
+        R.useEffect(() => {
+          const updateInset = () => {
+            const element = workspaceRoot.current; if (!element) return
+            const bounds = element.getBoundingClientRect()
+            let covered = 0
+            for (const input of document.querySelectorAll('[contenteditable="true"],textarea')) {
+              if (element.contains(input)) continue
+              const rect = input.getBoundingClientRect()
+              if (rect.width > 200 && rect.height > 0 && rect.top > bounds.top + bounds.height / 2 && rect.top < bounds.bottom && rect.right > bounds.left && rect.left < bounds.right) covered = Math.max(covered, bounds.bottom - rect.top + 24)
+            }
+            element.style.setProperty('--kbw-composer-inset', Math.max(24, covered) + 'px')
+          }
+          updateInset(); const observer = new ResizeObserver(updateInset); observer.observe(document.body)
+          window.addEventListener('resize', updateInset)
+          return () => { observer.disconnect(); window.removeEventListener('resize', updateInset) }
+        }, [])
+        const [snapshot, setSnapshot] = R.useState(null), [tab, setTab] = R.useState('map'), [prefix, setPrefix] = R.useState(''), [selected, setSelected] = R.useState(''), [relationFocus, setRelationFocus] = R.useState(''), [annotationId, setAnnotationId] = R.useState(''), [toast, setToast] = R.useState('')
         const [query, setQuery] = R.useState(''), [mode, setMode] = R.useState('path'), [layer, setLayer] = R.useState(''), [extension, setExtension] = R.useState(''), [tag, setTag] = R.useState(''), [after, setAfter] = R.useState(''), [before, setBefore] = R.useState(''), [sort, setSort] = R.useState('name'), [direct, setDirect] = R.useState(false)
-        const [view, setView] = R.useState('cards'), [browse, setBrowse] = R.useState(false)
-        const [list, setList] = R.useState(null), [offset, setOffset] = R.useState(0), [error, setError] = R.useState(''), [busy, setBusy] = R.useState(false), [deferred, setDeferred] = R.useState(false), [tasks, setTasks] = R.useState(null), [reminder, setReminder] = R.useState(null)
-        const current = R.useRef(null), generation = R.useRef(0), first = R.useRef(true), request = R.useRef(0)
+        const [view, setView] = R.useState('list'), [browse, setBrowse] = R.useState(false)
+        const [list, setList] = R.useState(null), [offset, setOffset] = R.useState(0), [error, setError] = R.useState(''), [busy, setBusy] = R.useState(false), [deferred, setDeferred] = R.useState(false), [tasks, setTasks] = R.useState(null), [reminder, setReminder] = R.useState(null), [canGoBack, setCanGoBack] = R.useState(false), [routeRestore, setRouteRestore] = R.useState(null)
+        const current = R.useRef(null), generation = R.useRef(0), first = R.useRef(true), request = R.useRef(0), routeHistory = R.useRef([]), routePushRef = R.useRef(null)
         const refresh = R.useCallback(async () => {
           const gen = generation.current
           try {
             const next = await api({ op: 'atlas.snapshot' })
             if (gen !== generation.current) return
-            if (current.current && (current.current.kbId !== next.kbId || current.current.policyVersion !== next.policyVersion)) { generation.current++; request.current++; setList(null); setSelected(''); setPrefix(''); setTasks(null) }
+                if (current.current && (current.current.kbId !== next.kbId || current.current.policyVersion !== next.policyVersion)) { generation.current++; request.current++; setList(null); setSelected(''); setRelationFocus(''); setPrefix(''); setTasks(null); routeHistory.current = []; setCanGoBack(false) }
             if (first.current) {
               first.current = false
               let chosen = next.preferences.landing
@@ -715,17 +942,48 @@ window.__ModuleLoader__.load({
         R.useEffect(() => {
           connectEvents(); void refresh()
           const policy = ev => {
-            if (ev.detail?.type === 'links-changed') { void refresh(); return }
+            if (['parse-jobs-changed', 'relations-progress'].includes(ev.detail?.type)) return
+            if (['links-changed', 'files-changed'].includes(ev.detail?.type)) { if (ev.detail.type === 'files-changed' && ev.detail.operation !== 'trash.restore') setSelected(old => old === ev.detail.path ? '' : old); void refresh(); return }
             if (ev.detail?.type === 'review-due') { if (ev.detail.kbId === current.current?.kbId) setReminder(ev.detail.count); return }
-            generation.current++; request.current++; current.current = null; setSnapshot(null); setList(null); setSelected(''); setTasks(null); void refresh()
+            generation.current++; request.current++; current.current = null; setSnapshot(null); setList(null); setSelected(''); setRelationFocus(''); setTasks(null); routeHistory.current = []; setCanGoBack(false); void refresh()
           }
+          const toastListener = ev => setToast(String(ev.detail || '')); window.addEventListener('kbw-toast', toastListener)
           const timer = setInterval(() => { if (!document.hidden) void refresh() }, 5000)
           const defer = () => setDeferred(true)
-          const capture = ev => { if ((ev.ctrlKey || ev.metaKey) && ev.shiftKey && ev.key.toLowerCase() === 'k') { ev.preventDefault(); setTab('inbox') } }
+          const capture = ev => { if ((ev.ctrlKey || ev.metaKey) && ev.shiftKey && ev.key.toLowerCase() === 'k') { ev.preventDefault(); routePushRef.current?.(); setTab('inbox') } }
           window.addEventListener('kbw-policy', policy); window.addEventListener('kbw-deferred', defer); window.addEventListener('keydown', capture)
-          return () => { generation.current++; request.current++; clearInterval(timer); window.removeEventListener('kbw-policy', policy); window.removeEventListener('kbw-deferred', defer); window.removeEventListener('keydown', capture) }
+          return () => { generation.current++; request.current++; clearInterval(timer); window.removeEventListener('kbw-toast', toastListener); window.removeEventListener('kbw-policy', policy); window.removeEventListener('kbw-deferred', defer); window.removeEventListener('keydown', capture) }
         }, [refresh])
-        const navigate = R.useCallback((next, file, directory = false) => { setTab(next); setSelected(directory ? '' : file || ''); if (file) { setBrowse(true); setQuery(''); setOffset(0) }; if (file) setPrefix(directory ? file : file.includes('/') ? file.slice(0, file.lastIndexOf('/')) : '') }, [])
+        const pushRoute = R.useCallback(() => {
+          const scrollSelector = tab === 'relations' ? '.kbw-relations, .kbw-content' : (tab === 'map' || tab === 'reading') && selected ? '.kbw-detail' : tab === 'map' ? '.kbw-list, .kbw-content' : '.kbw-content'
+          const scrollTop = document.querySelector('.kbw ' + scrollSelector)?.scrollTop || 0
+          routeHistory.current = [...routeHistory.current, { tab, prefix, selected, query, mode, layer, extension, tag, after, before, sort, direct, view, browse, offset, scrollSelector, scrollTop }].slice(-50)
+          setCanGoBack(routeHistory.current.length > 0)
+        }, [tab, prefix, selected, query, mode, layer, extension, tag, after, before, sort, direct, view, browse, offset])
+        routePushRef.current = pushRoute
+        const goBack = R.useCallback(() => {
+          const previous = routeHistory.current.pop()
+          if (!previous) { setCanGoBack(false); setSelected(''); return }
+          setCanGoBack(routeHistory.current.length > 0)
+          setTab(previous.tab); setPrefix(previous.prefix); setSelected(previous.selected); setQuery(previous.query); setMode(previous.mode); setLayer(previous.layer); setExtension(previous.extension); setTag(previous.tag); setAfter(previous.after); setBefore(previous.before); setSort(previous.sort); setDirect(previous.direct); setView(previous.view); setBrowse(previous.browse); setOffset(previous.offset)
+          setRouteRestore({ tab: previous.tab, selected: previous.selected, scrollSelector: previous.scrollSelector, scrollTop: previous.scrollTop })
+        }, [])
+        R.useEffect(() => {
+          if (!routeRestore || routeRestore.tab !== tab) return
+          const frame = requestAnimationFrame(() => {
+            const page = document.querySelector('.kbw ' + routeRestore.scrollSelector)
+            if (page) page.scrollTop = routeRestore.scrollTop
+            setRouteRestore(null)
+          })
+          return () => cancelAnimationFrame(frame)
+        }, [tab, routeRestore])
+        const navigate = R.useCallback((next, file, directory = false, excerptId = '') => {
+          setAnnotationId(excerptId)
+          const nextSelected = directory ? '' : file || ''
+          if (next !== tab || nextSelected !== selected) pushRoute()
+          setTab(next); setSelected(nextSelected); if (next === 'relations') setRelationFocus(file || selected || '')
+          if (file || directory) { setBrowse(true); setQuery(''); setOffset(0); setPrefix(directory ? file || '' : file.includes('/') ? file.slice(0, file.lastIndexOf('/')) : '') }
+        }, [tab, selected, pushRoute])
         const loadList = R.useCallback(async () => {
           if (!snapshot) return
           const seq = ++request.current, gen = generation.current
@@ -739,47 +997,51 @@ window.__ModuleLoader__.load({
         }, [snapshot?.kbId, snapshot?.policyVersion, snapshot?.version, prefix, query, mode, layer, extension, tag, after, before, sort, direct, offset])
         R.useEffect(() => { const timer = setTimeout(() => { void loadList() }, 200); return () => clearTimeout(timer) }, [loadList])
         R.useEffect(() => { if (snapshot) try { localStorage.setItem('kbw-tab:' + snapshot.kbId, tab) } catch {} }, [tab, snapshot?.kbId])
-        const openScope = p => { setTab('map'); setBrowse(true); setQuery(''); setPrefix(p); setSelected(''); setOffset(0) }
+        const openScope = p => { if (tab !== 'map' || selected || prefix !== p || !browse) pushRoute(); setTab('map'); setBrowse(true); setQuery(''); setPrefix(p); setSelected(''); setOffset(0) }
+        const openFile = file => { if (selected !== file) pushRoute(); setSelected(file) }
+        const closeDetail = () => canGoBack ? goBack() : setSelected('')
         const searchSubmit = ev => { ev?.preventDefault(); setOffset(0); void loadList() }
-        const tabs = [['overview', '总览'], ['map', '地图'], ['relations', '关系'], ['inbox', '收件箱'], ['reading', '阅读'], ['review', '回顾'], ['flows', '流程']]
-        return e('div', { className: 'kbw' },
-          e('div', { className: 'kbw-toolbar', style: { flexShrink: 0, borderBottom: '1px solid var(--line)' } }, e(BuildBadge)),
-          e('nav', { className: 'kbw-nav', 'aria-label': '知识库功能' }, tabs.map(([id, label]) => btn(label, () => { setTab(id); if (id !== 'relations') setSelected('') }, false, { key: id, 'aria-current': tab === id })),
-            e('span', { style: { flex: 1 } }), btn('设置', () => event('kbw-settings'))),
+        const tabs = [['overview', '总览'], ['map', '资料目录'], ['relations', '关系网络'], ['inbox', '收件箱'], ['reading', '阅读与摘录'], ['review', '回顾'], ['flows', '流程']]
+        return e('div', { className: 'kbw', ref: workspaceRoot },
+          e('header', { className: 'kbw-app-header' }, e('div', null, e('strong', null, '知识库'), e('span', { className: 'kbw-meta' }, '资料、阅读与联系')), e('form', { className: 'kbw-global-search', onSubmit: ev => { ev.preventDefault(); pushRoute(); setTab('map'); setBrowse(true); setSelected(''); setPrefix(''); setOffset(0); void loadList() } }, e('input', { 'aria-label': '搜索资料标题或路径', placeholder: '搜索资料标题或路径', value: query, onChange: ev => setQuery(ev.target.value) }), e('button', { className: 'kbw-button', type: 'submit' }, '搜索')), e('div', { className: 'kbw-actions' }, btn('快速收集', () => navigate('inbox'), false, { className: 'kbw-button kbw-primary' }), btn('回收站', () => navigate('trash'), false, { 'aria-current': tab === 'trash' }), btn('设置', () => navigate('settings'), false, { 'aria-current': tab === 'settings' }))),
+          e('div', { className: 'kbw-update-bar' }, e(BuildBadge)),
+          e('nav', { className: 'kbw-nav', 'aria-label': '知识库功能' }, tabs.map(([id, label]) => btn(label, () => { if (id !== tab || id === 'reading' && selected) { pushRoute(); setTab(id); if (id === 'reading') setSelected(''); if (id === 'relations') setRelationFocus(selected || '') } }, false, { key: id, 'aria-current': tab === id })),
+            e('span', { style: { flex: 1 } }), btn('返回上一页', goBack, !canGoBack, { 'aria-label': '返回上一页' })),
+          toast ? e('div', { className: 'kbw-banner', role: 'status' }, toast, btn('关闭', () => setToast(''))) : null,
           deferred ? e('div', { className: 'kbw-banner' }, '必要设置尚未完成', btn('继续设置', () => event('kbw-settings'))) : null,
           snapshot?.needsConfirmation ? e('div', { className: 'kbw-banner' }, '此库尚未确认 profile 默认偏好，当前使用安全默认值。', btn('确认此库设置', () => event('kbw-settings'))) : null,
-          reminder !== null ? e('div', { className: 'kbw-banner' }, '有 ' + reminder + ' 项资料可以回顾', btn('查看回顾', () => { setTab('review'); setReminder(null) }), btn('关闭', () => setReminder(null))) : null,
+          reminder !== null ? e('div', { className: 'kbw-banner' }, '有 ' + reminder + ' 项资料可以回顾', btn('查看回顾', () => { if (tab !== 'review') pushRoute(); setTab('review'); setReminder(null) }), btn('关闭', () => setReminder(null))) : null,
           error ? e('div', { className: 'kbw-error', role: 'alert' }, error, btn('重试', refresh)) : null,
           !snapshot ? e('div', { className: 'kbw-content' }, e('p', null, error ? '请检查绑定或进入设置。' : '正在读取知识库…'), btn('打开设置', () => event('kbw-settings'))) : null,
           snapshot ? e(R.Fragment, null,
             e('div', { className: 'kbw-status' }, '隐私展示：' + (snapshot.preferences.showPrivate ? '开启' : '关闭') + ' · 知识 ' + snapshot.totals.knowledge + ' 条 · 可展示文件 ' + snapshot.totals.visible + ' / 全部文件 ' + snapshot.totals.files, btn('调整', () => event('kbw-settings'))),
             snapshot.coverage.errors || snapshot.coverage.truncated ? e('div', { className: 'kbw-banner', role: 'status' }, '扫描结果不完整：' + snapshot.coverage.errors + ' 处错误' + (snapshot.coverage.truncated ? '，已达到扫描上限' : '') + '。当前统计仅覆盖已读取的内容。') : null,
-            tab === 'overview' ? e('section', { className: 'kbw-content' }, e('div', { className: 'kbw-actions' }, btn('快速收集', () => navigate('inbox')), btn('查看地图', () => navigate('map'))),
-              e('h2', null, '知识库分区'), e('div', { className: 'kbw-actions' }, snapshot.sections.filter(s => !s.private || snapshot.preferences.showPrivate).map(s => btn(s.name + ' · ' + s.files, () => { navigate('map'); openScope(s.name) }, false, { key: s.name }))),
-              e('h2', null, '最近变更'), snapshot.recent.map(f => e('div', { key: f.path, className: 'kbw-annotation' }, btn(f.title, () => navigate('map', f.path)), e('span', { className: 'kbw-meta' }, ' · ' + date(f.mtimeMs)))),
-              e('details', null, e('summary', null, '运行状态、索引与异常'), e(Overview)),
-              e(Backups, { snapshot }), e(TaskCenter, { snapshot })) : null,
+            tab === 'overview' ? e(Dashboard, { snapshot, navigate, openScope }) : null,
             tab === 'map' || tab === 'reading' && selected ? e(R.Fragment, null,
               e('form', { className: 'kbw-toolbar', onSubmit: searchSubmit }, e('input', { 'aria-label': '搜索知识库', placeholder: '搜索资料标题、文件或正文', value: query, onChange: ev => { setQuery(ev.target.value); setBrowse(Boolean(ev.target.value)) } }),
                 e('select', { 'aria-label': '搜索方式', value: mode, onChange: ev => { setMode(ev.target.value); setOffset(0) } }, e('option', { value: 'path' }, '文件名与路径'), e('option', { value: 'body' }, '知识正文')),
-                e('button', { type: 'submit', className: 'kbw-button', disabled: busy }, busy ? '查询中…' : '搜索'), btn('刷新', () => { void refresh(); void loadList() }), btn(browse ? '返回地图首页' : '浏览全部资料', () => { setBrowse(!browse); setPrefix(''); setQuery(''); setSelected('') })),
+                e('button', { type: 'submit', className: 'kbw-button', disabled: busy }, busy ? '查询中…' : '搜索'), btn('刷新', () => { void refresh(); void loadList() }), btn(browse ? '返回目录首页' : '浏览全部资料', () => { pushRoute(); setBrowse(!browse); setPrefix(''); setQuery(''); setSelected('') })),
               browse || selected ? e('details', { style: { padding: '0 18px 10px' } }, e('summary', null, '筛选与排序'), e('div', { className: 'kbw-toolbar' },
                 select('范围', layer, v => { setLayer(v); setOffset(0) }, [['', '全部文件'], ['knowledge', '知识条目'], ['deliverable', '任务成品'], ['original', '原件附件'], ['draft', '底稿']]),
                 field('扩展名', extension, setExtension), field('标签', tag, setTag), field('起始日期', after, setAfter, { type: 'date' }), field('截止日期', before, setBefore, { type: 'date' }),
                 select('排序', sort, setSort, [['name', '名称'], ['modified', '最近修改'], ['relevance', '匹配程度']]), check('仅当前层', direct, setDirect))) : null,
               browse || selected ? e('div', { className: 'kbw-breadcrumb' }, btn('全库', () => openScope('')), prefix.split('/').filter(Boolean).map((part, i, all) => btn(part, () => openScope(all.slice(0, i + 1).join('/')), false, { key: i }))) : null,
-              !browse && !selected ? e('section', { className:'kbw-content' }, e(MapHome, { snapshot, navigate, openScope })) : e('div', { className: 'kbw-grid' },
+              !browse && !selected ? e('section', { className:'kbw-content' }, e(MapHome, { snapshot, navigate, openScope })) : e(SplitPanels, { id: 'directory', kbId: snapshot.kbId, directory: true, className: 'kbw-grid' },
                 e('aside', { className: 'kbw-tree', 'aria-label': '目录树', key: snapshot.policyVersion }, btn('全部内容', () => openScope('')),
                   snapshot.sections.map(s => s.private && !snapshot.preferences.showPrivate ? e('div', { key: s.name, className: 'kbw-meta' }, s.name + ' · 隐私 · ' + s.files + ' 个') : e(TreeNode, { key: s.name, path: s.name, label: s.name + ' ' + s.files, onSelect: openScope, kbId: snapshot.kbId, policy: snapshot.policyVersion }))),
                 e('section', { className: 'kbw-list', 'aria-label': '内容清单' }, list ? e(R.Fragment, null,
                   e('div', { className: 'kbw-meta' }, list.total + ' 个结果 · ' + list.coverageNote), list.truncated ? e('p', { role: 'status' }, '结果不完整，扫描已达到上限') : null,
                   e('div', { className:'kbw-actions' }, btn('资料卡片', () => setView('cards'), false, { 'aria-current':view==='cards' }), btn('目录列表', () => setView('list'), false, { 'aria-current':view==='list' })),
                   prefix === '任务成品' ? e(ProductImport, { snapshot }) : null,
-                  e('div', { className:view==='cards'?'kbw-cards':'' }, list.items.map(f => view==='cards' ? e(FileCard, { key:f.path, file:f, active:selected===f.path, onClick:() => setSelected(f.path) }) : e('button', { key:f.path,className:'kbw-row',onClick:() => setSelected(f.path) }, e('strong',null,f.title),e('span',{className:'kbw-path'},f.path),e('div',{className:'kbw-meta'},date(f.mtimeMs))))),
+                  e('div', { className:view==='cards'?'kbw-cards':'' }, list.items.map(f => e('div', { key: f.path, className: 'kbw-file-row' }, view==='cards' ? e(FileCard, { file:f, active:selected===f.path, onClick:() => openFile(f.path) }) : e('button', { className:'kbw-row', 'aria-current': selected === f.path, onClick:() => openFile(f.path) }, e('strong',null,f.title),e('span',{className:'kbw-path'},f.path),e('div',{className:'kbw-meta'},date(f.mtimeMs))), e('div', { className: 'kbw-file-actions', 'aria-label': '文件操作：' + f.title }, e(DeleteFile, { file: f, snapshot, onDeleted: () => { setSelected(old => old === f.path ? '' : old); void refresh(); void loadList() } }))))),
                   !list.items.length ? e('p', { className: 'kbw-empty' }, '当前范围没有匹配的内容') : null,
                   e('div', { className: 'kbw-actions' }, btn('上一页', () => setOffset(Math.max(0, offset - 100)), offset === 0), btn('下一页', () => setOffset(offset + 100), offset + list.items.length >= list.total))) : e('p', null, '读取清单…')),
-                selected ? e(Detail, { key: selected + snapshot.policyVersion, file: selected, snapshot, onClose: () => setSelected(''), onNavigate: navigate, onChanged: refresh, readMode: tab === 'reading' }) : null)) : null,
-            tab === 'relations' ? e(Relations, { snapshot, focus: selected, navigate }) : null,
+                  selected ? e(Detail, { key: selected + snapshot.policyVersion, file: selected, snapshot, onClose: closeDetail, onNavigate: navigate, onChanged: refresh, readMode: tab === 'reading', annotationId }) : null)) : null,
+            e('div', { style: { display: tab === 'relations' ? 'flex' : 'none', flex: 1, minHeight: 0 } }, e(Relations, { snapshot, focus: relationFocus, active: tab === 'relations', navigate })),
+            tab === 'trash' ? e(Trash, { snapshot, changed: refresh }) : null,
+            tab === 'settings' ? e(SettingsHub, { snapshot, navigate }) : null,
+            tab === 'tasks' ? e('section', { className: 'kbw-content kbw-management' }, e('h2', null, '任务中心'), e('p', { className: 'kbw-meta' }, '查看导入、解析与保存结果。解析完成后保存失败，可仅重试入库。'), e(TaskCenter, { snapshot })) : null,
+            tab === 'backups' ? e('section', { className: 'kbw-content kbw-management' }, e('h2', null, '备份与恢复'), e('p', { className: 'kbw-meta' }, '手动备份与自动备份独立。完整恢复写入新目录，当前知识库保持绑定。'), e(Backups, { snapshot })) : null,
             tab === 'inbox' ? e(Inbox, { snapshot, changed: refresh, navigate }) : null,
             tab === 'reading' && !selected ? e(ReadingLibrary, { snapshot, navigate }) : null,
             tab === 'review' ? e(Review, { snapshot, changed: refresh, navigate }) : null,
@@ -889,6 +1151,9 @@ window.__ModuleLoader__.load({
 .kb-release-version{display:inline-flex;margin:4px 0 20px;padding:3px 10px;border:1px solid #7fe5c44a;border-radius:999px;
   color:#a3efd9;background:#7fe5c411;font-size:12px;font-variant-numeric:tabular-nums}
 .kb-release-intro{margin:0 0 16px;color:#c7d4d3}
+.kb-release-group{margin:0 0 18px;padding:14px 16px;border:1px solid #ffffff1c;border-radius:12px;background:#ffffff06}
+.kb-release-group h3{margin:0 0 10px;color:#8fe9cc;font-size:15px;font-weight:650}
+.kb-release-group .kb-release-list{margin-bottom:0}
 .kb-release-list{display:grid;gap:10px;margin:0 0 24px;padding:0;list-style:none}
 .kb-release-list li{display:flex;gap:10px;align-items:flex-start;color:#e1ecea}
 .kb-release-list li:before{content:"✦";flex:none;color:#8fe9cc}
@@ -897,6 +1162,8 @@ window.__ModuleLoader__.load({
   border:1px solid #8fe9cc;border-radius:10px;color:#10221c;background:#8fe9cc;text-decoration:none;font-weight:650}
 .kb-release-actions a.secondary{color:#e5f1ee;background:#ffffff08;border-color:#ffffff26}
 .kb-release-foot{margin:16px 0 0;color:#aebdbb;font-size:12px}
+.kb-update-dot{display:inline-block;width:7px;height:7px;margin-left:5px;border-radius:50%;background:#f05b55;vertical-align:middle;box-shadow:0 0 0 2px #f05b5530}
+.kb-update-options{display:grid;gap:12px;margin:18px 0}.kb-update-option{border:1px solid #ffffff26;border-radius:10px;padding:14px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}.kb-update-option strong{display:block}.kb-update-option small{color:#b9cac6}.kb-update-install{min-height:40px;padding:0 15px;border:0;border-radius:8px;color:#10221c;background:#8fe9cc;font-weight:650;cursor:pointer}.kb-update-install:disabled{opacity:.55;cursor:not-allowed}.kb-update-status{margin:8px 0;color:#c7d4d3;overflow-wrap:anywhere}
 @media(max-width:560px){.kb-release-backdrop{padding:14px}.kb-release-card{padding:26px 20px;border-radius:16px}.kb-release-card h2{font-size:23px}}
 /* §四 顶栏页签新增 */
 .kbm.mono,.kbm-sub.mono{font-family:ui-monospace,Consolas,monospace;font-size:11.5px}
@@ -2275,10 +2542,54 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       notify: (state) => { updateViewState = state; window.dispatchEvent(new CustomEvent('kb-plugin-update', { detail: state })) },
     })
 
-    function BuildBadge() {
-      const [version, setVersion] = react.useState('')
-      const [update, setUpdate] = react.useState(null)
-      const [checking, setChecking] = react.useState(false)
+    let buildBadgeState = { version: '', update: null, checking: false, promptOwner: null, dismissedRevision: 0 }
+    const buildBadgeListeners = new Set(), buildVersionRequest = { current: 0 }, buildUpdateRequest = { current: 0 }
+    const patchBuildBadge = part => { buildBadgeState = { ...buildBadgeState, ...part }; for (const listener of buildBadgeListeners) listener() }
+    const subscribeBuildBadge = listener => { buildBadgeListeners.add(listener); return () => buildBadgeListeners.delete(listener) }
+    const getBuildBadge = () => buildBadgeState
+    const updateDismissKey = release => 'dsh-kb-update-dismissed:' + release.channel + ':' + release.latestVersion
+    const dismissedThisSession = new Set()
+    function availableUpdates(state = buildBadgeState) {
+      const update = state.update
+      if (!update || !state.version) return []
+      const releases = [update, update.preview].filter(release => release?.ok && release.updateAvailable && ['stable', 'preview'].includes(release.channel))
+      return releases.filter(release => release.channel === 'stable' || update.currentChannel === 'preview' || (update.currentChannel === undefined && /-beta\d+$/.test(state.version)))
+    }
+    function pendingUpdatePrompts(state = buildBadgeState) {
+      return availableUpdates(state).filter(release => {
+        const key = updateDismissKey(release)
+        if (dismissedThisSession.has(key)) return false
+        try { return window.localStorage.getItem(key) !== '1' } catch { return true }
+      })
+    }
+    function dismissUpdatePrompts(releases) {
+      for (const release of releases) {
+        const key = updateDismissKey(release)
+        dismissedThisSession.add(key)
+        try { window.localStorage.setItem(key, '1') } catch { /* 本次关闭仍有效 */ }
+      }
+      patchBuildBadge({ dismissedRevision: buildBadgeState.dismissedRevision + 1 })
+    }
+    async function refreshBuildVersion() {
+      const seq = ++buildVersionRequest.current
+      try {
+        const data = await callApi({ op: 'status' })
+        if (seq === buildVersionRequest.current) patchBuildBadge({ version: data?.ok && data.status?.build?.version || RELEASE_VERSION })
+      } catch { if (seq === buildVersionRequest.current) patchBuildBadge({ version: RELEASE_VERSION }) }
+    }
+    async function checkBuildUpdates(force = false) {
+      if (buildBadgeState.checking) return
+      const seq = ++buildUpdateRequest.current
+      patchBuildBadge({ checking: true })
+      try {
+        const data = await callApi({ op: 'updates.check', force })
+        if (seq === buildUpdateRequest.current) patchBuildBadge({ update: data || { ok: false, error: '检查更新失败，请稍后重试' } })
+      } catch (err) {
+        if (seq === buildUpdateRequest.current) patchBuildBadge({ update: { ok: false, error: '检查更新失败：' + String(err?.message || err) } })
+      } finally { if (seq === buildUpdateRequest.current) patchBuildBadge({ checking: false }) }
+    }
+    function BuildBadge({ passive = false } = {}) {
+      const { version, update, checking } = react.useSyncExternalStore(subscribeBuildBadge, getBuildBadge, getBuildBadge)
       const [updating, setUpdating] = react.useState(updateViewState)
       const [canInstall, setCanInstall] = react.useState(Boolean(updateManager))
       react.useEffect(() => {
@@ -2289,52 +2600,16 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         capability()
         return () => { window.removeEventListener('kb-plugin-update', changed); window.removeEventListener('kb-update-capability', capability) }
       }, [])
-      const versionRequest = react.useRef(0)
-      const updateRequest = react.useRef(0)
-      const refreshVersion = react.useCallback(async () => {
-        const seq = ++versionRequest.current
-        try {
-          const data = await callApi({ op: 'status' })
-          if (seq !== versionRequest.current) return
-          const current = data && data.ok && data.status && data.status.build
-          setVersion(current && current.version ? current.version : '')
-        } catch {
-          if (seq === versionRequest.current) setVersion('')
-        }
-      }, [])
-      const check = react.useCallback(async (force) => {
-        const seq = ++updateRequest.current
-        setChecking(true)
-        setUpdate(null)
-        try {
-          const data = await callApi({ op: 'updates.check', force: force === true })
-          if (seq === updateRequest.current) setUpdate(data || { ok: false, error: '检查更新失败，请稍后重试' })
-        } catch (err) {
-          if (seq === updateRequest.current) setUpdate({ ok: false, error: '检查更新失败：' + String((err && err.message) || err) })
-        } finally {
-          if (seq === updateRequest.current) setChecking(false)
-        }
-      }, [])
-      react.useEffect(() => {
-        refreshVersion()
-        return () => { versionRequest.current += 1; updateRequest.current += 1 }
-      }, [refreshVersion])
-      react.useEffect(() => {
-        const tick = () => { if (!document.hidden) check(false) }
-        tick()
-        const timer = setInterval(tick, 6 * 60 * 60 * 1000)
-        document.addEventListener('visibilitychange', tick)
-        return () => { clearInterval(timer); document.removeEventListener('visibilitychange', tick) }
-      }, [check])
       const label = checking ? '正在检查更新…' : !update ? ''
         : !update.ok ? update.error || '检查更新失败，请稍后重试'
           : update.updateAvailable ? '发现新版本 ' + update.latestVersion
             : update.ahead ? '当前使用预览版；最新正式版 ' + update.latestVersion : '已是最新正式版'
       const allCheckSourcesFailed = update?.sourceStatus?.length > 0 && ![...(update.sourceStatus || []), ...(update.preview?.sourceStatus || update.previewSourceStatus || [])].some(s => s.ok)
       const showSourceFailures = !checking && (allCheckSourcesFailed || updating.allSourcesFailed)
+      const hasUpdate = availableUpdates({ version, update }).length > 0 || update?.preview?.updateAvailable === true
       return e('div', { style: { marginLeft: 'auto', display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '4px 10px', fontSize: 12 }, 'aria-label': '插件版本与更新' },
         e('span', { style: { opacity: .75 } }, version ? '版本 ' + version : '版本读取中或暂不可用'),
-        e('button', { className: 'kbc-btn kbc-btn-ghost', style: { padding: '3px 8px', fontSize: 12 }, disabled: checking, onClick: () => { refreshVersion(); check(true) } }, checking ? '检查中…' : '检查版本更新'),
+        e('button', { className: 'kbc-btn kbc-btn-ghost', style: { padding: '3px 8px', fontSize: 12 }, disabled: checking, onClick: () => { void refreshBuildVersion(); void checkBuildUpdates(true) }, 'aria-label': hasUpdate ? '检查版本更新，有可用更新' : '检查版本更新' }, checking ? '检查中…' : '检查版本更新', hasUpdate ? e('span', { className: 'kb-update-dot', 'aria-hidden': 'true' }) : null),
         label ? e('span', { role: 'status', style: { opacity: .8, overflowWrap: 'anywhere' } }, label) : null,
         showSourceFailures ? e('details', { open: true, style: { width: '100%' } },
           e('summary', null, '所有更新源均不可用，查看原因与备用入口'),
@@ -2359,8 +2634,56 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
             onClick: () => { void updateFlow.install(update.latestVersion) } }, updating.busy ? '更新中…' : '安装新版本') : null)
     }
 
+    function UpdatePrompt() {
+      const state = react.useSyncExternalStore(subscribeBuildBadge, getBuildBadge, getBuildBadge)
+      const [updating, setUpdating] = react.useState(updateViewState)
+      const [managerReady, setManagerReady] = react.useState(Boolean(updateManager))
+      const owner = react.useRef(Symbol('kb-update-prompt'))
+      const releases = pendingUpdatePrompts(state)
+      react.useEffect(() => {
+        const changed = event => { if (event.detail) setUpdating(event.detail) }
+        const capability = () => setManagerReady(Boolean(updateManager))
+        window.addEventListener('kb-plugin-update', changed)
+        window.addEventListener('kb-update-capability', capability)
+        return () => {
+          window.removeEventListener('kb-plugin-update', changed)
+          window.removeEventListener('kb-update-capability', capability)
+          if (buildBadgeState.promptOwner === owner.current) patchBuildBadge({ promptOwner: null })
+        }
+      }, [])
+      react.useEffect(() => {
+        if (releases.length && !state.promptOwner) patchBuildBadge({ promptOwner: owner.current })
+        else if (!releases.length && state.promptOwner === owner.current) patchBuildBadge({ promptOwner: null })
+      }, [releases.map(release => updateDismissKey(release)).join('|'), state.promptOwner])
+      const closeRef = react.useRef(null)
+      react.useEffect(() => {
+        if (state.promptOwner !== owner.current || !releases.length) return
+        closeRef.current?.focus()
+        const onKeyDown = event => { if (event.key === 'Escape') dismissUpdatePrompts(releases) }
+        window.addEventListener('keydown', onKeyDown)
+        return () => window.removeEventListener('keydown', onKeyDown)
+      }, [state.promptOwner, releases.map(release => updateDismissKey(release)).join('|')])
+      if (state.promptOwner !== owner.current || !releases.length) return null
+      const canInstall = managerReady && state.update?.installSupported !== false
+      return reactDom.createPortal(e('div', { className: 'kb-release-backdrop', role: 'presentation' },
+        e('section', { className: 'kb-release-card', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'kb-update-title', 'aria-describedby': 'kb-update-intro' },
+          e('button', { ref: closeRef, className: 'kb-release-close', type: 'button', 'aria-label': '关闭更新提示', onClick: () => dismissUpdatePrompts(releases) }, '×'),
+          e('p', { className: 'kb-release-kicker' }, 'PERSONAL KNOWLEDGE · UPDATE'),
+          e('h2', { id: 'kb-update-title' }, '有可用更新'),
+          e('p', { id: 'kb-update-intro', className: 'kb-release-intro' }, '当前版本 ' + state.version + '。选择要安装的版本；关闭后，此版本不会再次弹出提示。'),
+          e('div', { className: 'kb-update-options' }, releases.map(release => e('div', { className: 'kb-update-option', key: updateDismissKey(release) },
+            e('div', null, e('strong', null, release.channel === 'stable' ? '正式版 ' + release.latestVersion : '预览版 ' + release.latestVersion),
+              e('small', null, release.channel === 'preview' ? '包含正在试用的功能' : '稳定发布渠道')),
+            e('button', { className: 'kb-update-install', type: 'button', disabled: !canInstall || updating.busy || updating.uncertain || updating.restartRequired || updating.refreshRequired,
+              onClick: () => { void updateFlow.install(release.latestVersion) } }, releases.length === 1 ? '立刻更新' : '立刻更新' + (release.channel === 'stable' ? '正式版' : '预览版'))))),
+          !canInstall ? e('p', { className: 'kb-update-status', role: 'status' }, '当前宿主暂不支持在客户端内安装，可从检查更新处查看版本信息。') : null,
+          updating.message ? e('p', { className: 'kb-update-status', role: 'status' }, updating.message) : null,
+          updating.uncertain ? e('button', { className: 'kb-update-install', type: 'button', onClick: () => { void updateFlow.recover() } }, '核对更新状态') : null,
+          updating.refreshRequired ? e('button', { className: 'kb-update-install', type: 'button', onClick: () => window.location.reload() }, '刷新界面') : null)), document.body)
+    }
+
     function KbView() {
-      return e(react.Fragment, null, e(workbenchUI.Guide), e(workbenchUI.Workbench))
+      return e(react.Fragment, null, e(UpdatePrompt), e(workbenchUI.Guide), e(workbenchUI.Workbench))
     }
 
     // ── 解析服务（OCR / ASR）：提供方、任务、待解析项 ────────────────
@@ -2494,6 +2817,8 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       const [scanDirectory, setScanDirectory] = react.useState('')
       const [scanBusy, setScanBusy] = react.useState(false)
       const [jobs, setJobs] = react.useState(null)
+      const [jobsError, setJobsError] = react.useState(''), [jobsLoading, setJobsLoading] = react.useState(false), [jobsTotal, setJobsTotal] = react.useState(0), [jobsOffset, setJobsOffset] = react.useState(0), [jobsStatus, setJobsStatus] = react.useState(''), [requests, setRequests] = react.useState(null), [requestOffset, setRequestOffset] = react.useState(0), [requestTotal, setRequestTotal] = react.useState(0)
+      const jobsSequence = react.useRef(0)
       const [jobDetail, setJobDetail] = react.useState(null)
       const [jobPreview, setJobPreview] = react.useState(null)
       const [waitImportId, setWaitImportId] = react.useState(initialImportId)
@@ -2512,20 +2837,21 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       }, [])
 
       const loadJobs = react.useCallback(async () => {
+        const seq = ++jobsSequence.current; setJobsLoading(true)
         try {
-          const d = await callApi({ op: 'parse.jobs', limit: 8 })
-          if (d && d.ok) setJobs(Array.isArray(d.jobs) ? d.jobs : [])
-          else setMsg('读取解析任务失败：' + ((d && (d.error || d.reason)) || '未知原因'))
-        } catch (err) {
-          setMsg('读取解析任务失败：' + String((err && err.message) || err))
-        }
-      }, [])
+          const [d, r] = await Promise.all([callApi({ op: 'parse.jobs', kind: selectedKind, status: jobsStatus || undefined, offset: jobsOffset, limit: 20 }), callApi({ op: 'parse.requests', kind: selectedKind, offset: requestOffset, limit: 20 })])
+          if (seq !== jobsSequence.current) return
+          if (!d?.ok || !r?.ok) throw Error(d?.error || d?.reason || r?.error || r?.reason || '读取任务记录失败')
+          setJobs(d.jobs || []); setJobsTotal(d.total || 0); setRequests(r.requests || []); setRequestTotal(r.total || 0); setJobsError(d.warning || r.warning || '')
+        } catch (err) { if (seq === jobsSequence.current) setJobsError('读取解析任务失败：' + String(err.message || err)) }
+        finally { if (seq === jobsSequence.current) setJobsLoading(false) }
+      }, [selectedKind, jobsOffset, jobsStatus, requestOffset])
 
       react.useEffect(() => {
         ensureStyle()
         load()
-        loadJobs()
-      }, [load, loadJobs])
+      }, [load])
+      react.useEffect(() => { if (parsePane === 'tasks') { setJobs(null); setRequests(null); void loadJobs() } return () => { jobsSequence.current++ } }, [parsePane, loadJobs])
 
       react.useEffect(() => {
         if (initialImportId === '') return
@@ -2549,10 +2875,13 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       // 只要有任务在排队/运行就每 5 秒刷新一次；全部终态后立刻清掉 interval
       const activeCount = (jobs || []).filter((j) => j.status === 'queued' || j.status === 'running').length
       react.useEffect(() => {
-        if (activeCount === 0) return undefined
-        const timer = setInterval(() => { loadJobs() }, 5000)
-        return () => clearInterval(timer)
-      }, [activeCount, loadJobs])
+        if (parsePane !== 'tasks') return undefined
+        const refresh = () => { if (!document.hidden) void loadJobs() }
+        const onEvent = ev => { if (ev.detail?.type === 'parse-jobs-changed') refresh() }
+        const timer = setInterval(refresh, 5000)
+        window.addEventListener('kbw-policy', onEvent)
+        return () => { clearInterval(timer); window.removeEventListener('kbw-policy', onEvent) }
+      }, [parsePane, loadJobs])
 
       const patch = (p) => setDraft((prev) => (prev === null ? prev : Object.assign({}, prev, p)))
       react.useEffect(() => {
@@ -2988,6 +3317,9 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           editing ? formNode(draft) : null)
       }
 
+      const parseOrigin = source => ({ agent: 'Agent', import: '导入', flow: '流程', ui: '设置页', test: '服务测试' })[source?.origin]
+        || ({ tool: 'Agent', ui: '设置页', test: '服务测试' })[source?.via] || '未知入口'
+      const parseTime = value => { if (!value) return ''; const parsed = new Date(value); return Number.isNaN(parsed.valueOf()) ? String(value) : parsed.toLocaleString('zh-CN') }
       const jobRow = (j) => {
         const status = String(j.status || '')
         const landStatus = j.land && j.land.status ? String(j.land.status) : 'none'
@@ -3003,6 +3335,9 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
             landStatus === 'landed' ? e('span', { className: 'kbc-parse-badge' }, '已落库') : null),
           e('div', { className: 'kbc-parse-meta' },
             parseShow(j.source && j.source.relPath)
+            + (j.provider ? ' · '+(j.provider.model || j.provider.id) : '')
+            + (j.requestedBy ? ' · '+parseOrigin(j.requestedBy)+(j.requestedBy.session?' · 会话 '+j.requestedBy.session:'') : '')
+            + (j.createdAt ? ' · '+parseTime(j.createdAt) : '')
             + (textChars === null ? '' : ' · ' + textChars + ' 字符')
             + (j.stage ? ' · 阶段 ' + j.stage : '')
             + (j.land && j.land.entryId ? ' · 条目 ' + j.land.entryId : '')),
@@ -3092,7 +3427,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         r.candidate ? e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy || scanning, onClick: () => { setDraft(Object.assign(parseDraftOf({...r.candidate,id:''}),{isNew:true,originId:''}));setSelectedKind(r.kind);setParsePane('providers');setFormErrors([]) } }, r.status === 'component' ? '关联配套组件' : '选择并配置') : null)
       return e('section', { className: 'kbc-parse-dev kbc-parse-workspace' },
         e('div', { className:'kbc-workspace-heading' }, e('div', null, e('h3', null, '识别与转写'), e('p', null, '配置一次，在导入和流程中重复使用。'))),
-        e('div', { className:'kbc-kind-tabs', role:'tablist','aria-label':'解析类型' }, ['ocr','asr'].map(kind => e('button', {key:kind,role:'tab','aria-selected':selectedKind===kind,className:'kbc-kind-tab'+(selectedKind===kind?' selected':''),onClick:()=>{setSelectedKind(kind);setDraft(null);setFormErrors([])}},kind==='ocr'?'图片与文档 OCR':'音频转写 ASR'))),
+        e('div', { className:'kbc-kind-tabs', role:'tablist','aria-label':'解析类型' }, ['ocr','asr'].map(kind => e('button', {key:kind,role:'tab','aria-selected':selectedKind===kind,className:'kbc-kind-tab'+(selectedKind===kind?' selected':''),onClick:()=>{setSelectedKind(kind);setJobsOffset(0);setRequestOffset(0);setJobDetail(null);setJobPreview(null);setDraft(null);setFormErrors([])}},kind==='ocr'?'图片与文档 OCR':'音频转写 ASR'))),
         e('div', { className:'kbc-workspace-toolbar' },
           e('div',{className:'kbc-pane-tabs'},[{id:'providers',label:'已配置服务'},{id:'discover',label:'发现本地模型'},{id:'tasks',label:'任务记录'}].map(t=>e('button',{key:t.id,className:'kbc-pane-tab'+(parsePane===t.id?' selected':''),onClick:()=>{setParsePane(t.id);setDraft(null)}},t.label))),
           e('button',{className:'kbc-btn kbc-btn-primary',disabled:busy,onClick:()=>{setDraft(parseEmptyDraft(selectedKind,selectedKind==='ocr'?'openai-vision':'openai-audio-transcriptions'));setParsePane('providers');setFormErrors([])}},'添加 '+PARSE_KIND_TEXT[selectedKind])),
@@ -3110,32 +3445,62 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
             [{label:'可配置的本地部署',test:r=>r.status!=='component'&&r.candidate},{label:'需要关联的配套组件',test:r=>r.status==='component'},{label:'其他发现与缺项',test:r=>!r.candidate}].map(group=>{const rows=scan.results.filter(r=>r.kind===selectedKind&&group.test(r));return rows.length?e('div',{key:group.label},e('h4',null,group.label),rows.map(renderScanRow)):null}),
             scan.status!=='running'&&!scan.results.filter(r=>r.kind===selectedKind).length?e('p',null,'此范围未发现当前类型的模型，可换选目录或切换 OCR / ASR。'):null,
             e('details',null,e('summary',null,'扫描范围与详情'),e('div',{className:'kbc-parse-meta'},scan.roots.join('；')),scan.issues.map((it,i)=>e('div',{key:i,className:'kbc-set-hint'},it.path+'：'+it.reason)))):null):null,
-        parsePane==='tasks'?e('div',{className:'kbc-pane-content'},e('button',{className:'kbc-btn kbc-btn-ghost',onClick:loadJobs},'刷新任务'),jobs?.length?jobs.filter(j=>j.kind===selectedKind).map(jobRow):e('p',{className:'kbc-set-hint'},'还没有解析任务'),detailPanel,previewPanel,e('details',null,e('summary',null,'导入待处理项'),waitingPanel)):null,
+        parsePane==='tasks'?e('div',{className:'kbc-pane-content'},
+          e('div',{className:'kbc-parse-actions'},e('button',{className:'kbc-btn kbc-btn-ghost',onClick:()=>loadJobs(),disabled:jobsLoading},'刷新任务'),e('select',{'aria-label':'任务状态',value:jobsStatus,onChange:ev=>{setJobsStatus(ev.target.value);setJobsOffset(0)}},[['','全部状态'],['queued','排队'],['running','执行中'],['succeeded','成功'],['partial','部分成功'],['failed','失败'],['canceled','取消']].map(([value,label])=>e('option',{key:value,value},label)))),
+          jobsLoading?e('p',{role:'status'},'正在读取任务记录…'):null,
+          jobsError?e('p',{role:'alert',className:'kbc-error'},jobsError):null,
+          jobs?.length?jobs.map(jobRow):!jobsLoading&&!jobsError?e('p',{className:'kbc-set-hint'},'当前类型和筛选条件下没有执行任务'):null,
+          e('div',{className:'kbc-parse-actions'},e('span',null,'共 '+jobsTotal+' 条执行任务'),e('button',{className:'kbc-btn',disabled:jobsOffset===0||jobsLoading,onClick:()=>setJobsOffset(n=>Math.max(0,n-20))},'上一页'),e('button',{className:'kbc-btn',disabled:jobsOffset+20>=jobsTotal||jobsLoading,onClick:()=>setJobsOffset(n=>n+20)},'下一页')),
+          e('details',null,e('summary',null,'提交记录 · '+requestTotal),e('p',{className:'kbc-set-hint'},'提交被拒绝不代表已执行；复用结果不会重新调用引擎。'),(requests||[]).map(r=>e('article',{key:r.requestId,className:'kbc-parse-row'},e('strong',null,({accepted:'已接受',rejected:'提交被拒绝',reused:'复用已有结果',submitted:'已提交，尚未确认接受'})[r.status]||r.status),e('div',null,r.source?.relPath||'未读取来源文件'),e('div',{className:'kbc-parse-meta'},parseTime(r.createdAt)+' · '+parseOrigin(r.requestedBy)+(r.requestedBy?.session?' · 会话 '+r.requestedBy.session:'')),e('div',null,r.detail||r.reason||''),e('small',null,'请求 '+r.requestId+(r.jobId?' · 任务 '+r.jobId:'')))),e('div',{className:'kbc-parse-actions'},e('button',{className:'kbc-btn',disabled:requestOffset===0||jobsLoading,onClick:()=>setRequestOffset(n=>Math.max(0,n-20))},'上一页提交'),e('button',{className:'kbc-btn',disabled:requestOffset+20>=requestTotal||jobsLoading,onClick:()=>setRequestOffset(n=>n+20)},'下一页提交'))),
+          detailPanel,previewPanel,e('details',null,e('summary',null,'导入待处理项'),waitingPanel)):null,
         e('details',{className:'kbc-parse-policy'},e('summary',null,'数据与权限 · '+(policy==='local-only'?'仅本地处理':'允许已配置云端服务')),e('p',{className:'kbc-set-hint'},'本地不可用时不会自动上传云端。云端测试需主动点击，可能产生服务商费用。'),e('select',{className:'kbc-set-input',value:policy,disabled:busy,onChange:ev=>changePolicy(ev.target.value)},e('option',{value:'local-only'},'仅本地处理'),e('option',{value:'allow-configured'},'允许已配置云端服务'))),
         toast?e('div',{className:'kbm-toast'},toast):null)
     }
 
-    const RELEASE_VERSION = '2.0.2-beta6'
+    const RELEASE_VERSION = '2.0.0'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
-    // Only owner-designated announcements belong here. A package version bump
-    // must never add an announcement or change an existing announcement ID.
-    const RELEASE_NOTICES = [{
-      version: '1.1.1',
-      intro: '个人知识库新增产品介绍页，提供源码、发布包与使用说明入口。',
-      items: [
-        '提供 GitHub 仓库入口，查看源码、发布包与完整更新记录。',
-        '提供产品展示网页入口，了解资料整理、检索与知识沉淀的使用方式。',
-      ],
-    }]
+    // Keep each shipped release in order. Patch entries are retained for a
+    // later cross-version summary even though patch-only installs stay quiet.
+    const RELEASE_NOTICES = [
+      { version: '1.1.1', items: ['新增产品介绍页、源码、发布包与使用说明入口。'] },
+      { version: '1.1.3', items: ['加强解析调用授权与任务来源记录；加入校验后的一键更新。'] },
+      { version: '1.1.4', items: ['增加正式版与预览版更新通道选择。'] },
+      { version: '1.1.5', items: ['增加国内更新源及下载摘要校验与故障切换。'] },
+      { version: '1.1.6', items: ['更新时自动选择可用来源，简化下载与安装操作。'] },
+      { version: '2.0-beta1', items: ['首次提供知识工作台预览，包含资料检索、阅读摘录、关系、收件箱与备份。'] },
+      { version: '2.0-beta2', items: ['为预览版加入多个更新来源及下载校验与故障切换。'] },
+      { version: '2.0-beta3', items: ['更新时自动选择可用来源，简化预览版安装。'] },
+      { version: '2.0-beta4', items: ['改良工作台地图、关系浏览、链接检查与解析设置。'] },
+      { version: '2.0-beta5', items: ['修复启动时意外恢复到知识库页签的问题，保留会话草稿。'] },
+      { version: '2.0-beta6', items: ['改良关系浏览与本地链接识别，新增浏览器扩展使用指南。'] },
+      { version: '2.0-beta7', items: ['统一知识库工作台导航与页面布局。', '关系图支持拖拽缩放、节点与连线选择、分区下钻。'] },
+      { version: '2.0-beta8', items: ['恢复顶部更新入口，加入可调整分栏与目录换行。', '区分普通资料和系统文件；完善阅读摘录与 30 天回收站。'] },
+      { version: '2.0-beta9', items: ['关系网络使用增量索引；文件条目可直接移入回收站。', '统一 OCR／ASR 解析任务记录，并按安装渠道提示可用更新。'] },
+      { version: '2.0.0', items: ['知识库工作台转为正式版，整合资料目录、关系网络、阅读、回顾与流程。', '完善版本命名、更新判断和发布前稳定性修复。'] },
+    ]
     const LEGACY_RELEASE_NOTICE_VERSIONS = ['1.1.1', '1.1.2', '1.1.3']
     function compareReleaseVersions(left, right) {
-      const parse = (value) => /^(\d+)\.(\d+)\.(\d+)(?:-([\w.-]+))?$/.exec(String(value))
+      const parse = (value) => {
+        const text = String(value)
+        const canonicalPreview = /^(\d+)\.(\d+)-beta([1-9]\d*)$/.exec(text)
+        if (canonicalPreview) return [text, canonicalPreview[1], canonicalPreview[2], '0', 'beta' + canonicalPreview[3], false]
+        const legacyPreview = /^(\d+)\.(\d+)\.\d+-beta([1-9]\d*)$/.exec(text)
+        if (legacyPreview) return [text, legacyPreview[1], legacyPreview[2], '0', 'beta' + legacyPreview[3], true]
+        return /^(\d+)\.(\d+)\.(\d+)(?:-([\w.-]+))?$/.exec(text)
+      }
       const a = parse(left), b = parse(right)
       if (!a || !b) throw new Error('Invalid release version')
       for (let i = 1; i <= 3; i++) {
         if (Number(a[i]) !== Number(b[i])) return Number(a[i]) < Number(b[i]) ? -1 : 1
       }
       if (!a[4] || !b[4]) return a[4] === b[4] ? 0 : a[4] ? -1 : 1
+      const abeta = /^beta([1-9]\d*)$/.exec(a[4]), bbeta = /^beta([1-9]\d*)$/.exec(b[4])
+      if (abeta && bbeta) {
+        const betaOrder = Number(abeta[1]) === Number(bbeta[1]) ? 0 : Number(abeta[1]) < Number(bbeta[1]) ? -1 : 1
+        if (betaOrder) return betaOrder
+        if (a[5] !== undefined && b[5] !== undefined && a[5] !== b[5]) return a[5] ? -1 : 1
+        return 0
+      }
       const ap = a[4].split('.'), bp = b[4].split('.')
       for (let i = 0; i < Math.max(ap.length, bp.length); i++) {
         if (ap[i] === bp[i]) continue
@@ -3147,44 +3512,94 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       }
       return 0
     }
+    function isPreviewRelease(version) { return /^\d+\.\d+(?:\.\d+)?-beta[1-9]\d*$/.test(version) }
+    function isSamePreviewSequence(left, right) {
+      const canonical = /^(\d+)\.(\d+)-beta([1-9]\d*)$/.exec(String(left))
+      const legacy = /^(\d+)\.(\d+)\.\d+-beta([1-9]\d*)$/.exec(String(right))
+      const reverseCanonical = /^(\d+)\.(\d+)-beta([1-9]\d*)$/.exec(String(right))
+      const reverseLegacy = /^(\d+)\.(\d+)\.\d+-beta([1-9]\d*)$/.exec(String(left))
+      const a = canonical || reverseCanonical, b = legacy || reverseLegacy
+      return !!a && !!b && a[1] === b[1] && a[2] === b[2] && a[3] === b[3]
+    }
+    function isCanonicalPreviewMigration(previous, current) {
+      const canonical = /^(\d+)\.(\d+)-beta([1-9]\d*)$/.exec(String(current))
+      const legacy = /^(\d+)\.(\d+)\.\d+-beta([1-9]\d*)$/.exec(String(previous))
+      return !!canonical && !!legacy && canonical[1] === legacy[1] && canonical[2] === legacy[2] && canonical[3] === legacy[3]
+    }
+    function shouldShowReleaseNotice(previous, current) {
+      const formatMigration = isCanonicalPreviewMigration(previous, current)
+      if (!formatMigration && compareReleaseVersions(current, previous) <= 0) return false
+      if (isPreviewRelease(current)) return true
+      const oldStable = /^(\d+)\.(\d+)\.\d+$/.exec(previous)
+      const newStable = /^(\d+)\.(\d+)\.\d+$/.exec(current)
+      if (!newStable) return false
+      return !oldStable || oldStable[1] !== newStable[1] || oldStable[2] !== newStable[2]
+    }
+    function rememberPreviousClientVersion(storage, previousVersion, currentVersion = RELEASE_VERSION) {
+      try {
+        if (!previousVersion || compareReleaseVersions(previousVersion, currentVersion) >= 0) return
+        let state = null
+        try { state = JSON.parse(storage.getItem(RELEASE_NOTICE_STATE_KEY)) } catch { /* old state */ }
+        if (state?.version && compareReleaseVersions(state.version, previousVersion) >= 0) return
+        storage.setItem(RELEASE_NOTICE_STATE_KEY, JSON.stringify(state?.explainedVersion ?
+          { ...state, version: previousVersion } :
+          { version: previousVersion, explainedVersion: previousVersion }))
+      } catch { /* Version evidence or storage may be unavailable. */ }
+    }
     function loadReleaseNotices(storage, currentVersion = RELEASE_VERSION, notices = RELEASE_NOTICES) {
       try {
         let state = null
-        try { state = JSON.parse(storage.getItem(RELEASE_NOTICE_STATE_KEY)) } catch { /* migrate legacy markers */ }
-        let previous = state?.version || '0.0.0'
-        compareReleaseVersions(previous, currentVersion)
-        // Legacy 1.1.2/1.1.3 popups were incorrectly tied to package versions.
-        // Their seen markers also prove that the user already crossed 1.1.1.
-        for (const version of LEGACY_RELEASE_NOTICE_VERSIONS) {
-          if (storage.getItem('dsh-kb-release-seen:' + version) === '1' && compareReleaseVersions(version, previous) > 0) previous = version
+        try { state = JSON.parse(storage.getItem(RELEASE_NOTICE_STATE_KEY)) } catch { /* fresh install */ }
+        let previous = state?.version
+        if (!previous) {
+          for (const version of LEGACY_RELEASE_NOTICE_VERSIONS) {
+            if (storage.getItem('dsh-kb-release-seen:' + version) === '1' && (!previous || compareReleaseVersions(version, previous) > 0)) previous = version
+          }
         }
-        const pending = new Set(Array.isArray(state?.pending) ? state.pending : [])
-        const eligible = notices.filter((notice) =>
-          compareReleaseVersions(notice.version, currentVersion) <= 0 &&
-          (pending.has(notice.version) || compareReleaseVersions(notice.version, previous) > 0) &&
-          storage.getItem('dsh-kb-release-seen:' + notice.version) !== '1'
+        // A fresh installation has no previous installed version to compare.
+        if (!previous) {
+          storage.setItem(RELEASE_NOTICE_STATE_KEY, JSON.stringify({ version: currentVersion, explainedVersion: currentVersion }))
+          return null
+        }
+        compareReleaseVersions(previous, currentVersion)
+        if (compareReleaseVersions(currentVersion, previous) < 0) return null
+        const pendingFrom = typeof state?.pendingFrom === 'string' ? state.pendingFrom : null
+        const explained = typeof state?.explainedVersion === 'string' ? state.explainedVersion : previous
+        const formatMigration = isCanonicalPreviewMigration(previous, currentVersion)
+        const upgraded = compareReleaseVersions(currentVersion, previous) > 0 || formatMigration
+        const show = pendingFrom || (upgraded && shouldShowReleaseNotice(previous, currentVersion))
+        if (!show) {
+          storage.setItem(RELEASE_NOTICE_STATE_KEY, JSON.stringify({ version: currentVersion, explainedVersion: explained }))
+          return null
+        }
+        const fromVersion = pendingFrom || explained
+        const releases = notices.filter((entry) =>
+          ((compareReleaseVersions(entry.version, fromVersion) > 0 && !isSamePreviewSequence(entry.version, fromVersion)) || (formatMigration && entry.version === currentVersion)) &&
+          compareReleaseVersions(entry.version, currentVersion) <= 0 &&
+          // Stable-to-stable upgrades summarize shipped stable changes only.
+          (isPreviewRelease(fromVersion) || isPreviewRelease(currentVersion) || !isPreviewRelease(entry.version))
         ).sort((a, b) => compareReleaseVersions(a.version, b.version))
-        // Save pending IDs before advancing the installed version, so an
-        // unclosed announcement survives a reload and skipped releases.
-        storage.setItem(RELEASE_NOTICE_STATE_KEY, JSON.stringify({
-          version: compareReleaseVersions(previous, currentVersion) > 0 ? previous : currentVersion,
-          pending: eligible.map((notice) => notice.version),
-        }))
-        return eligible
-      } catch { return [] } // Without readable history, avoid unsolicited popups.
+        storage.setItem(RELEASE_NOTICE_STATE_KEY, JSON.stringify({ version: currentVersion, explainedVersion: explained, pendingFrom: fromVersion }))
+        return { fromVersion, version: currentVersion, releases }
+      } catch { return null } // Without readable history, avoid unsolicited popups.
+    }
+    function acknowledgeReleaseNotice(storage, notice) {
+      try {
+        const state = JSON.parse(storage.getItem(RELEASE_NOTICE_STATE_KEY))
+        if (state?.pendingFrom !== notice.fromVersion) return
+        storage.setItem(RELEASE_NOTICE_STATE_KEY, JSON.stringify({ version: state.version, explainedVersion: notice.version }))
+      } catch { /* Storage unavailable: close for this session. */ }
     }
     const RELEASE_GITHUB_URL = 'https://github.com/KingsleyAsher/Personal-Knowledge-Base'
     const RELEASE_SITE_URL = 'https://kingsleyasher.github.io/Personal-Knowledge-Base/'
 
     function WorkbenchSettings() {
-      return e(react.Fragment, null, e(workbenchUI.Guide),
+      return e(react.Fragment, null, e(UpdatePrompt), e(workbenchUI.Guide),
         e('button', { className: 'kbc-btn kbc-btn-primary', onClick: () => workbenchUI.event('kbw-settings') }, '隐私、备份与工作台设置'), e(Section))
     }
 
     function ReleaseNotice() {
-      const [pending, setPending] = react.useState([])
-      const notice = pending[0]
-      const RELEASE_NOTICE_KEY = notice ? 'dsh-kb-release-seen:' + notice.version : null
+      const [notice, setNotice] = react.useState(null)
       const portalHost = react.useMemo(() => {
         const host = document.createElement('div')
         host.setAttribute('data-kb-release-host', RELEASE_VERSION)
@@ -3193,8 +3608,8 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       const closeRef = react.useRef(null)
       const dismiss = () => {
         if (!notice) return
-        try { window.localStorage.setItem(RELEASE_NOTICE_KEY, '1') } catch { /* 存储不可用时仅本次关闭 */ }
-        setPending((items) => items.slice(1))
+        acknowledgeReleaseNotice(window.localStorage, notice)
+        setNotice(null)
       }
       react.useEffect(() => {
         if (!portalHost.isConnected) document.body.appendChild(portalHost)
@@ -3203,7 +3618,8 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       react.useEffect(() => {
         if (releaseNoticeClaimed) return
         releaseNoticeClaimed = true
-        try { setPending(loadReleaseNotices(window.localStorage)) } catch { /* storage unavailable */ }
+        try { setNotice(loadReleaseNotices(window.localStorage)) } catch { /* storage unavailable */ }
+        return () => { releaseNoticeClaimed = false }
       }, [])
       react.useEffect(() => {
         if (!notice) return undefined
@@ -3218,10 +3634,14 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           e('section', { className: 'kb-release-card', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'kb-release-title', 'aria-describedby': 'kb-release-intro' },
             e('button', { ref: closeRef, className: 'kb-release-close', type: 'button', 'aria-label': '关闭更新说明', onClick: dismiss }, '×'),
             e('p', { className: 'kb-release-kicker' }, 'PERSONAL KNOWLEDGE · RELEASE NOTES'),
-            e('h2', { id: 'kb-release-title' }, '知识库插件已更新'),
-            e('span', { className: 'kb-release-version' }, '更新说明 ' + notice.version + ' · 当前安装 ' + RELEASE_VERSION),
-            e('p', { id: 'kb-release-intro', className: 'kb-release-intro' }, notice.intro),
-            e('ul', { className: 'kb-release-list' }, notice.items.map((item) => e('li', { key: item }, item))),
+            e('h2', { id: 'kb-release-title' }, '已更新到 ' + notice.version),
+            e('span', { className: 'kb-release-version' }, '从 ' + notice.fromVersion + ' 升级 · ' + notice.releases.length + ' 个版本的变化'),
+            e('p', { id: 'kb-release-intro', className: 'kb-release-intro' }, '以下汇总自上次展示更新说明以来的变更。'),
+            notice.releases.length ? notice.releases.map((release) =>
+              e('section', { className: 'kb-release-group', key: release.version },
+                e('h3', null, release.version),
+                e('ul', { className: 'kb-release-list' }, release.items.map((item) => e('li', { key: item }, item))))) :
+              e('p', { className: 'kb-release-intro' }, '此版本暂无单独的更新条目，请查看完整更新记录。'),
             e('div', { className: 'kb-release-actions' },
               e('a', { href: RELEASE_GITHUB_URL, target: '_blank', rel: 'noopener noreferrer', onClick: dismiss }, '访问 GitHub ↗'),
               e('a', { className: 'secondary', href: RELEASE_SITE_URL, target: '_blank', rel: 'noopener noreferrer', onClick: dismiss }, '访问产品网页 ↗')),
@@ -3249,6 +3669,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
 
     function apply(ctx) {
+      rememberPreviousClientVersion(window.localStorage, document.documentElement.getAttribute('data-kb-client-version'))
       try { resetKnowledgeViewOnStartup(window.localStorage) } catch { /* storage unavailable */ }
       flowClientContext = ctx
       workbenchUI = createWorkbenchUI({ react, e, api: callApi, ctx: () => flowClientContext,
@@ -3257,6 +3678,18 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       ctx.effect(() => () => installedWorkbenchUI.dispose(), 'kb-workbench: client lifecycle')
       workbenchUI.registerReferences(ctx)
       ensureStyle()
+      patchBuildBadge({ version: RELEASE_VERSION })
+      void refreshBuildVersion()
+      void checkBuildUpdates(false)
+      const checkWhenVisible = () => { if (!document.hidden) void checkBuildUpdates(false) }
+      document.addEventListener('visibilitychange', checkWhenVisible)
+      const updateTimer = window.setInterval(() => { if (!document.hidden) void checkBuildUpdates(true) }, 6 * 60 * 60 * 1000)
+      ctx.effect(() => () => {
+        window.clearInterval(updateTimer)
+        document.removeEventListener('visibilitychange', checkWhenVisible)
+        buildVersionRequest.current += 1
+        buildUpdateRequest.current += 1
+      }, 'kb-core: update checks')
       // Optional dynamic injection keeps older hosts usable without leaving
       // this entire client entry pending on a missing management service.
       ctx.inject(['remote', 'remote.pluginManager'], (scope) => {
@@ -3269,7 +3702,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         }
       })
       ctx.slots.inject('conversation.input.overlay', () =>
-        ctx.slots.register({ name: 'conversation.input.overlay', id: 'kb-release-notice', order: 999 }, workbenchUI.Guide))
+        ctx.slots.register({ name: 'conversation.input.overlay', id: 'kb-release-notice', order: 999 }, () => e(react.Fragment, null, e(UpdatePrompt), e(ReleaseNotice), e(workbenchUI.Guide))))
       ctx.slots.inject('settings.section', () =>
         ctx.slots.register({ name: 'settings.section', id: 'kb-core', order: 26, label: () => '个人知识库' }, WorkbenchSettings))
       ctx.slots.inject('conversation.view', () =>

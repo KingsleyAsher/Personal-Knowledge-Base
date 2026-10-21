@@ -1,10 +1,20 @@
 from pathlib import Path
-import json,hashlib,tarfile,re
+import json,hashlib,tarfile,re,os,sys
 r=Path(__file__).resolve().parents[1]
 version=json.loads((r/'package.json').read_text(encoding='utf-8'))['version']
-release=(r.parent/f'知识库产品-{version}' if (r.parent/f'知识库产品-{version}').exists() else r.parent/f'知识库产品-OCR-ASR预览-{version}') if '-' in version else r
-m=json.loads((release/'manifest.json' if '-' in version else r/'release-manifest.json').read_text(encoding='utf-8'))
-archive=release/m['tgz'] if '-' in version else r/'dist'/m['tgz']
+candidate = '--candidate' in sys.argv
+release=(r.parent/f'知识库产品-{version}' if (r.parent/f'知识库产品-{version}').exists() else r.parent/f'知识库产品-OCR-ASR预览-{version}') if '-' in version or candidate else r
+m=json.loads((release/'manifest.json' if '-' in version or candidate else r/'release-manifest.json').read_text(encoding='utf-8'))
+assert m['package'] == '@local/dsh-knowledge-base' and m['version'] == version
+assert m['tgz'] == 'local-dsh-knowledge-base-'+version+'.tgz'
+assert re.fullmatch(r'[a-f0-9]{64}', m['sha256']) and re.fullmatch(r'[a-f0-9]{16}', m['buildId'])
+assert isinstance(m['bytes'], int) and 0 < m['bytes'] <= 16*1024*1024
+archive=release/m['tgz'] if '-' in version or candidate else r/'dist'/m['tgz']
+if not candidate and '-' not in version:
+    assert re.fullmatch(r'(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)', version), 'Official release version must be x.x.x'
+    assert not os.environ.get('RELEASE_TAG') or os.environ['RELEASE_TAG'] == 'v'+version, 'Release tag and package version differ'
+    assert (r/'website/downloads'/m['tgz']).read_bytes() == archive.read_bytes(), 'Website download differs from release archive'
+    assert (r/'SHA256SUMS').read_text(encoding='utf-8').strip() == m['sha256']+'  '+m['tgz'], 'SHA256SUMS differs from release manifest'
 b=archive.read_bytes()
 assert len(b)==m['bytes'] and hashlib.sha256(b).hexdigest()==m['sha256']
 with tarfile.open(archive,'r:gz') as t:

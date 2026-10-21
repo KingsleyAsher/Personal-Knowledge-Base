@@ -50,39 +50,41 @@ export function extractHtmlReferences(text) {
   return refs
 }
 
-export async function collectRelations({ files, readText, visible, links, type }) {
+export async function collectRelations({ files, readText, readDocument, visible, links, type, trashedPaths = new Set(), trashedFiles = [] }) {
   const paths = new Set(files.map(f => f.path)), names = new Map(), edges = [], issues = [], seen = new Set()
+  const trashNames = new Set(trashedFiles.flatMap(f => [path.posix.basename(f.path), path.posix.basename(f.path, path.posix.extname(f.path)), f.title].filter(Boolean).map(n => n.toLowerCase())))
   for (const f of files) for (const n of new Set([path.posix.basename(f.path), path.posix.basename(f.path, path.posix.extname(f.path)), f.title])) {
     const k = n.toLowerCase(); names.set(k, [...(names.get(k) || []), f.path])
   }
   const add = e => { const k = [e.from, e.to, e.type].join('|'); if (!seen.has(k)) { seen.add(k); edges.push({ ...e, id: e.id || digest(k).slice(0, 20) }) } }
   if (type === 'directory') for (const f of files) { const parent = path.posix.dirname(f.path); if (parent !== '.') add({ from: parent, to: f.path, type: 'directory', evidence: '实际目录' }) }
   for (const f of files.filter(f => /\.(md|html?)$/i.test(f.path))) {
-    const content = await readText(f.path).catch(() => null)
+    const content = await (readDocument ? readDocument(f.path) : readText(f.path)).catch(() => null)
     if (!content) continue
-    for (const ref of (/\.html?$/i.test(f.path) ? extractHtmlReferences(content.text) : extractReferences(content.text))) {
+    for (const ref of (content.refs || (/\.html?$/i.test(f.path) ? extractHtmlReferences(content.text) : extractReferences(content.text)))) {
       let decoded
       try { decoded = decodeURIComponent(ref.target).replaceAll('\\', '/') } catch { decoded = ref.target }
       const relative = path.posix.normalize(path.posix.join(path.posix.dirname(f.path), decoded)).replace(/\/$/, ''), root = path.posix.normalize(decoded).replace(/\/$/, '')
       const exact = [relative, relative + '.md'].filter(p => paths.has(p))
       const roots = [root, root + '.md'].filter(p => paths.has(p))
-      const candidates = [...new Set(exact.length ? exact : roots.length ? roots : (names.get(decoded.toLowerCase()) || []))]
+      const inTrash = !exact.length && !roots.length && ([relative, relative + '.md', root, root + '.md'].some(p => trashedPaths.has(p)) || trashNames.has(decoded.toLowerCase()))
+      const candidates = inTrash ? [] : [...new Set(exact.length ? exact : roots.length ? roots : (names.get(decoded.toLowerCase()) || []))]
       if (!visible(relative) || !visible(root) || candidates.some(p => !visible(p))) continue
       let anchorMissing = false
       if (candidates.length === 1 && ref.anchor && candidates[0].endsWith('.md')) {
-        const target = await readText(candidates[0]).catch(()=>null)
+        const target = await (readDocument ? readDocument(candidates[0]) : readText(candidates[0])).catch(()=>null)
         if (target) {
           let anchor=ref.anchor.slice(1);try{anchor=decodeURIComponent(anchor)}catch{}
           const slug = s => s.trim().toLowerCase().replace(/[^\p{L}\p{N}\s_-]/gu,'').replace(/\s/g,'-')
-          const ids=[...target.text.matchAll(/^#{1,6}\s+(.+)$/gm)].map(m=>slug(m[1]))
-          anchorMissing = /^L\d+(?:-L\d+)?$/.test(anchor) ? Number(anchor.slice(1).split('-')[0])>target.text.split('\n').length : !ids.includes(anchor.toLowerCase()) && !target.text.includes('id="'+anchor+'"') && !target.text.includes("id='"+anchor+"'")
+          const ids=target.anchors || [...target.text.matchAll(/^#{1,6}\s+(.+)$/gm)].map(m=>slug(m[1]))
+          anchorMissing = /^L\d+(?:-L\d+)?$/.test(anchor) ? Number(anchor.slice(1).split('-')[0])>(target.lineCount ?? target.text.split('\n').length) : !ids.includes(anchor.toLowerCase()) && !(target.anchors ? target.anchors.includes(anchor) : target.text.includes('id="'+anchor+'"') || target.text.includes("id='"+anchor+"'"))
         }
       }
       if (candidates.length === 1 && !anchorMissing) add({ from: f.path, to: candidates[0], type: ref.type, line: ref.line, evidence: '第 ' + ref.line + ' 行' })
       else {
         const id = digest([f.path, ref.start, ref.rawTarget].join('|')).slice(0, 24)
-        const hints = [...names.entries()].filter(([k]) => k.includes(path.posix.basename(decoded).replace(/\.md$/, '').toLowerCase())).flatMap(([, v]) => v)
-        issues.push({ ...ref, id, path: f.path, revision: content.revision, context: content.text.split('\n')[ref.line - 1]?.slice(0, 1000), candidates: candidates.length ? candidates : [...new Set(hints)].slice(0, 12), reason: anchorMissing ? 'anchor-missing' : candidates.length > 1 ? 'ambiguous' : 'unresolved' })
+        const hints = (inTrash ? [] : [...names.entries()]).filter(([k]) => k.includes(path.posix.basename(decoded).replace(/\.md$/, '').toLowerCase())).flatMap(([, v]) => v)
+        issues.push({ ...ref, id, path: f.path, revision: content.revision, context: ref.context ?? content.text.split('\n')[ref.line - 1]?.slice(0, 1000), candidates: candidates.length ? candidates : [...new Set(hints)].slice(0, 12), reason: inTrash ? 'target-in-trash' : anchorMissing ? 'anchor-missing' : candidates.length > 1 ? 'ambiguous' : 'unresolved' })
       }
     }
   }
@@ -113,14 +115,14 @@ export function createRepairService({ binding, versionOf, relations, userData, m
   return { async dispatch(b, args, caller) {
     if (args.op === 'links.issues') {
       const data = await graph(b), offset = Math.max(0, Number(args.offset) || 0), limit = 30
-      return { items: data.issues.slice(offset, offset + limit), total: data.issues.length, offset, limit, counts: Object.fromEntries(['unresolved', 'ambiguous', 'manual-target-missing','new-relation','anchor-missing'].map(r => [r, data.issues.filter(i => i.reason === r).length])), revision: data.revision }
+      return { items: data.issues.slice(offset, offset + limit), total: data.issues.length, offset, limit, counts: Object.fromEntries(['unresolved', 'ambiguous', 'manual-target-missing','new-relation','anchor-missing','target-in-trash'].map(r => [r, data.issues.filter(i => i.reason === r).length])), revision: data.revision }
     }
     if (args.op === 'links.targets') {
       const data = await graph(b), q = String(args.query || '').toLowerCase()
       return { items: data.allFiles.filter(f => f.path.toLowerCase().includes(q) || f.title.toLowerCase().includes(q)).slice(0, 30).map(f => ({ path: f.path, title: f.title })) }
     }
     if (args.op === 'links.ai.create') {
-      const g = await graph(b), selected = g.issues.filter(i => (args.ids || []).includes(i.id)).slice(0, 20)
+      const g = await graph(b), selected = g.issues.filter(i => i.reason !== 'target-in-trash' && (args.ids || []).includes(i.id)).slice(0, 20)
       if (args.focus) {
         assertVisible(b, args.focus)
         const file = g.allFiles.find(f => f.path === args.focus && f.layer !== 'directory')
@@ -161,6 +163,7 @@ export function createRepairService({ binding, versionOf, relations, userData, m
     if (args.op === 'links.preview') {
       const g = await graph(b), selected = args.changes || []
       if (!selected.length || selected.length > 100) throw fail('BAD_CHANGES', '请选择 1–100 项修复')
+      if (selected.some(change => g.issues.some(issue => issue.id === change.id && issue.reason === 'target-in-trash'))) throw fail('RESTORE_REQUIRED', '目标已在回收站，请先恢复文件')
       const groups = new Map(), manual = [], ids = new Set()
       for (const change of selected) {
         if (ids.has(change.id)) throw fail('DUPLICATE_CHANGE', '同一问题不能重复修复'); ids.add(change.id)
@@ -169,19 +172,29 @@ export function createRepairService({ binding, versionOf, relations, userData, m
         assertVisible(b, issue.path); assertVisible(b, change.target)
         if (issue.manual) { manual.push({ issue, target: change.target }); continue }
         const content = await readFile(await safePath(b.root, issue.path), 'utf8')
+        if (digest(content) !== issue.revision) throw fail('FILE_CHANGED', '原文已变化，请刷新链接检查后重新预览')
         let group = groups.get(issue.path)
         if (!group) { group = { path: issue.path, before: content, revision: digest(content), edits: [] }; groups.set(issue.path, group) }
         const target = path.posix.relative(path.posix.dirname(issue.path), change.target) + (issue.reason === 'anchor-missing' ? '' : issue.anchor)
-        group.edits.push({ ...issue, target })
+        group.edits.push({ ...issue, target, targetPath: change.target })
       }
       const files = [...groups.values()].map(g => { let after = g.before; for (const edit of g.edits.sort((a, z) => z.start - a.start)) after = after.slice(0, edit.start) + edit.target + after.slice(edit.end); return { ...g, after } })
+      const changes = files.flatMap(file => file.edits.map(edit => ({ id: edit.id, kind: 'file-link', sourcePath: file.path, targetPath: edit.targetPath, line: edit.line, type: edit.type, reason: edit.reason, rawTarget: edit.rawTarget, target: edit.target, context: redactReferences(b, file.path, edit.context || '') }))).concat(manual.map(({ issue, target }) => ({
+        id: issue.id, kind: issue.newRelation ? 'new-relation' : 'manual-link', sourcePath: issue.path, targetPath: target, line: issue.line || null,
+        type: 'manual', reason: issue.reason, rawTarget: issue.rawTarget || '', target,
+        beforeFrom: issue.newRelation ? '' : issue.missing === 'from' ? issue.rawTarget : issue.path,
+        beforeTo: issue.newRelation ? '' : issue.missing === 'to' ? issue.rawTarget : issue.path,
+        afterFrom: issue.newRelation ? issue.path : issue.missing === 'from' ? target : issue.path,
+        afterTo: issue.newRelation ? target : issue.missing === 'to' ? target : issue.path,
+        context: redactReferences(b, issue.path, issue.context || '')
+      })))
       const previewId = randomUUID(), data = await userData(b)
-      previews.set(previewId, { key: b.key, version: versionOf(b), expires: now() + 600000, files, manual, revision: data.revision })
-      return { previewId, revision: data.revision, files: files.map(f => ({ path: f.path, before: redactReferences(b, f.path, f.before), after: redactReferences(b, f.path, f.after) })), manual, count: selected.length }
+      previews.set(previewId, { key: b.key, version: versionOf(b), expires: now() + 600000, files, manual, changes, revision: data.revision })
+      return { previewId, revision: data.revision, files: files.map(f => ({ path: f.path, before: redactReferences(b, f.path, f.before), after: redactReferences(b, f.path, f.after) })), manual, changes, count: selected.length }
     }
     if (args.op === 'links.apply' || args.op === 'links.undo' || args.op === 'links.history') return locked(stateFile(b), async () => {
       const history = await readJson(stateFile(b), { items: [] })
-      if (args.op === 'links.history') return { items: history.items.filter(i => !i.failed && [...i.files.map(f=>f.path), ...(i.manual||[]).flatMap(m=>[m.issue.path,m.target])].every(p => { try { assertVisible(b, p); return true } catch { return false } })).map(({ id, at, undone, pending, files, manual=[] }) => ({ id, at, undone, pending, paths: [...new Set([...files.map(f => f.path),...manual.map(m=>m.issue.path)])] })) }
+      if (args.op === 'links.history') return { items: history.items.filter(i => !i.failed && [...i.files.map(f=>f.path), ...(i.manual||[]).flatMap(m=>[m.issue.path,m.target]), ...(i.changes||[]).flatMap(c=>[c.sourcePath,c.targetPath,c.beforeFrom,c.beforeTo,c.afterFrom,c.afterTo])].filter(Boolean).every(p => { try { assertVisible(b, p); return true } catch { return false } })).map(i => ({ id: i.id, at: i.at, undone: i.undone, pending: i.pending, paths: [...new Set([...i.files.map(f => f.path), ...(i.manual||[]).flatMap(m => [m.issue.path,m.target]), ...(i.changes||[]).flatMap(c => [c.sourcePath,c.targetPath,c.beforeFrom,c.beforeTo,c.afterFrom,c.afterTo])].filter(Boolean))], changes: i.changes || [], count: i.changes?.length || i.manual?.length || 0, fileCount: i.files.length, relationCount: i.manual?.length || 0 })) }
       if (args.expectedKbId !== b.st.kbId) throw fail('IDENTITY_REQUIRED', '请确认目标知识库')
       if (args.op === 'links.apply') {
         const p = previews.get(args.previewId)
@@ -189,7 +202,7 @@ export function createRepairService({ binding, versionOf, relations, userData, m
         const data = await userData(b)
         if (data.revision !== p.revision) throw fail('CONFLICT', '关联记录已改变，请重新预览')
         for (const f of p.files) { assertVisible(b, f.path); if (digest(await readFile(await safePath(b.root, f.path))) !== f.revision) throw fail('FILE_CHANGED', '文件已改变，未应用修复') }
-        const record = { id: randomUUID(), at: new Date(now()).toISOString(), files: p.files.map(f => ({ path: f.path, before: f.before, after: f.after })), manual: p.manual, pending: true }
+        const record = { id: randomUUID(), at: new Date(now()).toISOString(), files: p.files.map(f => ({ path: f.path, before: f.before, after: f.after })), manual: p.manual, changes: p.changes, pending: true }
         history.items.push(record); await atomicJson(stateFile(b), history)
         const written = []
         try {
@@ -203,7 +216,7 @@ export function createRepairService({ binding, versionOf, relations, userData, m
           })
         } catch (error) { for (const f of written.reverse()) await replace(b, f, digest(f.after), f.before); record.failed = true; record.pending = false; await atomicJson(stateFile(b), history); throw error }
         record.pending = false; await atomicJson(stateFile(b), history); previews.delete(args.previewId)
-        return { repairId: record.id, applied: p.files.length + p.manual.length }
+        return { repairId: record.id, applied: p.changes.length, fileCount: p.files.length, relationCount: p.manual.length, affectedPaths: [...new Set(p.changes.flatMap(c => [c.sourcePath, c.targetPath, c.beforeFrom, c.beforeTo, c.afterFrom, c.afterTo]).filter(Boolean))] }
       }
       const item = history.items.find(i => i.id === args.repairId && !i.undone && !i.failed)
       if (!item) throw fail('NOT_FOUND', '可撤销记录不存在')

@@ -1,6 +1,8 @@
 # 依赖与构建产物
 node_modules/
 *.tgz
+!dist/local-dsh-knowledge-base-*.tgz
+!website/downloads/local-dsh-knowledge-base-*.tgz
 pnpm-lock.yaml
 
 # 日志与临时状态

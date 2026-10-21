@@ -4,9 +4,12 @@ import { constants } from 'node:fs'
 import { randomUUID, randomBytes, timingSafeEqual } from 'node:crypto'
 import { walkTree, privateRootOf, effectivePrivateDirs, readImportSources, derivedPrivatePartitions, knowledgeCount } from './fsindex.js'
 import { digest, inside, fail, safePath, relativePath, readJson, atomicJson, locked, DEFAULT_PREFERENCES, validatePreferences } from './workbench-state.js'
+import { fileRole, fileCapabilities } from './workbench-files.js'
+import { createTrashService } from './workbench-trash.js'
 import { createBackupService } from './workbench-backup.js'
 import { createQuestionService } from './workbench-question.js'
 import { collectRelations, createRepairService } from './workbench-links.js'
+import { createRelationIndex } from './workbench-relation-index.js'
 import { deliverablesOf, deliverablePrivate, createDeliverableService } from './workbench-deliverables.js'
 
 export const GUIDE_ID = 'knowledge-workbench-v1'
@@ -46,6 +49,8 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
   const activeTasks = new Map()
   const subscribers = new Set()
   const notify = event => { for (const listener of subscribers) { try { listener(event) } catch { /* disconnected client */ } } }
+  const relationIndex = createRelationIndex({ stateDir, readText: (b, file) => textOf(b, file, 8 * 1024 * 1024), now, notify })
+  const metadataText = new Map()
   const profile = () => readJson(profileFile, INITIAL)
   async function binding(expected) {
     const core = getCore()
@@ -105,7 +110,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       await binding(b.st.kbId)
       data.revision++
       await atomicJson(b.dataFile, data)
-      cache = null
+      if (!/^(reading\.(progress|annotate|delete)|review\.)/.test(args.op)) cache = null
       return { ...result, revision: data.revision }
     })
   }
@@ -175,7 +180,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     })
   }
 
-  async function scan(b, fresh = false) {
+  async function scan(b, fresh = false, verifyContent = false) {
     const key = versionOf(b) + ':' + digest(JSON.stringify(b.deliverables))
     if (!fresh && cache?.key === key && now() - cache.at < 5000) return cache.value
     if (scanPending?.key === key) return scanPending.promise
@@ -184,10 +189,12 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       const index = await b.core._internal.indexSnapshot(b.conf)
       const excluded = ['_模板', '_手册', '.kbmeta', '.kb-state', '50-底稿', '90-收件箱', ...(b.conf.excludeFromSearch ?? [])]
       const indexed = new Map((index.entries ?? []).filter(e => !excluded.some(p => scopeMatch(e.path, p))).map(e => [e.path, e]))
-      if (index.freshness?.fresh !== true) {
+      if (index.freshness?.fresh !== true || verifyContent) {
         for (const f of walk.files) {
           if (!f.path.endsWith('.md') || excluded.some(p => scopeMatch(f.path, p))) continue
-          const content = await textOf(b, f.path, 8 * 1024 * 1024).catch(() => null)
+          const fingerprint = [b.key, f.path, f.bytes, f.mtimeMs, f.ctimeMs].join('|')
+          const content = metadataText.get(fingerprint) || await textOf(b, f.path, 8 * 1024 * 1024).catch(() => null)
+          if (content) metadataText.set(fingerprint, content)
           if (!content) { indexed.delete(f.path); continue }
           const parsed = b.core._internal.parseFrontmatter(content.text)
           indexed.set(f.path, { path: f.path, entryId: parsed.data.id ?? indexed.get(f.path)?.entryId ?? null, title: parsed.data.title ?? path.posix.basename(f.path, '.md'), kind: parsed.data.type ?? null, tags: Array.isArray(parsed.data.tags) ? parsed.data.tags : [], status: parsed.data.status ?? null, text: content.text, truncated: content.truncated })
@@ -196,19 +203,24 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       for (const f of walk.files.filter(f => f.path.startsWith('任务成品/'))) {
         const item = b.deliverables.items.find(i => i.path === f.path)
         let text = item?.text || ''
-        if (/\.(md|txt|csv|json|html)$/i.test(f.path)) text = (await textOf(b, f.path, 8 * 1024 * 1024)).text
+        if (/\.(md|txt|csv|json|html)$/i.test(f.path)) {
+          const fingerprint = [b.key, f.path, f.bytes, f.mtimeMs, f.ctimeMs].join('|')
+          const content = metadataText.get(fingerprint) || await textOf(b, f.path, 8 * 1024 * 1024)
+          metadataText.set(fingerprint, content); text = content.text
+        }
         if (item || text) indexed.set(f.path, { path: f.path, title: item?.title || path.posix.basename(f.path), kind: '任务成品', tags: ['任务成品'], text: [item?.description, text].filter(Boolean).join('\n'), status: '已完成' })
       }
       const files = walk.files.map(f => {
         const e = indexed.get(f.path)
-        return { path: f.path, bytes: f.bytes ?? f.size ?? 0, mtimeMs: f.mtimeMs, title: e?.title ?? path.posix.basename(f.path),
+        return { path: f.path, bytes: f.bytes ?? f.size ?? 0, mtimeMs: f.mtimeMs, ctimeMs: f.ctimeMs, title: e?.title ?? path.posix.basename(f.path),
           tags: e?.tags ?? [], kind: e?.kind ?? null, status: e?.status ?? null, entryId: e?.entryId ?? null,
-          extension: path.posix.extname(f.path).slice(1).toLowerCase(), private: isPrivate(b, f.path),
+          ...fileCapabilities(f.path, f.writable !== false), extension: path.posix.extname(f.path).slice(1).toLowerCase(), private: isPrivate(b, f.path),
           summary: redactReferences(b, f.path, e?.text || '').replace(/^---[\s\S]*?---\s*/, '').replace(/[#*`>|]/g, '').trim().slice(0, 160),
           layer: f.path.startsWith('任务成品/') ? 'deliverable' : f.path.startsWith('90-收件箱/') ? 'original' : f.path.startsWith('50-底稿/') ? 'draft' : e ? 'knowledge' : 'file' }
       })
       const value = { files, dirs: walk.dirs, coverage: walk.coverage, truncated: walk.truncated, indexed, indexFresh: index.freshness?.fresh === true,
-        version: key + ':' + digest(files.map(f => `${f.path}:${f.bytes}:${f.mtimeMs}`).join('\n')).slice(0, 12) }
+        version: key + ':' + digest(files.map(f => `${f.path}:${f.bytes}:${f.mtimeMs}:${f.ctimeMs}:${f.title}`).join('\n')).slice(0, 12) }
+      if (metadataText.size > 2000) metadataText.clear()
       cache = { key, at: now(), value }
       return value
     })()
@@ -272,31 +284,92 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
   }
 
   async function relations(b, args) {
-    const snap = await scan(b), data = await userData(b)
+    if (args.force === true) metadataText.clear()
+    const snap = await scan(b, args.force === true || args.fresh === true, args.force === true), data = await userData(b)
     const directories = snap.dirs.map(d => typeof d === 'string' ? d : d.path).filter(Boolean).map(p => ({ path: p, title: path.posix.basename(p), layer: 'directory' }))
     const accessible = [...snap.files, ...directories].filter(f => visible(b, f.path))
-    const collected = await collectRelations({ files: accessible, readText: p => textOf(b, p, 8 * 1024 * 1024), visible: p => visible(b, p), links: data.links, type: args.type })
+    if (args.path && !accessible.some(f => f.path === args.path && f.layer !== 'directory')) throw fail('NOT_FOUND', '中心资料已不存在或当前不可见，请重新选择资料')
+    const trashItems = (await trash.entries(b)).filter(i => i.state === 'stored' && visible(b, i.path))
+    const documents = await relationIndex.documents(b, snap.files, { force: args.force === true, background: args.background === true && !args.allIssues })
+    const index = relationIndex.entry(b), graphKey = digest(JSON.stringify([snap.version, index.revision, versionOf(b), data.links, trashItems.map(i => [i.id, i.path]), args.type === 'directory']))
+    if (index.graph?.key !== graphKey) index.graph = { key: graphKey, value: await collectRelations({ files: accessible, trashedPaths: new Set(trashItems.map(i => i.path)), trashedFiles: trashItems, readDocument: async p => documents[p], visible: p => visible(b, p), links: data.links, type: args.type }) }
+    const collected = { edges: index.graph.value.edges, issues: index.graph.value.issues }
+    const sync = relationIndex.status(b), relationVersion = digest(graphKey + index.revision).slice(0, 20)
+    const byPath = new Map(accessible.map(f => [f.path, f]))
     const navigation = p => /(^|\/)(INDEX|AGENTS|README)\.md$/.test(p)
     const archive = p => /(^|\/)(_archive|原件归档)(\/|$)/.test(p)
     let selected = collected.edges.filter(e => (!args.type || e.type === args.type) && (args.includeArchive || !archive(e.from) && !archive(e.to)) && (args.includeNavigation || !navigation(e.from) && !navigation(e.to)))
     const degree = new Map()
     for (const edge of selected) for (const p of new Set([edge.from, edge.to])) degree.set(p, (degree.get(p) || 0) + 1)
-    const suggestedCenters = [...degree].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([p, count]) => ({ path: p, title: accessible.find(f => f.path === p)?.title || path.posix.basename(p), count }))
+    const suggestedCenters = [...degree].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([p, count]) => ({ path: p, title: byPath.get(p)?.title || path.posix.basename(p), count }))
+    if (args.mode === 'overview') {
+      const prefix = String(args.prefix || '').replace(/\/$/, '')
+      if (prefix) assertVisible(b, prefix)
+      const within = p => !prefix || p.startsWith(prefix + '/')
+      const files = accessible.filter(f => f.layer !== 'directory' && within(f.path))
+      selected = selected.filter(edge => within(edge.from) && within(edge.to))
+      const sectionPath = p => {
+        if (!prefix) return p.includes('/') ? p.split('/')[0] : p
+        const relative = p.slice(prefix.length + 1)
+        return relative.includes('/') ? prefix + '/' + relative.split('/')[0] : p
+      }
+      const sectionTitle = p => sectionPath(p) ? path.posix.basename(sectionPath(p)) : '根目录'
+      const sections = new Map()
+      for (const file of files) {
+        const key = sectionPath(file.path)
+        if (!sections.has(key)) sections.set(key, { path: key, title: sectionTitle(file.path), fileCount: 0, linkedFiles: new Set(), internalRelations: 0, relationCount: 0, centers: [] })
+        sections.get(key).fileCount++
+      }
+      const sectionEdges = new Map()
+      for (const edge of selected) {
+        const from = sectionPath(edge.from), to = sectionPath(edge.to)
+        if (!sections.has(from)) sections.set(from, { path: from, title: sectionTitle(edge.from), fileCount: 0, linkedFiles: new Set(), internalRelations: 0, relationCount: 0, centers: [] })
+        if (!sections.has(to)) sections.set(to, { path: to, title: sectionTitle(edge.to), fileCount: 0, linkedFiles: new Set(), internalRelations: 0, relationCount: 0, centers: [] })
+        const fromSection = sections.get(from), toSection = sections.get(to)
+        fromSection.relationCount++
+        fromSection.linkedFiles.add(edge.from)
+        toSection.linkedFiles.add(edge.to)
+        if (to !== from) {
+          toSection.relationCount++
+          const key = from + '\0' + to
+          const row = sectionEdges.get(key) || { from, to, count: 0, types: {} }
+          row.count++
+          row.types[edge.type] = (row.types[edge.type] || 0) + 1
+          sectionEdges.set(key, row)
+        } else fromSection.internalRelations++
+      }
+      const fileByPath = new Map(files.map(f => [f.path, f]))
+      for (const [p, count] of degree) {
+        const section = sections.get(sectionPath(p))
+        if (!section || !fileByPath.has(p)) continue
+        section.centers.push({ path: p, title: fileByPath.get(p).title, count })
+      }
+      const overviewSections = [...sections.values()].map(section => ({ ...section, leaf: fileByPath.has(section.path), linkedFiles: section.linkedFiles.size, centers: section.centers.sort((a, b) => b.count - a.count || a.title.localeCompare(b.title, 'zh-CN')).slice(0, 4) }))
+      collected.issues = collected.issues.map(i => ({ ...i, context: redactReferences(b, i.path, i.context || '') }))
+      return { mode: 'overview', sections: overviewSections, sectionEdges: [...sectionEdges.values()], suggestedCenters,
+        totalNodes: files.length, totalRelations: selected.length, connectedFiles: files.filter(f => degree.has(f.path)).length,
+        unfilteredTotal: collected.edges.length, issueTotal: collected.issues.length, issues: args.allIssues ? collected.issues : collected.issues.slice(0, 5),
+        ...(args.allIssues ? { allFiles: accessible } : {}), sync, relationVersion, revision: data.revision, kbId: b.st.kbId, policyVersion: versionOf(b), coverage: snap.coverage }
+    }
     const unfilteredTotal = args.path ? collected.edges.filter(e => e.from === args.path || e.to === args.path).length : collected.edges.length
     if (args.path) {
       assertVisible(b, args.path)
       const reached = new Set([args.path]), result = new Map()
+      const adjacent = new Map()
+      for (const edge of selected) for (const p of new Set([edge.from, edge.to])) { if (!adjacent.has(p)) adjacent.set(p, []); adjacent.get(p).push(edge) }
+      let frontier = new Set(reached)
       for (let depth = 0; depth < (args.depth === 2 ? 2 : 1); depth++) {
-        const next = new Set(reached)
-        for (const edge of selected) if (reached.has(edge.from) || reached.has(edge.to)) { result.set(edge.id, edge); next.add(edge.from); next.add(edge.to) }
+        const next = new Set()
+        for (const p of frontier) for (const edge of adjacent.get(p) || []) { result.set(edge.id, edge); if (!reached.has(edge.from)) next.add(edge.from); if (!reached.has(edge.to)) next.add(edge.to) }
         for (const p of next) reached.add(p)
+        frontier = next
       }
       selected = [...result.values()]
     }
     collected.issues = collected.issues.map(i => ({ ...i, context: redactReferences(b, i.path, i.context || '') }))
     const nodePaths = [...new Set([...(args.path ? [args.path] : []), ...selected.flatMap(e => [e.from, e.to])])]
     const nodeSet = new Set(nodePaths.slice(0, 200))
-    return { ...slicePage(selected, args), nodes: [...nodeSet].map(p => accessible.find(f => f.path === p) || { path: p, title: path.posix.basename(p), layer: 'directory' }), edges: selected.filter(e => nodeSet.has(e.from) && nodeSet.has(e.to)).slice(0, 500),
+    return { ...slicePage(selected, args), sync, relationVersion, nodes: [...nodeSet].map(p => byPath.get(p) || { path: p, title: path.posix.basename(p), layer: 'directory' }), edges: selected.filter(e => nodeSet.has(e.from) && nodeSet.has(e.to)).slice(0, 500),
       suggestedCenters, unfilteredTotal, centerIssueTotal: collected.issues.filter(i => i.path === args.path).length, graphLimited: nodePaths.length > 200 || selected.length > 500, issues: args.allIssues ? collected.issues : collected.issues.slice(0, 5), issueTotal: collected.issues.length, ...(args.allIssues ? { allFiles: accessible } : {}), revision: data.revision, kbId: b.st.kbId, policyVersion: versionOf(b), coverage: snap.coverage }
   }
 
@@ -323,6 +396,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
   const backups = createBackupService({ stateDir, binding, scan, userData, visible, safePath, checkDestination, now })
 
   const questionService = createQuestionService({ binding, versionOf, visible, list, textOf, redactReferences, now })
+  const trash = createTrashService({ stateDir, getCore, binding, versionOf, userData, mutate, assertVisible, visible, relations, fileInfo: async (b, file) => (await scan(b)).files.find(f => f.path === file), now, log })
   const repairs = createRepairService({ binding, versionOf, relations, userData, mutate, assertVisible, redactReferences, textOf, stateDir, now })
   const deliverables = createDeliverableService({ binding, versionOf, isPrivate, assertVisible, now })
   async function execute(args, caller) {
@@ -331,6 +405,18 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     if (args.op.startsWith('onboarding.')) return { ok: true, ...await onboarding(args) }
     const b = await binding(args.expectedKbId)
     if (args.policyVersion && args.policyVersion !== versionOf(b)) throw fail('SETTINGS_CHANGED', '隐私或知识库设置已改变，请刷新')
+    if (args.op === 'atlas.relations.status') return { ok: true, sync: relationIndex.status(b) }
+    if (args.op.startsWith('trash.')) {
+      if (args.op === 'trash.list') await b.core._internal.withMutationLock(b.root, () => trash.reconcile(b))
+      const result = await trash.dispatch(b, args)
+      if (['trash.restore', 'trash.purge'].includes(args.op) || args.op === 'trash.move' && args.confirm === true) {
+        cache = null
+        const index = await b.core.maintainIndex({ expectedKbId: b.st.kbId, paths: result.path ? [result.path] : [], knownRemovedPaths: args.op === 'trash.move' ? [result.path] : [] })
+        notify({ type: 'files-changed', kbId: b.st.kbId, path: result.path, operation: args.op })
+        return { ok: true, ...result, indexUpdated: index.ok !== false, ...(index.ok === false ? { indexWarning: '文件操作已完成，索引稍后重试：' + index.reason } : {}) }
+      }
+      return { ok: true, ...result }
+    }
     if (args.op.startsWith('question.')) return { ok: true, ...await questionService.dispatch(b, args, caller) }
     if (args.op === 'links.workspace') return { ok:true, ...await getAIWorkspace(b.root) }
     if (args.op.startsWith('links.')) { const result = ['links.apply','links.undo'].includes(args.op) ? await b.core._internal.withMutationLock(b.root, () => repairs.dispatch(b, args, caller)) : await repairs.dispatch(b, args, caller); if (['links.apply','links.undo'].includes(args.op)) { cache = null; await b.core.maintainIndex({ expectedKbId: b.st.kbId }); notify({ type: 'links-changed', kbId: b.st.kbId }) }; return { ok: true, ...result } }
@@ -339,9 +425,10 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       const snap = await scan(b, args.fresh), data = await userData(b)
       const knowledge = knowledgeCount(snap.files.filter(f => snap.indexed.has(f.path)).map(f => f.path), b.sources, { kbId: b.st.kbId, root: b.root })
       const sectionNames = [...new Set([...snap.dirs.map(d => typeof d === 'string' ? d : d.path).filter(p => p && !p.includes('/')), ...snap.files.filter(f => f.path.includes('/')).map(f => f.path.split('/')[0])])].sort()
-      return { ok: true, kbId: b.st.kbId, root: b.root, policyVersion: versionOf(b), version: snap.version, revision: data.revision, preferences: b.preferences, guideComplete: Boolean(b.profile.onboarding[GUIDE_ID]?.completedAt), needsConfirmation: b.needsConfirmation,
+      return { ok: true, kbId: b.st.kbId, root: b.root, policyVersion: versionOf(b), version: snap.version, relationVersion: digest(snap.version + JSON.stringify(data.links)), revision: data.revision, preferences: b.preferences, guideComplete: Boolean(b.profile.onboarding[GUIDE_ID]?.completedAt), needsConfirmation: b.needsConfirmation,
         totals: { files: snap.files.length, knowledge: knowledge.knowledge, visible: snap.files.filter(f => visible(b, f.path)).length, private: snap.files.filter(f => f.private).length }, coverage: snap.coverage,
-        recent: snap.files.filter(f => visible(b, f.path)).sort((a, z) => z.mtimeMs - a.mtimeMs).slice(0, 12).map(f => ({ ...f })),
+        recentSystem: snap.files.filter(f => visible(b, f.path) && f.system).sort((a, z) => z.mtimeMs - a.mtimeMs).slice(0, 12),
+        recent: snap.files.filter(f => visible(b, f.path) && !f.system).sort((a, z) => z.mtimeMs - a.mtimeMs).slice(0, 12).map(f => ({ ...f })),
         sections: sectionNames.map(name => ({ name, private: isPrivate(b, name), files: snap.files.filter(f => scopeMatch(f.path, name)).length })) }
     }
     if (args.op === 'atlas.tree') {
@@ -357,7 +444,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       const content = TEXT.test(file) ? await textOf(b, file) : null
       if (content) content.text = redactReferences(b, file, content.text)
       const data = await userData(b)
-      return { ok: true, file: info, content, capture: data.captures.find(c => c.path === file) ?? null, annotations: data.annotations.filter(a => a.path === file), reading: data.reading[file] ?? null, revision: data.revision, policyVersion: versionOf(b) }
+      return { ok: true, file: { ...info, ...await trash.capabilities(b.root, file) }, content, capture: data.captures.find(c => c.path === file) ?? null, annotations: data.annotations.filter(a => a.path === file), reading: data.reading[file] ?? null, revision: data.revision, policyVersion: versionOf(b) }
     }
     if (args.op === 'atlas.media') {
       const file = relativePath(args.path); assertVisible(b, file)
@@ -408,7 +495,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     if (args.op.startsWith('capture.')) return { ok: true, ...await capture(b, args) }
     if (args.op.startsWith('reading.') || args.op.startsWith('review.')) return { ok: true, ...await reading(b, args) }
     if (args.op === 'tasks.list') {
-      const data = await userData(b), parsing = await getParsing()?.listJobs({ limit: 50 }).catch(() => null)
+      const data = await userData(b), parsing = await getParsing()?.listJobs({ limit: 50, filter: async jobs => jobs.filter(j => j.source?.external || visible(b, j.source?.relPath ?? '')) })
       const imports = await getImports()?.status({}).catch(() => null)
       return { ok: true, tasks: [...activeTasks.values(), ...backups.running.values(), ...data.tasks].filter(t => t.key === undefined || t.key === b.key).map(t => ({ ...t, path: t.path && visible(b, t.path) ? t.path : undefined })),
         imports: (imports?.imports ?? []).filter(i => i.targetKbId === b.st.kbId).map(i => ({ importId: i.importId, stage: i.stage, running: i.running, counts: i.counts })),
@@ -525,8 +612,9 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     if (args.op === 'review.list') {
       const pending = data.captures.filter(c => visible(b, c.path) && ['pending', 'failed'].includes(c.status)).map(c => ({ type: 'capture', path: c.path, title: c.title, id: c.id }))
       const due = Object.entries(data.reviews).filter(([p, r]) => visible(b, p) && !r.mastered && r.dueAt <= now()).map(([p, r]) => ({ type: 'review', path: p, ...r }))
-      const recent = (await scan(b)).files.filter(f => visible(b, f.path) && now() - f.mtimeMs < (args.days === 1 ? 1 : 7) * 86400000).sort((a, z) => z.mtimeMs - a.mtimeMs).slice(0, 100)
-      return { pending, due, recent, annotations: data.annotations.filter(a => a.important && visible(b, a.path)).slice(-100), revision: data.revision }
+      const changedFiles = (await scan(b)).files.filter(f => visible(b, f.path) && now() - f.mtimeMs < (args.days === 1 ? 1 : 7) * 86400000).sort((a, z) => z.mtimeMs - a.mtimeMs)
+      const recent = changedFiles.filter(f => !f.system).slice(0, 100), recentSystem = changedFiles.filter(f => f.system).slice(0, 100)
+      return { pending, due, recent, recentSystem, annotations: data.annotations.filter(a => a.important && visible(b, a.path)).slice(-100), revision: data.revision }
     }
     if (args.op === 'reading.export') {
       const items = data.annotations.filter(a => visible(b, a.path) && (!args.path || a.path === args.path))
@@ -589,6 +677,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
   }
 
   async function runAutomatic() {
+    await trash.automatic().catch(e => log('warn', '回收站维护未完成：' + (e.code || e.message)))
     let b
     try { b = await binding() } catch { return }
     const p = await profile()
@@ -649,7 +738,8 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
   }
   return { dispatch, binding, versionOf, profile, preferences, runAutomatic, activeTasks, invalidate: () => { cache = null }, backups,
     displayPolicy: async () => { const b = await binding(); return { privateDirs: b.preferences.showPrivate ? [] : b.privateDirs, revision: b.preferencesRevision } },
-    filterJobs: async jobs => { const b = await binding(); return jobs.filter(j => visible(b, j.source?.relPath ?? '')) },
+    notify,
+    filterJobs: async jobs => { const b = await binding(); return jobs.filter(j => j.source?.external || visible(b, j.source?.relPath ?? '')) },
     assertDisplay: async rel => { const b = await binding(); assertVisible(b, rel) },
     clipper, subscribe: listener => { subscribers.add(listener); return () => subscribers.delete(listener) } }
 }
