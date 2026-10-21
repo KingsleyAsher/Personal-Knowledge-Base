@@ -8,9 +8,9 @@
 
 ## 组合模型
 
-- PP-DocLayoutV3 明确显示为版面分析组件，不能单独生成 OCR 文字配置。PaddleOCR-VL 管线关联现有视觉服务、`D:\DSH WorkPlace\ocr-models\PP-DocLayoutV3`、OCR Python 和独立 PDF 渲染 Python。
+- PP-DocLayoutV3 明确显示为版面分析组件，不能单独生成 OCR 文字配置。PaddleOCR-VL 管线关联现有视觉服务、`ocr-models\PP-DocLayoutV3`、OCR Python 和独立 PDF 渲染 Python。
 - PP-OCR 通用管线要求配套的 PP-OCRv4 / v5 检测、识别模型和字典；检查文件、版本和字典，未支持的配套明确报错。不下载模型或安装依赖。
-- Qwen3-ASR 可分别指定权重、Python 环境和 FFmpeg。本机仍使用 `D:\DSH WorkPlace\qwen3-asr-models` 与 `D:\DSH WorkPlace\qwen3-asr-env`，保留 60 秒分块、既有生成参数、任务目录输出、取消和片段恢复。
+- Qwen3-ASR 可分别指定权重、Python 环境和 FFmpeg。本机仍使用 `qwen3-asr-models` 与 `qwen3-asr-env`，保留 60 秒分块、既有生成参数、任务目录输出、取消和片段恢复。
 - 快速扫描、目录选择和绝对路径输入并列可用；最多 8 层、20,000 个目录项。不跟随目录联接，优先展示 D 盘实体模型，旧兼容联接不移动、不删除。只读配置和权重标记，不读完整权重、不执行发现的脚本、不启动模型。Python 环境和 FFmpeg 作为组件展示。
 - 「已发现」「环境检查通过」「解析验证通过」分开；完整成功才算解析验证。记录验证时间和配置摘要，相关配置改变后失效。PDF 渲染环境可以独立配置，图片识别成功不代表 PDF 可用。本地 GPU 任务共用串行队列。
 
