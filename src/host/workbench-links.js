@@ -11,8 +11,8 @@ export function extractReferences(text) {
     const raw = m[1] ?? m[2] ?? m[4]
     const values = m[4] ? [...raw.matchAll(/[^,\[\]]+/g)].map(x => ({ raw: x[0], at: x.index })) : [{ raw, at: 0 }]
     for (const value of values) {
-      const target = value.raw.trim().replace(/^['"<]|['">]$/g, '').split('|')[0].trim()
-      if (!target || target.startsWith('#') || /^[a-z][a-z0-9+.-]*:/i.test(target)) continue
+      const target = value.raw.trim().replace(/\s+["'].*["']$/, '').replace(/^['"<]|['">]$/g, '').split('|')[0].trim()
+      if (!target || target.startsWith('#') || target.startsWith('//') || /^[a-z][a-z0-9+.-]*:/i.test(target)) continue
       const rawAt = m[1] ? 2 : m[2] ? m[0].lastIndexOf('](') + 2 : m[0].indexOf(':') + 1 + m[0].slice(m[0].indexOf(':') + 1).indexOf(raw)
       const start = m.index + rawAt + value.at + value.raw.indexOf(target)
       refs.push({ target: target.split('#')[0], rawTarget: target, anchor: target.includes('#') ? target.slice(target.indexOf('#')) : '', wiki: Boolean(m[1]), type: m[3]?.startsWith('source') ? 'source' : 'reference', line: clean.slice(0, start).split('\n').length, start, end: start + target.length })
@@ -35,6 +35,21 @@ export function extractReferences(text) {
   return refs
 }
 
+// Parse local HTML anchors without executing markup; retain exact edit offsets.
+export function extractHtmlReferences(text) {
+  const clean = text.replace(/<!--[\s\S]*?-->|<(script|style|pre|code)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, m => m.replace(/[^\n]/g, ' '))
+  const refs = []
+  for (const tag of clean.matchAll(/<a\b[^>]*>/gi)) {
+    const href = /\shref\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(tag[0])
+    if (!href) continue
+    const target = href[1] ?? href[2] ?? href[3]
+    if (!target || target.startsWith('#') || target.startsWith('//') || /^[a-z][a-z0-9+.-]*:/i.test(target)) continue
+    const start = tag.index + href.index + href[0].indexOf('=') + 1 + href[0].slice(href[0].indexOf('=') + 1).indexOf(target)
+    refs.push({ target: target.split('#')[0], rawTarget: target, anchor: target.includes('#') ? target.slice(target.indexOf('#')) : '', wiki: false, type: 'reference', line: text.slice(0, start).split('\n').length, start, end: start + target.length })
+  }
+  return refs
+}
+
 export async function collectRelations({ files, readText, visible, links, type }) {
   const paths = new Set(files.map(f => f.path)), names = new Map(), edges = [], issues = [], seen = new Set()
   for (const f of files) for (const n of new Set([path.posix.basename(f.path), path.posix.basename(f.path, path.posix.extname(f.path)), f.title])) {
@@ -42,10 +57,10 @@ export async function collectRelations({ files, readText, visible, links, type }
   }
   const add = e => { const k = [e.from, e.to, e.type].join('|'); if (!seen.has(k)) { seen.add(k); edges.push({ ...e, id: e.id || digest(k).slice(0, 20) }) } }
   if (type === 'directory') for (const f of files) { const parent = path.posix.dirname(f.path); if (parent !== '.') add({ from: parent, to: f.path, type: 'directory', evidence: '实际目录' }) }
-  for (const f of files.filter(f => f.path.endsWith('.md'))) {
+  for (const f of files.filter(f => /\.(md|html?)$/i.test(f.path))) {
     const content = await readText(f.path).catch(() => null)
     if (!content) continue
-    for (const ref of extractReferences(content.text)) {
+    for (const ref of (/\.html?$/i.test(f.path) ? extractHtmlReferences(content.text) : extractReferences(content.text))) {
       let decoded
       try { decoded = decodeURIComponent(ref.target).replaceAll('\\', '/') } catch { decoded = ref.target }
       const relative = path.posix.normalize(path.posix.join(path.posix.dirname(f.path), decoded)).replace(/\/$/, ''), root = path.posix.normalize(decoded).replace(/\/$/, '')

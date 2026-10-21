@@ -75,7 +75,7 @@ def publish(platform):
         archive_url = ('https://gitee.com/' + project + '/raw/' + tag + '/dist/' + feed['tgz'] if platform == 'gitee'
                        else 'https://api.gitcode.com/api/v5/repos/' + project + '/raw/dist/' + feed['tgz'] + '?ref=' + tag)
         body = (repo / 'PREVIEW.md').read_text() + '\n\n[本站预览版安装包](' + archive_url + ')\n'
-        payload = {'tag_name': tag, 'target_commitish': head, 'name': feed['version'] + ' · 启动默认进入对话', 'body': body}
+        payload = {'tag_name': tag, 'target_commitish': head, 'name': feed['version'] + ' · 关系浏览与剪藏使用指引', 'body': body}
         if platform == 'gitee':
             payload['prerelease'] = True
         else:
