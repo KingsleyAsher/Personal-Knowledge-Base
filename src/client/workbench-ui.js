@@ -1,6 +1,6 @@
 // Embedded into the existing client factory by tools/sync-workbench-client.py.
 // Uses the host's React and services; no second React runtime or remote scripts.
-function createWorkbenchUI({ react: R, e, api: rawApi, ctx: getContext, Overview, Flows, Parsing, BuildBadge, version, portal }) {
+function createWorkbenchUI({ react: R, e, api: rawApi, ctx: getContext, Overview, Flows, Parsing, BuildBadge, version, projectRecordUrl, portal }) {
   const api = async (body, signal) => {
     if (signal?.aborted) throw new Error('操作已取消')
     const out = await rawApi(body)
@@ -401,9 +401,9 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
     if (!open) return null
     const content = e('div', { className: 'kbw kbw-backdrop', onMouseDown: ev => { if (ev.target === ev.currentTarget) close() } },
       e('section', { className: 'kbw-modal', role: 'dialog', 'aria-modal': true, 'aria-labelledby': 'kbw-guide-title', ref: root },
-        e('div', { className: 'kbw-step' }, normal ? '知识库设置 · 2.0.0' : `知识工作台 · ${step + 1} / 3`),
+        e('div', { className: 'kbw-step' }, normal ? '知识库设置 · ' + version : `知识工作台 · ${step + 1} / 3`),
         e('h2', { id: 'kbw-guide-title' }, normal ? '知识库设置' : step === 0 ? '知识库插件已更新' : step === 1 ? '选择适合你的使用方式' : '确认设置'),
-        step === 0 ? e('div', null, e('p', null, '当前版本 2.0.0' + '：目录地图、可控隐私、快速收集、阅读摘录和知识库提问。'),
+        step === 0 ? e('div', null, e('p', null, '当前版本 ' + version + '：目录地图、可控隐私、快速收集、阅读摘录和知识库提问。'),
           e('p', null, '接下来确认隐私展示和备份等选项。已有明确设置会保留，自动完整备份默认关闭。')) : null,
         step === 1 ? e('div', null,
           e('p', { className: 'kbw-meta' }, '当前知识库：' + (status?.kbPath || '尚未绑定，可稍后设置')),
@@ -874,7 +874,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
   function SettingsHub({ snapshot, navigate }) {
     const [section, setSection] = R.useState('preferences')
     const sections = [['preferences', '使用偏好与隐私'], ['parsing', '解析服务'], ['capture', '采集与连接'], ['backup', '备份与恢复'], ['version', '版本与诊断']]
-    return e('section', { className: 'kbw-content' }, e('div', { className: 'kbw-home-head' }, e('div', null, e('h2', null, '知识库设置'), e('p', { className: 'kbw-meta' }, '管理当前知识库的使用方式、连接与数据保护。'))), e('div', { className: 'kbw-settings-layout' }, e('nav', { className: 'kbw-settings-nav', 'aria-label': '设置分类' }, sections.map(([id, label]) => btn(label, () => setSection(id), false, { key: id, 'aria-current': section === id }))), e('div', { className: 'kbw-settings-panel' },
+    return e('section', { className: 'kbw-content' }, e('div', { className: 'kbw-home-head' }, e('div', null, e('h2', null, '知识库设置'), e('p', { className: 'kbw-meta' }, '管理当前知识库的使用方式、连接与数据保护。')), e('a', { className: 'kbw-button', href: projectRecordUrl, target: '_blank', rel: 'noopener noreferrer' }, '插件设计与演进记录 ↗')), e('div', { className: 'kbw-settings-layout' }, e('nav', { className: 'kbw-settings-nav', 'aria-label': '设置分类' }, sections.map(([id, label]) => btn(label, () => setSection(id), false, { key: id, 'aria-current': section === id }))), e('div', { className: 'kbw-settings-panel' },
       section === 'preferences' ? e(R.Fragment, null, e('h3', null, '使用偏好与隐私'), e('p', null, '隐私展示：' + (snapshot.preferences.showPrivate ? '开启' : '关闭')), e('p', null, '私密资料用于问答：' + (snapshot.preferences.allowPrivateQuestions ? '允许' : '不允许')), e('p', null, '自动解析：' + (snapshot.preferences.autoParse ? '开启' : '关闭')), e('p', null, '回顾提醒：' + (snapshot.preferences.reviewReminders ? '开启' : '关闭')), btn('修改使用偏好', () => event('kbw-settings'))) : null,
       section === 'parsing' ? e(R.Fragment, null, e('h3', null, '解析服务'), e(ParseSummary)) : null,
       section === 'capture' ? e(R.Fragment, null, e('h3', null, '采集与连接'), e('p', null, '网页剪藏、粘贴文本和文件上传统一进入收件箱。可在收件箱查看连接并整理资料。'), btn('打开收件箱与连接说明', () => navigate('inbox'))) : null,

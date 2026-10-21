@@ -38,6 +38,7 @@ if validation.is_file():
 (delivery / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
 (delivery / 'SHA256SUMS').write_text(manifest['sha256'] + '  ' + archive.name + '\n', encoding='utf-8')
 shutil.copyfile(repo / 'WORKBENCH.md', delivery / '使用说明.md')
+shutil.copyfile(repo / 'PROJECT-RECORD.md', delivery / '插件设计与演进记录.md')
 release_number = re.search(r'-beta(\d+)$', version)
 release_notes = repo / ('BETA' + release_number.group(1) + '.md') if release_number else repo / 'RELEASE.md'
 shutil.copyfile(release_notes if release_notes.is_file() else repo / 'RELEASE.md', delivery / '整改说明与回退.md')

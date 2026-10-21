@@ -1,12 +1,12 @@
 {
   "package": "@local/dsh-knowledge-base",
-  "version": "2.0.0",
-  "buildId": "99eb20243674926b",
-  "tgz": "local-dsh-knowledge-base-2.0.0.tgz",
-  "bytes": 2796257,
-  "sha256": "65788622ce1ecf8b136f39633f37c07a8fdfe210f72c24c06f9aca4b01576ce7",
-  "integrity": "sha512-Uyu8qtTDaQik5MNxUz9qGW8yIzPtEWZZfN24G2s0oA1I2/LRqxWk7DS3wTal4uyjrUlBbtrZlDLC40C9HGk/EA==",
-  "packageFileCount": 261,
+  "version": "2.0.1",
+  "buildId": "54c9f1aaed4a7b77",
+  "tgz": "local-dsh-knowledge-base-2.0.1.tgz",
+  "bytes": 2805271,
+  "sha256": "e67e01414d5e3411e6640301a3c956fe533b502175f01f564744e20d84a3d504",
+  "integrity": "sha512-Tftw+cB/gU3rYAr58HJY7xsNMlFzCr6PLkAOPIfxfEosnpV/YXL2CSHj0MRWTcdwwuP1s4xqzzQnxmIs/WMhdQ==",
+  "packageFileCount": 262,
   "buildFileCount": 250,
   "files": [
     {
@@ -36,23 +36,28 @@
     },
     {
       "path": "PARSING-PREVIEW.md",
-      "bytes": 9755,
-      "sha256": "c8a3b7ca4d2a97866ee2a060f746170fb6e981fc84aea3ed2f459c3ec2bb95b3"
+      "bytes": 9704,
+      "sha256": "3d766117cb5f4e134bee00fff272d3df70fdfe960713e07256ad0330b3d84928"
+    },
+    {
+      "path": "PROJECT-RECORD.md",
+      "bytes": 23157,
+      "sha256": "dc64c6a4ee6d6caaa28b0ae49206f12823d5613371b8dbf3bfe1775d25e9ad08"
     },
     {
       "path": "README.md",
-      "bytes": 7152,
-      "sha256": "8534b73d3951d89db61bcc0a07547b85adf6f66a6121f1c28d99c1cb4c64cefe"
+      "bytes": 7353,
+      "sha256": "b2199c054015a6790a9ecd66e2a26beb956e384fc6c1340d1a8203b4485f679d"
     },
     {
       "path": "VERSIONING.md",
-      "bytes": 3614,
-      "sha256": "4feb5c5b682da53800a57ed8e92194784a5acf171f81f90204687bf80500f61e"
+      "bytes": 3974,
+      "sha256": "f6099768054e3368cf7311a8e58b6843fe383f3f5739ac176d7bd89facf05d84"
     },
     {
       "path": "WORKBENCH.md",
       "bytes": 12080,
-      "sha256": "72024856475797a568707fb369e233ea65364208348b85f2c9ca0ac81384508f"
+      "sha256": "26b0d5274f75730cb1f5f2d5096357bf74f364285189706a4b31798dcb7cd761"
     },
     {
       "path": "browser-extension/manifest.json",
@@ -87,12 +92,12 @@
     {
       "path": "cordis.patch.yml",
       "bytes": 5018,
-      "sha256": "ce46a340a00f324f4e6ead78eb993d65af711658f8df8c7c46de5f50d664254c"
+      "sha256": "dfbb99b1fbb6f2494865db5964b6d3b6b13c3eb174592fa5516eb93f8929bb5b"
     },
     {
       "path": "package.json",
-      "bytes": 984,
-      "sha256": "c8101d02d415e4b550687ce0b952b0549730e11fe3463a05f18dbf3e83171fe4"
+      "bytes": 1009,
+      "sha256": "b0e1fcfbcbb81f0d6e69afc11d9f74773df0fe03d21875b3a39373643a911abc"
     },
     {
       "path": "presets/01-knowledge-agent.patch.yml",
@@ -146,8 +151,8 @@
     },
     {
       "path": "src/client/index.js",
-      "bytes": 355111,
-      "sha256": "76e5f2b63a5e2687bf2792251c87202d84c16af1049a48faab17b63d7f1ee704"
+      "bytes": 355186,
+      "sha256": "ae5043a48e8a25152e07ff56857890b84ded3ea9474291b12177eaa8c0e66c60"
     },
     {
       "path": "src/client/pdfjs/LICENSE",
@@ -1156,8 +1161,8 @@
     },
     {
       "path": "src/client/workbench-ui.js",
-      "bytes": 169530,
-      "sha256": "7ca78511a28d94a56960e0456960d328466ffd2c7b542c2af6386fdd520cd1a1"
+      "bytes": 169700,
+      "sha256": "aa9df80b356cbb0c2b61d17339c7730958123ab2bd9a08f6f6f37fa994fabb51"
     },
     {
       "path": "src/host/capture-surface.js",
@@ -1207,7 +1212,7 @@
     {
       "path": "src/host/kbcore.js",
       "bytes": 119613,
-      "sha256": "a3deeba4e860a2dd579ebb94e74999d98261b92b31c07d0cacc53ce6374860f5"
+      "sha256": "ed10362aca933b48e44755f9a1f4cf548d0803db5a17316b7919b09d8371df00"
     },
     {
       "path": "src/host/map.js",

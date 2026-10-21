@@ -17,7 +17,7 @@ window.__ModuleLoader__.load({
     // BEGIN GENERATED WORKBENCH UI
     // Embedded into the existing client factory by tools/sync-workbench-client.py.
     // Uses the host's React and services; no second React runtime or remote scripts.
-    function createWorkbenchUI({ react: R, e, api: rawApi, ctx: getContext, Overview, Flows, Parsing, BuildBadge, version, portal }) {
+    function createWorkbenchUI({ react: R, e, api: rawApi, ctx: getContext, Overview, Flows, Parsing, BuildBadge, version, projectRecordUrl, portal }) {
       const api = async (body, signal) => {
         if (signal?.aborted) throw new Error('操作已取消')
         const out = await rawApi(body)
@@ -418,9 +418,9 @@ window.__ModuleLoader__.load({
         if (!open) return null
         const content = e('div', { className: 'kbw kbw-backdrop', onMouseDown: ev => { if (ev.target === ev.currentTarget) close() } },
           e('section', { className: 'kbw-modal', role: 'dialog', 'aria-modal': true, 'aria-labelledby': 'kbw-guide-title', ref: root },
-            e('div', { className: 'kbw-step' }, normal ? '知识库设置 · 2.0.0' : `知识工作台 · ${step + 1} / 3`),
+            e('div', { className: 'kbw-step' }, normal ? '知识库设置 · ' + version : `知识工作台 · ${step + 1} / 3`),
             e('h2', { id: 'kbw-guide-title' }, normal ? '知识库设置' : step === 0 ? '知识库插件已更新' : step === 1 ? '选择适合你的使用方式' : '确认设置'),
-            step === 0 ? e('div', null, e('p', null, '当前版本 2.0.0' + '：目录地图、可控隐私、快速收集、阅读摘录和知识库提问。'),
+            step === 0 ? e('div', null, e('p', null, '当前版本 ' + version + '：目录地图、可控隐私、快速收集、阅读摘录和知识库提问。'),
               e('p', null, '接下来确认隐私展示和备份等选项。已有明确设置会保留，自动完整备份默认关闭。')) : null,
             step === 1 ? e('div', null,
               e('p', { className: 'kbw-meta' }, '当前知识库：' + (status?.kbPath || '尚未绑定，可稍后设置')),
@@ -891,7 +891,7 @@ window.__ModuleLoader__.load({
       function SettingsHub({ snapshot, navigate }) {
         const [section, setSection] = R.useState('preferences')
         const sections = [['preferences', '使用偏好与隐私'], ['parsing', '解析服务'], ['capture', '采集与连接'], ['backup', '备份与恢复'], ['version', '版本与诊断']]
-        return e('section', { className: 'kbw-content' }, e('div', { className: 'kbw-home-head' }, e('div', null, e('h2', null, '知识库设置'), e('p', { className: 'kbw-meta' }, '管理当前知识库的使用方式、连接与数据保护。'))), e('div', { className: 'kbw-settings-layout' }, e('nav', { className: 'kbw-settings-nav', 'aria-label': '设置分类' }, sections.map(([id, label]) => btn(label, () => setSection(id), false, { key: id, 'aria-current': section === id }))), e('div', { className: 'kbw-settings-panel' },
+        return e('section', { className: 'kbw-content' }, e('div', { className: 'kbw-home-head' }, e('div', null, e('h2', null, '知识库设置'), e('p', { className: 'kbw-meta' }, '管理当前知识库的使用方式、连接与数据保护。')), e('a', { className: 'kbw-button', href: projectRecordUrl, target: '_blank', rel: 'noopener noreferrer' }, '插件设计与演进记录 ↗')), e('div', { className: 'kbw-settings-layout' }, e('nav', { className: 'kbw-settings-nav', 'aria-label': '设置分类' }, sections.map(([id, label]) => btn(label, () => setSection(id), false, { key: id, 'aria-current': section === id }))), e('div', { className: 'kbw-settings-panel' },
           section === 'preferences' ? e(R.Fragment, null, e('h3', null, '使用偏好与隐私'), e('p', null, '隐私展示：' + (snapshot.preferences.showPrivate ? '开启' : '关闭')), e('p', null, '私密资料用于问答：' + (snapshot.preferences.allowPrivateQuestions ? '允许' : '不允许')), e('p', null, '自动解析：' + (snapshot.preferences.autoParse ? '开启' : '关闭')), e('p', null, '回顾提醒：' + (snapshot.preferences.reviewReminders ? '开启' : '关闭')), btn('修改使用偏好', () => event('kbw-settings'))) : null,
           section === 'parsing' ? e(R.Fragment, null, e('h3', null, '解析服务'), e(ParseSummary)) : null,
           section === 'capture' ? e(R.Fragment, null, e('h3', null, '采集与连接'), e('p', null, '网页剪藏、粘贴文本和文件上传统一进入收件箱。可在收件箱查看连接并整理资料。'), btn('打开收件箱与连接说明', () => navigate('inbox'))) : null,
@@ -1148,12 +1148,7 @@ window.__ModuleLoader__.load({
   color:#d6e5e1;background:rgba(255,255,255,.05);font-size:22px;line-height:1;cursor:pointer}
 .kb-release-kicker{margin:0 0 8px;color:#8fe9cc;font-size:11px;letter-spacing:.18em;text-transform:uppercase}
 .kb-release-card h2{margin:0 40px 6px 0;font-size:26px;line-height:1.3;font-weight:560;letter-spacing:-.03em}
-.kb-release-version{display:inline-flex;margin:4px 0 20px;padding:3px 10px;border:1px solid #7fe5c44a;border-radius:999px;
-  color:#a3efd9;background:#7fe5c411;font-size:12px;font-variant-numeric:tabular-nums}
 .kb-release-intro{margin:0 0 16px;color:#c7d4d3}
-.kb-release-group{margin:0 0 18px;padding:14px 16px;border:1px solid #ffffff1c;border-radius:12px;background:#ffffff06}
-.kb-release-group h3{margin:0 0 10px;color:#8fe9cc;font-size:15px;font-weight:650}
-.kb-release-group .kb-release-list{margin-bottom:0}
 .kb-release-list{display:grid;gap:10px;margin:0 0 24px;padding:0;list-style:none}
 .kb-release-list li{display:flex;gap:10px;align-items:flex-start;color:#e1ecea}
 .kb-release-list li:before{content:"✦";flex:none;color:#8fe9cc}
@@ -3457,7 +3452,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         toast?e('div',{className:'kbm-toast'},toast):null)
     }
 
-    const RELEASE_VERSION = '2.0.0'
+    const RELEASE_VERSION = '2.0.1'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.
@@ -3477,6 +3472,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       { version: '2.0-beta8', items: ['恢复顶部更新入口，加入可调整分栏与目录换行。', '区分普通资料和系统文件；完善阅读摘录与 30 天回收站。'] },
       { version: '2.0-beta9', items: ['关系网络使用增量索引；文件条目可直接移入回收站。', '统一 OCR／ASR 解析任务记录，并按安装渠道提示可用更新。'] },
       { version: '2.0.0', items: ['知识库工作台转为正式版，整合资料目录、关系网络、阅读、回顾与流程。', '完善版本命名、更新判断和发布前稳定性修复。'] },
+      { version: '2.0.1', items: ['更新说明合并展示本次升级涉及的内容，不再按历史版本分组；重复条目只显示一次。', '新增插件设计与演进记录，提供架构、能力边界、实现索引和路线图，并可从知识库设置打开。'] },
     ]
     const LEGACY_RELEASE_NOTICE_VERSIONS = ['1.1.1', '1.1.2', '1.1.3']
     function compareReleaseVersions(left, right) {
@@ -3592,10 +3588,13 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     const RELEASE_GITHUB_URL = 'https://github.com/KingsleyAsher/Personal-Knowledge-Base'
     const RELEASE_SITE_URL = 'https://kingsleyasher.github.io/Personal-Knowledge-Base/'
+    const PROJECT_RECORD_URL = RELEASE_GITHUB_URL + '/blob/main/PROJECT-RECORD.md'
 
     function WorkbenchSettings() {
       return e(react.Fragment, null, e(UpdatePrompt), e(workbenchUI.Guide),
-        e('button', { className: 'kbc-btn kbc-btn-primary', onClick: () => workbenchUI.event('kbw-settings') }, '隐私、备份与工作台设置'), e(Section))
+        e('div', { className: 'kbc-set-actions' },
+          e('button', { className: 'kbc-btn kbc-btn-primary', onClick: () => workbenchUI.event('kbw-settings') }, '隐私、备份与工作台设置'),
+          e('a', { className: 'kbc-btn kbc-btn-ghost', href: PROJECT_RECORD_URL, target: '_blank', rel: 'noopener noreferrer' }, '插件设计与演进记录 ↗')), e(Section))
     }
 
     function ReleaseNotice() {
@@ -3629,19 +3628,16 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         return () => window.removeEventListener('keydown', onKeyDown)
       }, [notice])
       if (!notice) return null
+      const items = Array.from(new Set(notice.releases.flatMap(release => release.items.map(item => item.trim()).filter(Boolean))))
       return reactDom.createPortal(
         e('div', { className: 'kb-release-backdrop', role: 'presentation', onMouseDown: (event) => { if (event.target === event.currentTarget) dismiss() } },
           e('section', { className: 'kb-release-card', role: 'dialog', 'aria-modal': 'true', 'aria-labelledby': 'kb-release-title', 'aria-describedby': 'kb-release-intro' },
             e('button', { ref: closeRef, className: 'kb-release-close', type: 'button', 'aria-label': '关闭更新说明', onClick: dismiss }, '×'),
             e('p', { className: 'kb-release-kicker' }, 'PERSONAL KNOWLEDGE · RELEASE NOTES'),
             e('h2', { id: 'kb-release-title' }, '已更新到 ' + notice.version),
-            e('span', { className: 'kb-release-version' }, '从 ' + notice.fromVersion + ' 升级 · ' + notice.releases.length + ' 个版本的变化'),
-            e('p', { id: 'kb-release-intro', className: 'kb-release-intro' }, '以下汇总自上次展示更新说明以来的变更。'),
-            notice.releases.length ? notice.releases.map((release) =>
-              e('section', { className: 'kb-release-group', key: release.version },
-                e('h3', null, release.version),
-                e('ul', { className: 'kb-release-list' }, release.items.map((item) => e('li', { key: item }, item))))) :
-              e('p', { className: 'kb-release-intro' }, '此版本暂无单独的更新条目，请查看完整更新记录。'),
+            e('p', { id: 'kb-release-intro', className: 'kb-release-intro' }, '以下为本次升级包含的更新内容。'),
+            items.length ? e('ul', { className: 'kb-release-list' }, items.map(item => e('li', { key: item }, item))) :
+              e('p', { className: 'kb-release-intro' }, '暂无更新条目，请查看完整更新记录。'),
             e('div', { className: 'kb-release-actions' },
               e('a', { href: RELEASE_GITHUB_URL, target: '_blank', rel: 'noopener noreferrer', onClick: dismiss }, '访问 GitHub ↗'),
               e('a', { className: 'secondary', href: RELEASE_SITE_URL, target: '_blank', rel: 'noopener noreferrer', onClick: dismiss }, '访问产品网页 ↗')),
@@ -3673,7 +3669,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       try { resetKnowledgeViewOnStartup(window.localStorage) } catch { /* storage unavailable */ }
       flowClientContext = ctx
       workbenchUI = createWorkbenchUI({ react, e, api: callApi, ctx: () => flowClientContext,
-        Overview: () => e(Overview, { statusOnly: true }), Flows, Parsing: ParseSection, BuildBadge, version: RELEASE_VERSION, portal: reactDom.createPortal })
+        Overview: () => e(Overview, { statusOnly: true }), Flows, Parsing: ParseSection, BuildBadge, version: RELEASE_VERSION, projectRecordUrl: PROJECT_RECORD_URL, portal: reactDom.createPortal })
       const installedWorkbenchUI = workbenchUI
       ctx.effect(() => () => installedWorkbenchUI.dispose(), 'kb-workbench: client lifecycle')
       workbenchUI.registerReferences(ctx)

@@ -2,6 +2,9 @@ from pathlib import Path
 import json,hashlib,tarfile,re,os,sys
 r=Path(__file__).resolve().parents[1]
 version=json.loads((r/'package.json').read_text(encoding='utf-8'))['version']
+record = (r/'PROJECT-RECORD.md').read_text(encoding='utf-8')
+assert f'<!-- project-record-version: {version} -->' in record, 'Update PROJECT-RECORD.md for this release'
+assert 'PROJECT-RECORD.md' in json.loads((r/'package.json').read_text(encoding='utf-8'))['files'], 'Project record must be shipped with the package'
 candidate = '--candidate' in sys.argv
 release=(r.parent/f'知识库产品-{version}' if (r.parent/f'知识库产品-{version}').exists() else r.parent/f'知识库产品-OCR-ASR预览-{version}') if '-' in version or candidate else r
 m=json.loads((release/'manifest.json' if '-' in version or candidate else r/'release-manifest.json').read_text(encoding='utf-8'))
