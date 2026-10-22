@@ -69,9 +69,9 @@ jobs:
           python tools/verify-release.py
           archive=$(python -c "import json; print(json.load(open('release-manifest.json', encoding='utf-8'))['tgz'])")
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            gh release upload "$RELEASE_TAG" "dist/$archive" release-manifest.json SHA256SUMS dist/memory-evolve-context-fix.zip dist/memory-context-SHA256SUMS --clobber
+            gh release upload "$RELEASE_TAG" "dist/$archive" dist/knowledge-base-browser-extension.zip release-manifest.json SHA256SUMS dist/memory-evolve-context-fix.zip dist/memory-context-SHA256SUMS --clobber
             gh release edit "$RELEASE_TAG" --title "${RELEASE_TAG#v} · 个人知识库" --notes-file RELEASE.md
           else
-            gh release create "$RELEASE_TAG" "dist/$archive" release-manifest.json SHA256SUMS dist/memory-evolve-context-fix.zip dist/memory-context-SHA256SUMS \
+            gh release create "$RELEASE_TAG" "dist/$archive" dist/knowledge-base-browser-extension.zip release-manifest.json SHA256SUMS dist/memory-evolve-context-fix.zip dist/memory-context-SHA256SUMS \
               --verify-tag --latest --title "${RELEASE_TAG#v} · 个人知识库" --notes-file RELEASE.md
           fi
