@@ -4,8 +4,8 @@
 
 ## 正式发布记录
 
-- GitHub Release：[`v2.1.0`](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.1.0)，已发布；PR [#25](https://github.com/KingsleyAsher/Personal-Knowledge-Base/pull/25) 已合并至 `main`。
-- 合并提交：`bf41c52c088495596c619af30b38a4a4bc43a3e1`；构建号：`37b7ff660806754d`。
+- GitHub Release：[`v2.1.0`](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.1.0)，已发布；原始发布由 PR [#25](https://github.com/KingsleyAsher/Personal-Knowledge-Base/pull/25) 合并至 `main`，提交为 `bf41c52c088495596c619af30b38a4a4bc43a3e1`。
+- PR [#26](https://github.com/KingsleyAsher/Personal-Knowledge-Base/pull/26) 已将发布记录、随包文档、安装包、网站下载副本和摘要清单全量同步到 `main`，合并提交为 `5abc0bbfd37162e91343906aa761a37ea590639f`。这是文档与发布元数据同步，构建号仍为 `37b7ff660806754d`。
 - 安装包字节数、SHA-256 与逐文件摘要以权威 [`release-manifest.json`](release-manifest.json) 为准。
 - 产品展示页：[个人知识库 2.1.0](https://kingsleyasher.github.io/Personal-Knowledge-Base/)；正式发布工作流和 Pages 部署均通过。
 - Gitee 镜像同步成功；GitCode 镜像同步工作流失败。镜像结果与 GitHub Release 状态分开记录。
