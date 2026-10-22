@@ -120,8 +120,8 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
 @container(max-width:700px){.kbw-network-workspace{flex:none;max-height:none}.kbw-network-stage .kbw-graph{height:380px;min-height:380px}.kbw-network-inspector{max-height:320px;height:auto}.kbw-home-head .kbw-button{white-space:normal}.kbw-app-header>.kbw-actions .kbw-button{padding:0 10px}}
 
 /* beta8: shared splitter, long directory labels, file actions and reading feedback */
-.kbw-update-bar{padding:6px 24px;border-bottom:1px solid var(--line);flex-shrink:0;min-width:0}.kbw-update-bar>[aria-label]{justify-content:flex-start;margin-left:0!important}.kbw .kbw-update-bar .kbc-btn{min-height:30px;height:auto}.kbw-split{display:grid!important;gap:0!important;min-width:0;min-height:0;position:relative}.kbw-split>.kbw-pane{min-width:0;min-height:0;overflow:auto}.kbw-split.kbw-grid{border-top:1px solid var(--line)}.kbw-grid>.kbw-pane>:is(.kbw-tree,.kbw-list,.kbw-detail){height:100%;border-left:0;border-right:0}.kbw-split.kbw-master-detail{height:clamp(280px,50vh,580px);align-items:stretch}.kbw-master-detail>.kbw-pane>.kbw-panel{min-height:100%;border-radius:0;border:0}.kbw-split.kbw-master-detail{border:1px solid var(--line);border-radius:8px;overflow:hidden}.kbw-split.kbw-network-workspace>.kbw-pane{overflow:hidden}.kbw-split.kbw-network-workspace>.kbw-pane>*{height:100%}.kbw-split .kbw-network-inspector{border-left:0}.kbw-separator{width:8px;cursor:col-resize;touch-action:none;position:relative;background:var(--kbw-bg);border-inline:1px solid var(--line);z-index:2;outline-offset:-2px!important}.kbw-separator:hover,.kbw-separator:focus-visible{background:var(--kbw-accent)}.kbw-separator:after{content:'';position:absolute;top:calc(50% - 18px);height:36px;left:2px;width:2px;background:var(--kbw-muted);border-radius:2px}.kbw-resizing,.kbw-resizing *{cursor:col-resize!important;user-select:none!important}.kbw-pane-switch{padding:8px;border-bottom:1px solid var(--line);grid-column:1/-1}.kbw-split[data-compact=true]{display:flex!important;flex-direction:column}.kbw-split[data-compact=true]>.kbw-pane{flex:1}.kbw-split[data-compact=true]>.kbw-pane>*{height:100%}.kbw .kbw-tree .kbw-dir{align-items:flex-start;min-width:0}.kbw .kbw-tree .kbw-dir>button:first-child{flex:0 0 28px}.kbw .kbw-tree .kbw-dir>button:last-child{width:0;min-width:0;flex:1 1 0%;white-space:normal;overflow-wrap:anywhere;word-break:normal;height:auto;line-height:1.7;justify-content:flex-start;text-align:left;padding:6px 4px}.kbw .kbw-tree{display:block!important}.kbw-tree .kbw-dir-children{padding-left:10px}.kbw-file-row{display:flex;gap:8px;align-items:start;border-bottom:1px solid var(--line);min-width:0}.kbw-file-row>.kbw-row,.kbw-file-row>.kbw-card{flex:1;min-width:0;border-bottom:0}.kbw-file-menu{flex-shrink:0;max-width:50%;padding:14px 0;font-size:12px}.kbw-file-menu>summary{cursor:pointer;color:var(--kbw-muted)}.kbw-file-menu[open]{flex-shrink:1}.kbw-file-menu .kbw-button{white-space:normal;height:auto;min-height:36px;margin-top:8px}.kbw .kbw-danger-button{color:var(--kbw-danger);border-color:var(--kbw-danger)}.kbw-delete-confirm{border:1px solid var(--kbw-danger);border-radius:8px;background:var(--kbw-surface);padding:16px;margin:12px 0;max-width:100%;font-size:13px;white-space:normal;overflow-wrap:anywhere}.kbw-delete-confirm p{margin:8px 0}.kbw-detail>.kbw-delete-confirm{margin-bottom:20px}.kbw-trash-row{display:flex;justify-content:space-between;align-items:center;gap:20px;margin:12px 0}.kbw-trash-row>div:first-child{min-width:0}.kbw-trash-row strong{overflow-wrap:anywhere}.kbw-reading-help{padding:12px 16px;border:1px solid var(--line);border-radius:8px;margin:12px 0 18px;color:var(--kbw-muted);font-size:13px}.kbw-reading-help>summary{cursor:pointer;color:var(--kbw-fg)}.kbw-reading-help li{margin:8px 0}.kbw-system-recent>summary{cursor:pointer;padding:12px 0}.kbw-preview.kbw-markdown{max-height:60vh;overflow:auto;scrollbar-gutter:stable}.kbw-pane .kbw-panel .kbw-actions{margin-top:16px}
-@container(max-width:700px){.kbw-update-bar{padding:6px 12px}.kbw-app-header>.kbw-actions{flex-wrap:wrap;flex-shrink:1}.kbw-trash-row{align-items:flex-start;flex-direction:column}.kbw-split.kbw-network-workspace{min-height:520px}.kbw-split.kbw-master-detail{height:440px}}
+.kbw-update-bar{padding:6px 24px;border-bottom:1px solid var(--line);flex-shrink:0;min-width:0}.kbw-update-bar>[aria-label]{justify-content:flex-start;margin-left:0!important}.kbw .kbw-update-bar .kbc-btn{min-height:30px;height:auto}.kbw-split{display:grid!important;gap:0!important;min-width:0;min-height:0;position:relative}.kbw-split>.kbw-pane{min-width:0;min-height:0;overflow:auto}.kbw-split.kbw-grid{border-top:1px solid var(--line);grid-template-rows:minmax(0,1fr)}.kbw-split.kbw-grid>.kbw-pane{overflow-y:auto;overscroll-behavior-y:contain}.kbw-grid>.kbw-pane>:is(.kbw-tree,.kbw-list,.kbw-detail){height:auto;min-height:100%;overflow:visible;border-left:0;border-right:0}.kbw-split.kbw-master-detail{height:clamp(280px,50vh,580px);align-items:stretch}.kbw-master-detail>.kbw-pane>.kbw-panel{min-height:100%;border-radius:0;border:0}.kbw-split.kbw-master-detail{border:1px solid var(--line);border-radius:8px;overflow:hidden}.kbw-split.kbw-network-workspace>.kbw-pane{overflow:hidden}.kbw-split.kbw-network-workspace>.kbw-pane>*{height:100%}.kbw-split .kbw-network-inspector{border-left:0}.kbw-separator{width:8px;cursor:col-resize;touch-action:none;position:relative;background:var(--kbw-bg);border-inline:1px solid var(--line);z-index:2;outline-offset:-2px!important}.kbw-separator:hover,.kbw-separator:focus-visible{background:var(--kbw-accent)}.kbw-separator:after{content:'';position:absolute;top:calc(50% - 18px);height:36px;left:2px;width:2px;background:var(--kbw-muted);border-radius:2px}.kbw-resizing,.kbw-resizing *{cursor:col-resize!important;user-select:none!important}.kbw-pane-switch{padding:8px;border-bottom:1px solid var(--line);grid-column:1/-1}.kbw-split[data-compact=true]{display:flex!important;flex-direction:column}.kbw-split[data-compact=true]>.kbw-pane{flex:1}.kbw-split[data-compact=true]>.kbw-pane>*{height:100%}.kbw .kbw-tree .kbw-dir{align-items:flex-start;min-width:0}.kbw .kbw-tree .kbw-dir>button:first-child{flex:0 0 28px}.kbw .kbw-tree .kbw-dir>button:last-child{width:0;min-width:0;flex:1 1 0%;white-space:normal;overflow-wrap:anywhere;word-break:normal;height:auto;line-height:1.7;justify-content:flex-start;text-align:left;padding:6px 4px}.kbw .kbw-tree{display:block!important}.kbw-tree .kbw-dir-children{padding-left:10px}.kbw-file-row{display:flex;gap:8px;align-items:start;border-bottom:1px solid var(--line);min-width:0}.kbw-file-row>.kbw-row,.kbw-file-row>.kbw-card{flex:1;min-width:0;border-bottom:0}.kbw-file-menu{flex-shrink:0;max-width:50%;padding:14px 0;font-size:12px}.kbw-file-menu>summary{cursor:pointer;color:var(--kbw-muted)}.kbw-file-menu[open]{flex-shrink:1}.kbw-file-menu .kbw-button{white-space:normal;height:auto;min-height:36px;margin-top:8px}.kbw .kbw-danger-button{color:var(--kbw-danger);border-color:var(--kbw-danger)}.kbw-delete-confirm{border:1px solid var(--kbw-danger);border-radius:8px;background:var(--kbw-surface);padding:16px;margin:12px 0;max-width:100%;font-size:13px;white-space:normal;overflow-wrap:anywhere}.kbw-delete-confirm p{margin:8px 0}.kbw-detail>.kbw-delete-confirm{margin-bottom:20px}.kbw-trash-row{display:flex;justify-content:space-between;align-items:center;gap:20px;margin:12px 0}.kbw-trash-row>div:first-child{min-width:0}.kbw-trash-row strong{overflow-wrap:anywhere}.kbw-reading-help{padding:12px 16px;border:1px solid var(--line);border-radius:8px;margin:12px 0 18px;color:var(--kbw-muted);font-size:13px}.kbw-reading-help>summary{cursor:pointer;color:var(--kbw-fg)}.kbw-reading-help li{margin:8px 0}.kbw-system-recent>summary{cursor:pointer;padding:12px 0}.kbw-preview.kbw-markdown{max-height:60vh;overflow:auto;scrollbar-gutter:stable}.kbw-pane .kbw-panel .kbw-actions{margin-top:16px}
+    @container(max-width:700px){.kbw-update-bar{padding:6px 12px}.kbw-app-header>.kbw-actions{flex-wrap:wrap;flex-shrink:1}.kbw-trash-row{align-items:flex-start;flex-direction:column}.kbw-split.kbw-network-workspace{min-height:520px}.kbw-split.kbw-master-detail{height:440px}}
     `
     document.head.appendChild(style)
   }
@@ -149,6 +149,17 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
     R.useEffect(() => { try { const saved = JSON.parse(localStorage.getItem(key) || '[]'); setSizes(Array.isArray(saved) ? saved.map(n => Number.isFinite(n) ? n : null) : []) } catch { setSizes([]) } }, [key])
     R.useEffect(() => { const timer = setTimeout(() => { try { localStorage.setItem(key, JSON.stringify(sizes)) } catch {} }, 200); return () => clearTimeout(timer) }, [key, sizes])
     R.useEffect(() => { const element = root.current; const observer = new ResizeObserver(() => setAvailable(element.clientWidth)); observer.observe(element); setAvailable(element.clientWidth); return () => observer.disconnect() }, [])
+    R.useLayoutEffect(() => {
+      if (!directory) return
+      const element = root.current
+      const fit = () => { const height = Math.max(180, window.innerHeight - element.getBoundingClientRect().top - 32); element.style.height = height + 'px'; element.style.maxHeight = height + 'px'; element.style.flex = '0 0 auto'; element.style.overflow = 'hidden' }
+      fit()
+      window.addEventListener('resize', fit)
+      const observer = new ResizeObserver(fit); if (element.parentElement) observer.observe(element.parentElement)
+      const wheel = ev => { const pane = ev.target.closest('.kbw-pane'); if (!pane || !element.contains(pane) || ev.ctrlKey) return; ev.stopPropagation() }
+      element.addEventListener('wheel', wheel, { passive: true })
+      return () => { window.removeEventListener('resize', fit); observer.disconnect(); element.removeEventListener('wheel', wheel) }
+    }, [directory, count])
     R.useEffect(() => { setMobilePanel(count - 1) }, [count])
     const minimum = directory ? count === 3 ? [180, 280, 360] : [180, 280] : [280, 280]
     const compact = available < minimum.reduce((a, b) => a + b, 0) + (count - 1) * 8
@@ -723,8 +734,16 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
     const draftKey = 'kbw-capture-draft:' + snapshot.kbId
     R.useEffect(() => { try { setText(localStorage.getItem(draftKey) || '') } catch {} }, [draftKey])
     R.useEffect(() => { try { if (text) localStorage.setItem(draftKey, text); else localStorage.removeItem(draftKey) } catch {} }, [text, draftKey])
-    const refresh = R.useCallback(() => api({ op: 'capture.list', expectedKbId: snapshot.kbId, status: status || undefined }).then(setData).catch(e => setError(e.message)), [snapshot.kbId, snapshot.policyVersion, status])
-    R.useEffect(() => { void refresh() }, [refresh, snapshot.revision])
+    const refresh = R.useCallback(async () => {
+      try {
+        const next = await api({ op: 'capture.list', expectedKbId: snapshot.kbId, status: status || undefined })
+        setData(next); setError('')
+        const ids = new Set(next.items.map(item => item.id))
+        setSelected(old => old.filter(id => ids.has(id)))
+        setInspect(old => old ? next.items.find(item => item.id === old.id) || null : null)
+      } catch (err) { setError(err.message) }
+    }, [snapshot.kbId, snapshot.policyVersion, status])
+    R.useEffect(() => { void refresh() }, [refresh, snapshot.revision, snapshot.version])
     const base = { expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion }
     const create = async allowDuplicate => {
       setBusy(true); setError('')
@@ -767,28 +786,27 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
               btn(pairBusy ? '正在生成…' : '生成配对码', async () => { setPairBusy(true); setPairError(''); setPairMessage(''); setPair(null); try { setPair(await api({ op: 'capture.pair.create', ...base, origin: extensionOrigin.trim() })) } catch (err) { setPairError(err.message) } finally { setPairBusy(false) } }, pairBusy || !extensionOrigin.trim()),
               pair ? e('div', { className: 'kbw-summary', role: 'status' }, e('strong', null, '配对码：'), e('code', null, pair.code), e('p', null, '5 分钟内有效，只能使用一次。下一步请把它填入浏览器扩展的“配对码”。'), btn('复制配对码', async () => { try { await navigator.clipboard.writeText(pair.code); setPairMessage('配对码已复制，请回到扩展连接设置粘贴。') } catch { setPairError('无法自动复制，请选中上面的配对码手动复制。') } })) : null,
               pairMessage ? e('p', { role: 'status' }, pairMessage) : null),
-            e('li', null, e('h4', null, '在扩展中填写 DSH 地址和配对码'),
-              e('p', null, '回到扩展的“连接设置”，填写“宿主地址”和刚生成的配对码，点击“配对”。浏览器询问权限时，允许扩展访问你填写的 DSH 地址。'),
-              e('p', null, '宿主地址就是能在普通浏览器中打开 DSH 的 HTTP/HTTPS 地址，只填协议、主机与实际端口，不带页面路径。请先在浏览器中打开验证，再复制地址栏中对应的地址。'),
-              /^https?:$/.test(window.location.protocol) ? e('div', { className: 'kbw-summary' }, '当前页面地址可供核对：', e('code', null, window.location.origin), e('p', { className: 'kbw-meta' }, '仅当扩展所在浏览器也能通过此地址访问 DSH 时使用；不要复制后面的页面路径。')) : e('p', { className: 'kbw-meta' }, '当前使用桌面客户端，无法从 dsh-app:// 窗口地址得出宿主端口。请从 DSH 的网页访问配置获取实际 HTTP/HTTPS 地址；若宿主尚未提供网页访问服务，先在本页粘贴文字保存。'),
-              e('p', { className: 'kbw-meta' }, '不要填写模型 API、OCR 服务地址或知识库文件夹路径。本机回环主机名只指向扩展所在的这台电脑；跨设备请使用浏览器实际能访问的 DSH 地址。')),
+            e('li', null, e('h4', null, '在扩展中自动连接 DSH 并输入配对码'),
+              e('p', null, '回到扩展的“连接设置”，桌面版保持默认的“本机 DSH 桌面版（自动连接）”，只需输入刚生成的配对码并点击“配对”。浏览器询问权限时，允许扩展访问本机 DSH。'),
+              /^https?:$/.test(window.location.protocol) ? e('div', { className: 'kbw-summary' }, '如果当前页面来自 Web profile，请在扩展中选择“Web profile / 自定义地址”，再填写浏览器可访问的宿主 HTTP/HTTPS 地址。桌面版使用自动连接，无需复制窗口中的临时端口。') : e('div', { className: 'kbw-summary' }, '桌面版会自动连接本机 DSH。无需填写桌面窗口中显示的随机端口；端口变化不会使配对失效。'),
+              e('p', { className: 'kbw-meta' }, '不要填写 dsh-app://、模型 API、OCR 服务地址或知识库文件夹路径。跨设备访问 Web profile 时，使用浏览器实际可访问的宿主地址。')),
             e('li', null, e('h4', null, '保存一段文字，确认连接成功'),
-              e('p', null, '保持 DSH 运行。在浏览器打开一篇普通网页，选中一小段文字 → 点击扩展图标 →“保存当前页”。看到“已保存到收件箱 / 快速收集”后，回到本页刷新收件箱，核对标题和原文。'),
+              e('p', null, '保持 DSH 运行。在普通网页中选中一小段文字 → 右键选择“保存到个人知识库”，或点击扩展图标 →“保存当前页”。右键保存后网页右上角会显示成功或失败；扩展图标也会标出状态。回到本页刷新收件箱，核对标题和原文。'),
               btn('刷新收件箱，查看试存结果', () => { if (status) setStatus(''); else void refresh() }))),
           e('p', { className: 'kbw-meta' }, '配对码过期、扩展重装、授权被撤销或当前知识库切换时，请按第 2、3 步重新配对。')),
         e('details', null, e('summary', null, '日常使用：能保存什么、保存后怎么整理'),
           e('ul', null,
-            e('li', null, e('strong', null, '只存一段：'), '先在网页中选中文字，再点扩展“保存当前页”。保存选中文字、网页标题和来源网址。'),
-            e('li', null, e('strong', null, '保存正文：'), '不选择文字，直接点“保存当前页”。扩展尝试提取网页正文；提取不到时只保存标题和网址，并明确提示。'),
+            e('li', null, e('strong', null, '只存一段：'), '先在网页中选中文字，再右键选择“保存到个人知识库”，或点扩展“保存当前页”。保存选中文字、网页标题和来源网址。'),
+            e('li', null, e('strong', null, '保存正文：'), '不选择文字，在网页内容区或标签页上右键选择“保存到个人知识库”，或点扩展“保存当前页”。扩展尝试提取网页正文；提取不到时只保存标题和网址，并明确提示。浏览器设置页、扩展商店等受保护页面无法读取。'),
             e('li', null, e('strong', null, '查看与整理：'), '内容先进入本页收件箱，原件位于 90-收件箱/快速收集/。点击“预览原件”核对，再点击“整理为知识笔记”；勾选条目后，也可以选择分区、填写标签并“整理所选”。整理后原件保留。'),
             e('li', null, e('strong', null, '图片、PDF、附件：'), '扩展不会下载这些文件，也不会自动抓取整个网站。请下载文件后，在本页选择“上传文件”，按需识别文字或转写音频。')),
           e('p', { className: 'kbw-meta' }, '扩展只在你主动保存时读取当前页，不会后台收集浏览记录；配对授权只允许提交内容，不提供读取或切换知识库的能力。')),
         e('details', null, e('summary', null, '常见问题与已连接扩展管理'),
           e('dl', null,
             e('dt', null, '提示配对码无效、过期'), e('dd', null, '确认当前知识库未切换，来源与扩展设置页完全一致，重新生成配对码并在 5 分钟内使用。'),
-            e('dt', null, '连接或保存失败'), e('dd', null, '检查 DSH 是否运行、宿主地址能否在扩展所在浏览器中打开，以及是否授予该地址的访问权限。切换知识库或撤销授权后需重新配对。'),
+            e('dt', null, '连接或保存失败'), e('dd', null, '桌面版请确认 DSH 正在运行并允许扩展访问本机 DSH；Web profile 请检查自定义地址和对应权限。桌面窗口端口变化不会要求重新配对；切换知识库或撤销授权后需重新配对。'),
             e('dt', null, '只保存了网址，没有正文'), e('dd', null, '等待网页内容加载，选中需要的文字后再保存。浏览器设置页、扩展商店等保护页面无法读取；PDF 请使用本页的文件上传。'),
-            e('dt', null, '提示知识库已有相同内容'), e('dd', null, '当前按相同网址或内容去重，不会覆盖旧条目。先在收件箱查找；同一网页的另一段文字可在本页“记文字”中粘贴另存。'),
+            e('dt', null, '提示知识库已有相同内容'), e('dd', null, '同一网页的相同正文或摘录会去重；不同内容会分别保存，不会覆盖旧条目。'),
             e('dt', null, '保存成功，本页却没看到'), e('dd', null, '确认查看的是配对时的知识库，将“处理状态”切回“全部”，再刷新收件箱。')),
           e('p', { className: 'kbw-meta' }, '查看当前知识库的扩展授权；撤销后，该扩展将无法继续提交内容。扩展设置中的“移除此浏览器的连接”只清除本机凭据，完整撤销请在这里操作。'),
           btn('查看已配对扩展', async () => { setPairError(''); try { setConnections((await api({ op: 'capture.pair.list', ...base })).items) } catch (err) { setPairError(err.message) } }),

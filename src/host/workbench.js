@@ -619,7 +619,26 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       const bytes = args.base64 ? Buffer.from(args.base64, 'base64') : Buffer.from(text)
       if (bytes.length > 8 * 1024 * 1024) throw fail('CAPTURE_TOO_LARGE', '单次上传上限 8 MiB')
       if (!bytes.length && !url) throw fail('EMPTY_CAPTURE', '请填写文字、网址或上传文件')
-      const fingerprint = digest(args.base64 ? bytes : url || bytes), duplicate = data.captures.find(c => c.fingerprint === fingerprint)
+      const fingerprint = args.base64
+        ? digest(bytes)
+        : url
+          ? digest('capture-v2\0' + url + '\0' + digest(bytes))
+          : digest(bytes)
+      let duplicate = data.captures.find(c => c.fingerprint === fingerprint)
+      // Older captures used the URL alone as their fingerprint. Compare their
+      // stored body before treating one as a duplicate so a different excerpt
+      // from the same page remains saveable after upgrading.
+      if (!duplicate && url && !args.base64) {
+        const legacyFingerprint = digest(url)
+        for (const existing of data.captures) {
+          if (existing.url !== url || existing.fingerprint !== legacyFingerprint) continue
+          try {
+            const stored = await readFile(await safePath(b.root, existing.path), 'utf8')
+            const prefix = `# ${String(existing.title || url).replaceAll('\n', ' ')}\n\n来源：${url}\n\n`
+            if (stored.startsWith(prefix) && stored.slice(prefix.length) === text) { duplicate = existing; break }
+          } catch { /* stale legacy captures must not block a new save */ }
+        }
+      }
       if (duplicate && !args.allowDuplicate) return { duplicate, requiresConfirmation: true }
       const id = randomUUID(), title = String(args.title || args.filename || url || text.slice(0, 50) || '快速记录').slice(0, 200)
       const name = (args.filename ? path.basename(String(args.filename)) : '记录.md').replace(/[<>:"/\\|?*\x00-\x1f]/g, '_')
@@ -655,7 +674,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       const result = await b.core.createEntry({ title: item.title, kind: args.kind || kinds[args.dir] || '知识', tags: args.tags || [], content: content.text, source: item.path,
         requestId: 'capture-' + item.id, expectedBinding: { kbId: b.st.kbId, kbPath: b.root, revision: b.conf.revision } })
       if (!result.ok) throw fail(result.reason || 'LAND_FAILED', result.detail || result.reason)
-      item.status = 'done'; item.entryId = result.entryId; item.entryPath = result.path
+      item.status = 'done'; item.entryId = result.entryId; item.entryPath = result.path; delete item.error
       return { capture: item }
     })
     throw fail('UNKNOWN_CAPTURE', '未知收件箱操作')
@@ -759,17 +778,30 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
 
   async function reconcileCaptures(b) {
     const parser = getParsing()
-    if (!parser) return
     const data = await userData(b)
-    if (!data.captures.some(c => c.status === 'processing' && c.jobId)) return
+    if (!data.captures.length) return
     await locked(b.dataFile, async () => {
       const latest = await userData(b); let changed = false
-      for (const c of latest.captures.filter(c => c.status === 'processing' && c.jobId)) {
-        const job = await parser.readJob(c.jobId)
-        if (job?.land?.status === 'landed') { c.status = 'done'; c.entryId = job.land.entryId; c.entryPath = job.land.path; changed = true }
-        else if (job && ['failed', 'canceled', 'interrupted'].includes(job.status)) { c.status = 'failed'; c.error = job.status; changed = true }
+      const retained = []
+      const fileExists = async rel => {
+        try { return (await stat(await safePath(b.root, rel))).isFile() }
+        catch (error) { if (error.code === 'ENOENT') return false; throw error }
       }
-      if (changed) { await binding(b.st.kbId); latest.revision++; await atomicJson(b.dataFile, latest); cache = null }
+      for (const c of latest.captures) {
+        if (!await fileExists(c.path)) { changed = true; continue }
+        if (c.entryPath && !await fileExists(c.entryPath)) {
+          delete c.entryPath; delete c.entryId; delete c.jobId
+          if (c.status === 'done') { c.status = 'pending'; c.error = '对应知识条目已删除，可重新整理。' }
+          changed = true
+        }
+        if (parser && c.status === 'processing' && c.jobId) {
+          const job = await parser.readJob(c.jobId)
+          if (job?.land?.status === 'landed') { c.status = 'done'; c.entryId = job.land.entryId; c.entryPath = job.land.path; delete c.error; changed = true }
+          else if (job && ['failed', 'canceled', 'interrupted'].includes(job.status)) { c.status = 'failed'; c.error = job.status; changed = true }
+        }
+        retained.push(c)
+      }
+      if (changed) { latest.captures = retained; await binding(b.st.kbId); latest.revision++; await atomicJson(b.dataFile, latest); cache = null }
     })
   }
 

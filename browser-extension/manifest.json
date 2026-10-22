@@ -1,10 +1,11 @@
 {
   "manifest_version": 3,
   "name": "个人知识库 · 快速收集",
-  "version": "1.2.0",
-  "description": "把当前网页或选中文字保存到已配对的个人知识库收件箱。",
-  "permissions": ["activeTab", "scripting", "storage"],
+  "version": "1.2.3",
+  "description": "通过工具栏或网页右键菜单，把当前网页或选中文字保存到已配对的个人知识库收件箱。",
+  "permissions": ["activeTab", "contextMenus", "scripting", "storage"],
   "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "background": { "service_worker": "background.js" },
   "action": { "default_popup": "popup.html", "default_title": "保存到知识库" },
   "options_page": "options.html"
 }
