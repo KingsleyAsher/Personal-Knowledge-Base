@@ -3,9 +3,9 @@
   "version": "2.1.0",
   "buildId": "37b7ff660806754d",
   "tgz": "local-dsh-knowledge-base-2.1.0.tgz",
-  "bytes": 2850347,
-  "sha256": "2c74f3594bb548b1b60cb7be0516dbda4a59333fc6a1a93ead0a621998bfbf7d",
-  "integrity": "sha512-s7UxR4DbjvnfJPxAi31Ah6QpIcm0AIu/cvPqeN/ktR4VHj7aOXh3IULLHRFovNL5OzcBscIXpRWw4LRUSv7vmQ==",
+  "bytes": 2850636,
+  "sha256": "bede98f870d256ec7c41473e8c836750e478ee3790784dd001b3729132bb9593",
+  "integrity": "sha512-Br/+u8T30OQVzeCW+pp/6MYAWb+kPio0dJM2vvAd6YmamIvDTipGH4Hg+pRM4NALj2U99NmNj7HZPYGrA0FRZg==",
   "packageFileCount": 272,
   "buildFileCount": 261,
   "files": [
@@ -41,8 +41,8 @@
     },
     {
       "path": "PROJECT-RECORD.md",
-      "bytes": 29989,
-      "sha256": "037da8debb13727bd83682624c240da3d169c6559520ae422fe42e4df6f341ca"
+      "bytes": 30386,
+      "sha256": "f699023be5756f6db638c041a65c2c415a6770b894bdf86f0d1af2fd0849bd82"
     },
     {
       "path": "README.md",
@@ -51,8 +51,8 @@
     },
     {
       "path": "RELEASE.md",
-      "bytes": 10595,
-      "sha256": "7ff2f966a6743b0cee0598f56f80c18c6167fa3cd7c2730e95c55bae1371c1dc"
+      "bytes": 10888,
+      "sha256": "d503f4567becd7cdbf7f8b3952c2654cbda101323bb903174457577922e1b485"
     },
     {
       "path": "RETRIEVAL.md",
@@ -1377,6 +1377,9 @@
     "realCloudApiTested": false,
     "automatedChecksPassed": true,
     "nodeTests": 25,
+    "browserUiVerifiedWithSyntheticHost": false,
+    "mobileSystemShareVerified": false,
+    "extensionInstalledVerified": false,
     "userConfirmedPreview": true
   }
 }

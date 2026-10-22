@@ -18,7 +18,7 @@
 
 ## 2.1.0 正式发布记录（2026-10-22）
 
-正式版已合并至 `main` 并发布 GitHub Release：[`v2.1.0`](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.1.0)，对应合并提交 `bf41c52c088495596c619af30b38a4a4bc43a3e1`、构建号 `37b7ff660806754d`。安装包字节数、SHA-256 和逐文件清单以 [`release-manifest.json`](release-manifest.json) 为准。发布由 [PR #25](https://github.com/KingsleyAsher/Personal-Knowledge-Base/pull/25) 合并。用户确认 2.1-beta4 预览版可用；本次没有在维护者本机安装正式包，也没有调用真实云端模型 API。正式版发布检查和展示页部署通过；Gitee 镜像同步成功，GitCode 镜像同步工作流失败，镜像结果以工作流记录为准。
+正式版首次通过 [PR #25](https://github.com/KingsleyAsher/Personal-Knowledge-Base/pull/25) 合并至 `main` 并发布 GitHub Release：[`v2.1.0`](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.1.0)。首次发布提交为 `bf41c52c088495596c619af30b38a4a4bc43a3e1`；随后 [PR #26](https://github.com/KingsleyAsher/Personal-Knowledge-Base/pull/26) 完成发布记录、随包文档、安装包和校验清单的全量同步，合并提交为 `5abc0bbfd37162e91343906aa761a37ea590639f`。构建号仍为 `37b7ff660806754d`，因为该次同步没有改变可执行构建文件。当前安装包字节数、SHA-256 和逐文件清单以 [`release-manifest.json`](release-manifest.json) 为准。用户确认 2.1-beta4 预览版可用；没有在维护者本机安装正式包，也没有调用真实云端模型 API。正式版发布检查和展示页部署通过；Gitee 镜像同步成功，GitCode 镜像同步工作流失败，镜像结果以工作流记录为准。
 
 ## 目录
 
@@ -296,4 +296,4 @@ flowchart TD
 
 ### 2026-10-22 / 2.1.0 正式发布
 
-2.1.0 已通过 PR #25 合并至 `main` 并发布 `v2.1.0`。正式构建号为 `37b7ff660806754d`；GitHub Release、发布清单、产品页、README、检索说明和版本更新说明使用同一包身份。用户确认预览版可用；定向自动检查 25 项通过，正式发布及 Pages 工作流通过。Gitee 镜像已同步，GitCode 镜像工作流失败。安装包和逐文件摘要保留在正式发布资产中；本记录后续更正发布事实时不改变已发布安装包字节。
+2.1.0 通过 PR #25 首次发布，并于 PR #26 完成正式发布记录、随包文档、安装包、网站下载副本和摘要清单的同步。当前发布包身份见 `release-manifest.json`，构建号仍为 `37b7ff660806754d`；PR #26 只更改文档和发布元数据，没有改动可执行构建文件。用户确认预览版可用；定向自动检查 25 项通过，首次正式发布及 Pages 工作流通过。Gitee 镜像同步成功，GitCode 镜像工作流失败。此后若有发布记录更正，应同步源码记录、随包副本、清单及对应下载附件，并以发布清单中的摘要为准。
