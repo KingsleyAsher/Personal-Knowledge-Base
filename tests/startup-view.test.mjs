@@ -63,7 +63,7 @@ test('actual plugin apply resets saved selection before registering the knowledg
   const context = {
     window: { localStorage: store, setInterval() { return 1 }, clearInterval() {} }, document: { hidden: false, addEventListener() {}, removeEventListener() {}, documentElement: { getAttribute() { return null }, setAttribute() {} } },
     createWorkbenchUI: options => { assert.equal(options.projectRecordUrl, context.PROJECT_RECORD_URL); return { dispose() {}, registerReferences() {} } },
-    react: {}, e() {}, callApi() {}, Overview() {}, Flows() {}, ParseSection() {}, BuildBadge() {},
+    react: {}, ReferenceChip: undefined, e() {}, callApi() {}, Overview() {}, Flows() {}, ParseSection() {}, BuildBadge() {},
     reactDom: {}, RELEASE_VERSION: 'test', PROJECT_RECORD_URL: 'https://example.invalid/project-record', rememberPreviousClientVersion() {}, ensureStyle() {}, WorkbenchSettings() {}, KbView() {},
     patchBuildBadge() {}, refreshBuildVersion() {}, checkBuildUpdates() {}, buildVersionRequest: { current: 0 }, buildUpdateRequest: { current: 0 },
   }

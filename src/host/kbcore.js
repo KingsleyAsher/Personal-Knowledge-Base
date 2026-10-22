@@ -18,7 +18,7 @@ import path from 'node:path'
 import { readImportSources, derivedPrivatePartitions, effectivePrivateDirs, foldGeneratedPairs } from './fsindex.js'
 
 // 版本单一来源：package.json 的 version 必须与此一致（详见 INSTALL 说明）
-export const VERSION = '2.0.3'
+export const VERSION = '2.1.0'
 
 export const REQUIRED_FIELDS = ['title', 'type', 'tags', 'status', 'updated']
 export const SCHEMA_VERSION = 1
@@ -31,7 +31,7 @@ const KIND_TO_CATEGORY = {
   画像: '00-画像',
 }
 
-const TEMPLATES = {
+export const TEMPLATES = {
   '知识条目.md': '# 标题\n\n> 一句话结论。\n\n## 正文\n\n',
   '项目条目.md': '# 项目名\n\n> 目标与当前状态。\n\n## 进展\n\n',
   '素材条目.md': '# 素材名\n\n> 是什么、能干什么。\n\n## 用法\n\n',
@@ -692,7 +692,7 @@ export function createCore(cfg, logger) {
   }
   function excludesOf(conf) {
     const fromConf = Array.isArray(conf.excludeFromSearch) ? conf.excludeFromSearch : []
-    return [...new Set([...DEFAULT_EXCLUDES, ...fromConf])]
+    return [...new Set([...DEFAULT_EXCLUDES, '索引层', ...fromConf])]
   }
 
   async function readMeta(root) {

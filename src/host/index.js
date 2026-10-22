@@ -27,6 +27,8 @@ import { createParsingService } from './parsing.js'
 import { createParseSourceAuthority } from './parse-source-authority.js'
 import { createIndexMaintenance } from './index-maintenance.js'
 import { createWorkbench } from './workbench.js'
+import { syncManagedFiles } from './managed-files.js'
+import { createCitationGuard } from './citation-guard.js'
 import { sharedDraft, captureDocument } from './capture-surface.js'
 
 export const name = 'kb-core'
@@ -182,62 +184,31 @@ export function resolveStateDir(config, pkgRoot) {
  */
 export async function bootstrapSkills(pkgRoot, log) {
   try {
-    const from = path.join(pkgRoot, 'skills')
-    if (!fsExists(from)) return { copied: 0, skipped: 0, target: null, reason: 'no-bundled-skills' }
-    const home = process.env.DSH_HOME || path.join(process.env.USERPROFILE || os.homedir(), '.dsh')
-    const target = path.join(home, '.agent-presets', 'knowledge', 'skills')
-    const manifestPath = path.join(target, '.kb-managed.json')
-    let previous = {}
-    try {
-      previous = JSON.parse(await readFile(manifestPath, 'utf8'))
-      if (previous === null || typeof previous !== 'object') previous = {}
-    } catch {
-      previous = {}
-    }
-    const next = {}
-    let copied = 0
-    let refreshed = 0
-    let skipped = 0
-    let kept = 0
-    const hashOf = (buf) => crypto.createHash('sha256').update(buf).digest('hex')
-    const walk = async (dir, rel) => {
-      const entries = await readdir(dir, { withFileTypes: true })
-      for (const e of entries) {
-        const r = rel ? path.join(rel, e.name) : e.name
-        if (e.isDirectory()) { await walk(path.join(dir, e.name), r); continue }
-        const srcBuf = await readFile(path.join(dir, e.name))
-        const want = hashOf(srcBuf)
-        next[r] = want
-        const dst = path.join(target, r)
-        if (!fsExists(dst)) {
-          await mkdir(path.dirname(dst), { recursive: true })
-          await writeFile(dst, srcBuf)
-          copied += 1
-          continue
-        }
-        const curBuf = await readFile(dst)
-        const cur = hashOf(curBuf)
-        if (cur === want) { skipped += 1; continue }
-        if (previous[r] === cur) {
-          await writeFile(dst, srcBuf)
-          refreshed += 1
-          continue
-        }
-        kept += 1
-        log('warn', `技能 ${r} 有本地改动，保留本地版本（随包版本未覆盖）`)
-      }
-    }
-    await walk(from, '')
-    await mkdir(target, { recursive: true })
-    await writeFile(manifestPath, JSON.stringify(next, null, 2) + '\n')
-    if (copied > 0 || refreshed > 0) {
-      log('info', `已铺开随包技能 新增 ${copied} / 更新 ${refreshed} / 一致 ${skipped} / 保留本地 ${kept} → ${target}`)
-    }
-    return { copied, refreshed, skipped, kept, target }
-  } catch (error) {
-    log('warn', '技能铺开失败（不影响工具）：' + String(error && error.message ? error.message : error))
-    return { copied: 0, skipped: 0, target: null, reason: 'error' }
-  }
+    const from=path.join(pkgRoot,'skills'),home=process.env.DSH_HOME||path.join(process.env.USERPROFILE||os.homedir(),'.dsh')
+    if(!fsExists(from))return {files:[],conflicts:0,reason:'no-bundled-skills'}
+    const target=path.join(home,'.agent-presets','knowledge','skills'),items=[]
+    const walk=async(dir,prefix='')=>{for(const row of await readdir(dir,{withFileTypes:true})){
+      const rel=prefix+row.name
+      if(row.isDirectory())await walk(path.join(dir,row.name),rel+'/')
+      else if(row.isFile())items.push({path:rel,content:await readFile(path.join(dir,row.name)),instructions:true,version:PLUGIN_VERSION})
+    }}
+    await walk(from)
+    const result=await syncManagedFiles({root:target,items})
+    const refreshed=result.files.filter(r=>r.status==='updated').length,copied=result.files.filter(r=>r.status==='created').length
+    return {...result,target,copied,refreshed,kept:result.conflicts,skipped:result.files.length-copied-refreshed-result.conflicts,needsNewSession:copied+refreshed>0}
+  }catch(error){log('warn','技能升级待处理：'+String(error.code||error.message));return {files:[],conflicts:1,reason:error.code||'error',needsNewSession:false}}
+}
+
+export async function bootstrapPreset(pkgRoot,profileDir,log) {
+  try {
+    const existing=path.join(profileDir,'cordis.patch.yml')
+    if(!fsExists(existing))return {files:[],conflicts:0,status:'not-present'}
+    const profileText=await readFile(existing,'utf8')
+    if(!/^\s*(?:-\s*)?id:\s*preset-knowledge\s*$/m.test(profileText))return {files:[],conflicts:0,status:'bundled-preset',target:profileDir}
+    const content=await readFile(path.join(pkgRoot,'presets','01-knowledge-agent.patch.yml'))
+    const result=await syncManagedFiles({root:profileDir,items:[{path:'cordis.patch.yml',content,version:PLUGIN_VERSION,instructions:true}],manifest:'.kb-preset-managed.json',backup:'.kb-preset-backups',candidates:'.kb-preset-candidates'})
+    return {...result,target:profileDir,needsRestart:result.files.some(f=>['created','updated'].includes(f.status))}
+  }catch(error){log('warn','预设升级检查待处理：'+String(error.code||error.message));return {files:[],conflicts:1,reason:error.code||'error'}}
 }
 
 export function apply(ctx, config) {
@@ -250,13 +221,16 @@ export function apply(ctx, config) {
   let timer = null
   let core = null
   const workbench = createWorkbench({ stateDir, getCore: () => core, getParsing: () => parsingService, getFlows: () => ensureFlowEngine(), getImports: () => importService,
+    getUpgradeContext: async({retry=false}={})=>{if(retry){skillsUpgrade=bootstrapSkills(pkgRoot,log);presetUpgrade=bootstrapPreset(pkgRoot,stateResolved.profileDir,log)}const skills=await skillsUpgrade,preset=await presetUpgrade;return {version:PLUGIN_VERSION,buildId:buildInfo.buildId||'loading',runtimeId:startedAt,external:{skills,preset,conflicts:(skills.conflicts||0)+(preset.conflicts||0),needsNewSession:skills.needsNewSession,needsRestart:preset.needsRestart}}},
     getFileActions: () => ctx.get('sessionController'), getAIWorkspace: root => flowWorkspaceManager.ensure(root),
     log: (level, message) => console[level === 'warn' ? 'warn' : 'log']('[kb-workbench] ' + message) })
+  const citationGuard = createCitationGuard({validate:(args,caller)=>workbench.dispatch(args,caller),log:message=>console.warn('[kb-citations] '+message)})
+  ctx.effect(() => ctx.on('agent/turn-stopping', citationGuard), 'kb: final citation check')
   ctx.effect(() => {
     void workbench.runAutomatic().catch(error => console.warn('[kb-workbench] ' + error.message))
     const timer = setInterval(() => { void workbench.runAutomatic().catch(error => console.warn('[kb-workbench] ' + error.message)) }, 60000)
     timer.unref?.()
-    return () => clearInterval(timer)
+    return () => { clearInterval(timer); workbench.dispose() }
   }, 'kb-workbench: opt-in background maintenance')
   const flowWorkspaceManager = createFlowWorkspaceManager({ getRegistry: () => ctx.get('workspaceRegistry') })
   const updateChecker = createUpdateChecker({ currentVersion: PLUGIN_VERSION })
@@ -282,12 +256,12 @@ let parsingService = null
    */
   const pkgRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..')
   // 随包技能：只补缺失文件，失败只告警、不影响工具注册。
-  void bootstrapSkills(pkgRoot, log)
+  let skillsUpgrade=bootstrapSkills(pkgRoot, log),presetUpgrade=bootstrapPreset(pkgRoot,stateResolved.profileDir,log)
   const buildInfo = { version: PLUGIN_VERSION, buildId: null, files: [], stateDirSource: stateResolved.source, profile: stateResolved.profileDir }
   const buildPromise = (async () => {
     // 2026-10-18：新增 gateway.js / flows.js 两个**装载文件** —— buildId 必须覆盖它们，
     // 否则改了流程实现而 buildId 不变，"构建=版本/buildId"这条唯一硬判据就失效了。
-    const list = ['package.json', 'cordis.patch.yml', 'src/host/index.js', 'src/host/kbcore.js', 'src/host/fsindex.js', 'src/host/importer.js', 'src/host/import-service.js', 'src/host/map.js', 'src/host/selftest.js', 'src/host/gateway.js', 'src/host/flows.js', 'src/host/parsing.js', 'src/host/updates.js', 'src/host/flow-workspace.js', 'src/client/index.js', 'src/host/parse-presets.js', 'src/host/parse-credentials.js', 'src/host/parse-native.js', 'src/host/parse-discovery.js', 'src/host/index-maintenance.js', 'tools/kb-local-model.py', 'tools/kb-pdf-pages.py', 'src/host/workbench.js', 'src/host/workbench-state.js', 'src/host/workbench-backup.js', 'src/client/workbench-ui.js', 'src/client/pdfjs/cmaps/78-EUC-H.bcmap', 'src/client/pdfjs/cmaps/78-EUC-V.bcmap', 'src/client/pdfjs/cmaps/78-H.bcmap', 'src/client/pdfjs/cmaps/78-RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/78-RKSJ-V.bcmap', 'src/client/pdfjs/cmaps/78-V.bcmap', 'src/client/pdfjs/cmaps/78ms-RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/78ms-RKSJ-V.bcmap', 'src/client/pdfjs/cmaps/83pv-RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/90ms-RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/90ms-RKSJ-V.bcmap', 'src/client/pdfjs/cmaps/90msp-RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/90msp-RKSJ-V.bcmap', 'src/client/pdfjs/cmaps/90pv-RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/90pv-RKSJ-V.bcmap', 'src/client/pdfjs/cmaps/Add-H.bcmap', 'src/client/pdfjs/cmaps/Add-RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/Add-RKSJ-V.bcmap', 'src/client/pdfjs/cmaps/Add-V.bcmap', 'src/client/pdfjs/cmaps/Adobe-CNS1-0.bcmap', 'src/client/pdfjs/cmaps/Adobe-CNS1-1.bcmap', 'src/client/pdfjs/cmaps/Adobe-CNS1-2.bcmap', 'src/client/pdfjs/cmaps/Adobe-CNS1-3.bcmap', 'src/client/pdfjs/cmaps/Adobe-CNS1-4.bcmap', 'src/client/pdfjs/cmaps/Adobe-CNS1-5.bcmap', 'src/client/pdfjs/cmaps/Adobe-CNS1-6.bcmap', 'src/client/pdfjs/cmaps/Adobe-CNS1-UCS2.bcmap', 'src/client/pdfjs/cmaps/Adobe-GB1-0.bcmap', 'src/client/pdfjs/cmaps/Adobe-GB1-1.bcmap', 'src/client/pdfjs/cmaps/Adobe-GB1-2.bcmap', 'src/client/pdfjs/cmaps/Adobe-GB1-3.bcmap', 'src/client/pdfjs/cmaps/Adobe-GB1-4.bcmap', 'src/client/pdfjs/cmaps/Adobe-GB1-5.bcmap', 'src/client/pdfjs/cmaps/Adobe-GB1-UCS2.bcmap', 'src/client/pdfjs/cmaps/Adobe-Japan1-0.bcmap', 'src/client/pdfjs/cmaps/Adobe-Japan1-1.bcmap', 'src/client/pdfjs/cmaps/Adobe-Japan1-2.bcmap', 'src/client/pdfjs/cmaps/Adobe-Japan1-3.bcmap', 'src/client/pdfjs/cmaps/Adobe-Japan1-4.bcmap', 'src/client/pdfjs/cmaps/Adobe-Japan1-5.bcmap', 'src/client/pdfjs/cmaps/Adobe-Japan1-6.bcmap', 'src/client/pdfjs/cmaps/Adobe-Japan1-UCS2.bcmap', 'src/client/pdfjs/cmaps/Adobe-Korea1-0.bcmap', 'src/client/pdfjs/cmaps/Adobe-Korea1-1.bcmap', 'src/client/pdfjs/cmaps/Adobe-Korea1-2.bcmap', 'src/client/pdfjs/cmaps/Adobe-Korea1-UCS2.bcmap', 'src/client/pdfjs/cmaps/B5-H.bcmap', 'src/client/pdfjs/cmaps/B5-V.bcmap', 'src/client/pdfjs/cmaps/B5pc-H.bcmap', 'src/client/pdfjs/cmaps/B5pc-V.bcmap', 'src/client/pdfjs/cmaps/CNS-EUC-H.bcmap', 'src/client/pdfjs/cmaps/CNS-EUC-V.bcmap', 'src/client/pdfjs/cmaps/CNS1-H.bcmap', 'src/client/pdfjs/cmaps/CNS1-V.bcmap', 'src/client/pdfjs/cmaps/CNS2-H.bcmap', 'src/client/pdfjs/cmaps/CNS2-V.bcmap', 'src/client/pdfjs/cmaps/ETen-B5-H.bcmap', 'src/client/pdfjs/cmaps/ETen-B5-V.bcmap', 'src/client/pdfjs/cmaps/ETenms-B5-H.bcmap', 'src/client/pdfjs/cmaps/ETenms-B5-V.bcmap', 'src/client/pdfjs/cmaps/ETHK-B5-H.bcmap', 'src/client/pdfjs/cmaps/ETHK-B5-V.bcmap', 'src/client/pdfjs/cmaps/EUC-H.bcmap', 'src/client/pdfjs/cmaps/EUC-V.bcmap', 'src/client/pdfjs/cmaps/Ext-H.bcmap', 'src/client/pdfjs/cmaps/Ext-RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/Ext-RKSJ-V.bcmap', 'src/client/pdfjs/cmaps/Ext-V.bcmap', 'src/client/pdfjs/cmaps/GB-EUC-H.bcmap', 'src/client/pdfjs/cmaps/GB-EUC-V.bcmap', 'src/client/pdfjs/cmaps/GB-H.bcmap', 'src/client/pdfjs/cmaps/GB-V.bcmap', 'src/client/pdfjs/cmaps/GBK-EUC-H.bcmap', 'src/client/pdfjs/cmaps/GBK-EUC-V.bcmap', 'src/client/pdfjs/cmaps/GBK2K-H.bcmap', 'src/client/pdfjs/cmaps/GBK2K-V.bcmap', 'src/client/pdfjs/cmaps/GBKp-EUC-H.bcmap', 'src/client/pdfjs/cmaps/GBKp-EUC-V.bcmap', 'src/client/pdfjs/cmaps/GBpc-EUC-H.bcmap', 'src/client/pdfjs/cmaps/GBpc-EUC-V.bcmap', 'src/client/pdfjs/cmaps/GBT-EUC-H.bcmap', 'src/client/pdfjs/cmaps/GBT-EUC-V.bcmap', 'src/client/pdfjs/cmaps/GBT-H.bcmap', 'src/client/pdfjs/cmaps/GBT-V.bcmap', 'src/client/pdfjs/cmaps/GBTpc-EUC-H.bcmap', 'src/client/pdfjs/cmaps/GBTpc-EUC-V.bcmap', 'src/client/pdfjs/cmaps/H.bcmap', 'src/client/pdfjs/cmaps/Hankaku.bcmap', 'src/client/pdfjs/cmaps/Hiragana.bcmap', 'src/client/pdfjs/cmaps/HKdla-B5-H.bcmap', 'src/client/pdfjs/cmaps/HKdla-B5-V.bcmap', 'src/client/pdfjs/cmaps/HKdlb-B5-H.bcmap', 'src/client/pdfjs/cmaps/HKdlb-B5-V.bcmap', 'src/client/pdfjs/cmaps/HKgccs-B5-H.bcmap', 'src/client/pdfjs/cmaps/HKgccs-B5-V.bcmap', 'src/client/pdfjs/cmaps/HKm314-B5-H.bcmap', 'src/client/pdfjs/cmaps/HKm314-B5-V.bcmap', 'src/client/pdfjs/cmaps/HKm471-B5-H.bcmap', 'src/client/pdfjs/cmaps/HKm471-B5-V.bcmap', 'src/client/pdfjs/cmaps/HKscs-B5-H.bcmap', 'src/client/pdfjs/cmaps/HKscs-B5-V.bcmap', 'src/client/pdfjs/cmaps/Katakana.bcmap', 'src/client/pdfjs/cmaps/KSC-EUC-H.bcmap', 'src/client/pdfjs/cmaps/KSC-EUC-V.bcmap', 'src/client/pdfjs/cmaps/KSC-H.bcmap', 'src/client/pdfjs/cmaps/KSC-Johab-H.bcmap', 'src/client/pdfjs/cmaps/KSC-Johab-V.bcmap', 'src/client/pdfjs/cmaps/KSC-V.bcmap', 'src/client/pdfjs/cmaps/KSCms-UHC-H.bcmap', 'src/client/pdfjs/cmaps/KSCms-UHC-HW-H.bcmap', 'src/client/pdfjs/cmaps/KSCms-UHC-HW-V.bcmap', 'src/client/pdfjs/cmaps/KSCms-UHC-V.bcmap', 'src/client/pdfjs/cmaps/KSCpc-EUC-H.bcmap', 'src/client/pdfjs/cmaps/KSCpc-EUC-V.bcmap', 'src/client/pdfjs/cmaps/LICENSE', 'src/client/pdfjs/cmaps/NWP-H.bcmap', 'src/client/pdfjs/cmaps/NWP-V.bcmap', 'src/client/pdfjs/cmaps/RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/RKSJ-V.bcmap', 'src/client/pdfjs/cmaps/Roman.bcmap', 'src/client/pdfjs/cmaps/UniCNS-UCS2-H.bcmap', 'src/client/pdfjs/cmaps/UniCNS-UCS2-V.bcmap', 'src/client/pdfjs/cmaps/UniCNS-UTF16-H.bcmap', 'src/client/pdfjs/cmaps/UniCNS-UTF16-V.bcmap', 'src/client/pdfjs/cmaps/UniCNS-UTF32-H.bcmap', 'src/client/pdfjs/cmaps/UniCNS-UTF32-V.bcmap', 'src/client/pdfjs/cmaps/UniCNS-UTF8-H.bcmap', 'src/client/pdfjs/cmaps/UniCNS-UTF8-V.bcmap', 'src/client/pdfjs/cmaps/UniGB-UCS2-H.bcmap', 'src/client/pdfjs/cmaps/UniGB-UCS2-V.bcmap', 'src/client/pdfjs/cmaps/UniGB-UTF16-H.bcmap', 'src/client/pdfjs/cmaps/UniGB-UTF16-V.bcmap', 'src/client/pdfjs/cmaps/UniGB-UTF32-H.bcmap', 'src/client/pdfjs/cmaps/UniGB-UTF32-V.bcmap', 'src/client/pdfjs/cmaps/UniGB-UTF8-H.bcmap', 'src/client/pdfjs/cmaps/UniGB-UTF8-V.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UCS2-H.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UCS2-HW-H.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UCS2-HW-V.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UCS2-V.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UTF16-H.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UTF16-V.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UTF32-H.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UTF32-V.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UTF8-H.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UTF8-V.bcmap', 'src/client/pdfjs/cmaps/UniJIS2004-UTF16-H.bcmap', 'src/client/pdfjs/cmaps/UniJIS2004-UTF16-V.bcmap', 'src/client/pdfjs/cmaps/UniJIS2004-UTF32-H.bcmap', 'src/client/pdfjs/cmaps/UniJIS2004-UTF32-V.bcmap', 'src/client/pdfjs/cmaps/UniJIS2004-UTF8-H.bcmap', 'src/client/pdfjs/cmaps/UniJIS2004-UTF8-V.bcmap', 'src/client/pdfjs/cmaps/UniJISPro-UCS2-HW-V.bcmap', 'src/client/pdfjs/cmaps/UniJISPro-UCS2-V.bcmap', 'src/client/pdfjs/cmaps/UniJISPro-UTF8-V.bcmap', 'src/client/pdfjs/cmaps/UniJISX0213-UTF32-H.bcmap', 'src/client/pdfjs/cmaps/UniJISX0213-UTF32-V.bcmap', 'src/client/pdfjs/cmaps/UniJISX02132004-UTF32-H.bcmap', 'src/client/pdfjs/cmaps/UniJISX02132004-UTF32-V.bcmap', 'src/client/pdfjs/cmaps/UniKS-UCS2-H.bcmap', 'src/client/pdfjs/cmaps/UniKS-UCS2-V.bcmap', 'src/client/pdfjs/cmaps/UniKS-UTF16-H.bcmap', 'src/client/pdfjs/cmaps/UniKS-UTF16-V.bcmap', 'src/client/pdfjs/cmaps/UniKS-UTF32-H.bcmap', 'src/client/pdfjs/cmaps/UniKS-UTF32-V.bcmap', 'src/client/pdfjs/cmaps/UniKS-UTF8-H.bcmap', 'src/client/pdfjs/cmaps/UniKS-UTF8-V.bcmap', 'src/client/pdfjs/cmaps/V.bcmap', 'src/client/pdfjs/cmaps/WP-Symbol.bcmap', 'src/client/pdfjs/LICENSE', 'src/client/pdfjs/pdf.mjs', 'src/client/pdfjs/pdf.worker.mjs', 'src/client/pdfjs/standard_fonts/FoxitDingbats.pfb', 'src/client/pdfjs/standard_fonts/FoxitFixed.pfb', 'src/client/pdfjs/standard_fonts/FoxitFixedBold.pfb', 'src/client/pdfjs/standard_fonts/FoxitFixedBoldItalic.pfb', 'src/client/pdfjs/standard_fonts/FoxitFixedItalic.pfb', 'src/client/pdfjs/standard_fonts/FoxitSerif.pfb', 'src/client/pdfjs/standard_fonts/FoxitSerifBold.pfb', 'src/client/pdfjs/standard_fonts/FoxitSerifBoldItalic.pfb', 'src/client/pdfjs/standard_fonts/FoxitSerifItalic.pfb', 'src/client/pdfjs/standard_fonts/FoxitSymbol.pfb', 'src/client/pdfjs/standard_fonts/LiberationSans-Bold.ttf', 'src/client/pdfjs/standard_fonts/LiberationSans-BoldItalic.ttf', 'src/client/pdfjs/standard_fonts/LiberationSans-Italic.ttf', 'src/client/pdfjs/standard_fonts/LiberationSans-Regular.ttf', 'src/client/pdfjs/standard_fonts/LICENSE_FOXIT', 'src/client/pdfjs/standard_fonts/LICENSE_LIBERATION', 'src/client/pdfjs/wasm/jbig2.wasm', 'src/client/pdfjs/wasm/LICENSE_JBIG2', 'src/client/pdfjs/wasm/LICENSE_OPENJPEG', 'src/client/pdfjs/wasm/LICENSE_PDFJS_JBIG2', 'src/client/pdfjs/wasm/LICENSE_PDFJS_OPENJPEG', 'src/client/pdfjs/wasm/LICENSE_PDFJS_QCMS', 'src/client/pdfjs/wasm/LICENSE_QCMS', 'src/client/pdfjs/wasm/openjpeg.wasm', 'src/client/pdfjs/wasm/openjpeg_nowasm_fallback.js', 'src/client/pdfjs/wasm/qcms_bg.wasm', 'browser-extension/manifest.json', 'browser-extension/options.html', 'browser-extension/options.js', 'browser-extension/popup.html', 'browser-extension/popup.js', 'browser-extension/style.css', 'src/host/capture-surface.js', 'src/client/capture.html', 'src/client/capture.js', 'src/client/capture.css', 'src/client/capture-sw.js', 'src/client/capture.webmanifest', 'src/client/capture-icon.svg', 'src/client/capture-icon-192.png', 'src/client/capture-icon-512.png', 'src/host/workbench-question.js', 'src/host/workbench-links.js', 'src/host/workbench-deliverables.js', 'src/client/workbench-theme.css', 'src/client/workbench-features.js', 'src/client/workbench-relations.js', 'src/host/workbench-files.js', 'src/host/workbench-trash.js', 'src/host/workbench-relation-index.js', 'src/host/parse-source-authority.js', 'src/host/versioning.js']
+    const list = ['package.json', 'cordis.patch.yml', 'src/host/index.js', 'src/host/kbcore.js', 'src/host/fsindex.js', 'src/host/importer.js', 'src/host/import-service.js', 'src/host/map.js', 'src/host/selftest.js', 'src/host/gateway.js', 'src/host/flows.js', 'src/host/parsing.js', 'src/host/updates.js', 'src/host/flow-workspace.js', 'src/client/index.js', 'src/host/parse-presets.js', 'src/host/parse-credentials.js', 'src/host/parse-native.js', 'src/host/parse-discovery.js', 'src/host/index-maintenance.js', 'tools/kb-local-model.py', 'tools/kb-pdf-pages.py', 'src/host/workbench.js', 'src/host/workbench-state.js', 'src/host/workbench-backup.js', 'src/client/workbench-ui.js', 'src/client/pdfjs/cmaps/78-EUC-H.bcmap', 'src/client/pdfjs/cmaps/78-EUC-V.bcmap', 'src/client/pdfjs/cmaps/78-H.bcmap', 'src/client/pdfjs/cmaps/78-RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/78-RKSJ-V.bcmap', 'src/client/pdfjs/cmaps/78-V.bcmap', 'src/client/pdfjs/cmaps/78ms-RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/78ms-RKSJ-V.bcmap', 'src/client/pdfjs/cmaps/83pv-RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/90ms-RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/90ms-RKSJ-V.bcmap', 'src/client/pdfjs/cmaps/90msp-RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/90msp-RKSJ-V.bcmap', 'src/client/pdfjs/cmaps/90pv-RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/90pv-RKSJ-V.bcmap', 'src/client/pdfjs/cmaps/Add-H.bcmap', 'src/client/pdfjs/cmaps/Add-RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/Add-RKSJ-V.bcmap', 'src/client/pdfjs/cmaps/Add-V.bcmap', 'src/client/pdfjs/cmaps/Adobe-CNS1-0.bcmap', 'src/client/pdfjs/cmaps/Adobe-CNS1-1.bcmap', 'src/client/pdfjs/cmaps/Adobe-CNS1-2.bcmap', 'src/client/pdfjs/cmaps/Adobe-CNS1-3.bcmap', 'src/client/pdfjs/cmaps/Adobe-CNS1-4.bcmap', 'src/client/pdfjs/cmaps/Adobe-CNS1-5.bcmap', 'src/client/pdfjs/cmaps/Adobe-CNS1-6.bcmap', 'src/client/pdfjs/cmaps/Adobe-CNS1-UCS2.bcmap', 'src/client/pdfjs/cmaps/Adobe-GB1-0.bcmap', 'src/client/pdfjs/cmaps/Adobe-GB1-1.bcmap', 'src/client/pdfjs/cmaps/Adobe-GB1-2.bcmap', 'src/client/pdfjs/cmaps/Adobe-GB1-3.bcmap', 'src/client/pdfjs/cmaps/Adobe-GB1-4.bcmap', 'src/client/pdfjs/cmaps/Adobe-GB1-5.bcmap', 'src/client/pdfjs/cmaps/Adobe-GB1-UCS2.bcmap', 'src/client/pdfjs/cmaps/Adobe-Japan1-0.bcmap', 'src/client/pdfjs/cmaps/Adobe-Japan1-1.bcmap', 'src/client/pdfjs/cmaps/Adobe-Japan1-2.bcmap', 'src/client/pdfjs/cmaps/Adobe-Japan1-3.bcmap', 'src/client/pdfjs/cmaps/Adobe-Japan1-4.bcmap', 'src/client/pdfjs/cmaps/Adobe-Japan1-5.bcmap', 'src/client/pdfjs/cmaps/Adobe-Japan1-6.bcmap', 'src/client/pdfjs/cmaps/Adobe-Japan1-UCS2.bcmap', 'src/client/pdfjs/cmaps/Adobe-Korea1-0.bcmap', 'src/client/pdfjs/cmaps/Adobe-Korea1-1.bcmap', 'src/client/pdfjs/cmaps/Adobe-Korea1-2.bcmap', 'src/client/pdfjs/cmaps/Adobe-Korea1-UCS2.bcmap', 'src/client/pdfjs/cmaps/B5-H.bcmap', 'src/client/pdfjs/cmaps/B5-V.bcmap', 'src/client/pdfjs/cmaps/B5pc-H.bcmap', 'src/client/pdfjs/cmaps/B5pc-V.bcmap', 'src/client/pdfjs/cmaps/CNS-EUC-H.bcmap', 'src/client/pdfjs/cmaps/CNS-EUC-V.bcmap', 'src/client/pdfjs/cmaps/CNS1-H.bcmap', 'src/client/pdfjs/cmaps/CNS1-V.bcmap', 'src/client/pdfjs/cmaps/CNS2-H.bcmap', 'src/client/pdfjs/cmaps/CNS2-V.bcmap', 'src/client/pdfjs/cmaps/ETen-B5-H.bcmap', 'src/client/pdfjs/cmaps/ETen-B5-V.bcmap', 'src/client/pdfjs/cmaps/ETenms-B5-H.bcmap', 'src/client/pdfjs/cmaps/ETenms-B5-V.bcmap', 'src/client/pdfjs/cmaps/ETHK-B5-H.bcmap', 'src/client/pdfjs/cmaps/ETHK-B5-V.bcmap', 'src/client/pdfjs/cmaps/EUC-H.bcmap', 'src/client/pdfjs/cmaps/EUC-V.bcmap', 'src/client/pdfjs/cmaps/Ext-H.bcmap', 'src/client/pdfjs/cmaps/Ext-RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/Ext-RKSJ-V.bcmap', 'src/client/pdfjs/cmaps/Ext-V.bcmap', 'src/client/pdfjs/cmaps/GB-EUC-H.bcmap', 'src/client/pdfjs/cmaps/GB-EUC-V.bcmap', 'src/client/pdfjs/cmaps/GB-H.bcmap', 'src/client/pdfjs/cmaps/GB-V.bcmap', 'src/client/pdfjs/cmaps/GBK-EUC-H.bcmap', 'src/client/pdfjs/cmaps/GBK-EUC-V.bcmap', 'src/client/pdfjs/cmaps/GBK2K-H.bcmap', 'src/client/pdfjs/cmaps/GBK2K-V.bcmap', 'src/client/pdfjs/cmaps/GBKp-EUC-H.bcmap', 'src/client/pdfjs/cmaps/GBKp-EUC-V.bcmap', 'src/client/pdfjs/cmaps/GBpc-EUC-H.bcmap', 'src/client/pdfjs/cmaps/GBpc-EUC-V.bcmap', 'src/client/pdfjs/cmaps/GBT-EUC-H.bcmap', 'src/client/pdfjs/cmaps/GBT-EUC-V.bcmap', 'src/client/pdfjs/cmaps/GBT-H.bcmap', 'src/client/pdfjs/cmaps/GBT-V.bcmap', 'src/client/pdfjs/cmaps/GBTpc-EUC-H.bcmap', 'src/client/pdfjs/cmaps/GBTpc-EUC-V.bcmap', 'src/client/pdfjs/cmaps/H.bcmap', 'src/client/pdfjs/cmaps/Hankaku.bcmap', 'src/client/pdfjs/cmaps/Hiragana.bcmap', 'src/client/pdfjs/cmaps/HKdla-B5-H.bcmap', 'src/client/pdfjs/cmaps/HKdla-B5-V.bcmap', 'src/client/pdfjs/cmaps/HKdlb-B5-H.bcmap', 'src/client/pdfjs/cmaps/HKdlb-B5-V.bcmap', 'src/client/pdfjs/cmaps/HKgccs-B5-H.bcmap', 'src/client/pdfjs/cmaps/HKgccs-B5-V.bcmap', 'src/client/pdfjs/cmaps/HKm314-B5-H.bcmap', 'src/client/pdfjs/cmaps/HKm314-B5-V.bcmap', 'src/client/pdfjs/cmaps/HKm471-B5-H.bcmap', 'src/client/pdfjs/cmaps/HKm471-B5-V.bcmap', 'src/client/pdfjs/cmaps/HKscs-B5-H.bcmap', 'src/client/pdfjs/cmaps/HKscs-B5-V.bcmap', 'src/client/pdfjs/cmaps/Katakana.bcmap', 'src/client/pdfjs/cmaps/KSC-EUC-H.bcmap', 'src/client/pdfjs/cmaps/KSC-EUC-V.bcmap', 'src/client/pdfjs/cmaps/KSC-H.bcmap', 'src/client/pdfjs/cmaps/KSC-Johab-H.bcmap', 'src/client/pdfjs/cmaps/KSC-Johab-V.bcmap', 'src/client/pdfjs/cmaps/KSC-V.bcmap', 'src/client/pdfjs/cmaps/KSCms-UHC-H.bcmap', 'src/client/pdfjs/cmaps/KSCms-UHC-HW-H.bcmap', 'src/client/pdfjs/cmaps/KSCms-UHC-HW-V.bcmap', 'src/client/pdfjs/cmaps/KSCms-UHC-V.bcmap', 'src/client/pdfjs/cmaps/KSCpc-EUC-H.bcmap', 'src/client/pdfjs/cmaps/KSCpc-EUC-V.bcmap', 'src/client/pdfjs/cmaps/LICENSE', 'src/client/pdfjs/cmaps/NWP-H.bcmap', 'src/client/pdfjs/cmaps/NWP-V.bcmap', 'src/client/pdfjs/cmaps/RKSJ-H.bcmap', 'src/client/pdfjs/cmaps/RKSJ-V.bcmap', 'src/client/pdfjs/cmaps/Roman.bcmap', 'src/client/pdfjs/cmaps/UniCNS-UCS2-H.bcmap', 'src/client/pdfjs/cmaps/UniCNS-UCS2-V.bcmap', 'src/client/pdfjs/cmaps/UniCNS-UTF16-H.bcmap', 'src/client/pdfjs/cmaps/UniCNS-UTF16-V.bcmap', 'src/client/pdfjs/cmaps/UniCNS-UTF32-H.bcmap', 'src/client/pdfjs/cmaps/UniCNS-UTF32-V.bcmap', 'src/client/pdfjs/cmaps/UniCNS-UTF8-H.bcmap', 'src/client/pdfjs/cmaps/UniCNS-UTF8-V.bcmap', 'src/client/pdfjs/cmaps/UniGB-UCS2-H.bcmap', 'src/client/pdfjs/cmaps/UniGB-UCS2-V.bcmap', 'src/client/pdfjs/cmaps/UniGB-UTF16-H.bcmap', 'src/client/pdfjs/cmaps/UniGB-UTF16-V.bcmap', 'src/client/pdfjs/cmaps/UniGB-UTF32-H.bcmap', 'src/client/pdfjs/cmaps/UniGB-UTF32-V.bcmap', 'src/client/pdfjs/cmaps/UniGB-UTF8-H.bcmap', 'src/client/pdfjs/cmaps/UniGB-UTF8-V.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UCS2-H.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UCS2-HW-H.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UCS2-HW-V.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UCS2-V.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UTF16-H.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UTF16-V.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UTF32-H.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UTF32-V.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UTF8-H.bcmap', 'src/client/pdfjs/cmaps/UniJIS-UTF8-V.bcmap', 'src/client/pdfjs/cmaps/UniJIS2004-UTF16-H.bcmap', 'src/client/pdfjs/cmaps/UniJIS2004-UTF16-V.bcmap', 'src/client/pdfjs/cmaps/UniJIS2004-UTF32-H.bcmap', 'src/client/pdfjs/cmaps/UniJIS2004-UTF32-V.bcmap', 'src/client/pdfjs/cmaps/UniJIS2004-UTF8-H.bcmap', 'src/client/pdfjs/cmaps/UniJIS2004-UTF8-V.bcmap', 'src/client/pdfjs/cmaps/UniJISPro-UCS2-HW-V.bcmap', 'src/client/pdfjs/cmaps/UniJISPro-UCS2-V.bcmap', 'src/client/pdfjs/cmaps/UniJISPro-UTF8-V.bcmap', 'src/client/pdfjs/cmaps/UniJISX0213-UTF32-H.bcmap', 'src/client/pdfjs/cmaps/UniJISX0213-UTF32-V.bcmap', 'src/client/pdfjs/cmaps/UniJISX02132004-UTF32-H.bcmap', 'src/client/pdfjs/cmaps/UniJISX02132004-UTF32-V.bcmap', 'src/client/pdfjs/cmaps/UniKS-UCS2-H.bcmap', 'src/client/pdfjs/cmaps/UniKS-UCS2-V.bcmap', 'src/client/pdfjs/cmaps/UniKS-UTF16-H.bcmap', 'src/client/pdfjs/cmaps/UniKS-UTF16-V.bcmap', 'src/client/pdfjs/cmaps/UniKS-UTF32-H.bcmap', 'src/client/pdfjs/cmaps/UniKS-UTF32-V.bcmap', 'src/client/pdfjs/cmaps/UniKS-UTF8-H.bcmap', 'src/client/pdfjs/cmaps/UniKS-UTF8-V.bcmap', 'src/client/pdfjs/cmaps/V.bcmap', 'src/client/pdfjs/cmaps/WP-Symbol.bcmap', 'src/client/pdfjs/LICENSE', 'src/client/pdfjs/pdf.mjs', 'src/client/pdfjs/pdf.worker.mjs', 'src/client/pdfjs/standard_fonts/FoxitDingbats.pfb', 'src/client/pdfjs/standard_fonts/FoxitFixed.pfb', 'src/client/pdfjs/standard_fonts/FoxitFixedBold.pfb', 'src/client/pdfjs/standard_fonts/FoxitFixedBoldItalic.pfb', 'src/client/pdfjs/standard_fonts/FoxitFixedItalic.pfb', 'src/client/pdfjs/standard_fonts/FoxitSerif.pfb', 'src/client/pdfjs/standard_fonts/FoxitSerifBold.pfb', 'src/client/pdfjs/standard_fonts/FoxitSerifBoldItalic.pfb', 'src/client/pdfjs/standard_fonts/FoxitSerifItalic.pfb', 'src/client/pdfjs/standard_fonts/FoxitSymbol.pfb', 'src/client/pdfjs/standard_fonts/LiberationSans-Bold.ttf', 'src/client/pdfjs/standard_fonts/LiberationSans-BoldItalic.ttf', 'src/client/pdfjs/standard_fonts/LiberationSans-Italic.ttf', 'src/client/pdfjs/standard_fonts/LiberationSans-Regular.ttf', 'src/client/pdfjs/standard_fonts/LICENSE_FOXIT', 'src/client/pdfjs/standard_fonts/LICENSE_LIBERATION', 'src/client/pdfjs/wasm/jbig2.wasm', 'src/client/pdfjs/wasm/LICENSE_JBIG2', 'src/client/pdfjs/wasm/LICENSE_OPENJPEG', 'src/client/pdfjs/wasm/LICENSE_PDFJS_JBIG2', 'src/client/pdfjs/wasm/LICENSE_PDFJS_OPENJPEG', 'src/client/pdfjs/wasm/LICENSE_PDFJS_QCMS', 'src/client/pdfjs/wasm/LICENSE_QCMS', 'src/client/pdfjs/wasm/openjpeg.wasm', 'src/client/pdfjs/wasm/openjpeg_nowasm_fallback.js', 'src/client/pdfjs/wasm/qcms_bg.wasm', 'browser-extension/manifest.json', 'browser-extension/options.html', 'browser-extension/options.js', 'browser-extension/popup.html', 'browser-extension/popup.js', 'browser-extension/style.css', 'src/host/capture-surface.js', 'src/client/capture.html', 'src/client/capture.js', 'src/client/capture.css', 'src/client/capture-sw.js', 'src/client/capture.webmanifest', 'src/client/capture-icon.svg', 'src/client/capture-icon-192.png', 'src/client/capture-icon-512.png', 'src/host/workbench-question.js', 'src/host/workbench-links.js', 'src/host/workbench-deliverables.js', 'src/client/workbench-theme.css', 'src/client/workbench-features.js', 'src/client/workbench-relations.js', 'src/host/workbench-files.js', 'src/host/workbench-trash.js', 'src/host/workbench-relation-index.js', 'src/host/parse-source-authority.js', 'src/host/versioning.js', 'src/host/retrieval.js', 'src/host/retrieval-api.js', 'src/host/retrieval-chunks.js', 'src/host/retrieval-worker.js', 'RETRIEVAL.md', 'src/host/retrieval-pool.js', 'src/host/managed-files.js', 'src/host/system-upgrades.js', 'presets/01-knowledge-agent.patch.yml', 'skills/personal-knowledge-base/SKILL.md', 'src/host/citation-guard.js']
     const whole = crypto.createHash('sha256')
     for (const rel of list) {
       try {
@@ -839,7 +813,7 @@ let parsingService = null
   function toolDefs() {
     return [
       ...[
-        ['kb_question_search', '按知识库引用检索，最多返回五条摘要；来源含可直接复制的 citation 字段，引用时照抄；先将今天/昨天换成实际日期。', { questionId: { type: 'string' }, query: { type: 'string' } }, ['questionId','query'], 'question.search'],
+        ['kb_question_search', '用户消息含 @[基于知识库回答…](dsh-kb:UUID) 时，UUID 即 questionId，请先用本工具检索后再作答，不要把引用参数当作答案。按知识库引用检索，最多返回五条摘要；来源含可直接复制的 citation 字段，引用时照抄；先将今天/昨天换成实际日期。证据足够不重复搜索或机械读取；缺少条件或存在冲突才补查，必要的多轮取证仍允许。若返回 retrievalDisclosure，最终回答末尾应列出其中的真实检索过程，多次调用合并展示。必要时用 kb_question_read 补齐原文，回答前用 kb_validate_citations 做一次证据审查和引用校验；仅有具体缺口、冲突或无效引用时再处理。', { questionId: { type: 'string' }, query: { type: 'string' } }, ['questionId','query'], 'question.search'],
         ['kb_question_read', '读取本次知识库检索来源的指定行附近内容（最多6000字符）；引用时照抄 source.citation 字段。', { questionId: { type: 'string' }, sourceId: { type: 'string' }, line: { type: 'number' } }, ['questionId','sourceId'], 'question.read'],
         ['kb_relation_review', '读取用户主动发起的链接修复讨论，或提交候选建议；只提建议，不修改原文件。', { requestId: { type: 'string' }, path: { type: 'string' }, action: { type: 'string', enum: ['inspect','read','propose'] }, proposals: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, target: { type: 'string' }, reason: { type: 'string' } }, required: ['id','target','reason'], additionalProperties: false } } }, ['requestId','action'], 'links.ai.'],
         ['kb_deliverable', '准备当前知识库下的任务成品目录，或登记生成的文件和检索正文。默认隐私；来源含隐私时不能登记为公开。', { action: { type: 'string', enum: ['prepare','register'] }, task: { type: 'string' }, path: { type: 'string' }, text: { type: 'string' }, description: { type: 'string' }, title: { type: 'string' }, private: { type: 'boolean' }, sources: { type: 'array', items: { type: 'string' } } }, ['action','task'], 'deliverables.'],
@@ -850,16 +824,16 @@ let parsingService = null
             if (!agent || ctx.get('agents')?.get(agent.id) !== agent) return { ok: false, reason: 'CALLER_UNVERIFIED' }
             if (name === 'kb_deliverable') { const header=agent.session?.header || {}; if (!isLiveKnowledgeGrant(agent,ctx.get('agents')) && !(header.agentPreset==='knowledge' && header.origin!=='subagent' && !header.parentSession)) return {ok:false,reason:'KNOWLEDGE_DELEGATION_REQUIRED',error:'成品登记需要知识库授权会话'} }
             const b = await workbench.binding()
-            return await workbench.dispatch({ ...args, expectedKbId: b.st.kbId, op: operation.endsWith('.') ? operation + args.action : operation }, agent.id)
+            return await workbench.dispatch({ ...args,signal:exec?.signal, expectedKbId: b.st.kbId, op: operation.endsWith('.') ? operation + args.action : operation }, agent.id)
           } catch (e) { return { ok: false, reason: e.code || 'WORKBENCH_ERROR', error: e.code ? e.message : '知识库工具执行失败' } }
         } })),
       {
         name: 'kb_validate_citations',
-        description: '校验本次 @知识库提问中的可点击 [S编号](<来源链接>) 引用，检查来源、版本、行号和隐私权限；没有 Markdown 链接或未用尖括号包裹的链接均视为无效。若 invalid 非空，先修正再回答。',
-        parameters: { type: 'object', additionalProperties: false, required: ['questionId', 'answer'], properties: { questionId: { type: 'string' }, answer: { type: 'string' } } },
+        description: '校验本次 @知识库提问中的可点击 [S编号](<来源链接>) 引用，检查来源、版本、行号和隐私权限；没有 Markdown 链接或未用尖括号包裹的链接均视为无效。回答前审查关键条件覆盖与冲突，可用 review 报告。missingCitations=true 或引用无效时先补齐真实来源并重新校验，不能无引用作知识库事实回答；ready 时保留草稿引用直接回答，supplement-needed 时针对缺口补查。新版协议只返回校验和检索说明；需要完整答案可设 returnAnswer=true。最终回答必须保留 valid[].citations 的可点击来源链接，遵循 nextAction；按 retrievalDisclosure.footer 追加说明，关闭时不追加，流程说明不能代替来源。',
+        parameters: { type: 'object', additionalProperties: false, required: ['questionId', 'answer'], properties: { questionId: { type: 'string' }, answer: { type: 'string' },returnAnswer:{type:'boolean'},review:{type:'object',additionalProperties:false,required:['coverage','gaps','conflicts'],properties:{coverage:{type:'string',enum:['sufficient','insufficient','uncertain']},gaps:{type:'array',items:{type:'string'}},conflicts:{type:'array',items:{type:'string'}}}} } },
         output: { schema: { type: 'object', additionalProperties: true, properties: { ok: { type: 'boolean' } }, required: ['ok'] }, render: (_a, v) => text(JSON.stringify(v)) },
         isConcurrencySafe: () => true,
-        async execute(args, exec) { try { const agent = exec?.agent; if (!agent || ctx.get('agents')?.get(agent.id) !== agent) return { ok: false, reason: 'CALLER_UNVERIFIED' }; return await workbench.dispatch({ op: 'question.validate', questionId: args.questionId, answer: args.answer }, agent.id) } catch (error) { return { ok: false, reason: error.code || 'VALIDATION_FAILED' } } },
+        async execute(args, exec) { try { const agent = exec?.agent; if (!agent || ctx.get('agents')?.get(agent.id) !== agent) return { ok: false, reason: 'CALLER_UNVERIFIED' }; return await workbench.dispatch({ op: 'question.validate', questionId: args.questionId, answer: args.answer,review:args.review,returnAnswer:args.returnAnswer }, agent.id) } catch (error) { return { ok: false, reason: error.code || 'VALIDATION_FAILED' } } },
       },
       {
         name: 'kb_status',
@@ -992,29 +966,26 @@ let parsingService = null
         parameters: {
           type: 'object',
           additionalProperties: false,
-          properties: { query: { type: 'string' }, limit: { type: 'number', description: '默认 5，最大 20' } },
+          properties: { query: { type: 'string' }, limit: { type: 'number', description: '默认 5，最大 20' }, retrievalMode: { type:'string', enum:['exact','fulltext','semantic','hybrid'] } },
           required: ['query'],
         },
         output: {
           schema: { type: 'object', additionalProperties: true, properties: { hits: { type: 'array', items: { type: 'object', additionalProperties: true } }, coverageNote: { type: 'string' } }, required: ['hits', 'coverageNote'] },
           render(_a, v) {
             if (!v.ok) return text(`检索失败：${v.reason ?? '-'}`)
-            if (v.hits.length === 0) return text(v.coverageNote)
+            if (v.hits.length === 0) return text(v.coverageNote+(v.retrievalDisclosure?'\n\n'+v.retrievalDisclosure.instruction:''))
             const lines = v.hits.map((h, i) => `${i + 1}. ${h.title} — ${h.path}  (rev ${h.revision ?? '-'})\n   ${h.snippet}`)
-            return text(`命中 ${v.hits.length} 条（mode=${v.mode}）：\n${lines.join('\n')}\n\n${v.coverageNote}`)
+            return text(`命中 ${v.hits.length} 条（mode=${v.mode}）：\n${lines.join('\n')}\n\n${v.coverageNote}${v.retrievalDisclosure?'\n\n'+v.retrievalDisclosure.instruction:''}`)
           },
         },
         isConcurrencySafe: () => true,
         async execute(args) {
-          const result = await core.search(args)
-          if (result.ok) {
-            try {
-              const extra = await workbench.dispatch({ op:'search.list', mode:'body', prefix:'任务成品', q:args.query, limit:Math.max(1, Math.min(20,args.limit || 5)) })
-              const paths = new Set(result.hits.map(h => h.path))
-              result.hits.push(...extra.items.filter(f => !paths.has(f.path)).map(f => ({ title:f.title,path:f.path,snippet:f.snippet,revision:null,kind:'任务成品' })))
-              result.hits = result.hits.slice(0, Math.max(1,Math.min(20,args.limit || 5)))
-              result.coverageNote += '；任务成品含已登记正文及名称说明，未解析二进制不算全文。'
-            } catch { /* Original search remains available when workbench is unbound. */ }
+          let result
+          try {
+            const found = await workbench.dispatch({ op:'search.list',mode:'body',q:args.query,retrievalMode:args.retrievalMode,limit:Math.max(1,Math.min(20,args.limit||5)) })
+            result = { ...found,ok:true,hits:found.items.map(h=>({...h,revision:h.revision?.slice(0,12)||null})) }
+          } catch (error) {
+            result = {ok:false,hits:[],reason:error.code||'SEARCH_ERROR',coverageNote:'统一检索未完成，请重试；未返回过期或权限不明的结果。'}
           }
           evidence.layers.L3_operation.kb_search = { at: new Date().toISOString(), ok: result.ok, hits: result.hits?.length ?? 0, mode: result.mode }
           await flushEvidence()
@@ -1238,7 +1209,7 @@ let parsingService = null
               'OCR / ASR 默认统一走 kb_parse，所有 Agent 可解析当前工作目录内的获准文件；用 sourcePath 或 sourceRef，任务和结果返回原会话。个人知识库仍需单独授权。',
               '未指定方法时不走脚本、HTTP 或其他解析工具；仅用户本次明确指定外部方式才执行该次例外，例外不延续。失败报告原因，不自动绕过或换云端。',
               '本机知识库提供「自定义流程」：用户把一串固定步骤固化后，说流程名或触发语即可运行。',
-              '用户提到流程名/触发语时：先 kb_flow(action="list") 看有没有，再用 kb_flow_resolve(text) 判断命中/歧义/未命中；命中才 kb_flow(action="run")，歧义先让用户选。',
+              '用户请求运行流程时先用 kb_flow_resolve(text) 判断命中/歧义/未命中；唯一命中才 kb_flow(action="run")，歧义先让用户选。仅需浏览流程列表时调用 kb_flow(action="list")，不机械先列后查。',
               '不要凭流程名自己编造步骤，也不要不查就跑——步骤只来自定义本身。',
               '普通提及、否定句（如"今天不用发每周信息"）、假设句不是运行命令；停用或已删除的流程不会被命中。',
               '新建或修改流程用 kb_flow(action="save")（更新必须带 expectedRevision）；运行中可用 runs 看进度、cancel 取消。',
@@ -1755,7 +1726,7 @@ let parsingService = null
               if (req.method === 'GET') return kbSendJson(res, 200, { ok: true, status: { ...(await current.status()), build: buildInfo } })
               if (req.method !== 'POST') return kbSendJson(res, 405, { ok: false, error: 'method not allowed' })
               const body = JSON.parse((await kbReadBody(req)) || '{}')
-              if (typeof body.op === 'string' && /^(preferences|onboarding|atlas|capture|search|backup|reading|review|tasks|question|links|deliverables|trash)\./.test(body.op)) {
+              if (typeof body.op === 'string' && /^(preferences|onboarding|atlas|capture|search|backup|reading|review|tasks|question|links|deliverables|trash|retrieval|upgrade)\./.test(body.op)) {
                 const origin = req.headers.origin
                 if (req.headers['sec-fetch-site'] === 'cross-site' ||
                   String(req.headers['content-type'] || '').toLowerCase().split(';')[0].trim() !== 'application/json' ||

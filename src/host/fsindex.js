@@ -20,7 +20,7 @@ export function normSegs(rel) {
 }
 
 /** 目标目录内部永远是元数据/工具目录，不进任何清单（.kb / .kbmeta / .kb-state / .git / node_modules 同理）。 */
-export const META_DIRS = new Set(['.kb', '.kbmeta', '.kb-state', '.git', 'node_modules'])
+export const META_DIRS = new Set(['.kb', '.kbmeta', '.kb-state', '索引层', '.git', 'node_modules'])
 
 /**
  * 判断一个「库内相对路径」是否落在某个私密根之下。
