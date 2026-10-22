@@ -1771,8 +1771,8 @@ let parsingService = null
                 installSupported: Boolean(updateProfile?.dir && ctx.get('pluginManager')?.installBundle),
               })
               if (body.op === 'updates.prepare') {
-                // Only the settings UI can request a verified download. Model
-                // tools expose no install action, URL override, or cache path.
+                // Only the first-party client can request a verified download.
+                // Model tools expose no install action, URL override, or cache path.
                 const origin = req.headers.origin
                 if (req.headers['sec-fetch-site'] === 'cross-site' ||
                   String(req.headers['content-type'] || '').toLowerCase().split(';')[0].trim() !== 'application/json' ||
