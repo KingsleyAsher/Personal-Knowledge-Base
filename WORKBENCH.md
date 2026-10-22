@@ -56,6 +56,8 @@
 
 采集列表及详情提供“移入回收站”：即使对应知识笔记已删除，也可单独删除采集原件，确认后 30 天内可恢复。预览、列表和详情均支持正常滚动；底部输入框遮挡的内容可继续向下滚动查看。
 
+浏览器扩展 ZIP：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.1/knowledge-base-browser-extension.zip)。镜像可能存在同步延迟；文件暂不可用时可切换其他源。ZIP 解压后，选择直接包含 `manifest.json` 的文件夹加载扩展。
+
 首次使用：
 
 1. 从插件文件包或下载解压后的源码仓库取得 `browser-extension/`。在 Chrome 的 `chrome://extensions` 或 Edge 的 `edge://extensions` 开启开发者模式，点击“加载已解压的扩展程序”，选择直接包含 `manifest.json` 的该文件夹。

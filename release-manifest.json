@@ -3,9 +3,9 @@
   "version": "2.1.1",
   "buildId": "53cb74dbf9a964c6",
   "tgz": "local-dsh-knowledge-base-2.1.1.tgz",
-  "bytes": 2878257,
-  "sha256": "995ea1a3f4feb7042bd09d1eede9edd18c434436414bb46643fb0dbd3ada0bac",
-  "integrity": "sha512-O7RjJ9Fo7UEpNg02+GPWyOExhvUIzbSPYnQijqi3ngu0ONKq6VkP6OUlj1rb4/1jRFikfcsr2ADiWdL59E5IRg==",
+  "bytes": 2878498,
+  "sha256": "a7248b5f4193acf4c507fb4e5cc27a03a02138e87b7fe66820a25082c3493f9d",
+  "integrity": "sha512-tQGBTCN9UCHDEzq2ufsR62fz+EJuyF1p1bDxLKlP6t4bdYqW3cuoxwA2NB/RiO5iua/4QLyOznp1A9cNFxTmKg==",
   "packageFileCount": 277,
   "buildFileCount": 266,
   "files": [
@@ -46,8 +46,8 @@
     },
     {
       "path": "README.md",
-      "bytes": 8306,
-      "sha256": "d930e09755adda7223f58150d3f099b239a989b1d035545d2356da210a32f117"
+      "bytes": 8664,
+      "sha256": "65b68b1a1bb147fd7c5c6077e31a3517f9a8e4cb1f0764c0f0ad2b2528abdc42"
     },
     {
       "path": "RELEASE.md",
@@ -66,8 +66,8 @@
     },
     {
       "path": "WORKBENCH.md",
-      "bytes": 13338,
-      "sha256": "74b182d151153e0348784e1095fd20d42bbb73171b703e6c79a1e0c2bde02fa2"
+      "bytes": 13932,
+      "sha256": "2e155ec07672eee6c759a685f372044579bf355bd86edafa91e079545e57d800"
     },
     {
       "path": "browser-extension/background.js",
