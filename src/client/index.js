@@ -796,6 +796,12 @@ window.__ModuleLoader__.load({
             e('details', null, e('summary', null, '首次使用：安装与连接（按 4 步完成）'),
               e('ol', { className: 'kbw-clipper-steps' },
                 e('li', null, e('h4', null, '安装 Chrome / Edge 扩展'),
+                      e('p', null, '下载浏览器扩展 ZIP：', ...[
+                        ['Gitee 国内下载', 'https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip'],
+                        ['GitCode 国内下载', 'https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main'],
+                        ['GitHub 下载', 'https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.1/knowledge-base-browser-extension.zip']
+                      ].map(([label, href], index) => e(R.Fragment, { key: href }, index ? ' · ' : '', e('a', { href, target: '_blank', rel: 'noopener noreferrer' }, label)))),
+                      e('p', { className: 'kbw-meta' }, '下载完成后先解压，加载直接包含 manifest.json 的文件夹。镜像可能存在同步延迟；某个源暂不可用时可切换其他源。'),
                   e('p', null, '从知识库插件的文件包或源码仓库取得 browser-extension 文件夹。下载的是整个仓库时，先解压，再找到这个文件夹。'),
                   e('p', null, e('a', { href: 'https://github.com/KingsleyAsher/Personal-Knowledge-Base/tree/main/browser-extension', target: '_blank', rel: 'noopener noreferrer' }, '查看扩展文件所在位置'), '；也可从 ', e('a', { href: 'https://github.com/KingsleyAsher/Personal-Knowledge-Base/archive/refs/heads/main.zip', target: '_blank', rel: 'noopener noreferrer' }, '下载仓库 ZIP'), ' 解压获取。'),
                   e('p', null, '在 Chrome 地址栏输入 chrome://extensions，或在 Edge 输入 edge://extensions → 开启“开发者模式”→“加载已解压的扩展程序”→ 选择直接包含 manifest.json 的 browser-extension 文件夹。'),

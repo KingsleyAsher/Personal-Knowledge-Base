@@ -1,11 +1,11 @@
 {
   "package": "@local/dsh-knowledge-base",
   "version": "2.1.1",
-  "buildId": "53cb74dbf9a964c6",
+  "buildId": "bd1e6adb0409300b",
   "tgz": "local-dsh-knowledge-base-2.1.1.tgz",
-  "bytes": 2878498,
-  "sha256": "a7248b5f4193acf4c507fb4e5cc27a03a02138e87b7fe66820a25082c3493f9d",
-  "integrity": "sha512-tQGBTCN9UCHDEzq2ufsR62fz+EJuyF1p1bDxLKlP6t4bdYqW3cuoxwA2NB/RiO5iua/4QLyOznp1A9cNFxTmKg==",
+  "bytes": 2879242,
+  "sha256": "3185f497573bb1ab33ef4cf601e25cb98d50337999d0308d37e358b1df9b2bce",
+  "integrity": "sha512-+BsCQVHGT92nM1g3vBN0II/6VVVJI8t4rBzS33uEqnmCCb6LNzzZpdtSa8MCvEqNJMqrRS5WWYKsdumdK1egSw==",
   "packageFileCount": 277,
   "buildFileCount": 266,
   "files": [
@@ -41,13 +41,13 @@
     },
     {
       "path": "PROJECT-RECORD.md",
-      "bytes": 31030,
-      "sha256": "09dd8088e817032ee2be52eb7ec58afe5f2cd870a33743fbfb8a7c4d27d90a43"
+      "bytes": 31210,
+      "sha256": "6a5d2c0c5f6ef6fa3a3486c11db7421f052b9ad0f82183f4c0cb81cd4cd43563"
     },
     {
       "path": "README.md",
-      "bytes": 8664,
-      "sha256": "65b68b1a1bb147fd7c5c6077e31a3517f9a8e4cb1f0764c0f0ad2b2528abdc42"
+      "bytes": 8846,
+      "sha256": "6748b95a2f6ada1629f2723f1a449834007730159f17de42c71f87dea6ee0a1d"
     },
     {
       "path": "RELEASE.md",
@@ -66,8 +66,8 @@
     },
     {
       "path": "WORKBENCH.md",
-      "bytes": 13932,
-      "sha256": "2e155ec07672eee6c759a685f372044579bf355bd86edafa91e079545e57d800"
+      "bytes": 14114,
+      "sha256": "f31051bb80e4e5af9ce8cd75c3a092780fd1d25e5a12ea04ea3a17a66ca22130"
     },
     {
       "path": "browser-extension/background.js",
@@ -186,8 +186,8 @@
     },
     {
       "path": "src/client/index.js",
-      "bytes": 385834,
-      "sha256": "3d6b02c7e8449f2e6237cf4389b6c58ae5342b476aab554bb450e492b61086d0"
+      "bytes": 386803,
+      "sha256": "9b267757a12e1f29b1b97934d848f9fc77aece19374e845f7c88327a19da0500"
     },
     {
       "path": "src/client/pdfjs/LICENSE",
@@ -1196,8 +1196,8 @@
     },
     {
       "path": "src/client/workbench-ui.js",
-      "bytes": 196119,
-      "sha256": "dbccc160270a1e69f000931c9a45c22fa9db5db884d460347102c7b72cb890e3"
+      "bytes": 197070,
+      "sha256": "9d081906d8b40592fb7a1bb3188c8c693e10ce06a242868e03ff351297026a3e"
     },
     {
       "path": "src/host/capture-surface.js",
