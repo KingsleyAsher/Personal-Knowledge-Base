@@ -3,9 +3,23 @@
   "name": "个人知识库 · 快速收集",
   "version": "1.2.3",
   "description": "通过工具栏或网页右键菜单，把当前网页或选中文字保存到已配对的个人知识库收件箱。",
+  "icons": {
+    "16": "icons/knowledge-base-16.png",
+    "32": "icons/knowledge-base-32.png",
+    "48": "icons/knowledge-base-48.png",
+    "128": "icons/knowledge-base-128.png"
+  },
   "permissions": ["activeTab", "contextMenus", "scripting", "storage"],
   "optional_host_permissions": ["http://*/*", "https://*/*"],
   "background": { "service_worker": "background.js" },
-  "action": { "default_popup": "popup.html", "default_title": "保存到知识库" },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "保存到知识库",
+    "default_icon": {
+      "16": "icons/knowledge-base-16.png",
+      "32": "icons/knowledge-base-32.png",
+      "48": "icons/knowledge-base-48.png"
+    }
+  },
   "options_page": "options.html"
 }

@@ -4,7 +4,7 @@
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="description" content="DSH 个人知识库，让文件、想法与经历成为可持续使用的知识。资料导入、OCR、ASR、检索与自定义流程，尽在你的掌控。">
   <meta name="theme-color" content="#040b0e"><title>个人知识库 · 让知识持续生长</title>
-  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M20 4v32M4 20h32M9 9l22 22M9 31 31 9' stroke='%238cf4d5' stroke-width='1.5'/%3E%3C/svg%3E">
+  <link rel="icon" href="assets/knowledge-base-icon.svg" type="image/svg+xml">
   <link rel="preload" href="assets/knowledge-serif.woff2" as="font" type="font/woff2" crossorigin>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="readability.css">
@@ -28,7 +28,7 @@
   <a class="skip" href="#main">跳转到正文</a>
   <div class="pointer-light" aria-hidden="true"></div>
   <header class="header wrap">
-    <a class="brand" href="#top"><svg><use href="#i-star"/></svg><span>个人知识库</span></a>
+    <a class="brand" href="#top"><img src="assets/knowledge-base-icon.svg" alt=""><span>个人知识库</span></a>
     <nav aria-label="主导航"><a href="#capabilities">产品能力</a><a href="#workflow">工作方式</a><a href="#control">安全与掌控</a></nav>
     <a class="button outline nav-cta" href="#download">开始使用 <span>↗</span></a>
   </header>
@@ -59,7 +59,7 @@
           <div class="product-window" id="parse-panel" role="tabpanel" aria-labelledby="tab-ocr">
             <div class="window-bar"><span class="traffic"><i></i><i></i><i></i></span><span>个人知识库</span><span class="window-edition">概念界面</span></div>
             <div class="product-body">
-              <aside class="product-sidebar" aria-label="示意文件分类"><div class="mini-brand"><svg><use href="#i-star"/></svg><span>个人知识库</span></div><span><svg><use href="#i-folder"/></svg>全部内容</span><span><svg><use href="#i-file"/></svg>文档</span><span class="selected" id="side-image"><svg><use href="#i-image"/></svg>图片</span><span id="side-audio"><svg><use href="#i-audio"/></svg>音频</span><span><svg><use href="#i-book"/></svg>笔记</span></aside>
+              <aside class="product-sidebar" aria-label="示意文件分类"><div class="mini-brand"><img src="assets/knowledge-base-icon.svg" alt=""><span>个人知识库</span></div><span><svg><use href="#i-folder"/></svg>全部内容</span><span><svg><use href="#i-file"/></svg>文档</span><span class="selected" id="side-image"><svg><use href="#i-image"/></svg>图片</span><span id="side-audio"><svg><use href="#i-audio"/></svg>音频</span><span><svg><use href="#i-book"/></svg>笔记</span></aside>
               <div class="source-panel"><div class="pane-title"><svg><use href="#i-file"/></svg><span id="source-filename">研究资料.pdf</span></div><div class="paper-viewport" id="paper-viewport"><article class="paper" id="paper"><div class="paper-journal">FIELD NOTES / 01</div><img src="assets/research-mountain.webp" alt="黑白山地与冰川谷地研究图片" width="600" height="400"><h3>山地生态系统的<br>演变与适应</h3><p>山地生态系统是地球上最复杂、最独特的自然系统之一。地形、气候与物种之间的相互作用，塑造了丰富的生态环境。</p><h4>1 · 研究背景</h4><p>在气候变化与人类活动的共同影响下，研究者需要长期记录、对照不同时间的观察结果。</p><img class="paper-detail" src="assets/research-mountain.webp" alt="" width="600" height="400"><div class="paper-lines"></div></article><div class="scan-beam" aria-hidden="true"></div></div><div class="audio-source" id="audio-source" hidden><span class="record-label">语音随记.wav</span><div class="waveform" aria-hidden="true"></div><p>“下次做研究时，先确定问题，<br>再把资料按主题整理……”</p><small>音频片段 · 转写示例</small></div><div class="source-toolbar"><span id="source-format">PDF · 第 1 页</span><div class="zoom-controls"><button id="zoom-out" aria-label="缩小文档">−</button><span id="zoom-value">80%</span><button id="zoom-in" aria-label="放大文档">＋</button></div></div></div>
               <div class="text-panel"><div class="pane-title"><span id="result-tab-title">识别结果</span><button id="copy-result" aria-label="复制识别结果" title="复制结果"><svg><use href="#i-copy"/></svg></button></div><div class="recognized" id="recognized"><small>提取的文字内容</small><h3>山地生态系统的演变与适应</h3><p>山地生态系统是地球上最复杂、最独特的自然系统之一。地形、气候与物种之间的相互作用，塑造了丰富的生态环境。</p><h4>1 · 研究背景</h4><p>在气候变化与人类活动的共同影响下，研究者需要长期记录、对照不同时间的观察结果。</p><div class="result-source"><span>来源</span>研究资料.pdf · 第 1 页</div></div><span id="copy-status" role="status"></span></div>
             </div>
@@ -87,7 +87,7 @@
 
     <section id="download" class="download section-divider"><div class="wrap reveal"><h2>让每一次积累，都有下一次回响。</h2><p>个人知识库 2.1.0 正式版：多语言全文与向量协同检索，长文上下文与可追溯来源统一进入知识工作台。</p><div class="download-actions"><a class="button mint" href="https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.0/local-dsh-knowledge-base-2.1.0.tgz" download="local-dsh-knowledge-base-2.1.0.tgz"><svg><use href="#i-download"/></svg>下载正式版 2.1.0 <span>↓</span></a><a class="button outline" href="https://github.com/KingsleyAsher/Personal-Knowledge-Base" target="_blank" rel="noopener noreferrer"><svg><use href="#i-github"/></svg>GitHub 仓库 <span>↗</span></a></div><div class="download-meta"><span>个人知识库 2.1.0</span><i></i><span>DSH 插件 · 本地安装包</span><button data-install>安装指南 ↗</button></div><a class="release-link" href="https://github.com/KingsleyAsher/Personal-Knowledge-Base/blob/main/RELEASE.md" target="_blank" rel="noopener noreferrer">查看更新说明</a> · <a class="release-link" href="https://github.com/KingsleyAsher/Personal-Knowledge-Base/blob/main/PROJECT-RECORD.md" target="_blank" rel="noopener noreferrer">插件设计与演进记录</a></div></section>
   </main>
-  <footer class="wrap"><a class="brand" href="#top"><svg><use href="#i-star"/></svg><span>个人知识库</span></a><span>YOUR KNOWLEDGE, CONNECTED.</span><a href="#top">回到顶部 ↑</a></footer>
+  <footer class="wrap"><a class="brand" href="#top"><img src="assets/knowledge-base-icon.svg" alt=""><span>个人知识库</span></a><span>YOUR KNOWLEDGE, CONNECTED.</span><a href="#top">回到顶部 ↑</a></footer>
   <dialog id="install-dialog" aria-labelledby="install-title"><button class="dialog-close" aria-label="关闭安装指南">×</button><span class="dialog-version">PERSONAL KNOWLEDGE / 2.1.0</span><h2 id="install-title">从这里，开始积累。</h2><ol><li><h3>在客户端安装插件</h3><p>将「下载插件」按钮的链接填入 DSH 插件管理器的安装源，由客户端自动下载；也可选择本地安装包 <code>local-dsh-knowledge-base-2.1.0.tgz</code>。</p></li><li><h3>核对加载结果</h3><p>宿主支持时直接热加载；仅在提示需要重启时，完全退出 DSH（包括托盘）再打开。核对版本为 2.1.0。后续同一大版本内的正式版小版本和补丁会自动更新；跨大版本或预览版请手动选择。</p></li><li><h3>绑定一个本地文件夹</h3><p>打开「设置 → 个人知识库」，选择目录并点击「自动建库 / 识别」。先预览，再接入已有资料。</p></li><li><h3>按需配置 OCR 与 ASR</h3><p>在「识别与转写」中配置已有本地环境或云端服务，再进行环境检查与解析验证。</p></li></ol><div class="dialog-actions"><a class="button mint" href="https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.0/local-dsh-knowledge-base-2.1.0.tgz" download>下载插件 ↓</a><a class="underlined" href="https://github.com/KingsleyAsher/Personal-Knowledge-Base" target="_blank" rel="noopener noreferrer">GitHub ↗</a></div><p class="fine">本地模型与运行依赖需单独准备。安装包来自公开仓库，可通过发布清单核对版本与 SHA-256 摘要。</p></dialog>
   <script src="app.js"></script>
 </body></html>

@@ -1,1 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 192 192"><rect width="192" height="192" rx="40" fill="#315d4c"/><path d="M42 50h43c8 0 11 4 11 12v83c-5-8-11-11-22-11H42zm108 0h-43c-8 0-11 4-11 12v83c5-8 11-11 22-11h32z" fill="none" stroke="#f0f6e9" stroke-width="9" stroke-linejoin="round"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">个人知识库</title>
+  <desc id="desc">松绿色圆角方形底上的浅色打开的书，书页里有相连的知识节点。</desc>
+  <rect width="512" height="512" rx="112" fill="#315d4c" />
+  <path d="M92 168h102c35 0 58 16 58 49v145c-17-18-39-27-69-27H92z" fill="#f0f6e9" />
+  <path d="M420 168h-102c-35 0-58 16-58 49v145c17-18 39-27 69-27h91z" fill="#f0f6e9" />
+  <path d="M256 218v139" fill="none" stroke="#315d4c" stroke-width="6" stroke-linecap="round" />
+  <path d="M256 235 204 282m52-47 52 47m-104 0h104" fill="none" stroke="#315d4c" stroke-width="9" stroke-linecap="round" stroke-linejoin="round" />
+  <circle cx="256" cy="232" r="16" fill="#a9d9bf" stroke="#315d4c" stroke-width="8" />
+  <circle cx="204" cy="282" r="16" fill="#a9d9bf" stroke="#315d4c" stroke-width="8" />
+  <circle cx="308" cy="282" r="16" fill="#a9d9bf" stroke="#315d4c" stroke-width="8" />
+</svg>

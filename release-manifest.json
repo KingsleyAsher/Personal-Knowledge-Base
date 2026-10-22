@@ -1,13 +1,13 @@
 {
   "package": "@local/dsh-knowledge-base",
   "version": "2.1.1",
-  "buildId": "9fc94bd33c61c2a3",
+  "buildId": "e7adebce159d21ff",
   "tgz": "local-dsh-knowledge-base-2.1.1.tgz",
-  "bytes": 2855456,
-  "sha256": "aa1e5d6067a30974c6ddd860fbfe8f8a02897676e989ee241e18097eddffeaa0",
-  "integrity": "sha512-t7byY88J1xoAtNKpEyn6DCwBHKBgY+nJNx0BIyOwp9oY8NovmLMNui8f+dz2/0n8L/okdkQm5Kt/VE+GAK8gng==",
-  "packageFileCount": 273,
-  "buildFileCount": 262,
+  "bytes": 2875553,
+  "sha256": "0ce655a2e6447600e441abbad8baf125b0cab28d3895557eade5d8e78a0a71a1",
+  "integrity": "sha512-PGd2JdxEAc3oTTyNbklNq9yK2A/uqZJn2qBsPLsIfaTXNvbdRlVy1deMiMNukABdIzp7qMwiZzKDGOFGzWO91A==",
+  "packageFileCount": 277,
+  "buildFileCount": 266,
   "files": [
     {
       "path": "BETA4.md",
@@ -46,13 +46,13 @@
     },
     {
       "path": "README.md",
-      "bytes": 7588,
-      "sha256": "b8a4a6e65a840f420ac6b404b458fa70df91e9d8e3e759fe028f137058eee199"
+      "bytes": 7723,
+      "sha256": "4f7b3887956e9605b090094c653aa21442de6805ff60a4f45314aeedb0b4f0a7"
     },
     {
       "path": "RELEASE.md",
-      "bytes": 10888,
-      "sha256": "d503f4567becd7cdbf7f8b3952c2654cbda101323bb903174457577922e1b485"
+      "bytes": 11273,
+      "sha256": "7efe879bec3520a7585e4e48bf9daa369edcb56c6672c2c816558c900ddf0d72"
     },
     {
       "path": "RETRIEVAL.md",
@@ -66,8 +66,8 @@
     },
     {
       "path": "WORKBENCH.md",
-      "bytes": 12933,
-      "sha256": "d46d9e99b75880139eebd7d23fca80e3ba4ed93c9b018480d0f4b633f9ade660"
+      "bytes": 13075,
+      "sha256": "dd384425d4f9fcec202e9d10c2c9183859f0653eb6ab386808b7569b2199b7ba"
     },
     {
       "path": "browser-extension/background.js",
@@ -75,14 +75,34 @@
       "sha256": "908b7bd718c00fe398da5f2f716dbcaa999a32af1195cb6097fe0afea47d3429"
     },
     {
+      "path": "browser-extension/icons/knowledge-base-128.png",
+      "bytes": 3041,
+      "sha256": "25ad9a29a69e7727c4fa4626efd8c813fbbafa4f73899a815c14dcba4bdc41b0"
+    },
+    {
+      "path": "browser-extension/icons/knowledge-base-16.png",
+      "bytes": 413,
+      "sha256": "851e004e0a366f98f4caa1a8e46c0763b771ef6d57e02f768639ff9038269ceb"
+    },
+    {
+      "path": "browser-extension/icons/knowledge-base-32.png",
+      "bytes": 772,
+      "sha256": "5ce2e327e373496ec5510ae01c78ca6e2443da78150b2c7657b327408c2a8303"
+    },
+    {
+      "path": "browser-extension/icons/knowledge-base-48.png",
+      "bytes": 1182,
+      "sha256": "4821489586a2b457ce58948c0812173afffa5a3a21e37adcd4b8af571c640b53"
+    },
+    {
       "path": "browser-extension/manifest.json",
-      "bytes": 542,
-      "sha256": "5d8f31e7318147bb251f0ce148588b2b42fc087a1f7ed9257319437f71b7e65b"
+      "bytes": 892,
+      "sha256": "17bb326f672bfac83a14c362754aac4b5dfab11c9f1fecd134e509dd322d7d2a"
     },
     {
       "path": "browser-extension/options.html",
-      "bytes": 1039,
-      "sha256": "6d2e451ad682453ab5b8c16cb933df00065a6c6e67a12428539a9b9d19caf75f"
+      "bytes": 1200,
+      "sha256": "9a12cca867b410907718c57e750f1580c7752916dfa6ada626dd72b08054d6df"
     },
     {
       "path": "browser-extension/options.js",
@@ -91,8 +111,8 @@
     },
     {
       "path": "browser-extension/popup.html",
-      "bytes": 478,
-      "sha256": "4e1018ac00ad396fe27b34d07d4802ff5b8ea87f44c0e6e8f64fa29389d09f46"
+      "bytes": 624,
+      "sha256": "0f0f20c12f14af117d9a88d100527c9da98ca997ee5bbee86df69add1dac119f"
     },
     {
       "path": "browser-extension/popup.js",
@@ -101,8 +121,8 @@
     },
     {
       "path": "browser-extension/style.css",
-      "bytes": 584,
-      "sha256": "00a1b7919c38bca691cc9e71fc38cf699d14e5f4443a998401b1dc2ca887d8bd"
+      "bytes": 748,
+      "sha256": "391c337feabf3cfa5f098e12456416b3893f5b9aedc9dc3dd420040f5b838273"
     },
     {
       "path": "cordis.patch.yml",
@@ -111,8 +131,8 @@
     },
     {
       "path": "package.json",
-      "bytes": 1047,
-      "sha256": "4065f21c962f47493ddb44677f118cc535690049c6807a4bb5321f120a6d7c35"
+      "bytes": 1090,
+      "sha256": "4070b0daf44bb6e8086005753116260511749ed3d270d5dd0f01f9629e9b0433"
     },
     {
       "path": "presets/01-knowledge-agent.patch.yml",
@@ -126,18 +146,18 @@
     },
     {
       "path": "src/client/capture-icon-192.png",
-      "bytes": 1200,
-      "sha256": "87d203c3599c2c9cffd444e50063eeb260c1d26999996a411dd8e08fff53dbf4"
+      "bytes": 4763,
+      "sha256": "ce37915053f80ace2f23519355f69ebf94196643e87a30ce944bbcc7484c72e0"
     },
     {
       "path": "src/client/capture-icon-512.png",
-      "bytes": 3770,
-      "sha256": "68216c01b4540af399d1bea64e77b1f19e26ee7168adf563ab10a5f125a22f07"
+      "bytes": 13331,
+      "sha256": "e14d38d1e8389e37e67775a97f559f84f1541e59e869f259ca1c4b2485f08806"
     },
     {
       "path": "src/client/capture-icon.svg",
-      "bytes": 303,
-      "sha256": "e23767a63c8d7a84c11bd28150908aef697a95b44df8334d9c8f4b35128a7097"
+      "bytes": 1032,
+      "sha256": "50fc9dc2168822e69df9f0482b1c4fc9a5cfd356c913ee2027de9c8c03b003bf"
     },
     {
       "path": "src/client/capture-sw.js",
@@ -151,8 +171,8 @@
     },
     {
       "path": "src/client/capture.html",
-      "bytes": 1256,
-      "sha256": "d5eddc0b40668180400d0eea786f6e4aaac2947b1bcd32e85da0c77611edd6f8"
+      "bytes": 1393,
+      "sha256": "ce35aacf5645f2caf3135626be230d62fc6b60d6ca1a3aa57ad115ec4cf2d24b"
     },
     {
       "path": "src/client/capture.js",
@@ -1226,8 +1246,8 @@
     },
     {
       "path": "src/host/index.js",
-      "bytes": 153972,
-      "sha256": "dd1826bdd582290d64631035d89599e1f6e1ce61b2573716336a1365210cd8b4"
+      "bytes": 154169,
+      "sha256": "b9e2012ac5760a72b28b187eb05622db1349ce7f0e1ba8f4a53c0215cb8b38be"
     },
     {
       "path": "src/host/kbcore.js",

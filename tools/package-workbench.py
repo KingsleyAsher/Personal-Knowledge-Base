@@ -54,7 +54,8 @@ if browser_report and browser_report.is_file():
     for name in browser['screenshots']:
         shutil.copyfile(browser_report.parent / name, delivery / name)
 with zipfile.ZipFile(delivery / '知识库快速收集-浏览器扩展.zip', 'w', zipfile.ZIP_DEFLATED) as packed:
-    for file in sorted((repo / 'browser-extension').iterdir()):
-        if file.is_file(): packed.write(file, file.name)
+    extension = repo / 'browser-extension'
+    for file in sorted(path for path in extension.rglob('*') if path.is_file()):
+        packed.write(file, file.relative_to(extension).as_posix())
 print(json.dumps({k: manifest[k] for k in ['version','buildId','bytes','sha256','packageFileCount']}, ensure_ascii=False, indent=2))
 print(str(delivery))
