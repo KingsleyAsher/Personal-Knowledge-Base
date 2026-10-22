@@ -25,7 +25,7 @@
 ## 选择下载版本
 
 - **正式版 2.1.1**：[GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.1/local-dsh-knowledge-base-2.1.1.tgz) · [Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.1.1.tgz) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.1.1.tgz?ref=main) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.1.1.tgz)。
-- **浏览器扩展（Chrome／Edge）**：[GitHub Release 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.1/knowledge-base-browser-extension.zip) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/knowledge-base-browser-extension.zip)。
+- **浏览器扩展（Chrome／Edge）**：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub Release 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.1/knowledge-base-browser-extension.zip) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/knowledge-base-browser-extension.zip)。镜像可能存在同步延迟；文件暂不可用时可切换其他下载源。
 - **预览版 2.1-beta4**：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.1-beta4.tgz) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.1-beta4.tgz?ref=main) · [GitHub 下载](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.1-beta4.tgz)。
 - 历史安装包已从公开下载处撤下；旧版用户请先安装 2.1.0，再使用插件内更新器。
 
@@ -71,3 +71,5 @@ DSH 个人知识库插件：目录绑定、条目管理与检索、资料导入�
 ## 国内更新源
 
 2.1.0 正式版与 2.1-beta4 预览版内置 Gitee、GitCode 和 GitHub。三个源并发检查正式/预览清单，采用可用源中的最新版本；同版本摘要冲突时阻止更新。优先使用国内源，下载失败或包校验失败时切换其他源。正常更新自动选择可用源，不展示来源清单；只有全部源失败时才列出原因与备用入口。GitCode 使用官方文件 API，Gitee 使用可重新获取的原始文件链接，不保存临时签名地址。v2.1.0 发布时 Gitee 镜像工作流成功，GitCode 镜像工作流失败；镜像可用性以实际平台状态为准。全部源不可用会明确报错，不视为最新。旧版需要先安装支持新源的更新器。
+
+客户端内下载入口：知识库 → 收件箱 → 浏览器扩展使用指南 → 首次使用：安装与连接，点击“下载浏览器扩展”，自动匹配 Gitee、GitCode、GitHub 并校验下载文件，源失败时自动切换；全部失败时显示原因与备用链接。

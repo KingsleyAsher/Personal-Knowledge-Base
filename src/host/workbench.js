@@ -1,3 +1,4 @@
+import { downloadBrowserExtension } from './updates.js'
 import path from 'node:path'
 import { mkdir, readFile, writeFile, stat, realpath, access, open, rename, unlink } from 'node:fs/promises'
 import { constants } from 'node:fs'
@@ -610,6 +611,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       await locked(profileFile, async () => { const p = await profile(); if (p.pairs?.[args.id]?.key === b.key) { delete p.pairs[args.id]; await atomicJson(profileFile, p) } })
       return { revoked: true }
     }
+    if (args.op === 'capture.extension.download') return downloadBrowserExtension()
     if (args.op === 'capture.list') { await reconcileCaptures(b); const data = await userData(b); return { ...slicePage(data.captures.filter(c => visible(b, c.path) && (!args.status || c.status === args.status)).sort((a, z) => z.createdAt.localeCompare(a.createdAt)), args), revision: data.revision } }
     if (args.op === 'capture.create') return mutate(b, args, async data => {
       const url = args.url ? safeUrl(args.url) : null

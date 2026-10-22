@@ -1,11 +1,11 @@
 {
   "package": "@local/dsh-knowledge-base",
   "version": "2.1.1",
-  "buildId": "53cb74dbf9a964c6",
+  "buildId": "e917007c78601bab",
   "tgz": "local-dsh-knowledge-base-2.1.1.tgz",
-  "bytes": 2878257,
-  "sha256": "995ea1a3f4feb7042bd09d1eede9edd18c434436414bb46643fb0dbd3ada0bac",
-  "integrity": "sha512-O7RjJ9Fo7UEpNg02+GPWyOExhvUIzbSPYnQijqi3ngu0ONKq6VkP6OUlj1rb4/1jRFikfcsr2ADiWdL59E5IRg==",
+  "bytes": 2880508,
+  "sha256": "4c469f2e58afb06b98848bcf6ee7c377c30607279f24b9f4f4095de0d39fbffd",
+  "integrity": "sha512-XHwZ71omp3XVVPOlD8x6P9x96jL9xWVYsUJFl2rM7jsmxfvr6TuFxdiGSzHOHIB2oRJttQJh3VhX3V9Dmn6hsQ==",
   "packageFileCount": 277,
   "buildFileCount": 266,
   "files": [
@@ -41,18 +41,18 @@
     },
     {
       "path": "PROJECT-RECORD.md",
-      "bytes": 31030,
-      "sha256": "09dd8088e817032ee2be52eb7ec58afe5f2cd870a33743fbfb8a7c4d27d90a43"
+      "bytes": 31322,
+      "sha256": "3017ec958604802ea98e273c9d054a9e30442f5a0530c765c88844e7218dcb79"
     },
     {
       "path": "README.md",
-      "bytes": 8306,
-      "sha256": "d930e09755adda7223f58150d3f099b239a989b1d035545d2356da210a32f117"
+      "bytes": 8958,
+      "sha256": "bcda1e295033f781efab875cc98db52aae933277a40009c31ae4bc418048d556"
     },
     {
       "path": "RELEASE.md",
-      "bytes": 11670,
-      "sha256": "7d7f545bfbc772c194877c138277f9a70c0d2cc3d1975f540546a8d6f011a68d"
+      "bytes": 11955,
+      "sha256": "8008f7d23c991c5deddd8542f7faa1c0764839b656d03670b1cbfc99eb3fc082"
     },
     {
       "path": "RETRIEVAL.md",
@@ -66,8 +66,8 @@
     },
     {
       "path": "WORKBENCH.md",
-      "bytes": 13338,
-      "sha256": "74b182d151153e0348784e1095fd20d42bbb73171b703e6c79a1e0c2bde02fa2"
+      "bytes": 14226,
+      "sha256": "b5d31fbab11789b1fc4ff430033b48c9ff7a6c9dd7d6bcc4ae9fe2536ed4d11a"
     },
     {
       "path": "browser-extension/background.js",
@@ -186,8 +186,8 @@
     },
     {
       "path": "src/client/index.js",
-      "bytes": 385834,
-      "sha256": "3d6b02c7e8449f2e6237cf4389b6c58ae5342b476aab554bb450e492b61086d0"
+      "bytes": 387750,
+      "sha256": "3d77914a621256d1475572743919cab19d09a9c8d439f8e47d983cdbd2cdc6cc"
     },
     {
       "path": "src/client/pdfjs/LICENSE",
@@ -1196,8 +1196,8 @@
     },
     {
       "path": "src/client/workbench-ui.js",
-      "bytes": 196119,
-      "sha256": "dbccc160270a1e69f000931c9a45c22fa9db5db884d460347102c7b72cb890e3"
+      "bytes": 197990,
+      "sha256": "e8f6e464ed1a0dcec6e05d059bdaa8b3bdaa83b2549af48dad969526d227bb53"
     },
     {
       "path": "src/host/capture-surface.js",
@@ -1331,8 +1331,8 @@
     },
     {
       "path": "src/host/updates.js",
-      "bytes": 14610,
-      "sha256": "38c2c55d4d1cf8c6e9883acdb1a75a4f3b9dae4d95beabeed36b348453ffba1b"
+      "bytes": 15549,
+      "sha256": "2f61085f872b38d11b3a435645365657ca0075ad4d5058fa3e5e6c0dfb732792"
     },
     {
       "path": "src/host/versioning.js",
@@ -1381,8 +1381,8 @@
     },
     {
       "path": "src/host/workbench.js",
-      "bytes": 67105,
-      "sha256": "14b7c66fa5f1797f8aaaf90add2ccc278522647f8da4952c0b382a273424b1a4"
+      "bytes": 67245,
+      "sha256": "ecfa430d13c648fa17e776b965200c3819f68aa269ef88726054b74f0edaa0e0"
     },
     {
       "path": "tools/kb-local-model.py",

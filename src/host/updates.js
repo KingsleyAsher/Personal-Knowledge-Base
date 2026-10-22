@@ -221,3 +221,17 @@ export function createUpdateDownloader({ checker, cacheDir, fetch: fetchFn = glo
     },
   }
 }
+
+// Digest of the distributed extension ZIP; packaging verifies it before release.
+export const EXTENSION_ARCHIVE_SHA256 = '09b634492ba2e96ccdb5050412d147fda20ce5bb4e2c282eba5b8f56d087c04e'
+export async function downloadBrowserExtension({ fetch: fetchFn = globalThis.fetch, timeoutMs = 12000 } = {}) {
+  const errors = []
+  for (const source of UPDATE_SOURCES) {
+    try {
+      const raw = await sourceBytes(fetchFn, source, 'dist/knowledge-base-browser-extension.zip', 4 * 1024 * 1024, timeoutMs)
+      if (createHash('sha256').update(raw).digest('hex') !== EXTENSION_ARCHIVE_SHA256) throw Error('扩展文件校验失败')
+      return { ok: true, filename: 'knowledge-base-browser-extension.zip', base64: raw.toString('base64') }
+    } catch (error) { errors.push(source.name + '：' + String(error.message || error)) }
+  }
+  return { ok: false, error: '所有扩展下载源均不可用，请稍后重试。' + errors.join('；') }
+}

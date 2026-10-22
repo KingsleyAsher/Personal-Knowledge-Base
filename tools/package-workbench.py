@@ -57,6 +57,7 @@ with zipfile.ZipFile(delivery / '知识库快速收集-浏览器扩展.zip', 'w'
     extension = repo / 'browser-extension'
     for file in sorted(path for path in extension.rglob('*') if path.is_file()):
         packed.write(file, file.relative_to(extension).as_posix())
+assert hashlib.sha256((delivery / '知识库快速收集-浏览器扩展.zip').read_bytes()).hexdigest() == re.search(r"EXTENSION_ARCHIVE_SHA256 = '([a-f0-9]{64})'", (repo / 'src/host/updates.js').read_text(encoding='utf-8')).group(1), 'Update extension archive integrity before publishing'
 shutil.copyfile(delivery / '知识库快速收集-浏览器扩展.zip', repo / 'dist/knowledge-base-browser-extension.zip')
 print(json.dumps({k: manifest[k] for k in ['version','buildId','bytes','sha256','packageFileCount']}, ensure_ascii=False, indent=2))
 print(str(delivery))

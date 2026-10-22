@@ -56,6 +56,8 @@
 
 采集列表及详情提供“移入回收站”：即使对应知识笔记已删除，也可单独删除采集原件，确认后 30 天内可恢复。预览、列表和详情均支持正常滚动；底部输入框遮挡的内容可继续向下滚动查看。
 
+浏览器扩展 ZIP：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.1/knowledge-base-browser-extension.zip)。镜像可能存在同步延迟；文件暂不可用时可切换其他源。ZIP 解压后，选择直接包含 `manifest.json` 的文件夹加载扩展。
+
 首次使用：
 
 1. 从插件文件包或下载解压后的源码仓库取得 `browser-extension/`。在 Chrome 的 `chrome://extensions` 或 Edge 的 `edge://extensions` 开启开发者模式，点击“加载已解压的扩展程序”，选择直接包含 `manifest.json` 的该文件夹。
@@ -109,3 +111,5 @@ Markdown/文本提供安全只读展示和链接导航。PDF 使用随包 PDF.js
 ## 国内更新源
 
 2.1.0 正式版与 2.1-beta4 预览版内置 Gitee、GitCode 和 GitHub。三个源并发检查正式/预览清单，采用可用源中的最新版本；同版本摘要不一致时阻止更新。优先使用国内源，下载失败或包校验失败后切换其他可用源。GitCode 使用官方文件 API，Gitee 使用可重新获取的原始文件链接，不保存临时签名地址。v2.1.0 发布时 Gitee 镜像工作流成功，GitCode 镜像工作流失败；镜像状态以平台实际结果为准。全部源不可用会明确报错，不视为最新。旧版需要先安装支持新源的更新器。
+
+客户端内下载入口：知识库 → 收件箱 → 浏览器扩展使用指南 → 首次使用：安装与连接，点击“下载浏览器扩展”，自动匹配 Gitee、GitCode、GitHub 并校验下载文件，源失败时自动切换；全部失败时显示原因与备用链接。
