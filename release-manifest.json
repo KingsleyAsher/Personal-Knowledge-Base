@@ -1,13 +1,13 @@
 {
   "package": "@local/dsh-knowledge-base",
-  "version": "2.1.0",
-  "buildId": "37b7ff660806754d",
-  "tgz": "local-dsh-knowledge-base-2.1.0.tgz",
-  "bytes": 2850636,
-  "sha256": "bede98f870d256ec7c41473e8c836750e478ee3790784dd001b3729132bb9593",
-  "integrity": "sha512-Br/+u8T30OQVzeCW+pp/6MYAWb+kPio0dJM2vvAd6YmamIvDTipGH4Hg+pRM4NALj2U99NmNj7HZPYGrA0FRZg==",
-  "packageFileCount": 272,
-  "buildFileCount": 261,
+  "version": "2.1.1",
+  "buildId": "9fc94bd33c61c2a3",
+  "tgz": "local-dsh-knowledge-base-2.1.1.tgz",
+  "bytes": 2855456,
+  "sha256": "aa1e5d6067a30974c6ddd860fbfe8f8a02897676e989ee241e18097eddffeaa0",
+  "integrity": "sha512-t7byY88J1xoAtNKpEyn6DCwBHKBgY+nJNx0BIyOwp9oY8NovmLMNui8f+dz2/0n8L/okdkQm5Kt/VE+GAK8gng==",
+  "packageFileCount": 273,
+  "buildFileCount": 262,
   "files": [
     {
       "path": "BETA4.md",
@@ -42,12 +42,12 @@
     {
       "path": "PROJECT-RECORD.md",
       "bytes": 30386,
-      "sha256": "f699023be5756f6db638c041a65c2c415a6770b894bdf86f0d1af2fd0849bd82"
+      "sha256": "464cd2f801f2423b8aed3ba72901b1406e458afdcf1be4756f97635bcfbc3945"
     },
     {
       "path": "README.md",
-      "bytes": 7520,
-      "sha256": "787130057f1cdb02e12e5f87455d7de12208bca59936ebd5fd0a72ece82dba8b"
+      "bytes": 7588,
+      "sha256": "b8a4a6e65a840f420ac6b404b458fa70df91e9d8e3e759fe028f137058eee199"
     },
     {
       "path": "RELEASE.md",
@@ -66,48 +66,53 @@
     },
     {
       "path": "WORKBENCH.md",
-      "bytes": 12470,
-      "sha256": "0d727dafe66db678f96627483e31137092feab075ecc9b8e22ef943ff2c92b34"
+      "bytes": 12933,
+      "sha256": "d46d9e99b75880139eebd7d23fca80e3ba4ed93c9b018480d0f4b633f9ade660"
+    },
+    {
+      "path": "browser-extension/background.js",
+      "bytes": 6145,
+      "sha256": "908b7bd718c00fe398da5f2f716dbcaa999a32af1195cb6097fe0afea47d3429"
     },
     {
       "path": "browser-extension/manifest.json",
-      "bytes": 432,
-      "sha256": "fb1dde867c394d4dfb3d63243b933d5490a7271164e8d283e3fee0f72068c1b7"
+      "bytes": 542,
+      "sha256": "5d8f31e7318147bb251f0ce148588b2b42fc087a1f7ed9257319437f71b7e65b"
     },
     {
       "path": "browser-extension/options.html",
-      "bytes": 716,
-      "sha256": "13f844983124e3289913653671d08409f23f425131a92262772e3e60511b8970"
+      "bytes": 1039,
+      "sha256": "6d2e451ad682453ab5b8c16cb933df00065a6c6e67a12428539a9b9d19caf75f"
     },
     {
       "path": "browser-extension/options.js",
-      "bytes": 1381,
-      "sha256": "9b7d133f8faeb7cabec3dc5dff8065f2ae4e16758b05ad52251904da2ef8727f"
+      "bytes": 2587,
+      "sha256": "e1758bdf2463f7d9e5def1ed647da4edfbee23e256e178d1ecd0f656e1cc1173"
     },
     {
       "path": "browser-extension/popup.html",
-      "bytes": 385,
-      "sha256": "1aac46afc057be0dfbc7cbe48b4a0fddea334ae34a796ec22c588dd03cac54b0"
+      "bytes": 478,
+      "sha256": "4e1018ac00ad396fe27b34d07d4802ff5b8ea87f44c0e6e8f64fa29389d09f46"
     },
     {
       "path": "browser-extension/popup.js",
-      "bytes": 1746,
-      "sha256": "8a112f7089dfcd800d73c13ea7ddcc06300f1f698a833c1baf18ae6e7fa5d8b7"
+      "bytes": 3495,
+      "sha256": "0a2f195e170afe6950d9b43a355b0e6998a978ce041ba27c2ce0a6f8e69d6c00"
     },
     {
       "path": "browser-extension/style.css",
-      "bytes": 560,
-      "sha256": "1ded1a7693fb4b67f202723411a34fdc4f4b92ea471e155112474ea65faf4d29"
+      "bytes": 584,
+      "sha256": "00a1b7919c38bca691cc9e71fc38cf699d14e5f4443a998401b1dc2ca887d8bd"
     },
     {
       "path": "cordis.patch.yml",
       "bytes": 5018,
-      "sha256": "fc36a25f8feed50d94b6fe68d8137ba22a778b978dd5488c416eacd68bd16c97"
+      "sha256": "4051be5ce5a5190e1ea19bcc1b682cfd24d4790611a4d5ab516964541006f5b2"
     },
     {
       "path": "package.json",
       "bytes": 1047,
-      "sha256": "2dc0c142047bac211956aab66c2ed1ee9c06b7df4be0be352b0f07f0f0f0e46c"
+      "sha256": "4065f21c962f47493ddb44677f118cc535690049c6807a4bb5321f120a6d7c35"
     },
     {
       "path": "presets/01-knowledge-agent.patch.yml",
@@ -161,8 +166,8 @@
     },
     {
       "path": "src/client/index.js",
-      "bytes": 380405,
-      "sha256": "068dcdd2933f45febf85042d5f223337d5c68fcf09874204c6fcf6626db06e12"
+      "bytes": 383436,
+      "sha256": "6e710cb47b47286188dbd0f9149acc4a30e798508eab0e34ee13731dc828278f"
     },
     {
       "path": "src/client/pdfjs/LICENSE",
@@ -1171,8 +1176,8 @@
     },
     {
       "path": "src/client/workbench-ui.js",
-      "bytes": 191218,
-      "sha256": "4b90c310f1e1d45240a469ee39e89006ba5e95bd561d3e4e3140730654f066d1"
+      "bytes": 193798,
+      "sha256": "e4913be6788d9194b2e9561a82885c45e8c375c222286643c17cc311831b7a78"
     },
     {
       "path": "src/host/capture-surface.js",
@@ -1221,13 +1226,13 @@
     },
     {
       "path": "src/host/index.js",
-      "bytes": 152375,
-      "sha256": "4cec44ba1b12a76c95ed134e74bc0dcb6d0ab579a00844d04ff99b46ea45320c"
+      "bytes": 153972,
+      "sha256": "dd1826bdd582290d64631035d89599e1f6e1ce61b2573716336a1365210cd8b4"
     },
     {
       "path": "src/host/kbcore.js",
       "bytes": 119633,
-      "sha256": "af1fb2e928c178a7bf7f424f7f56c3042e084703e92648fe84c2b1a6cb0c3b00"
+      "sha256": "917d50d613b7b822efd50ef6273447397e8e3e981678b1879033bcfa939c1274"
     },
     {
       "path": "src/host/managed-files.js",
@@ -1356,8 +1361,8 @@
     },
     {
       "path": "src/host/workbench.js",
-      "bytes": 65495,
-      "sha256": "638cc1a873f3d3fac2f38cdd0d6abd1efdf5936885390d81d6c2f8d9e8843a95"
+      "bytes": 67105,
+      "sha256": "14b7c66fa5f1797f8aaaf90add2ccc278522647f8da4952c0b382a273424b1a4"
     },
     {
       "path": "tools/kb-local-model.py",
@@ -1374,12 +1379,6 @@
     "productionInstalled": false,
     "formalRuntimeVerified": false,
     "realModelAnswerVerified": false,
-    "realCloudApiTested": false,
-    "automatedChecksPassed": true,
-    "nodeTests": 25,
-    "browserUiVerifiedWithSyntheticHost": false,
-    "mobileSystemShareVerified": false,
-    "extensionInstalledVerified": false,
-    "userConfirmedPreview": true
+    "realCloudApiTested": false
   }
 }
