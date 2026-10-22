@@ -730,6 +730,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
     const [data, setData] = R.useState(null), [text, setText] = R.useState(''), [title, setTitle] = R.useState(''), [url, setUrl] = R.useState(''), [upload, setUpload] = R.useState(null), [status, setStatus] = R.useState(''), [error, setError] = R.useState(''), [busy, setBusy] = R.useState(false)
     const [selected, setSelected] = R.useState([]), [tags, setTags] = R.useState(''), [dir, setDir] = R.useState(''), [pair, setPair] = R.useState(null), [extensionOrigin, setExtensionOrigin] = R.useState(''), [connections, setConnections] = R.useState(null)
     const [captureMode, setCaptureMode] = R.useState('text'), [inspect, setInspect] = R.useState(null)
+    const [extensionBusy, setExtensionBusy] = R.useState(false), [extensionError, setExtensionError] = R.useState('')
     const [pairBusy, setPairBusy] = R.useState(false), [pairError, setPairError] = R.useState(''), [pairMessage, setPairMessage] = R.useState('')
     R.useEffect(() => { setPair(null); setConnections(null); setPairError(''); setPairMessage('') }, [snapshot.kbId])
     const draftKey = 'kbw-capture-draft:' + snapshot.kbId
@@ -777,11 +778,19 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
         e('details', null, e('summary', null, '首次使用：安装与连接（按 4 步完成）'),
           e('ol', { className: 'kbw-clipper-steps' },
             e('li', null, e('h4', null, '安装 Chrome / Edge 扩展'),
-                  e('p', null, '下载浏览器扩展 ZIP：', ...[
+                  btn(extensionBusy ? '正在匹配下载源并下载…' : '下载浏览器扩展', async () => {
+                    setExtensionBusy(true); setExtensionError('')
+                    try {
+                      const result = await api({ op: 'capture.extension.download', ...base })
+                      download(result.filename, Uint8Array.from(atob(result.base64), c => c.charCodeAt(0)), 'application/zip')
+                    } catch (error) { setExtensionError(error.message) } finally { setExtensionBusy(false) }
+                  }, extensionBusy),
+                  e('p', { className: 'kbw-meta' }, '自动匹配 Gitee、GitCode、GitHub，下载失败时自动尝试其他源。'),
+                  extensionError ? e('div', { role: 'alert' }, e('p', null, extensionError), e('p', null, '下载浏览器扩展 ZIP：', ...[
                     ['Gitee 国内下载', 'https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip'],
                     ['GitCode 国内下载', 'https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main'],
                     ['GitHub 下载', 'https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.1/knowledge-base-browser-extension.zip']
-                  ].map(([label, href], index) => e(R.Fragment, { key: href }, index ? ' · ' : '', e('a', { href, target: '_blank', rel: 'noopener noreferrer' }, label)))),
+                  ].map(([label, href], index) => e(R.Fragment, { key: href }, index ? ' · ' : '', e('a', { href, target: '_blank', rel: 'noopener noreferrer' }, label))))) : null,
                   e('p', { className: 'kbw-meta' }, '下载完成后先解压，加载直接包含 manifest.json 的文件夹。镜像可能存在同步延迟；某个源暂不可用时可切换其他源。'),
               e('p', null, '从知识库插件的文件包或源码仓库取得 browser-extension 文件夹。下载的是整个仓库时，先解压，再找到这个文件夹。'),
               e('p', null, e('a', { href: 'https://github.com/KingsleyAsher/Personal-Knowledge-Base/tree/main/browser-extension', target: '_blank', rel: 'noopener noreferrer' }, '查看扩展文件所在位置'), '；也可从 ', e('a', { href: 'https://github.com/KingsleyAsher/Personal-Knowledge-Base/archive/refs/heads/main.zip', target: '_blank', rel: 'noopener noreferrer' }, '下载仓库 ZIP'), ' 解压获取。'),
