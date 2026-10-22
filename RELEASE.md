@@ -2,6 +2,15 @@
 
 本版将已验证的 2.1 预览功能整理为正式版本，并保留 2.0.3 的同一大版本正式版自动更新能力。
 
+## 正式发布记录
+
+- GitHub Release：[`v2.1.0`](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.1.0)，已发布；PR [#25](https://github.com/KingsleyAsher/Personal-Knowledge-Base/pull/25) 已合并至 `main`。
+- 合并提交：`bf41c52c088495596c619af30b38a4a4bc43a3e1`；构建号：`37b7ff660806754d`。
+- 安装包字节数、SHA-256 与逐文件摘要以权威 [`release-manifest.json`](release-manifest.json) 为准。
+- 产品展示页：[个人知识库 2.1.0](https://kingsleyasher.github.io/Personal-Knowledge-Base/)；正式发布工作流和 Pages 部署均通过。
+- Gitee 镜像同步成功；GitCode 镜像同步工作流失败。镜像结果与 GitHub Release 状态分开记录。
+- 用户确认 2.1-beta4 预览版可用。正式包没有在维护者本机安装验证，也没有使用真实云端 Embedding/Rerank API。
+
 - 多语言全文与向量协同检索：并行召回、一次双向局部补充、RRF 融合、精确匹配和来源去重。
 - 长文按结构切片，关联章节与原文位置，命中后恢复必要上下文；不缩短原有证据范围。
 - 内置硅基流动 BGE-M3 配置，提供通用 Embedding 与 Rerank API；保存启用后自动增量建库。
@@ -20,6 +29,7 @@
 ## 更新与验证
 
 预览版本经用户实机测试确认可用；正式版重新同步版本、清单、包与下载入口。发布前执行一组定向检查、源码与归档一致性及公开内容检查；不额外开展大规模压测或真实云端调用。
+25 项定向自动检查通过；安装包逐文件摘要、正式版发布工作流与展示页部署检查通过。用户实测对象是 2.1-beta4 预览包，发布清单明确标注未在维护者本机生产安装、未进行真实云端模型调用。
 升级不会自动清除已有会话积累的重复内容。完整重启后建议新会话验证；自定义规则或预设的待处理差异请在知识库设置中查看。
 
 ---
