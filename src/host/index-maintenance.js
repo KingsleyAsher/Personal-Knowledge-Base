@@ -11,7 +11,7 @@ export function createIndexMaintenance({ getCore, onChange = () => {}, watch = f
   const relevant = file => {
     const rel = String(file || '').replaceAll('\\', '/')
     const parts = rel.split('/')
-    return !parts.some(p => ['.kbmeta', '.kb-state', '.git'].includes(p)) && !excludes.some(p => rel === p || rel.startsWith(p + '/')) && !rel.includes('.tmp-') && (rel === '' || !path.extname(rel) || rel.endsWith('.md') && path.basename(rel) !== 'INDEX.md' && !(parts.length === 1 && ['README.md', 'AGENTS.md', '知识库清单.md'].includes(rel)))
+    return !parts.some(p => ['.kbmeta', '.kb-state', '索引层', '.git'].includes(p)) && !excludes.some(p => rel === p || rel.startsWith(p + '/')) && !rel.includes('.tmp-') && (rel === '' || !path.extname(rel) || rel.endsWith('.md') && path.basename(rel) !== 'INDEX.md' && !(parts.length === 1 && ['README.md', 'AGENTS.md', '知识库清单.md'].includes(rel)))
   }
   const mark = file => { if (relevant(file) && failures < 3) { if (file) dirty.add(String(file).replaceAll('\\', '/')); pending = true; lastEvent = now(); if (!running) state = 'waiting' } }
   async function tick() {

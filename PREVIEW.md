@@ -1,6 +1,8 @@
-# 2.0-beta9 预览版
+> 当前正式版本为 **2.1.0**，下载与最新能力以 [README](README.md)、[发布说明](RELEASE.md) 为准。以下保留相应功能与历史阶段说明。
 
-包版本：`2.0-beta9`。正式版为 **2.0.2**。本预览包用于测试更新说明汇总及预览渠道；更新器仍由用户明确点击安装。
+# 2.1-beta4 预览版
+
+包版本：`2.1-beta4`。当前正式版为 **2.1.0**。此预览已完成用户测试，其能力已进入正式版；新安装建议使用正式版。历史预览更新机制说明保留如下，预览安装仍需主动选择。
 
 ## 本次更新
 
@@ -11,9 +13,9 @@
 
 ## 下载与安装
 
-- [Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.0-beta9.tgz)
-- [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.0-beta9.tgz?ref=main)
-- [GitHub 下载](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.0-beta9.tgz)
+- [Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.1-beta4.tgz)
+- [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.1-beta4.tgz?ref=main)
+- [GitHub 下载](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.1-beta4.tgz)
 - [工作台使用说明](WORKBENCH.md)
 
 在知识库顶部或设置页打开“检查版本更新”，选择预览版本并点击安装。正式版 `2.0.2` 高于 `2.0-beta9`，预览版本不会覆盖正式版。

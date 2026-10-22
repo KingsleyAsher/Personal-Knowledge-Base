@@ -1,6 +1,6 @@
 // Embedded into the existing client factory by tools/sync-workbench-client.py.
 // Uses the host's React and services; no second React runtime or remote scripts.
-function createWorkbenchUI({ react: R, e, api: rawApi, ctx: getContext, Overview, Flows, Parsing, BuildBadge, version, projectRecordUrl, portal }) {
+function createWorkbenchUI({ react: R, e, api: rawApi, ctx: getContext, Overview, Flows, Parsing, BuildBadge, version, projectRecordUrl, portal, ReferenceChip }) {
   const api = async (body, signal) => {
     if (signal?.aborted) throw new Error('操作已取消')
     const out = await rawApi(body)
@@ -14,12 +14,18 @@ function createWorkbenchUI({ react: R, e, api: rawApi, ctx: getContext, Overview
   const check = (label, value, change, disabled = false) => e('label', { className: 'kbw-check' }, e('input', { type: 'checkbox', checked: Boolean(value), onChange: ev => change(ev.target.checked), disabled }), label)
   const select = (label, value, change, values) => e('label', { className: 'kbw-field' }, e('span', null, label), e('select', { 'aria-label': label, value, onChange: ev => change(ev.target.value) }, values.map(([v, l]) => e('option', { key: v, value: v }, l))))
   const date = ms => ms ? new Date(ms).toLocaleString('zh-CN') : '—'
-  const size = n => n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(1) + ' KiB' : (n / 1048576).toFixed(1) + ' MiB'
+  const size = n => {
+    if (!Number.isFinite(n) || n < 0) return '—'
+    const units = ['B', 'KB', 'MB', 'GB', 'TB']
+    let value = n, unit = 0
+    while (value >= 1000 && unit < units.length - 1) { value /= 1000; unit++ }
+    return value.toLocaleString('zh-CN', { maximumFractionDigits: 2 }) + ' ' + units[unit]
+  }
   const download = (filename, text, mime = 'text/plain;charset=utf-8') => {
     const url = URL.createObjectURL(new Blob([text], { type: mime })), a = document.createElement('a')
     a.href = url; a.download = filename; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000)
   }
-  const defaults = () => ({ showPrivate: false, allowPrivateQuestions: false, autoParse: false, reviewReminders: false, reviewFrequency: 'weekly', landing: 'map', backup: { enabled: false, directory: '', frequency: 'daily', includePrivate: true } })
+  const defaults = () => ({ showPrivate: false, allowPrivateQuestions: false, showRetrievalProcess: true, autoParse: false, reviewReminders: false, reviewFrequency: 'weekly', landing: 'map', backup: { enabled: false, directory: '', frequency: 'daily', includePrivate: true } })
   let stylesInstalled = false, styleElement = null
   function styles() {
     if (stylesInstalled) return
@@ -91,6 +97,20 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
 .kbw-relations{padding:24px;min-width:0;min-height:0;overflow:auto}.kbw-network-toolbar{display:flex;gap:16px;justify-content:space-between;align-items:center;flex-wrap:wrap;margin-bottom:8px}.kbw-network-toolbar form{flex:1;max-width:500px}.kbw-network-toolbar input{flex:1;width:220px}.kbw-relations .kbw-breadcrumb{padding:4px 0 12px;align-items:center}.kbw-network-workspace{display:grid;grid-template-columns:minmax(0,1fr) 310px;border:1px solid var(--line);border-radius:8px;overflow:hidden;min-height:550px;background:var(--kbw-surface)}.kbw-network-stage{position:relative;min-width:0;display:flex;flex-direction:column}.kbw-network-stage .kbw-graph{height:100%;min-height:440px;flex:1;border:0;border-radius:0;touch-action:none;background:var(--kbw-bg)}.kbw-network-summary{position:absolute;left:16px;top:12px;font-size:12px;color:var(--kbw-muted);pointer-events:none;z-index:1}.kbw-network-inspector{min-width:0;border-left:1px solid var(--line);padding:18px;max-height:680px;overflow:auto;background:var(--kbw-surface)}.kbw-network-inspector h3{margin:0 0 8px;font-size:16px;overflow-wrap:anywhere}.kbw-network-inspector .kbw-actions{align-items:stretch;flex-direction:column}.kbw-network-inspector .kbw-button{white-space:normal;height:auto;min-height:36px;overflow-wrap:anywhere}.kbw-network-inspector .kbw-path{white-space:pre-wrap;font-size:11px;margin:8px 0}.kbw-evidence{border:1px solid var(--line);border-radius:7px;padding:10px;margin:8px 0;transition:opacity .1s,border-color .1s;min-width:0}.kbw-evidence .kbw-row{padding:0;border:0}.kbw-evidence .kbw-row strong{font-size:12px}.kbw-evidence[data-active=true]{border-color:var(--kbw-accent);background:var(--kbw-soft)}.kbw-evidence[data-dimmed=true]{opacity:.42}.kbw-canvas-controls{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap;padding:12px;border-top:1px solid var(--line)}.kbw-canvas-controls span{font-size:12px;min-width:44px;text-align:center;font-variant-numeric:tabular-nums}.kbw-canvas-controls .kbw-button{font-size:12px;padding:0 10px}.kbw-canvas-hint{font-size:11px;text-align:center;color:var(--kbw-muted);margin:0!important;padding:0 12px 12px}.kbw-network-empty{position:absolute;top:42%;left:10%;width:80%;text-align:center;color:var(--kbw-muted);pointer-events:none}.kbw-search-results{max-height:260px;overflow:auto;border:1px solid var(--line);border-radius:8px;padding:12px;margin:12px 0}.kbw-graph [data-node],.kbw-graph [data-edge]{transition:opacity .12s}.kbw-graph [data-dimmed=true]{opacity:.25}.kbw-graph [data-node][data-selected=true] rect{stroke:var(--kbw-accent);stroke-width:3;fill:var(--kbw-soft)}.kbw-graph [data-center=true] rect{stroke:var(--kbw-muted);stroke-dasharray:5 3}.kbw-graph [data-node][data-selected=true] rect{stroke-dasharray:none}.kbw-graph [data-edge]{cursor:pointer;outline:none}.kbw-graph [data-edge] path{opacity:.45;stroke-width:1.5}.kbw-graph [data-edge][data-active=true] path:not(.kbw-edge-hit),.kbw-graph [data-edge]:focus-visible path:not(.kbw-edge-hit){opacity:1;stroke-width:3}.kbw-graph [data-edge] .kbw-edge-hit{stroke:transparent;stroke-width:18;opacity:1;pointer-events:stroke}.kbw-graph .kbw-node-meta{font-size:9px;fill:var(--kbw-muted)}.kbw-graph [data-node] rect{fill:var(--kbw-surface)}.kbw-graph [data-node]:hover rect{stroke-width:2}.kbw-network-inspector .kbw-row:hover{background:transparent}
 @container(max-width:1000px){.kbw-app-header{gap:12px;flex-wrap:wrap}.kbw-app-header>div:first-child .kbw-meta{display:none}.kbw-network-workspace{grid-template-columns:minmax(0,1fr) 260px}.kbw-settings-layout{grid-template-columns:175px minmax(0,1fr);gap:16px}.kbw-network-inspector{padding:14px}}
 @container(max-width:700px){.kbw-app-header{padding:12px}.kbw-global-search{order:3;flex-basis:100%;max-width:none}.kbw-app-header>.kbw-actions{margin-left:auto}.kbw-app-header strong{font-size:18px}.kbw-content,.kbw-relations{padding:16px}.kbw-network-workspace{grid-template-columns:1fr}.kbw-network-inspector{border-left:0;border-top:1px solid var(--line);max-height:320px}.kbw-network-stage .kbw-graph{height:380px;min-height:380px;flex:none}.kbw-settings-layout{grid-template-columns:1fr}.kbw-settings-nav{flex-direction:row;overflow:auto}.kbw-settings-nav .kbw-button{flex-shrink:0}.kbw-network-toolbar form{max-width:none;width:100%}.kbw-canvas-controls .kbw-button{min-height:40px}.kbw-nav .kbw-button{padding:0 10px}.kbw-network-toolbar input{min-width:120px;width:120px}.kbw-section{min-width:0}}
+/* Match the surrounding global knowledge settings and OCR/ASR sections. */
+.kbw.kbw-global-settings{max-width:960px;margin:24px 0 0!important;padding:20px 0 0;border-top:1px solid var(--kbw-line);font:13px/1.6 system-ui,sans-serif;background:transparent;color:var(--kbw-fg)}
+.kbw-global-settings>.kbw-panel{border:0;border-radius:0;padding:0;margin:0;background:transparent;box-shadow:none}
+.kbw-global-settings h3{font-size:20px;font-weight:600;line-height:1.4;letter-spacing:-.4px;margin:0 0 6px}
+.kbw-global-settings h3+p{font-size:13px;color:var(--kbw-muted);margin:0 0 22px}
+.kbw-global-settings h4{font-size:13px;font-weight:600;margin:24px 0 8px;color:var(--kbw-muted)}
+.kbw-global-settings label{font-size:13px;font-weight:400}
+.kbw-global-settings .kbw-field{margin:0 0 16px}
+.kbw-global-settings input:not([type=checkbox]),.kbw-global-settings select{min-height:36px;border-radius:7px;font:13px/1.4 system-ui,sans-serif;background:var(--kbw-surface);color:var(--kbw-fg);border-color:var(--kbw-line)}
+.kbw-global-settings hr{border:0;border-top:1px solid var(--kbw-line);margin:20px 0}
+.kbw-global-settings summary{font-size:12px;color:var(--kbw-muted);padding:6px 0;cursor:pointer}
+.kbw-global-settings .kbw-actions{gap:8px;margin:16px 0 12px;flex-wrap:wrap}
+.kbw-global-settings [role=status]:not(:empty){padding:10px 12px;background:var(--kbw-soft);border-radius:6px}
+.kbw-global-settings .kbw-meta{font-size:12px;overflow-wrap:anywhere}
 @media(pointer:coarse){.kbw .kbw-button,.kbw input:not([type=checkbox]),.kbw select{min-height:44px}}
 
 .kbw-master-detail{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(280px,1fr);gap:20px;align-items:start}.kbw-panel{padding:20px;min-width:0;background:var(--kbw-surface);border:1px solid var(--line);border-radius:8px}.kbw-panel>h3{margin:0 0 16px}.kbw-panel blockquote{margin:12px 0;padding:10px 14px;border-left:3px solid var(--kbw-accent);overflow-wrap:anywhere}.kbw-panel>.kbw-actions{margin-top:16px}.kbw-secondary-panels{margin-top:20px}.kbw-section-tabs{margin:0 0 16px}.kbw-reading-row{display:flex;justify-content:space-between;align-items:center;gap:16px}.kbw-reading-row>span:first-child{min-width:0}.kbw-reading-row>.kbw-meta{flex-shrink:0}.kbw-excerpt-row{display:flex;gap:10px;align-items:flex-start}.kbw-excerpt-row>input{margin-top:20px}.kbw-batch-panel{display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-top:1px solid var(--line);margin-top:24px;padding-top:16px}.kbw-batch-panel>.kbw-field{margin:0;flex:1;min-width:180px}.kbw-capture-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);min-width:0}.kbw-capture-row>.kbw-check{font-size:0;width:18px;margin:0}.kbw-capture-row>.kbw-row{flex:1;min-width:100px}.kbw-capture-row>.kbw-meta{display:none}.kbw-capture-row>.kbw-button{height:auto;min-height:36px;white-space:normal;flex-shrink:1;overflow-wrap:anywhere}.kbw-clipper-help>summary{cursor:pointer;font-weight:600}.kbw-graph [data-node][data-active=true] rect{stroke:var(--kbw-accent);stroke-width:2}.kbw-graph [data-node][data-selected=true] rect{stroke-width:3}
@@ -116,7 +136,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
     window.addEventListener('pagehide', () => source.close(), { once: true })
   }
   async function fileBase64(file) {
-    if (file.size > 8 * 1024 * 1024) throw new Error('单个文件最多 8 MiB')
+    if (file.size > 8 * 1024 * 1024) throw new Error('单个文件最多 8.39 MB')
     const bytes = new Uint8Array(await file.arrayBuffer()); let binary = ''
     for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192))
     return btoa(binary)
@@ -203,6 +223,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
     const patch = part => setPrefs(old => ({ ...old, ...part }))
     const backup = part => setPrefs(old => ({ ...old, backup: { ...old.backup, ...part } }))
     return e('div', null,
+      check('回答后显示知识库检索过程', prefs.showRetrievalProcess!==false, value => patch({ showRetrievalProcess: value })),
       check('展示隐私内容', prefs.showPrivate, value => patch({ showPrivate: value, ...!value ? { allowPrivateQuestions: false } : {} })),
       e('p', { className: 'kbw-meta' }, '按当前知识库保存，同一宿主 profile 的连接客户端共同生效。关闭后只显示隐私分区统计。'),
       check('允许知识库提问使用隐私内容', prefs.allowPrivateQuestions, value => patch({ allowPrivateQuestions: value }), !prefs.showPrivate),
@@ -561,7 +582,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
       detail.capture?.url ? e('p', null, e('a', { href: detail.capture.url, target: '_blank', rel: 'noopener noreferrer' }, '原始网页')) : null,
       detail.capture?.note ? e('p', { className: 'kbw-preview' }, detail.capture.note) : null,
       content ? e('div', { ref: selection, className: 'kbw-preview kbw-markdown', onMouseUp: () => { const selected = window.getSelection(); if (selected && selection.current?.contains(selected.anchorNode)) { setQuote(selected.toString()); setRegion(null) } } }, e(Markdown, { text: content.text, inline: textNodes })) : null,
-      content?.truncated ? e('p', { className: 'kbw-meta' }, '仅展示前 256 KiB，请打开原文查看完整内容。') : null,
+      content?.truncated ? e('p', { className: 'kbw-meta' }, '仅展示前 262 KB，请打开原文查看完整内容。') : null,
       media?.mime === 'application/pdf' ? e(PDFReader, { media, page, setPage, annotations: detail.annotations, onSelection: (text, region) => { setQuote(text); setRegion(region) } }) : media ? e('img', { src: media.url, alt: detail.file.title }) : !content ? e('p', { className: 'kbw-meta' }, '此格式暂不直接预览，可沿来源关系查看解析文本。') : null,
       e('div', { className: 'kbw-actions' }, select('阅读状态', readingState, setReadingState, [['unread', '未读'], ['reading', '在读'], ['done', '读完']]),
         /\.pdf$/i.test(file) ? field('页码', page, v => setPage(Math.max(1, Number(v) || 1)), { type: 'number', min: 1 }) : null,
@@ -871,15 +892,143 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
       e('div', { className: 'kbw-actions' }, btn('任务中心', () => navigate('tasks')), btn('备份与恢复', () => navigate('backups'))))
   }
 
+  function SearchEvidence({ file,snapshot }) {
+    const [content,setContent]=R.useState(null),[busy,setBusy]=R.useState(false),[error,setError]=R.useState('')
+    const read=async start=>{setBusy(true);setError('');try{setContent(await api({op:'search.expand',expectedKbId:snapshot.kbId,policyVersion:snapshot.policyVersion,path:file.path,revision:file.revision,start}))}catch(e){setError(e.message)}finally{setBusy(false)}}
+    return e('details',null,e('summary',{onClick:()=>{if(!content&&!busy)void read(file.chunk.start)}},'展开命中章节与上下文'),
+      e('p',{className:'kbw-meta'},(file.channels||[]).join(' · ')),error?e('p',{role:'alert'},error):null,
+      content?e('div',null,e('p',{className:'kbw-meta'},content.headings.join(' / ')+' · 第 '+content.line+'–'+content.endLine+' 行'),e('pre',{style:{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}},content.text),
+        content.previousStart!=null?btn('读取前文',()=>read(content.previousStart),busy):null,content.nextStart!=null?btn('继续读取后文',()=>read(content.nextStart),busy):null):e('p',null,busy?'正在读取原文…':'点击展开读取'))
+  }
+
+  function RetrievalProcessPreference({ snapshot }) {
+    const [enabled,setEnabled]=R.useState(true),[busy,setBusy]=R.useState(true),[message,setMessage]=R.useState('')
+    R.useEffect(()=>{let live=true;api({op:'preferences.get',expectedKbId:snapshot.kbId}).then(p=>{if(live)setEnabled(p.preferences?.showRetrievalProcess!==false)}).catch(err=>{if(live)setMessage(err.message)}).finally(()=>{if(live)setBusy(false)});return()=>{live=false}},[snapshot.kbId])
+    const save=async value=>{const previous=enabled;setEnabled(value);setBusy(true);setMessage('');try{
+      const p=await api({op:'preferences.get',expectedKbId:snapshot.kbId})
+      await api({op:'preferences.save',expectedKbId:snapshot.kbId,expectedRevision:p.revision,preferences:{...p.preferences,showRetrievalProcess:value}})
+      setEnabled(value);setMessage(value?'已开启回答末尾的检索过程说明':'已关闭回答末尾的检索过程说明')
+    }catch(err){setEnabled(previous);setMessage(err.message)}finally{setBusy(false)}}
+    return e('div',{className:'kbw-retrieval-preference'},check('回答后显示知识库检索过程',enabled,save,busy),
+      e('p',{className:'kbw-meta'},'默认开启。仅在本次回答实际检索知识库时，在回答末尾说明向量模型、全文检索及实际执行流程；未检索时不显示。'),message?e('p',{role:'status'},message):null)
+  }
+
+  function RetrievalSettings({ snapshot }) {
+    const [data,setData]=R.useState(null), [config,setConfig]=R.useState(null), [embeddingKey,setEmbeddingKey]=R.useState(''), [rerankKey,setRerankKey]=R.useState(''), [busy,setBusy]=R.useState(false), [message,setMessage]=R.useState('')
+    const current=R.useRef(true),[trace,setTrace]=R.useState([])
+    const refresh=async(lightweight=false)=>{ const d=await api({op:'retrieval.get',lightweight,expectedKbId:snapshot.kbId}); if(current.current){setData(d);setConfig(c=>c||d.config)} }
+    R.useEffect(()=>{current.current=true;void refresh().catch(e=>setMessage(e.message));const timer=setInterval(()=>void refresh(true).catch(()=>{}),5000);return()=>{current.current=false;clearInterval(timer)}},[snapshot.kbId])
+    const change=(type,key,value)=>setConfig(c=>({...c,[type]:{...c[type],[key]:value}}))
+    const action=async(op,enable)=>{setBusy(true);setMessage('');try{
+      const result=await api({op:'retrieval.'+op,expectedKbId:snapshot.kbId,expectedRevision:config?.revision,
+        config:{...config,...enable==null?{}:{enabled:enable}},embeddingApiKey:embeddingKey,rerankApiKey:rerankKey})
+      if(op==='test')setMessage('连接正常，向量维度 '+result.dimension)
+      else {
+        const messages={pause:'索引构建已暂停',resume:'已继续构建 / 重试',retry:'已提交重试',rebuild:'已开始重建向量索引',clean:'旧版本清理已完成',save:enable===false?'向量检索已停用':'配置已保存，已启用自动建库'}
+        if(op==='save'){setEmbeddingKey('');setRerankKey('')}
+        // Keep the form mounted. Task controls do not discard unsaved fields,
+        // secrets or the current scroll position while status refreshes.
+        const next=await api({op:'retrieval.get',expectedKbId:snapshot.kbId})
+        if(current.current){setData(next);if(op==='save'||op==='rebuild')setConfig(next.config);setMessage(result.note||messages[op]||'操作已完成')}
+      }
+    }catch(err){setMessage(err.message)}finally{setBusy(false)}}
+    if(!config)return e('p',null,message||'正在读取检索设置…')
+    const estimate=data?.estimate, progress=data?.progress
+    const canPause=['waiting','scanning','building'].includes(progress?.state), needsRetry=['failed','partial'].includes(progress?.state)
+    const taskLabel=canPause?'暂停':needsRetry?'重试':progress?.state==='synced'?'已完成':!config.enabled?'未启用':'继续'
+    return e('section',{className:'kbw-panel'},e('h3',null,'全文与向量协同检索'),
+      e('p',null,'保存并启用后自动切片、建立向量索引。全文与向量共同查找，再补齐所属章节和相邻原文。'),
+      e(RetrievalProcessPreference,{snapshot}),
+      select('向量接口',config.embedding.provider,v=>setConfig(c=>({...c,embedding:v==='siliconflow'?{...c.embedding,provider:v,endpoint:'https://api.siliconflow.cn/v1/embeddings',model:'BAAI/bge-m3',queryTemplate:'',documentTemplate:''}:{...c.embedding,provider:v}})),[['siliconflow','硅基流动 BGE-M3'],['custom','通用 Embedding API（含 Qwen）']]),
+      config.profiles?.length?select('已保存向量配置','',v=>{const p=config.profiles.find(x=>x.id===v);if(p)setConfig(c=>({...c,embedding:p.embedding}))},[['','选择已保存配置'],...config.profiles.map(p=>[p.id,p.embedding.model+' · '+p.embedding.endpoint])]):null,
+      field('完整 Embedding 接口地址',config.embedding.endpoint,v=>change('embedding','endpoint',v)),
+      field('向量模型名',config.embedding.model,v=>change('embedding','model',v)),
+      field('向量 API Key（留空保留已保存密钥）',embeddingKey,setEmbeddingKey,{type:'password',autoComplete:'new-password'}),
+      e('p',{className:'kbw-meta'},data?.credentialStatus?.embedding?'向量密钥已加密保存，更新插件后继续使用；留空无需重填。':'尚未保存可用的向量密钥。'),
+      check('允许私密资料发送到此向量服务',config.allowPrivateCloud,v=>setConfig(c=>({...c,allowPrivateCloud:v}))),
+      e('p',{className:'kbw-meta'},'云端向量化会发送所选范围的正文；语义搜索会发送查询文本。资料展示和问答权限另行检查。'),
+      e('details',null,e('summary',null,'批处理、维度与输入模板'),
+        field('每批片段数',config.embedding.batchSize,v=>change('embedding','batchSize',Number(v)),{type:'number',min:1,max:256}),
+        field('可选输出维度（仅服务明确支持时填写）',config.embedding.dimensions||'',v=>change('embedding','dimensions',v),{type:'number',min:1}),
+        field('查询模板（使用 {text}；Qwen 留空时自动采用检索指令）',config.embedding.queryTemplate,v=>change('embedding','queryTemplate',v)),
+        field('文档模板（使用 {text}，通常留空）',config.embedding.documentTemplate,v=>change('embedding','documentTemplate',v)),
+        field('切片目标字节数',config.embedding.chunkTarget||2400,v=>change('embedding','chunkTarget',Number(v)),{type:'number',min:512,max:2400}),
+        field('片段重叠字节数',config.embedding.chunkOverlap??240,v=>change('embedding','chunkOverlap',Number(v)),{type:'number',min:0,max:480})),
+      e('hr'),e('h4',null,'通用重排序 API'),check('启用重排序',config.rerank.enabled,v=>change('rerank','enabled',v)),
+      field('完整 Rerank 接口地址',config.rerank.endpoint,v=>change('rerank','endpoint',v)),
+      field('重排序模型名',config.rerank.model,v=>change('rerank','model',v)),
+      field('重排序 API Key（留空保留已保存密钥）',rerankKey,setRerankKey,{type:'password',autoComplete:'new-password'}),
+      data?.credentialStatus?.rerank?e('p',{className:'kbw-meta'},'重排序密钥已加密保存，留空继续使用。'):null,
+      e('p',{className:'kbw-meta'},'通用 query + documents 接口，返回 index 与 relevance_score。未配置或失败时使用融合结果。'),
+      e('div',{className:'kbw-actions','aria-label':'检索配置与索引操作'},btn('仅测试连接',()=>action('test'),busy),btn('保存并启用自动建库',()=>action('save',true),busy),btn('停用向量检索',()=>action('save',false),busy),
+        btn(taskLabel,()=>action(canPause?'pause':needsRetry?'retry':'resume'),busy||!config.enabled||progress?.state==='synced',{'aria-label':taskLabel+'索引构建'}),btn('重建向量索引',()=>action('rebuild'),busy),btn('清理旧版本',()=>action('clean'),busy)),
+      e('details',{onToggle:ev=>{if(ev.currentTarget.open)api({op:'retrieval.trace',expectedKbId:snapshot.kbId}).then(r=>setTrace(r.traces||[])).catch(err=>setMessage(err.message))}},e('summary',null,'最近检索流程与计算缓存'),trace.map((t,i)=>e('p',{key:i,className:'kbw-meta'},t.steps.join(' → ')+'；分词计算复用 '+(t.cache?.lexicalHits||0)+' / '+(t.cache?.lexicalEntries||0)+'（不是整次结果缓存命中）'))),
+      e('p',{role:'status'},message),
+      progress?e('p',null,'索引状态：'+progress.state+' · 本轮完成 '+(progress.completed||0)+' / '+(progress.total||0)+' · 复用 '+(progress.reused||0)+(progress.error?' · '+progress.error:'')):null,
+      estimate?e('div',null,e('p',{className:'kbw-meta'},'索引位置：'+(estimate.storagePath||'知识库/索引层')),e('p',null,'全文资料 '+estimate.documents+' 份 · 切片 '+estimate.chunks+' 个 · 已生成唯一向量 '+estimate.completedVectors+' · 待生成 '+estimate.pendingVectors),
+        e('p',null,'文本 '+size(estimate.textBytes)+' · 预计向量 '+size(estimate.vectorBytes)+' · 预计章节与位置描述 '+size(estimate.metadataEstimateBytes)),
+        e('p',null,'实际索引 '+size(estimate.actualBytes)+' · 废弃向量约 '+size(estimate.reclaimableVectorBytes)+' · 磁盘可用 '+(estimate.availableBytes==null?'未知':size(estimate.availableBytes))),
+        estimate.components?e('p',{className:'kbw-meta'},'向量文件 '+size(estimate.components.vectors)+' · 位置与清单 '+size(estimate.components.metadata)+' · 临时文件 '+size(estimate.components.temporary)+' · 复用原全文缓存 '+size(estimate.components.textCache)+'；词项在检索 worker 中计算，不另落盘。'):null,
+        e('p',{className:'kbw-meta'},'仅估算大小，不设容量预算。重建时旧、新索引会同时占用空间。仅名称可搜 '+estimate.nameOnly+' 份，读取失败 '+estimate.readErrors.length+' 份。')):null)
+  }
+
+  // The host's global settings page mounts this same form independently of
+  // the knowledge workbench. A light binding request avoids scanning the vault.
+  function RetrievalSettingsEntry() {
+    styles()
+    const [snapshot,setSnapshot]=R.useState(null),[error,setError]=R.useState('')
+    const refresh=async()=>{
+      try {const p=await api({op:'preferences.get'});setSnapshot({kbId:p.kbId,policyVersion:p.version});setError('')}
+      catch(err){setError(err.message)}
+    }
+    R.useEffect(()=>{
+      let live=true
+      api({op:'preferences.get'}).then(p=>{if(live)setSnapshot({kbId:p.kbId,policyVersion:p.version})}).catch(err=>{if(live)setError(err.message)})
+      return()=>{live=false}
+    },[])
+    return e('div',{className:'kbw kbw-global-settings',style:{height:'auto',minHeight:0,display:'block',overflow:'visible',margin:'16px 0'}},
+      error?e('p',{role:'alert',className:'kbw-error'},error):null,
+      snapshot?.kbId?e(RetrievalSettings,{key:snapshot.kbId,snapshot}):e('section',{className:'kbw-panel'},e('h3',null,'全文与向量协同检索'),
+        e('p',null,snapshot?'请先在下方绑定知识库，再配置向量与重排序 API。':'正在读取知识库绑定…')),
+      btn('刷新当前知识库',refresh,false,{className:'kbc-btn kbc-btn-ghost',style:{marginTop:12}}))
+  }
+
+  function UpgradeSettings({snapshot:provided}={}) {
+    const [snapshot,setSnapshot]=R.useState(provided||null),[data,setData]=R.useState(null),[busy,setBusy]=R.useState(false),[message,setMessage]=R.useState(''),[diff,setDiff]=R.useState(null)
+    const request=async(op='upgrade.get',extra={})=>{setBusy(true);setMessage('');try{
+      const p=snapshot||await api({op:'preferences.get'}),kbId=p.kbId
+      if(!kbId){setMessage('请先绑定知识库');return}
+      setSnapshot({kbId});const out=await api({op,expectedKbId:kbId,...extra})
+      if(out.upgrade){setData(out.upgrade);if(['upgrade.apply','upgrade.keep-local'].includes(op))setDiff(null)}if(out.current!==undefined)setDiff(out)
+    }catch(err){setMessage(err.message)}finally{setBusy(false)}}
+    R.useEffect(()=>{void request()},[provided?.kbId])
+    const labels={current:'已检查，机制兼容',attention:'有自定义文件待处理',failed:'升级未完成，可重试',checking:'检查中','index-building':'新索引后台构建中','index-paused':'索引尚未就绪，保留暂停或失败状态，可在检索设置中继续'}
+    const activation={'new-session-required':'已有会话请新建会话以加载当前规则；新会话使用当前机制','restart-required':'托管预设已更新，重启宿主后生效',current:'当前运行机制已加载'}
+    return e('section',{className:'kbw-panel'},e('h3',null,'系统版本与机制升级'),
+      data?e('div',null,e('p',null,'程序 '+data.program.version+' · 构建 '+data.program.buildId),e('p',null,labels[data.status]||data.status),
+        e('p',{className:'kbw-meta'},activation[data.activation]||data.activation),
+        data.mechanisms?e('p',{className:'kbw-meta'},'全文 '+data.mechanisms.fulltext.format+' / '+data.mechanisms.fulltext.tokenizer+' · 向量 '+data.mechanisms.vector.format+' / '+data.mechanisms.vector.chunkVersion+' · 问答协议 '+data.mechanisms.questionProtocol):null,
+        e('p',{className:'kbw-meta'},'AGENTS 正文、人工 INDEX 和用户自定义内容保留；未被修改的插件托管文件自动更新。'),
+        (data.managed?.files||[]).map(f=>e('div',{key:f.path,className:'kbw-meta'},f.path+' · '+({current:'已同步',created:'已创建',updated:'已更新',conflict:'本地修改已保留','kept-local':'已选择保留本地','retired-pending':'随包已移除，旧文件保留待处理'}[f.status]||f.status),f.candidate?btn('查看差异',()=>request('upgrade.diff',{path:f.path}),busy):null)),
+        ['skills','preset'].flatMap(scope=>(data.external?.[scope]?.files||[]).filter(f=>f.candidate).map(f=>e('div',{key:scope+f.path,className:'kbw-meta'},(scope==='preset'?'宿主预设：':'技能：')+f.path+' · 本地版本已保留',btn('查看差异',()=>request('upgrade.external-diff',{scope,path:f.path}),busy)))),
+        (data.errors||[]).map((err,i)=>e('p',{key:i,role:'alert'},err.message))):e('p',null,busy?'正在检查机制版本…':'尚未检查'),
+      e('div',{className:'kbw-actions'},btn('检查升级',()=>request('upgrade.check'),busy),btn('重试失败项',()=>request('upgrade.retry'),busy)),
+      diff?e('details',{open:true},e('summary',null,'文件差异：'+diff.path),e('h4',null,'当前内容'),e('pre',{style:{whiteSpace:'pre-wrap',overflowWrap:'anywhere',maxHeight:240,overflow:'auto'}},diff.current),e('h4',null,'随包候选'),e('pre',{style:{whiteSpace:'pre-wrap',overflowWrap:'anywhere',maxHeight:240,overflow:'auto'}},diff.candidate),
+        diff.external?e('p',{className:'kbw-meta'},'外部技能或宿主预设保留原文件；请在对应设置中手工合并，未自动应用候选。'):e('div',{className:'kbw-actions'},btn('保留本地内容',()=>request('upgrade.keep-local',{path:diff.path,currentHash:diff.currentHash}),busy),btn('备份后采用候选',()=>{if(window.confirm('已展示完整内容。确认备份当前文件后使用随包候选？'))void request('upgrade.apply',{path:diff.path,currentHash:diff.currentHash,confirm:true})},busy))):null,
+      message?e('p',{role:'status'},message):null)
+  }
+  function UpgradeSettingsEntry(){styles();return e('div',{className:'kbw kbw-global-settings',style:{height:'auto',display:'block',overflow:'visible'}},e(UpgradeSettings))}
+
   function SettingsHub({ snapshot, navigate }) {
     const [section, setSection] = R.useState('preferences')
-    const sections = [['preferences', '使用偏好与隐私'], ['parsing', '解析服务'], ['capture', '采集与连接'], ['backup', '备份与恢复'], ['version', '版本与诊断']]
+    const sections = [['preferences', '使用偏好与隐私'], ['retrieval', '协同检索与向量 API'], ['parsing', '解析服务'], ['capture', '采集与连接'], ['backup', '备份与恢复'], ['version', '版本与诊断']]
     return e('section', { className: 'kbw-content' }, e('div', { className: 'kbw-home-head' }, e('div', null, e('h2', null, '知识库设置'), e('p', { className: 'kbw-meta' }, '管理当前知识库的使用方式、连接与数据保护。')), e('a', { className: 'kbw-button', href: projectRecordUrl, target: '_blank', rel: 'noopener noreferrer' }, '插件设计与演进记录 ↗')), e('div', { className: 'kbw-settings-layout' }, e('nav', { className: 'kbw-settings-nav', 'aria-label': '设置分类' }, sections.map(([id, label]) => btn(label, () => setSection(id), false, { key: id, 'aria-current': section === id }))), e('div', { className: 'kbw-settings-panel' },
       section === 'preferences' ? e(R.Fragment, null, e('h3', null, '使用偏好与隐私'), e('p', null, '隐私展示：' + (snapshot.preferences.showPrivate ? '开启' : '关闭')), e('p', null, '私密资料用于问答：' + (snapshot.preferences.allowPrivateQuestions ? '允许' : '不允许')), e('p', null, '自动解析：' + (snapshot.preferences.autoParse ? '开启' : '关闭')), e('p', null, '回顾提醒：' + (snapshot.preferences.reviewReminders ? '开启' : '关闭')), btn('修改使用偏好', () => event('kbw-settings'))) : null,
       section === 'parsing' ? e(R.Fragment, null, e('h3', null, '解析服务'), e(ParseSummary)) : null,
+      section === 'retrieval' ? e(RetrievalSettings,{snapshot}) : null,
       section === 'capture' ? e(R.Fragment, null, e('h3', null, '采集与连接'), e('p', null, '网页剪藏、粘贴文本和文件上传统一进入收件箱。可在收件箱查看连接并整理资料。'), btn('打开收件箱与连接说明', () => navigate('inbox'))) : null,
       section === 'backup' ? e(R.Fragment, null, e('h3', null, '备份与恢复'), e('p', null, '自动完整备份：' + (snapshot.preferences.backup.enabled ? '开启' : '关闭')), btn('打开备份与恢复', () => navigate('backups')), btn('设置自动备份', () => event('kbw-settings'))) : null,
-      section === 'version' ? e(R.Fragment, null, e('h3', null, '版本与诊断'), e(BuildBadge, { passive: true }), e('details', { className: 'kbw-service' }, e('summary', null, '运行状态、索引与异常'), e(Overview)), btn('打开任务中心', () => navigate('tasks'))) : null)))
+      section === 'version' ? e(R.Fragment, null, e('h3', null, '版本与诊断'), e(BuildBadge, { passive: true }),e(UpgradeSettings,{snapshot}), e('details', { className: 'kbw-service' }, e('summary', null, '运行状态、索引与异常'), e(Overview)), btn('打开任务中心', () => navigate('tasks'))) : null)))
   }
 
   function Workbench() {
@@ -902,7 +1051,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
       return () => { observer.disconnect(); window.removeEventListener('resize', updateInset) }
     }, [])
     const [snapshot, setSnapshot] = R.useState(null), [tab, setTab] = R.useState('map'), [prefix, setPrefix] = R.useState(''), [selected, setSelected] = R.useState(''), [relationFocus, setRelationFocus] = R.useState(''), [annotationId, setAnnotationId] = R.useState(''), [toast, setToast] = R.useState('')
-    const [query, setQuery] = R.useState(''), [mode, setMode] = R.useState('path'), [layer, setLayer] = R.useState(''), [extension, setExtension] = R.useState(''), [tag, setTag] = R.useState(''), [after, setAfter] = R.useState(''), [before, setBefore] = R.useState(''), [sort, setSort] = R.useState('name'), [direct, setDirect] = R.useState(false)
+    const [query, setQuery] = R.useState(''), [mode, setMode] = R.useState('hybrid'), [layer, setLayer] = R.useState(''), [extension, setExtension] = R.useState(''), [tag, setTag] = R.useState(''), [after, setAfter] = R.useState(''), [before, setBefore] = R.useState(''), [sort, setSort] = R.useState('relevance'), [direct, setDirect] = R.useState(false)
     const [view, setView] = R.useState('list'), [browse, setBrowse] = R.useState(false)
     const [list, setList] = R.useState(null), [offset, setOffset] = R.useState(0), [error, setError] = R.useState(''), [busy, setBusy] = R.useState(false), [deferred, setDeferred] = R.useState(false), [tasks, setTasks] = R.useState(null), [reminder, setReminder] = R.useState(null), [canGoBack, setCanGoBack] = R.useState(false), [routeRestore, setRouteRestore] = R.useState(null)
     const current = R.useRef(null), generation = R.useRef(0), first = R.useRef(true), request = R.useRef(0), routeHistory = R.useRef([]), routePushRef = R.useRef(null)
@@ -925,7 +1074,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
     R.useEffect(() => {
       connectEvents(); void refresh()
       const policy = ev => {
-        if (['parse-jobs-changed', 'relations-progress'].includes(ev.detail?.type)) return
+        if (['parse-jobs-changed', 'relations-progress', 'retrieval'].includes(ev.detail?.type)) return
         if (['links-changed', 'files-changed'].includes(ev.detail?.type)) { if (ev.detail.type === 'files-changed' && ev.detail.operation !== 'trash.restore') setSelected(old => old === ev.detail.path ? '' : old); void refresh(); return }
         if (ev.detail?.type === 'review-due') { if (ev.detail.kbId === current.current?.kbId) setReminder(ev.detail.count); return }
         generation.current++; request.current++; current.current = null; setSnapshot(null); setList(null); setSelected(''); setRelationFocus(''); setTasks(null); routeHistory.current = []; setCanGoBack(false); void refresh()
@@ -1002,7 +1151,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
         tab === 'overview' ? e(Dashboard, { snapshot, navigate, openScope }) : null,
         tab === 'map' || tab === 'reading' && selected ? e(R.Fragment, null,
           e('form', { className: 'kbw-toolbar', onSubmit: searchSubmit }, e('input', { 'aria-label': '搜索知识库', placeholder: '搜索资料标题、文件或正文', value: query, onChange: ev => { setQuery(ev.target.value); setBrowse(Boolean(ev.target.value)) } }),
-            e('select', { 'aria-label': '搜索方式', value: mode, onChange: ev => { setMode(ev.target.value); setOffset(0) } }, e('option', { value: 'path' }, '文件名与路径'), e('option', { value: 'body' }, '知识正文')),
+            e('select', { 'aria-label': '搜索方式', value: mode, onChange: ev => { setMode(ev.target.value); setOffset(0) } }, e('option', { value: 'hybrid' }, '全文与向量协同'), e('option', { value: 'fulltext' }, '全文相关性'), e('option', { value: 'semantic' }, '语义向量'), e('option', { value: 'exact' }, '精确匹配'), e('option', { value: 'path' }, '文件名与路径')),
             e('button', { type: 'submit', className: 'kbw-button', disabled: busy }, busy ? '查询中…' : '搜索'), btn('刷新', () => { void refresh(); void loadList() }), btn(browse ? '返回目录首页' : '浏览全部资料', () => { pushRoute(); setBrowse(!browse); setPrefix(''); setQuery(''); setSelected('') })),
           browse || selected ? e('details', { style: { padding: '0 18px 10px' } }, e('summary', null, '筛选与排序'), e('div', { className: 'kbw-toolbar' },
             select('范围', layer, v => { setLayer(v); setOffset(0) }, [['', '全部文件'], ['knowledge', '知识条目'], ['deliverable', '任务成品'], ['original', '原件附件'], ['draft', '底稿']]),
@@ -1016,7 +1165,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
               e('div', { className: 'kbw-meta' }, list.total + ' 个结果 · ' + list.coverageNote), list.truncated ? e('p', { role: 'status' }, '结果不完整，扫描已达到上限') : null,
               e('div', { className:'kbw-actions' }, btn('资料卡片', () => setView('cards'), false, { 'aria-current':view==='cards' }), btn('目录列表', () => setView('list'), false, { 'aria-current':view==='list' })),
               prefix === '任务成品' ? e(ProductImport, { snapshot }) : null,
-              e('div', { className:view==='cards'?'kbw-cards':'' }, list.items.map(f => e('div', { key: f.path, className: 'kbw-file-row' }, view==='cards' ? e(FileCard, { file:f, active:selected===f.path, onClick:() => openFile(f.path) }) : e('button', { className:'kbw-row', 'aria-current': selected === f.path, onClick:() => openFile(f.path) }, e('strong',null,f.title),e('span',{className:'kbw-path'},f.path),e('div',{className:'kbw-meta'},date(f.mtimeMs))), e('div', { className: 'kbw-file-actions', 'aria-label': '文件操作：' + f.title }, e(DeleteFile, { file: f, snapshot, onDeleted: () => { setSelected(old => old === f.path ? '' : old); void refresh(); void loadList() } }))))),
+              e('div', { className:view==='cards'?'kbw-cards':'' }, list.items.map(f => e('div', { key: f.path, className: 'kbw-file-row' }, view==='cards' ? e(FileCard, { file:f, active:selected===f.path, onClick:() => openFile(f.path) }) : e('button', { className:'kbw-row', 'aria-current': selected === f.path, onClick:() => openFile(f.path) }, e('strong',null,f.title),e('span',{className:'kbw-path'},f.path),e('div',{className:'kbw-meta'},date(f.mtimeMs))), e('div', { className: 'kbw-file-actions', 'aria-label': '文件操作：' + f.title }, f.chunk ? e(SearchEvidence, { file:f, snapshot }) : null, e(DeleteFile, { file: f, snapshot, onDeleted: () => { setSelected(old => old === f.path ? '' : old); void refresh(); void loadList() } }))))),
               !list.items.length ? e('p', { className: 'kbw-empty' }, '当前范围没有匹配的内容') : null,
               e('div', { className: 'kbw-actions' }, btn('上一页', () => setOffset(Math.max(0, offset - 100)), offset === 0), btn('下一页', () => setOffset(offset + 100), offset + list.items.length >= list.total))) : e('p', null, '读取清单…')),
               selected ? e(Detail, { key: selected + snapshot.policyVersion, file: selected, snapshot, onClose: closeDetail, onNavigate: navigate, onChanged: refresh, readMode: tab === 'reading', annotationId }) : null)) : null,
@@ -1031,7 +1180,42 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
         tab === 'flows' ? e('section', { className: 'kbw-content' }, e(FlowTemplates, { snapshot }), e(Flows)) : null) : null)
   }
 
+  // Sent-user-text providers preserve raw/model content and render only this
+  // plugin's confirmed reference spans, using the same seam as native skills.
+  const knowledgeReferenceRule={
+    id:'knowledge-base',order:5,
+    match(text,from=0) {
+      const modern=/@\[(基于知识库回答（(?:含隐私|不含隐私)）)\]\(dsh-kb:([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\)/gu
+      modern.lastIndex=from
+      const current=modern.exec(text)
+      const prefix=/(基于知识库回答（(?:含隐私|不含隐私)）)，引用 ([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})。/gu
+      prefix.lastIndex=from
+      let legacy
+      const tail='请用 kb_question_search 检索、kb_question_read 按需读取；引用时原样复制来源的 citation 字段（[S编号](<来源链接>)），不要自行拼接路径，并用 kb_validate_citations 校验。若有 invalid，修正引用后再回答。'
+      const disclosure='若工具返回 retrievalDisclosure，请按其要求在最终回答末尾列出实际检索过程，并使用校验返回的 answerWithRetrievalFooter；关闭时不追加。'
+      for(let m=prefix.exec(text);m;m=prefix.exec(text)) {
+        const start=m.index+m[0].length
+        if(!text.startsWith(tail,start))continue
+        let end=start+tail.length
+        if(text.startsWith(disclosure,end))end+=disclosure.length
+        legacy={index:m.index,label:m[1],questionId:m[2],end};break
+      }
+      if(current&&(!legacy||current.index<=legacy.index))return {id:'knowledge-base',start:current.index,end:current.index+current[0].length,data:{label:current[1],questionId:current[2]}}
+      if(legacy)return {id:'knowledge-base',start:legacy.index,end:legacy.end,data:{label:legacy.label,questionId:legacy.questionId}}
+    },
+  }
+  function KnowledgeReference({node}) {
+    const props={appearance:'file',label:node.data.label,title:node.data.label}
+    if(ReferenceChip)return e(ReferenceChip,props)
+    return e('span',{'data-kb-reference':true,title:props.title,style:{display:'inline-flex',alignItems:'center',gap:4,color:'var(--dsw-alias-label-primary-bluish,#5b9cff)',background:'var(--dsw-alias-state-business-tertiary,rgba(70,130,240,.12))',borderRadius:5,padding:'2px 7px',fontSize:13,lineHeight:'20px',verticalAlign:'baseline'}},
+      e('span',{'aria-hidden':true},'▤'),props.label)
+  }
   function registerReferences(ctx) {
+    ctx.inject(['uiConversation','slots'],scope=>{
+      const ui=scope.get('uiConversation'),slots=scope.get('slots')
+      scope.effect(()=>ui.userText.register(knowledgeReferenceRule),'kb-workbench: sent knowledge reference matcher')
+      slots.inject('conversation.user.text.node',()=>slots.register({name:'conversation.user.text.node',key:'knowledge-base',priority:100},KnowledgeReference))
+    })
     return ctx.inject(['inputTriggers'], scope => scope.effect(() => scope.get('inputTriggers').registerSource({
       trigger: '@', name: 'knowledge-base',
       async candidates(session, { query, signal }) {
@@ -1050,12 +1234,12 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
         async serialize(ref, signal) {
           if (!ref.startsWith('kbq:')) throw new Error('知识库引用无效，请重新选择')
           const selected = JSON.parse(decodeURIComponent(ref.slice(4)))
-          const result = await api({ op:'question.create', expectedKbId:selected.kbId, policyVersion:selected.policyVersion, sessionId:selected.sessionId, includePrivate:selected.includePrivate }, signal)
-          return result.label + '，引用 ' + result.questionId + '。请用 kb_question_search 检索、kb_question_read 按需读取；引用时原样复制来源的 citation 字段（[S编号](<来源链接>)），不要自行拼接路径，并用 kb_validate_citations 校验。若有 invalid，修正引用后再回答。\n'
+          const result = await api({ op:'question.create',protocolVersion:2, expectedKbId:selected.kbId, policyVersion:selected.policyVersion, sessionId:selected.sessionId, includePrivate:selected.includePrivate }, signal)
+          return '@['+result.label+'](dsh-kb:'+result.questionId+')'
 
         },
       },
     }), 'kb-workbench: native @ knowledge reference'))
   }
-  return { Workbench, Guide, api, event, registerReferences, dispose: () => { eventSource?.close(); eventSource = null; eventsStarted = false; styleElement?.remove(); stylesInstalled = false; guideInstance = null } }
+  return { Workbench, Guide, knowledgeReferenceRule, KnowledgeReference, UpgradeSettings:UpgradeSettingsEntry, RetrievalSettings: RetrievalSettingsEntry, formatSize: size, api, event, registerReferences, dispose: () => { eventSource?.close(); eventSource = null; eventsStarted = false; styleElement?.remove(); stylesInstalled = false; guideInstance = null } }
 }

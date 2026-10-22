@@ -76,14 +76,14 @@ export async function locked(file, fn) {
 }
 
 export const DEFAULT_PREFERENCES = Object.freeze({
-  showPrivate: false, allowPrivateQuestions: false, autoParse: false,
+  showPrivate: false, allowPrivateQuestions: false, showRetrievalProcess: true, autoParse: false,
   reviewReminders: false, reviewFrequency: 'weekly', landing: 'map',
   backup: { enabled: false, directory: '', frequency: 'daily', includePrivate: true },
 })
 
 export function validatePreferences(input) {
   const p = structuredClone(DEFAULT_PREFERENCES)
-  for (const key of ['showPrivate', 'allowPrivateQuestions', 'autoParse', 'reviewReminders']) {
+  for (const key of ['showPrivate', 'allowPrivateQuestions', 'showRetrievalProcess', 'autoParse', 'reviewReminders']) {
     if (input[key] !== undefined && typeof input[key] !== 'boolean') throw fail('BAD_SETTINGS', key + ' 必须是开关值')
     p[key] = input[key] ?? p[key]
   }

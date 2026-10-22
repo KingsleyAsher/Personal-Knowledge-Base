@@ -1,0 +1,55 @@
+{
+  "id": "memory-context-20261022-1",
+  "baselineSha256": "d3c3ef5f86c07a5feff495b335a11a6d39aa36667edb4f5af7ce62bdec3f5264",
+  "resultSha256": "eb8f58e97c5c065f126ae98b3044ce0a9aefabfee8e108f56d4fc4f1c88e1df3",
+  "operations": [
+    {
+      "start": 18,
+      "end": 18,
+      "old": "",
+      "new": "import { installDynamicMemoryState } from './snapshot-state.js'\n"
+    },
+    {
+      "start": 545,
+      "end": 547,
+      "old": "export function renderSnapshot(config, store, agent, counter, sessionTitleService = null, writeGap = null) {\n  const parts = []\n",
+      "new": "export function renderSnapshot(config, store, agent, counter, sessionTitleService = null, writeGap = null, output = 'all') {\n  const parts = [], dynamic = []\n"
+    },
+    {
+      "start": 569,
+      "end": 570,
+      "old": "      parts.push(`${st('snap.sessionNamed')}\\n${bits.join('\\n')}`)\n",
+      "new": "      dynamic.push(`${st('snap.sessionNamed')}\\n${bits.join('\\n')}`)\n"
+    },
+    {
+      "start": 571,
+      "end": 572,
+      "old": "      parts.push(`${st('snap.sessionPlain')}\\n${st('snap.yourId', { id: agent.session.id })}`)\n",
+      "new": "      dynamic.push(`${st('snap.sessionPlain')}\\n${st('snap.yourId', { id: agent.session.id })}`)\n"
+    },
+    {
+      "start": 744,
+      "end": 745,
+      "old": "${tail}${dueWarning}${writeWarning}`)\n",
+      "new": "${tail}`)\n    if (dueWarning) dynamic.push(dueWarning)\n    if (writeWarning) dynamic.push(writeWarning)\n"
+    },
+    {
+      "start": 779,
+      "end": 780,
+      "old": "  return sanitizeSnapshotBody(parts.join('\\n\\n'), { expand: false })\n",
+      "new": "  const stable = sanitizeSnapshotBody(parts.join('\\n\\n'), { expand: false })\n  const state = sanitizeSnapshotBody(dynamic.join('\\n\\n'), { expand: false })\n  if (output === 'stable') return stable\n  if (output === 'dynamic') return state\n  return [state, stable].filter(Boolean).join('\\n\\n')\n"
+    },
+    {
+      "start": 1691,
+      "end": 1691,
+      "old": "",
+      "new": "    // Dynamic state is delivered independently: a title change must never\n    // re-materialize all stable memory through the host's aggregate context.\n    let splitMemoryState = false\n    ctx.effect(() => {\n      const dispose = installDynamicMemoryState(ctx, agent => {\n        const runtime = getRuntime()\n        return renderSnapshot(runtime, store, agent, counter, ctx.sessionTitle, writeGap, 'dynamic')\n      })\n      splitMemoryState = true\n      return () => { splitMemoryState = false; dispose() }\n    }, 'dsh-memory-evolve: isolated dynamic state')\n"
+    },
+    {
+      "start": 1700,
+      "end": 1701,
+      "old": "            return renderSnapshot(runtime, store, context.agent, counter, ctx.sessionTitle, writeGap)\n",
+      "new": "            return renderSnapshot(runtime, store, context.agent, counter, ctx.sessionTitle, writeGap, splitMemoryState ? 'stable' : 'all')\n"
+    }
+  ]
+}
