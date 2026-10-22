@@ -4,8 +4,8 @@ import path from 'node:path'
 import { gunzipSync } from 'node:zlib'
 import { parseKnowledgeVersion, compareKnowledgeVersions } from './versioning.js'
 
-// Checking remains read-only. Downloads require a separate user-triggered action;
-// installation and activation belong to the host's pluginManager service.
+// Manifest checks remain read-only. The client may automatically install stable
+// updates within the same major version; installation and activation stay host-managed.
 export const UPDATE_REPOSITORY = 'https://github.com/KingsleyAsher/Personal-Knowledge-Base'
 export const UPDATE_MANIFEST_URL = 'https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/release-manifest.json'
 export const UPDATE_PREVIEW_MANIFEST_URL = 'https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/preview-manifest.json'
@@ -107,7 +107,9 @@ export function createUpdateChecker({ currentVersion, fetch: fetchFn = globalThi
       return { ok: false, sourceStatus, error: '检查更新失败：相同版本的更新源摘要不一致，请稍后重试' }
     }
     const comparison = compareReleaseVersions(m.version,currentVersion)
-    return { ok: true, currentVersion, latestVersion: m.version, channel: preview ? 'preview' : 'stable', updateAvailable: comparison > 0, ahead: comparison < 0,
+    const installedVersion = parseKnowledgeVersion(currentVersion, { allowLegacyPreview: true })
+    const autoInstallEligible = comparison > 0 && !preview && installedVersion?.channel === 'stable' && parsedVersion.channel === 'stable' && installedVersion.major === parsedVersion.major
+    return { ok: true, currentVersion, latestVersion: m.version, channel: preview ? 'preview' : 'stable', updateAvailable: comparison > 0, autoInstallEligible, ahead: comparison < 0,
       checkedAt: new Date(now()).toISOString(), source: chosen.source.repository, sourceId: chosen.source.id, sourceName: chosen.source.name,
       sourceIds: sources.map(s => s.id), sourceStatus,
       downloadUrl: chosen.source.file('dist/' + encodeURIComponent(m.tgz)),

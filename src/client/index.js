@@ -2539,6 +2539,8 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
 
     let buildBadgeState = { version: '', update: null, checking: false, promptOwner: null, dismissedRevision: 0 }
     const buildBadgeListeners = new Set(), buildVersionRequest = { current: 0 }, buildUpdateRequest = { current: 0 }
+    const automaticUpdateAttempts = new Set()
+    let automaticUpdateRecheckRequested = false
     const patchBuildBadge = part => { buildBadgeState = { ...buildBadgeState, ...part }; for (const listener of buildBadgeListeners) listener() }
     const subscribeBuildBadge = listener => { buildBadgeListeners.add(listener); return () => buildBadgeListeners.delete(listener) }
     const getBuildBadge = () => buildBadgeState
@@ -2549,6 +2551,17 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       if (!update || !state.version) return []
       const releases = [update, update.preview].filter(release => release?.ok && release.updateAvailable && ['stable', 'preview'].includes(release.channel))
       return releases.filter(release => release.channel === 'stable' || update.currentChannel === 'preview' || (update.currentChannel === undefined && /-beta\d+$/.test(state.version)))
+    }
+    function maybeAutoInstallUpdate(update = buildBadgeState.update) {
+      if (!update?.ok || update.autoInstallEligible !== true || update.installSupported === false) return
+      const manager = updateManager
+      if (typeof manager?.installBundle !== 'function' || typeof manager?.waitForInstall !== 'function') return
+      if (updateViewState.busy || updateViewState.uncertain || updateViewState.restartRequired || updateViewState.refreshRequired) return
+      if (!/^[a-f0-9]{16}$/.test(update.buildId || '') || !update.latestVersion) return
+      const attempt = update.latestVersion + ':' + update.buildId
+      if (automaticUpdateAttempts.has(attempt)) return
+      automaticUpdateAttempts.add(attempt)
+      void updateFlow.install(update.latestVersion)
     }
     function pendingUpdatePrompts(state = buildBadgeState) {
       return availableUpdates(state).filter(release => {
@@ -2573,15 +2586,27 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       } catch { if (seq === buildVersionRequest.current) patchBuildBadge({ version: RELEASE_VERSION }) }
     }
     async function checkBuildUpdates(force = false) {
-      if (buildBadgeState.checking) return
+      if (buildBadgeState.checking) { if (force) automaticUpdateRecheckRequested = true; return }
       const seq = ++buildUpdateRequest.current
       patchBuildBadge({ checking: true })
       try {
         const data = await callApi({ op: 'updates.check', force })
-        if (seq === buildUpdateRequest.current) patchBuildBadge({ update: data || { ok: false, error: '检查更新失败，请稍后重试' } })
+        if (seq === buildUpdateRequest.current) {
+          const update = data || { ok: false, error: '检查更新失败，请稍后重试' }
+          patchBuildBadge({ update })
+          maybeAutoInstallUpdate(update)
+        }
       } catch (err) {
         if (seq === buildUpdateRequest.current) patchBuildBadge({ update: { ok: false, error: '检查更新失败：' + String(err?.message || err) } })
-      } finally { if (seq === buildUpdateRequest.current) patchBuildBadge({ checking: false }) }
+      } finally {
+        if (seq === buildUpdateRequest.current) {
+          patchBuildBadge({ checking: false })
+          if (automaticUpdateRecheckRequested) {
+            automaticUpdateRecheckRequested = false
+            void checkBuildUpdates(true)
+          }
+        }
+      }
     }
     function BuildBadge({ passive = false } = {}) {
       const { version, update, checking } = react.useSyncExternalStore(subscribeBuildBadge, getBuildBadge, getBuildBadge)
@@ -3452,7 +3477,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         toast?e('div',{className:'kbm-toast'},toast):null)
     }
 
-    const RELEASE_VERSION = '2.0.2'
+    const RELEASE_VERSION = '2.0.3'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.
@@ -3473,6 +3498,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       { version: '2.0-beta9', items: ['关系网络使用增量索引；文件条目可直接移入回收站。', '统一 OCR／ASR 解析任务记录，并按安装渠道提示可用更新。'] },
       { version: '2.0.0', items: ['知识库工作台转为正式版，整合资料目录、关系网络、阅读、回顾与流程。', '完善版本命名、更新判断和发布前稳定性修复。'] },
       { version: '2.0.1', items: ['更新说明合并展示本次升级涉及的内容，不再按历史版本分组；重复条目只显示一次。', '新增插件设计与演进记录，提供架构、能力边界、实现索引和路线图，并可从知识库设置打开。'] },
+      { version: '2.0.3', items: ['同一大版本内的正式版小版本与补丁更新可自动下载、校验并交由 DSH 安装；保留现有更新提示和安装后更新说明机制。'] },
     ]
     const LEGACY_RELEASE_NOTICE_VERSIONS = ['1.1.1', '1.1.2', '1.1.3']
     function compareReleaseVersions(left, right) {
@@ -3692,6 +3718,11 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         const manager = scope.remote.pluginManager
         updateManager = manager
         window.dispatchEvent(new Event('kb-update-capability'))
+        maybeAutoInstallUpdate(buildBadgeState.update)
+        if (typeof manager?.installBundle === 'function' && buildBadgeState.update?.installSupported === false) {
+          if (buildBadgeState.checking) automaticUpdateRecheckRequested = true
+          else void checkBuildUpdates(true)
+        }
         return () => {
           if (updateManager === manager) updateManager = null
           window.dispatchEvent(new Event('kb-update-capability'))
