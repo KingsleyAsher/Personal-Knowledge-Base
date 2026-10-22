@@ -1,11 +1,11 @@
 {
   "package": "@local/dsh-knowledge-base",
   "version": "2.0.3",
-  "buildId": "2b5ff18970a6a1d4",
+  "buildId": "d335bc26a2dcd6cb",
   "tgz": "local-dsh-knowledge-base-2.0.3.tgz",
   "bytes": 2797701,
-  "sha256": "9c08996e3f8c8c2f6f536a458a910e127cd1d9f377958058570bc3db6293c669",
-  "integrity": "sha512-kUQx80/PZlsUgj3qj4aKt4dlTcbG6ZC3OMcyJmMRlOcnLbhkQSIGJnCKa25XeRoFcU/IIXJgVIzpJZzqkZ/Czw==",
+  "sha256": "918e4999f5c3a0c33380223f7da7ca763343daaccdf2cf30d27bbfcb8129dd94",
+  "integrity": "sha512-BkjtCal8ASUETQ/2DYnIA1aL/LMl/qfG9yOPv0roALsCLCmtHAvtXVhiLvE4OuJP4onM+tiHl/CmWBayQ0uvcA==",
   "packageFileCount": 262,
   "buildFileCount": 250,
   "files": [
@@ -1256,8 +1256,8 @@
     },
     {
       "path": "src/host/updates.js",
-      "bytes": 14550,
-      "sha256": "0e019caea45de6e8729dc37f1b8a25aa3d29f2baf69f0ab843f20a45192802cc"
+      "bytes": 14610,
+      "sha256": "38c2c55d4d1cf8c6e9883acdb1a75a4f3b9dae4d95beabeed36b348453ffba1b"
     },
     {
       "path": "src/host/versioning.js",

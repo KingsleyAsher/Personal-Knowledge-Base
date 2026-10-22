@@ -108,7 +108,8 @@ export function createUpdateChecker({ currentVersion, fetch: fetchFn = globalThi
     }
     const comparison = compareReleaseVersions(m.version,currentVersion)
     const installedVersion = parseKnowledgeVersion(currentVersion, { allowLegacyPreview: true })
-    const autoInstallEligible = comparison > 0 && !preview && installedVersion?.channel === 'stable' && parsedVersion.channel === 'stable' && installedVersion.major === parsedVersion.major
+    const latestVersion = parseKnowledgeVersion(m.version)
+    const autoInstallEligible = comparison > 0 && !preview && installedVersion?.channel === 'stable' && latestVersion?.channel === 'stable' && installedVersion.major === latestVersion.major
     return { ok: true, currentVersion, latestVersion: m.version, channel: preview ? 'preview' : 'stable', updateAvailable: comparison > 0, autoInstallEligible, ahead: comparison < 0,
       checkedAt: new Date(now()).toISOString(), source: chosen.source.repository, sourceId: chosen.source.id, sourceName: chosen.source.name,
       sourceIds: sources.map(s => s.id), sourceStatus,
