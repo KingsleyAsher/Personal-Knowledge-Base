@@ -123,6 +123,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
 .kbw-update-bar{padding:6px 24px;border-bottom:1px solid var(--line);flex-shrink:0;min-width:0}.kbw-update-bar>[aria-label]{justify-content:flex-start;margin-left:0!important}.kbw .kbw-update-bar .kbc-btn{min-height:30px;height:auto}.kbw-split{display:grid!important;gap:0!important;min-width:0;min-height:0;position:relative}.kbw-split>.kbw-pane{min-width:0;min-height:0;overflow:auto}.kbw-split.kbw-grid{border-top:1px solid var(--line);grid-template-rows:minmax(0,1fr)}.kbw-split.kbw-grid>.kbw-pane{overflow-y:auto;overscroll-behavior-y:contain}.kbw-grid>.kbw-pane>:is(.kbw-tree,.kbw-list,.kbw-detail){height:auto;min-height:100%;overflow:visible;border-left:0;border-right:0}.kbw-split.kbw-master-detail{height:clamp(280px,50vh,580px);align-items:stretch}.kbw-master-detail>.kbw-pane>.kbw-panel{min-height:100%;border-radius:0;border:0}.kbw-split.kbw-master-detail{border:1px solid var(--line);border-radius:8px;overflow:hidden}.kbw-split.kbw-network-workspace>.kbw-pane{overflow:hidden}.kbw-split.kbw-network-workspace>.kbw-pane>*{height:100%}.kbw-split .kbw-network-inspector{border-left:0}.kbw-separator{width:8px;cursor:col-resize;touch-action:none;position:relative;background:var(--kbw-bg);border-inline:1px solid var(--line);z-index:2;outline-offset:-2px!important}.kbw-separator:hover,.kbw-separator:focus-visible{background:var(--kbw-accent)}.kbw-separator:after{content:'';position:absolute;top:calc(50% - 18px);height:36px;left:2px;width:2px;background:var(--kbw-muted);border-radius:2px}.kbw-resizing,.kbw-resizing *{cursor:col-resize!important;user-select:none!important}.kbw-pane-switch{padding:8px;border-bottom:1px solid var(--line);grid-column:1/-1}.kbw-split[data-compact=true]{display:flex!important;flex-direction:column}.kbw-split[data-compact=true]>.kbw-pane{flex:1}.kbw-split[data-compact=true]>.kbw-pane>*{height:100%}.kbw .kbw-tree .kbw-dir{align-items:flex-start;min-width:0}.kbw .kbw-tree .kbw-dir>button:first-child{flex:0 0 28px}.kbw .kbw-tree .kbw-dir>button:last-child{width:0;min-width:0;flex:1 1 0%;white-space:normal;overflow-wrap:anywhere;word-break:normal;height:auto;line-height:1.7;justify-content:flex-start;text-align:left;padding:6px 4px}.kbw .kbw-tree{display:block!important}.kbw-tree .kbw-dir-children{padding-left:10px}.kbw-file-row{display:flex;gap:8px;align-items:start;border-bottom:1px solid var(--line);min-width:0}.kbw-file-row>.kbw-row,.kbw-file-row>.kbw-card{flex:1;min-width:0;border-bottom:0}.kbw-file-menu{flex-shrink:0;max-width:50%;padding:14px 0;font-size:12px}.kbw-file-menu>summary{cursor:pointer;color:var(--kbw-muted)}.kbw-file-menu[open]{flex-shrink:1}.kbw-file-menu .kbw-button{white-space:normal;height:auto;min-height:36px;margin-top:8px}.kbw .kbw-danger-button{color:var(--kbw-danger);border-color:var(--kbw-danger)}.kbw-delete-confirm{border:1px solid var(--kbw-danger);border-radius:8px;background:var(--kbw-surface);padding:16px;margin:12px 0;max-width:100%;font-size:13px;white-space:normal;overflow-wrap:anywhere}.kbw-delete-confirm p{margin:8px 0}.kbw-detail>.kbw-delete-confirm{margin-bottom:20px}.kbw-trash-row{display:flex;justify-content:space-between;align-items:center;gap:20px;margin:12px 0}.kbw-trash-row>div:first-child{min-width:0}.kbw-trash-row strong{overflow-wrap:anywhere}.kbw-reading-help{padding:12px 16px;border:1px solid var(--line);border-radius:8px;margin:12px 0 18px;color:var(--kbw-muted);font-size:13px}.kbw-reading-help>summary{cursor:pointer;color:var(--kbw-fg)}.kbw-reading-help li{margin:8px 0}.kbw-system-recent>summary{cursor:pointer;padding:12px 0}.kbw-preview.kbw-markdown{max-height:60vh;overflow:auto;scrollbar-gutter:stable}.kbw-pane .kbw-panel .kbw-actions{margin-top:16px}
     @container(max-width:700px){.kbw-update-bar{padding:6px 12px}.kbw-app-header>.kbw-actions{flex-wrap:wrap;flex-shrink:1}.kbw-trash-row{align-items:flex-start;flex-direction:column}.kbw-split.kbw-network-workspace{min-height:520px}.kbw-split.kbw-master-detail{height:440px}}
     `
+    style.textContent += '/* Scroll normally and leave room below details for the host composer. */\n.kbw:not(.kbw-global-settings){box-sizing:border-box;flex:0 0 auto;max-height:100dvh;overflow:hidden;overflow-anchor:none;overscroll-behavior:auto}\n.kbw-content,.kbw-relations,.kbw-pane,.kbw-tree,.kbw-list,.kbw-detail,.kbw-preview{min-height:0;overscroll-behavior:auto;overflow-anchor:none}\n.kbw-grid .kbw-detail{padding-bottom:max(48px,var(--kbw-composer-inset,48px));scroll-padding-bottom:max(48px,var(--kbw-composer-inset,48px))}\n.kbw-app-header,.kbw-nav,.kbw-status,.kbw-banner,.kbw-breadcrumb{flex-shrink:0}\n'
     document.head.appendChild(style)
   }
   let eventsStarted = false, eventSource = null
@@ -817,7 +818,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
       selected.length ? e('div', { className: 'kbw-actions' }, select('整理到分区', dir, setDir, [['', '默认知识笔记'], ['20-知识笔记','知识笔记'], ['10-项目','项目'], ['40-素材资源','素材资源'], ...snapshot.preferences.showPrivate ? [['30-人物关系','人物关系'],['00-画像','画像']] : []]), field('标签（逗号分隔）', tags, setTags),
         btn('整理所选', () => batch('organize'), busy || !selected.length), btn('忽略所选', () => batch('ignored'), busy || !selected.length), btn('重新待处理', () => batch('pending'), busy || !selected.length)) : null,
       e(SplitPanels, { id: 'inbox-detail', kbId: snapshot.kbId, className: 'kbw-master-detail' }, e('section', { className: 'kbw-panel' }, data?.items.map(c => e('div', { key: c.id, className: 'kbw-capture-row' }, check('选择条目', selected.includes(c.id), value => setSelected(old => value ? [...old, c.id] : old.filter(id => id !== c.id))), e('button', { className: 'kbw-row', 'aria-current': inspect?.id === c.id, onClick: () => setInspect(c) }, e('strong', null, c.title || '未命名收集'), e('span', { className: 'kbw-meta' }, stateLabel(c.status) + ' · ' + date(c.createdAt))),
-        e('span', { className: 'kbw-meta' }, stateLabel(c.status) + ' · ' + date(c.createdAt)), btn('预览原件', () => navigate('map', c.path)), ['pending','failed'].includes(c.status) ? btn(/\.(wav|mp3|m4a|mp4|flac|ogg)$/i.test(c.path) ? '开始音频转写' : /\.(pdf|png|jpe?g|docx)$/i.test(c.path) ? '开始识别文字' : '整理为知识笔记', async () => { setBusy(true); try { const current = await api({ op:'capture.list', ...base }); await api({ op:'capture.organize', ...base, id:c.id, expectedRevision:current.revision }); await refresh(); changed() } catch (e) { setError(e.message) } finally { setBusy(false) } }, busy) : null, c.error ? e('p', { className:'kbw-error' }, c.error) : null, c.entryPath ? btn('查看知识条目', () => navigate('map', c.entryPath)) : null))), e('aside', { className: 'kbw-panel' }, e('h3', null, inspect ? inspect.title : '选择收集条目'), inspect ? e(R.Fragment, null, e('p', { className: 'kbw-path' }, inspect.path), e('p', { className: 'kbw-meta' }, stateLabel(inspect.status)), btn('预览原件', () => navigate('map', inspect.path)), inspect.entryPath ? btn('查看知识条目', () => navigate('map', inspect.entryPath)) : null, e('p', null, '勾选条目可指定目标分区和标签，然后整理所选；原件会保留。')) : e('p', { className: 'kbw-meta' }, '点击标题查看资料信息；复选框仅用于批量整理。'))),
+        e('span', { className: 'kbw-meta' }, stateLabel(c.status) + ' · ' + date(c.createdAt)), btn('预览原件', () => navigate('map', c.path)), e(DeleteFile, { file: { path: c.path, canDelete: true }, snapshot, onDeleted: () => { void refresh(); changed() } }), ['pending','failed'].includes(c.status) ? btn(/\.(wav|mp3|m4a|mp4|flac|ogg)$/i.test(c.path) ? '开始音频转写' : /\.(pdf|png|jpe?g|docx)$/i.test(c.path) ? '开始识别文字' : '整理为知识笔记', async () => { setBusy(true); try { const current = await api({ op:'capture.list', ...base }); await api({ op:'capture.organize', ...base, id:c.id, expectedRevision:current.revision }); await refresh(); changed() } catch (e) { setError(e.message) } finally { setBusy(false) } }, busy) : null, c.error ? e('p', { className:'kbw-error' }, c.error) : null, c.entryPath ? btn('查看知识条目', () => navigate('map', c.entryPath)) : null))), e('aside', { className: 'kbw-panel' }, e('h3', null, inspect ? inspect.title : '选择收集条目'), inspect ? e(R.Fragment, null, e('p', { className: 'kbw-path' }, inspect.path), e('p', { className: 'kbw-meta' }, stateLabel(inspect.status)), btn('预览原件', () => navigate('map', inspect.path)), e(DeleteFile, { file: { path: inspect.path, canDelete: true }, snapshot, onDeleted: () => { setInspect(null); void refresh(); changed() } }), inspect.entryPath ? btn('查看知识条目', () => navigate('map', inspect.entryPath)) : null, e('p', null, '勾选条目可指定目标分区和标签，然后整理所选；原件会保留。')) : e('p', { className: 'kbw-meta' }, '点击标题查看资料信息；复选框仅用于批量整理。'))),
       e('details', null, e('summary', null, '手机收集帮助'), e('p', null, e('a', { href: '/kb-core/collect', target: '_blank', rel: 'noopener noreferrer' }, '打开快速收集页，可添加到手机主屏幕')), e('p', { className: 'kbw-meta' }, '手机可在快速收集页粘贴文字、分享网址或上传文件，确认后保存。浏览器扩展的安装与连接请查看上方独立使用指南。')),
       error ? e('p', { className: 'kbw-error', role: 'alert' }, error) : null))
   }
@@ -1052,6 +1053,27 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
   function Workbench() {
     styles()
     const workspaceRoot = R.useRef(null)
+        R.useLayoutEffect(() => {
+          const element = workspaceRoot.current
+          if (!element) return
+          const fit = () => {
+            if (!element.getClientRects().length) return
+            // Host tab wrappers can have zero intrinsic height during mounting.
+            // Measure against the viewport, never their content-dependent bottom.
+            const top = Math.max(0, element.getBoundingClientRect().top)
+            const height = Math.max(1, window.innerHeight - top)
+            element.style.height = height + 'px'
+            element.style.maxHeight = height + 'px'
+          }
+          const observer = new ResizeObserver(fit)
+          observer.observe(element); observer.observe(element.parentElement)
+          window.addEventListener('resize', fit)
+          fit()
+          return () => {
+            observer.disconnect(); window.removeEventListener('resize', fit)
+          }
+        }, [])
+
     R.useEffect(() => {
       const updateInset = () => {
         const element = workspaceRoot.current; if (!element) return
@@ -1064,9 +1086,14 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
         }
         element.style.setProperty('--kbw-composer-inset', Math.max(24, covered) + 'px')
       }
-      updateInset(); const observer = new ResizeObserver(updateInset); observer.observe(document.body)
+      const observed = new WeakSet()
+      const observer = new ResizeObserver(updateInset)
+      const mutation = new MutationObserver(() => { updateInset(); watchInputs() })
+      const watchInputs = () => { for (const input of document.querySelectorAll('[contenteditable="true"],textarea')) if (!workspaceRoot.current?.contains(input) && !observed.has(input)) { observed.add(input); observer.observe(input) } }
+      updateInset(); observer.observe(document.body); watchInputs()
+      mutation.observe(document.body, { childList: true, subtree: true })
       window.addEventListener('resize', updateInset)
-      return () => { observer.disconnect(); window.removeEventListener('resize', updateInset) }
+      return () => { observer.disconnect(); mutation.disconnect(); window.removeEventListener('resize', updateInset) }
     }, [])
     const [snapshot, setSnapshot] = R.useState(null), [tab, setTab] = R.useState('map'), [prefix, setPrefix] = R.useState(''), [selected, setSelected] = R.useState(''), [relationFocus, setRelationFocus] = R.useState(''), [annotationId, setAnnotationId] = R.useState(''), [toast, setToast] = R.useState('')
     const [query, setQuery] = R.useState(''), [mode, setMode] = R.useState('hybrid'), [layer, setLayer] = R.useState(''), [extension, setExtension] = R.useState(''), [tag, setTag] = R.useState(''), [after, setAfter] = R.useState(''), [before, setBefore] = R.useState(''), [sort, setSort] = R.useState('relevance'), [direct, setDirect] = R.useState(false)
