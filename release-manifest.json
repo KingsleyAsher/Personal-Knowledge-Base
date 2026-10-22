@@ -3,9 +3,9 @@
   "version": "2.1.0",
   "buildId": "37b7ff660806754d",
   "tgz": "local-dsh-knowledge-base-2.1.0.tgz",
-  "bytes": 2849548,
-  "sha256": "9f54fad579de789d7f517ed6d70deaea72e8935690a665a8dd182181c98fce89",
-  "integrity": "sha512-feCFO6JIDMsRSvm9cD3+bAbylmUaPkMQZO6ZPosSq81X78IM4MnZTv34yDoVc79JbWQUdNDPqipNHWQiKRYkZw==",
+  "bytes": 2850347,
+  "sha256": "2c74f3594bb548b1b60cb7be0516dbda4a59333fc6a1a93ead0a621998bfbf7d",
+  "integrity": "sha512-s7UxR4DbjvnfJPxAi31Ah6QpIcm0AIu/cvPqeN/ktR4VHj7aOXh3IULLHRFovNL5OzcBscIXpRWw4LRUSv7vmQ==",
   "packageFileCount": 272,
   "buildFileCount": 261,
   "files": [
@@ -41,18 +41,18 @@
     },
     {
       "path": "PROJECT-RECORD.md",
-      "bytes": 27391,
-      "sha256": "a3a25f05176a12f8bec48b22d5bddbc3e19f63349f94e56ae6ee756809ddace2"
+      "bytes": 29989,
+      "sha256": "037da8debb13727bd83682624c240da3d169c6559520ae422fe42e4df6f341ca"
     },
     {
       "path": "README.md",
-      "bytes": 7471,
-      "sha256": "c75df8b92092c705e44210758fc4a1412022a2eb3f698760ffa57ea0b778d34c"
+      "bytes": 7520,
+      "sha256": "787130057f1cdb02e12e5f87455d7de12208bca59936ebd5fd0a72ece82dba8b"
     },
     {
       "path": "RELEASE.md",
-      "bytes": 9462,
-      "sha256": "119ee1568738202efb6ca3a7b3702858aef1486b9fa7e8566f2aef4b443e898f"
+      "bytes": 10595,
+      "sha256": "7ff2f966a6743b0cee0598f56f80c18c6167fa3cd7c2730e95c55bae1371c1dc"
     },
     {
       "path": "RETRIEVAL.md",
@@ -66,8 +66,8 @@
     },
     {
       "path": "WORKBENCH.md",
-      "bytes": 12346,
-      "sha256": "2dbc5e7fe1ce8924d5d50f23bc3e0d14d0eaf1ba21eaf42a95cdd063f9b12537"
+      "bytes": 12470,
+      "sha256": "0d727dafe66db678f96627483e31137092feab075ecc9b8e22ef943ff2c92b34"
     },
     {
       "path": "browser-extension/manifest.json",
