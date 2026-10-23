@@ -12,6 +12,10 @@
 
 关系索引加速、回收站、统一解析记录和更新弹窗规则见 [正式版说明](RELEASE.md)；版本命名及旧预览版迁移规则见 [VERSIONING.md](VERSIONING.md)。
 
+## 当前下载版本
+
+当前仅推荐正式版 **2.1.1**。预览通道暂无可用版本。
+
 ## 2.1.1 新增能力
 
 收件箱列表与详情支持将采集原件移入回收站，30 天内可恢复。工作台按窗口可用高度布局，预览详情为底部输入框预留滚动空间；滚动到区域边界时正常传递，不强制重置宿主滚动位置。
@@ -26,10 +30,9 @@
 
 - **正式版 2.1.1**：[GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.1/local-dsh-knowledge-base-2.1.1.tgz) · [Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.1.1.tgz) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.1.1.tgz?ref=main) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.1.1.tgz)。
 - **浏览器扩展（Chrome／Edge）**：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub Release 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.1/knowledge-base-browser-extension.zip) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/knowledge-base-browser-extension.zip)。镜像可能存在同步延迟；文件暂不可用时可切换其他下载源。
-- **预览版 2.1-beta4**：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.1-beta4.tgz) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.1-beta4.tgz?ref=main) · [GitHub 下载](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.1-beta4.tgz)。
-- 历史安装包已从公开下载处撤下；旧版用户请先安装 2.1.0，再使用插件内更新器。
+- 历史安装包已从公开下载处撤下；旧版用户请先安装 2.1.1，再使用插件内更新器。
 
-新版更新器同时检查正式版和预览版；已安装正式版时只对正式版更新弹窗，预览版更新在设置页和知识库顶部的检查更新入口显示红点；已安装预览版时两个渠道的新版本都会弹出更新提示。同一大版本的正式版更新沿用自动安装资格判断，预览版仍需主动选择。正式版清单指向 `2.1.0`，预览版清单保留最后验证的 `2.1-beta4`，正式版为 `2.1.0`。
+新版更新器同时检查正式版和预览版；已安装正式版时只对正式版更新弹窗，预览版更新在设置页和知识库顶部的检查更新入口显示红点；已安装预览版时两个渠道的新版本都会弹出更新提示。同一大版本的正式版更新沿用自动安装资格判断，预览版仍需主动选择。当前正式版为 `2.1.1`，暂无预览版；旧预览版已退出当前下载入口。
 
 以下能力沿袭自 1.1.x 并持续迭代至 2.1.0；逐项发布记录见 [正式版说明](RELEASE.md)。
 

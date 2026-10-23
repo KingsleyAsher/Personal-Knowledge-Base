@@ -92,6 +92,7 @@ export function createUpdateChecker({ currentVersion, fetch: fetchFn = globalThi
       try {
         const raw = await sourceBytes(fetchFn, source, preview ? 'preview-manifest.json' : 'release-manifest.json', 65536, timeoutMs)
         const m = JSON.parse(raw.toString('utf8'))
+        if (preview && m.package === '@local/dsh-knowledge-base' && m.channel === 'preview' && m.active === false) return { source, ok: true, inactive: true }
         const parsedVersion = parseKnowledgeVersion(m.version, { allowLegacyPreview: preview })
         if (m.package !== '@local/dsh-knowledge-base' || parsedVersion?.channel !== (preview ? 'preview' : 'stable') ||
             m.tgz !== 'local-dsh-knowledge-base-' + m.version + '.tgz' || !/^[a-f0-9]{64}$/.test(m.sha256 || '')) throw Error('更新清单无效')
@@ -99,8 +100,9 @@ export function createUpdateChecker({ currentVersion, fetch: fetchFn = globalThi
         return { source, manifest: m, ok: true }
       } catch (error) { return { source, ok: false, error: error instanceof SyntaxError ? '更新清单无效' : String(error.message || error).slice(0,180) } }
     }))
-    const good = results.filter(x => x.ok).sort((a,b) => compareReleaseVersions(b.manifest.version,a.manifest.version))
+    const good = results.filter(x => x.ok && !x.inactive).sort((a,b) => compareReleaseVersions(b.manifest.version,a.manifest.version))
     const sourceStatus = results.map(x => ({ id: x.source.id, name: x.source.name, ok: x.ok, version: x.manifest?.version, error: x.error }))
+    if (!good.length && results.some(x => x.inactive)) return { ok: true, available: false, updateAvailable: false, sourceStatus }
     if (!good.length) return { ok: false, sourceStatus, error: '检查更新失败：所有更新源暂不可用，请稍后重试' }
     const chosen = good[0], m = chosen.manifest
     if (good.some(x => x.manifest.version === m.version && (x.manifest.sha256 !== m.sha256 || x.manifest.bytes !== m.bytes || x.manifest.buildId !== m.buildId))) {
@@ -121,7 +123,7 @@ export function createUpdateChecker({ currentVersion, fetch: fetchFn = globalThi
   async function latest() {
     const [stable, preview] = await Promise.all([channel(false), previewManifestUrl ? channel(true) : null])
     const result = { ...stable, currentVersion, currentChannel: parseKnowledgeVersion(currentVersion, { allowLegacyPreview: true })?.channel || 'unknown', checkedAt: new Date(now()).toISOString() }
-    if (preview?.ok) result.preview = preview
+    if (preview?.ok) result.preview = preview.available === false || stable.ok && compareReleaseVersions(preview.latestVersion, stable.latestVersion) <= 0 ? { ok: true, available: false, updateAvailable: false, sourceStatus: preview.sourceStatus } : preview
     else if (preview) { result.previewError = '预览版信息暂不可用，可稍后重新检查'; result.previewSourceStatus = preview.sourceStatus }
     return result
   }

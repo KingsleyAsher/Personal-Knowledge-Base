@@ -2892,6 +2892,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: !canInstall || update.installSupported === false || updating.busy || updating.uncertain || updating.restartRequired || updating.refreshRequired,
             onClick: () => { void updateFlow.install(update.preview.latestVersion) } }, '安装预览版'),
           e('a', { href: update.preview.notesUrl, target: '_blank', rel: 'noopener noreferrer' }, '预览版说明')) : null,
+        !checking && update?.preview?.available === false ? e('span', { role: 'status' }, '暂无预览版') : null,
         !checking && update?.previewError ? e('span', { role: 'status' }, update.previewError) : null,
         updating.message ? e('span', { role: 'status' }, updating.message) : null,
         updating.uncertain ? e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: updating.busy, onClick: () => { void updateFlow.recover() } }, '核对更新状态') : null,

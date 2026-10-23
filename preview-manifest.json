@@ -1,10 +1,5 @@
 {
   "package": "@local/dsh-knowledge-base",
-  "version": "2.1-beta4",
-  "buildId": "cb12dcd51c1ea994",
-  "tgz": "local-dsh-knowledge-base-2.1-beta4.tgz",
-  "bytes": 2848015,
-  "sha256": "e61b84f2d296443d30f68e31dfcff82a4825a2d54856e92c7e751ec4ec9ae723",
-  "integrity": "sha512-sWN/XJO2LunAcFeirtz1cx8gt2jF3FQkCEzOMy/D0Z8xRWDSpVblb+Vwt0TlOw96Wu2HPMGrrmX+7+EFYKYN5w==",
-  "channel": "preview"
+  "channel": "preview",
+  "active": false
 }

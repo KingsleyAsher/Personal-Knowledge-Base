@@ -1,11 +1,11 @@
 {
   "package": "@local/dsh-knowledge-base",
   "version": "2.1.1",
-  "buildId": "e917007c78601bab",
+  "buildId": "48463b4c8bc9c751",
   "tgz": "local-dsh-knowledge-base-2.1.1.tgz",
-  "bytes": 2880508,
-  "sha256": "4c469f2e58afb06b98848bcf6ee7c377c30607279f24b9f4f4095de0d39fbffd",
-  "integrity": "sha512-XHwZ71omp3XVVPOlD8x6P9x96jL9xWVYsUJFl2rM7jsmxfvr6TuFxdiGSzHOHIB2oRJttQJh3VhX3V9Dmn6hsQ==",
+  "bytes": 2880931,
+  "sha256": "b894e4fd4a14d0d29a5afb235206a62c41742a7d6e764533ab2b54fd7d1a878c",
+  "integrity": "sha512-zQKR9LG3bRWH+rZLJrkdJhhxmxwNvIDXpWVkHyb2y+fXn7mWxs+dhDI0TTfne72XdkOOptfRiurY1swhjTveAw==",
   "packageFileCount": 277,
   "buildFileCount": 266,
   "files": [
@@ -41,18 +41,18 @@
     },
     {
       "path": "PROJECT-RECORD.md",
-      "bytes": 31322,
-      "sha256": "3017ec958604802ea98e273c9d054a9e30442f5a0530c765c88844e7218dcb79"
+      "bytes": 31727,
+      "sha256": "779319da35bf940ad1bba0f163cd939bf03f5294a585839d32b696ee109beaf4"
     },
     {
       "path": "README.md",
-      "bytes": 8958,
-      "sha256": "bcda1e295033f781efab875cc98db52aae933277a40009c31ae4bc418048d556"
+      "bytes": 8589,
+      "sha256": "06f5bdb0836b12bc7a74e0c3db20fdd04ef77ddbd442b0e4cff6273e00744d68"
     },
     {
       "path": "RELEASE.md",
-      "bytes": 11955,
-      "sha256": "8008f7d23c991c5deddd8542f7faa1c0764839b656d03670b1cbfc99eb3fc082"
+      "bytes": 12216,
+      "sha256": "0abc4e28262eb2690b711046884f0bdd897817a166f5c709613bc9b1c717d4ba"
     },
     {
       "path": "RETRIEVAL.md",
@@ -66,8 +66,8 @@
     },
     {
       "path": "WORKBENCH.md",
-      "bytes": 14226,
-      "sha256": "b5d31fbab11789b1fc4ff430033b48c9ff7a6c9dd7d6bcc4ae9fe2536ed4d11a"
+      "bytes": 14353,
+      "sha256": "631480f3d52679db9ce5c5bea003a91bd2a6e7ac76e978022520bf8076f0e116"
     },
     {
       "path": "browser-extension/background.js",
@@ -186,8 +186,8 @@
     },
     {
       "path": "src/client/index.js",
-      "bytes": 387750,
-      "sha256": "3d77914a621256d1475572743919cab19d09a9c8d439f8e47d983cdbd2cdc6cc"
+      "bytes": 387867,
+      "sha256": "9bc2f798a48a1dbb0ba2e2c0fd39470c28ffd76b88c44b1379ff04aaec99073d"
     },
     {
       "path": "src/client/pdfjs/LICENSE",
@@ -1331,8 +1331,8 @@
     },
     {
       "path": "src/host/updates.js",
-      "bytes": 15549,
-      "sha256": "2f61085f872b38d11b3a435645365657ca0075ad4d5058fa3e5e6c0dfb732792"
+      "bytes": 16066,
+      "sha256": "e2e2049e8713bf4d13dd8c1a447418e3d56dd9d98693678bd26060253b16afcd"
     },
     {
       "path": "src/host/versioning.js",
