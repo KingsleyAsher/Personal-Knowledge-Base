@@ -53,10 +53,22 @@ if browser_report and browser_report.is_file():
     (delivery / 'manifest.json').write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + '\n', encoding='utf-8')
     for name in browser['screenshots']:
         shutil.copyfile(browser_report.parent / name, delivery / name)
-with zipfile.ZipFile(delivery / '知识库快速收集-浏览器扩展.zip', 'w', zipfile.ZIP_DEFLATED) as packed:
-    extension = repo / 'browser-extension'
-    for file in sorted(path for path in extension.rglob('*') if path.is_file()):
-        packed.write(file, file.relative_to(extension).as_posix())
+# Preserve the published ZIP bytes when extension contents are unchanged.
+existing_extension = repo / 'dist/knowledge-base-browser-extension.zip'
+extension = repo / 'browser-extension'
+expected_files = {p.relative_to(extension).as_posix(): p.read_bytes() for p in extension.rglob('*') if p.is_file()}
+reuse_extension = False
+if existing_extension.is_file():
+    with zipfile.ZipFile(existing_extension) as previous:
+        reuse_extension = {name: previous.read(name) for name in previous.namelist() if not name.endswith('/')} == expected_files
+if reuse_extension:
+    shutil.copyfile(existing_extension, delivery / '知识库快速收集-浏览器扩展.zip')
+else:
+    with zipfile.ZipFile(delivery / '知识库快速收集-浏览器扩展.zip', 'w', zipfile.ZIP_DEFLATED) as packed:
+        for name, data in sorted(expected_files.items()):
+            info = zipfile.ZipInfo(name, (2020, 1, 1, 0, 0, 0))
+            info.compress_type = zipfile.ZIP_DEFLATED
+            packed.writestr(info, data)
 assert hashlib.sha256((delivery / '知识库快速收集-浏览器扩展.zip').read_bytes()).hexdigest() == re.search(r"EXTENSION_ARCHIVE_SHA256 = '([a-f0-9]{64})'", (repo / 'src/host/updates.js').read_text(encoding='utf-8')).group(1), 'Update extension archive integrity before publishing'
 shutil.copyfile(delivery / '知识库快速收集-浏览器扩展.zip', repo / 'dist/knowledge-base-browser-extension.zip')
 print(json.dumps({k: manifest[k] for k in ['version','buildId','bytes','sha256','packageFileCount']}, ensure_ascii=False, indent=2))
