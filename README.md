@@ -1,4 +1,4 @@
-# 个人知识库 2.1.1
+# 个人知识库 2.1.2
 
 ## 📘 [插件设计与演进记录 →](PROJECT-RECORD.md)
 
@@ -14,9 +14,11 @@
 
 ## 当前下载版本
 
-当前仅推荐正式版 **2.1.1**。预览通道暂无可用版本。
+当前仅推荐正式版 **2.1.2**。预览通道暂无可用版本。
 
-## 2.1.1 新增能力
+## 2.1.2 新增能力
+
+关系网络新增“全屏画布 / 退出全屏”，图谱和关联清单一起铺满应用窗口。画布按实际区域宽高比调整，减少宽屏留白；缩放、拖拽、适配与节点详情继续可用。Esc 优先退出全屏，切换页签或进入链接检查时自动收起；全屏状态不持久化。
 
 收件箱列表与详情支持将采集原件移入回收站，30 天内可恢复。工作台按窗口可用高度布局，预览详情为底部输入框预留滚动空间；滚动到区域边界时正常传递，不强制重置宿主滚动位置。
 
@@ -28,11 +30,11 @@
 
 ## 选择下载版本
 
-- **正式版 2.1.1**：[GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.1/local-dsh-knowledge-base-2.1.1.tgz) · [Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.1.1.tgz) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.1.1.tgz?ref=main) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.1.1.tgz)。
-- **浏览器扩展（Chrome／Edge）**：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub Release 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.1/knowledge-base-browser-extension.zip) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/knowledge-base-browser-extension.zip)。镜像可能存在同步延迟；文件暂不可用时可切换其他下载源。
-- 历史安装包已从公开下载处撤下；旧版用户请先安装 2.1.1，再使用插件内更新器。
+- **正式版 2.1.2**：[GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.2/local-dsh-knowledge-base-2.1.2.tgz) · [Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.1.2.tgz) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.1.2.tgz?ref=main) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.1.2.tgz)。
+- **浏览器扩展（Chrome／Edge）**：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub Release 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.2/knowledge-base-browser-extension.zip) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/knowledge-base-browser-extension.zip)。镜像可能存在同步延迟；文件暂不可用时可切换其他下载源。
+- 历史安装包已从公开下载处撤下；旧版用户请先安装 2.1.2，再使用插件内更新器。
 
-新版更新器同时检查正式版和预览版；已安装正式版时只对正式版更新弹窗，预览版更新在设置页和知识库顶部的检查更新入口显示红点；已安装预览版时两个渠道的新版本都会弹出更新提示。同一大版本的正式版更新沿用自动安装资格判断，预览版仍需主动选择。当前正式版为 `2.1.1`，暂无预览版；旧预览版已退出当前下载入口。
+新版更新器同时检查正式版和预览版；已安装正式版时只对正式版更新弹窗，预览版更新在设置页和知识库顶部的检查更新入口显示红点；已安装预览版时两个渠道的新版本都会弹出更新提示。同一大版本的正式版更新沿用自动安装资格判断，预览版仍需主动选择。当前正式版为 `2.1.2`，暂无预览版；旧预览版已退出当前下载入口。
 
 以下能力沿袭自 1.1.x 并持续迭代至 2.1.0；逐项发布记录见 [正式版说明](RELEASE.md)。
 
@@ -59,7 +61,7 @@ DSH 个人知识库插件：目录绑定、条目管理与检索、资料导入�
 
 ## 安装
 
-首次安装或从旧版接入新更新器：在 DSH 插件管理器的安装源中填写 `https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.1.1.tgz`，由客户端下载和安装；也可安装仓库 `dist/` 下的本地包。旧版自身的下载按钮仍采用旧流程，需先安装本版才能获得新更新器。
+首次安装或从旧版接入新更新器：在 DSH 插件管理器的安装源中填写 `https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.1.2.tgz`，由客户端下载和安装；也可安装仓库 `dist/` 下的本地包。旧版自身的下载按钮仍采用旧流程，需先安装本版才能获得新更新器。
 
 安装本版后，插件内「检查版本更新 → 安装新版本 / 安装预览版」自动完成下载、SHA-256 与包身份校验、安装及加载核对。普通宿主支持时热加载，宿主返回需要重启时再完全退出（含托盘）并重开。核对版本及构建号，摘要见 [发布清单](release-manifest.json)。宿主未提供安装接口时，按钮会说明需使用宿主插件管理器。
 

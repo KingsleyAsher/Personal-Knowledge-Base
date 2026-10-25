@@ -124,6 +124,15 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
     @container(max-width:700px){.kbw-update-bar{padding:6px 12px}.kbw-app-header>.kbw-actions{flex-wrap:wrap;flex-shrink:1}.kbw-trash-row{align-items:flex-start;flex-direction:column}.kbw-split.kbw-network-workspace{min-height:520px}.kbw-split.kbw-master-detail{height:440px}}
     `
     style.textContent += '/* Scroll normally and leave room below details for the host composer. */\n.kbw:not(.kbw-global-settings){box-sizing:border-box;flex:0 0 auto;max-height:100dvh;overflow:hidden;overflow-anchor:none;overscroll-behavior:auto}\n.kbw-content,.kbw-relations,.kbw-pane,.kbw-tree,.kbw-list,.kbw-detail,.kbw-preview{min-height:0;overscroll-behavior:auto;overflow-anchor:none}\n.kbw-grid .kbw-detail{padding-bottom:max(48px,var(--kbw-composer-inset,48px));scroll-padding-bottom:max(48px,var(--kbw-composer-inset,48px))}\n.kbw-app-header,.kbw-nav,.kbw-status,.kbw-banner,.kbw-breadcrumb{flex-shrink:0}\n'
+    // 关系画布全屏：覆盖整个窗口，图谱与详情侧栏同时可用；选择器特异性高于既有 .kbw-network-* 规则，
+    // 因此不需要 !important，也不会因为样式块先后顺序而失效。
+    style.textContent += '/* Fullscreen relation canvas: covers the viewport, keeps the graph and the inspector usable. */\n'
+      + '.kbw .kbw-relations[data-fullscreen="true"]{position:fixed;inset:0;z-index:10040;flex:none;box-sizing:border-box;height:auto;min-height:0;max-height:none;padding:16px;overflow:hidden;border-radius:0;background:var(--kbw-bg);overscroll-behavior:contain}\n'
+      + '.kbw .kbw-relations[data-fullscreen="true"]>.kbw-network-workspace{flex:1;min-height:0;max-height:none}\n'
+      + '.kbw .kbw-relations[data-fullscreen="true"] .kbw-network-workspace>.kbw-pane{min-height:0}\n'
+      + '.kbw .kbw-relations[data-fullscreen="true"] .kbw-network-inspector{max-height:none;height:100%}\n'
+      + '.kbw .kbw-relations[data-fullscreen="true"] .kbw-network-stage .kbw-graph{height:100%;min-height:0;flex:1}\n'
+
     document.head.appendChild(style)
   }
   let eventsStarted = false, eventSource = null
@@ -143,12 +152,23 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
     return btoa(binary)
   }
 
-  function SplitPanels({ id, kbId, className = '', children, directory = false }) {
+  function SplitPanels({ id, kbId, className = '', children, directory = false, sizeKey }) {
     const panels = R.Children.toArray(children), count = panels.length, root = R.useRef(null), dragging = R.useRef(null)
     const key = 'kbw-panels-v1:' + kbId + ':' + id
     const [available, setAvailable] = R.useState(1200), [sizes, setSizes] = R.useState([]), [mobilePanel, setMobilePanel] = R.useState(count - 1), [resizing, setResizing] = R.useState(false)
+    const skipPersist = R.useRef(false), seenSizeKey = R.useRef(sizeKey)
     R.useEffect(() => { try { const saved = JSON.parse(localStorage.getItem(key) || '[]'); setSizes(Array.isArray(saved) ? saved.map(n => Number.isFinite(n) ? n : null) : []) } catch { setSizes([]) } }, [key])
-    R.useEffect(() => { const timer = setTimeout(() => { try { localStorage.setItem(key, JSON.stringify(sizes)) } catch {} }, 200); return () => clearTimeout(timer) }, [key, sizes])
+    R.useEffect(() => {
+      if (skipPersist.current) { skipPersist.current = false; return }
+      const timer = setTimeout(() => { try { localStorage.setItem(key, JSON.stringify(sizes)) } catch {} }, 200); return () => clearTimeout(timer)
+    }, [key, sizes])
+    // sizeKey 变化（关系画布进出全屏）回到默认分栏：全屏要的是画布变宽，不该沿用上一次的拖拽比例。
+    // 复位不写回 localStorage，用户的拖拽偏好仍然保留在非全屏视图里。
+    R.useEffect(() => {
+      if (sizeKey === seenSizeKey.current) return
+      seenSizeKey.current = sizeKey
+      setSizes(current => { if (!current.length) return current; skipPersist.current = true; return [] })
+    }, [sizeKey])
     R.useEffect(() => { const element = root.current; const observer = new ResizeObserver(() => setAvailable(element.clientWidth)); observer.observe(element); setAvailable(element.clientWidth); return () => observer.disconnect() }, [])
     R.useLayoutEffect(() => {
       if (!directory) return
@@ -616,23 +636,24 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
       error ? e('p', { className: 'kbw-error', role: 'alert' }, error) : null)
   }
 
-  const relationPositions = (nodes, center) => {
-    const positions = new Map()
+  // 画布尺寸可传：全屏时按窗口宽高比把 viewBox 放宽，图谱才会真正铺满屏幕（否则只能等比放大、两侧留空）。
+  const relationPositions = (nodes, center, canvasWidth = 1000, canvasHeight = 620) => {
+    const positions = new Map(), growth = (canvasWidth / canvasHeight) / (1000 / 620)
     if (center) {
-      positions.set(center, { x: 395, y: 278 })
+      positions.set(center, { x: canvasWidth / 2, y: canvasHeight / 2 })
       const others = nodes.filter(n => n.path !== center), radius = Math.max(215, others.length * 19)
-      others.forEach((node, i) => { const angle = i * Math.PI * 2 / Math.max(1, others.length) - Math.PI / 2; positions.set(node.path, { x: 395 + Math.cos(angle) * radius * 1.55, y: 278 + Math.sin(angle) * radius }) })
+      others.forEach((node, i) => { const angle = i * Math.PI * 2 / Math.max(1, others.length) - Math.PI / 2; positions.set(node.path, { x: canvasWidth / 2 + Math.cos(angle) * radius * 1.55 * growth, y: canvasHeight / 2 + Math.sin(angle) * radius }) })
     } else {
-      const columns = Math.max(1, Math.ceil(Math.sqrt(nodes.length * 1.5))), rows = Math.ceil(nodes.length / columns)
-      nodes.forEach((node, i) => positions.set(node.path, { x: (1000 - columns * 265) / 2 + 25 + i % columns * 265, y: Math.max(30, (620 - rows * 120) / 2) + Math.floor(i / columns) * 120 }))
+      const columns = Math.max(1, Math.ceil(Math.sqrt(nodes.length * 1.5 * growth))), rows = Math.ceil(nodes.length / columns)
+      nodes.forEach((node, i) => positions.set(node.path, { x: (canvasWidth - columns * 265) / 2 + 25 + i % columns * 265, y: Math.max(30, (canvasHeight - rows * 120) / 2) + Math.floor(i / columns) * 120 }))
     }
     return positions
   }
-  const relationFit = positions => {
+  const relationFit = (positions, canvasWidth = 1000, canvasHeight = 620) => {
     const ps = [...positions.values()]; if (!ps.length) return { x: 0, y: 0, zoom: 1 }
     const x = Math.min(...ps.map(p => p.x)), y = Math.min(...ps.map(p => p.y)), w = Math.max(...ps.map(p => p.x + 210)) - x, h = Math.max(...ps.map(p => p.y + 64)) - y
-    const zoom = Math.max(.25, Math.min(1, 920 / w, 540 / h))
-    return { zoom, x: (1000 - w * zoom) / 2 - x * zoom, y: (620 - h * zoom) / 2 - y * zoom }
+    const zoom = Math.max(.25, Math.min(1, (canvasWidth - 80) / w, (canvasHeight - 80) / h))
+    return { zoom, x: (canvasWidth - w * zoom) / 2 - x * zoom, y: (canvasHeight - h * zoom) / 2 - y * zoom }
   }
   function Relations({ snapshot, focus, active = true, navigate }) {
     const [loadingGraph, setLoadingGraph] = R.useState(false), [syncStatus, setSyncStatus] = R.useState(null)
@@ -642,7 +663,29 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
     const [selected, setSelected] = R.useState(null), [hover, setHover] = R.useState(null), [history, setHistory] = R.useState([]), [issues, setIssues] = R.useState(false), [retry, setRetry] = R.useState(0)
     const [query, setQuery] = R.useState(''), [matches, setMatches] = R.useState(null), [searching, setSearching] = R.useState(false), [transform, setTransform] = R.useState({ x: 0, y: 0, zoom: 1 })
     const svg = R.useRef(null), drag = R.useRef(null), moved = R.useRef(false), searchRequest = R.useRef(0), autoFit = R.useRef(true)
+    const [fullscreen, setFullscreen] = R.useState(false), [canvas, setCanvas] = R.useState({ width: 1000, height: 620 })
+    const fitCanvas = R.useRef(null), canvasBox = R.useRef({ width: 1000, height: 620 })
+    canvasBox.current = canvas
     const resetView = () => setTransform({ x: 0, y: 0, zoom: 1 })
+    // 画布尺寸跟随**图谱自身**的宽高比（不是外层 stage：stage 还含缩放控件与提示行，会比图谱高一截）。
+    // 全屏时图谱区域变宽 → viewBox 变宽 → 图谱铺满而不是两侧留白。
+    R.useEffect(() => {
+      const element = svg.current
+      if (!element) return
+      const read = () => {
+        const rect = element.getBoundingClientRect()
+        if (!rect.width || !rect.height) return
+        const width = Math.max(1000, Math.min(2600, Math.round(620 * rect.width / rect.height)))
+        setCanvas(current => current.width === width ? current : { width, height: 620 })
+      }
+      read()
+      const observer = new ResizeObserver(read)
+      observer.observe(element)
+      return () => observer.disconnect()
+      // 进入/离开「检查链接与修复」会换掉整个 section，图谱节点因此重建，观察器必须重新挂。
+    }, [active, issues])
+    // 画布尺寸一变就重新适配：viewBox 换了却不重算变换，图谱会偏在一边。
+    R.useEffect(() => { if (fitCanvas.current) fitCanvas.current(canvas) }, [canvas.width, canvas.height])
     R.useEffect(() => { setCenter(focus || ''); setScope(''); setGraphMode(focus ? 'center' : 'overview'); setData(null); setSelected(null); setHover(null); setHistory([]); setMatches(null); searchRequest.current++; autoFit.current = true; resetView() }, [snapshot.kbId, snapshot.policyVersion, focus])
     R.useEffect(() => {
       const onChange = ev => {
@@ -666,7 +709,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
       let live = true; setError(''); setLoadingGraph(true)
       const force = forceScan.current; forceScan.current = false
       const progress = setInterval(() => { api({ op: 'atlas.relations.status', expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion }).then(r => { if (live) setSyncStatus(r.sync) }).catch(() => {}) }, 1000)
-      api({ op: 'atlas.relations', force, background: !force, expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion, mode: graphMode === 'overview' ? 'overview' : undefined, prefix: graphMode === 'overview' ? scope : undefined, path: graphMode === 'center' ? center : undefined, type: type || undefined, includeArchive: archive, includeNavigation: navigation, depth: Number(depth), limit: 500 }).then(d => { if (live) { setData(d); setSyncStatus(d.sync); if (autoFit.current) { setTransform(relationFit(relationPositions((graphMode === 'overview' ? d.sections : d.nodes) || [], graphMode === 'center' ? center : ''))); autoFit.current = false } setSelected(s => s && (s.kind === 'node' ? (d.sections || d.nodes || []).some(n => n.path === s.id) : (d.sectionEdges || d.edges || []).some(edge => (edge.id || edge.from + '→' + edge.to) === s.id)) ? s : null) } }).catch(err => { if (live) { if (graphMode === 'center' && err.code === 'NOT_FOUND') { setCenter(''); setScope(''); setGraphMode('overview'); setSelected(null); setHistory(items => items.filter(item => item.center !== center)); autoFit.current = true; resetView() } else setError(err.message) } }).finally(() => { clearInterval(progress); if (live) setLoadingGraph(false) })
+      api({ op: 'atlas.relations', force, background: !force, expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion, mode: graphMode === 'overview' ? 'overview' : undefined, prefix: graphMode === 'overview' ? scope : undefined, path: graphMode === 'center' ? center : undefined, type: type || undefined, includeArchive: archive, includeNavigation: navigation, depth: Number(depth), limit: 500 }).then(d => { if (live) { setData(d); setSyncStatus(d.sync); if (autoFit.current) { const box = canvasBox.current; setTransform(relationFit(relationPositions((graphMode === 'overview' ? d.sections : d.nodes) || [], graphMode === 'center' ? center : '', box.width, box.height), box.width, box.height)); autoFit.current = false } setSelected(s => s && (s.kind === 'node' ? (d.sections || d.nodes || []).some(n => n.path === s.id) : (d.sectionEdges || d.edges || []).some(edge => (edge.id || edge.from + '→' + edge.to) === s.id)) ? s : null) } }).catch(err => { if (live) { if (graphMode === 'center' && err.code === 'NOT_FOUND') { setCenter(''); setScope(''); setGraphMode('overview'); setSelected(null); setHistory(items => items.filter(item => item.center !== center)); autoFit.current = true; resetView() } else setError(err.message) } }).finally(() => { clearInterval(progress); if (live) setLoadingGraph(false) })
       return () => { live = false; clearInterval(progress) }
     }, [active, issues, graphMode, scope, center, type, depth, archive, navigation, snapshot.kbId, snapshot.policyVersion, snapshot.version, snapshot.relationVersion, retry])
     R.useEffect(() => { if (!active || issues) return; const timer = setInterval(() => { if (!document.hidden) setRetry(n => n + 1) }, 5000); return () => clearInterval(timer) }, [active, issues])
@@ -679,7 +722,17 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
       const wheel = ev => { ev.preventDefault(); const p = point(ev); setTransform(t => { const zoom = Math.max(.25, Math.min(4, t.zoom * Math.exp(-ev.deltaY * .0015))), ratio = zoom / t.zoom; return { zoom, x: p.x - (p.x - t.x) * ratio, y: p.y - (p.y - t.y) * ratio } }) }
       element.addEventListener('wheel', wheel, { passive: false }); return () => element.removeEventListener('wheel', wheel)
     }, [active, Boolean(data), issues])
-    R.useEffect(() => { if (!active) return; const key = ev => { if (ev.key === 'Escape') { setSelected(null); setHover(null) } }; window.addEventListener('keydown', key); return () => window.removeEventListener('keydown', key) }, [active])
+    R.useEffect(() => {
+      if (!active) return
+      const key = ev => {
+        if (ev.key !== 'Escape') return
+        if (fullscreen) { setFullscreen(false); return }
+        setSelected(null); setHover(null)
+      }
+      window.addEventListener('keydown', key); return () => window.removeEventListener('keydown', key)
+    }, [active, fullscreen])
+    // 切到别的页签或进入「检查链接与修复」时必须收起全屏，否则覆盖层会挡住整块界面。
+    R.useEffect(() => { if (!active || issues) setFullscreen(false) }, [active, issues])
     const search = async ev => { ev.preventDefault(); const seq = ++searchRequest.current; setSearching(true); setError(''); try { const r = await api({ op: 'atlas.list', expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion, q: query, limit: 20 }); if (seq === searchRequest.current) setMatches(r.items) } catch (err) { if (seq === searchRequest.current) setError(err.message) } finally { if (seq === searchRequest.current) setSearching(false) } }
     if (issues) return e('section', { className: 'kbw-content' }, btn('返回关系网络', () => { setIssues(false); setRetry(n => n + 1) }), e(LinkRepairs, { snapshot, navigate }))
     const overview = graphMode === 'overview', nodes = data ? (overview ? data.sections : data.nodes) || [] : [], edges = data ? (overview ? data.sectionEdges : data.edges) || [] : []
@@ -688,12 +741,15 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
     const activeEdges = new Set(currentSelection ? edges.filter(edge => currentSelection.kind === 'edge' ? edgeId(edge) === currentSelection.id : edge.from === currentSelection.id || edge.to === currentSelection.id).map(edgeId) : [])
     const activeNodes = new Set(currentSelection?.kind === 'node' ? [currentSelection.id] : [])
     for (const edge of edges) if (activeEdges.has(edgeId(edge))) { activeNodes.add(edge.from); activeNodes.add(edge.to) }
-    const width = 1000, height = 620, nodeWidth = 210, nodeHeight = 64, positions = relationPositions(nodes, !overview && graphMode === 'center' ? center : '')
-    const fitView = () => setTransform(relationFit(positions))
+    const width = canvas.width, height = canvas.height, nodeWidth = 210, nodeHeight = 64, focusPath = !overview && graphMode === 'center' ? center : ''
+    const positions = relationPositions(nodes, focusPath, width, height)
+    const fitView = () => setTransform(relationFit(positions, width, height))
+    fitCanvas.current = next => setTransform(relationFit(relationPositions(nodes, focusPath, next.width, next.height), next.width, next.height))
+    const toggleFullscreen = () => setFullscreen(value => !value)
     const chooseNode = id => setSelected({ kind: 'node', id }), chooseEdge = edge => setSelected({ kind: 'edge', id: edgeId(edge) })
     const pickedNode = selected?.kind === 'node' ? lookup.get(selected.id) : null, pickedEdge = selected?.kind === 'edge' ? edges.find(edge => edgeId(edge) === selected.id) : null
     const related = selected ? edges.filter(edge => selected.kind === 'edge' ? edgeId(edge) === selected.id : edge.from === selected.id || edge.to === selected.id) : edges
-    return e('section', { className: 'kbw-relations' },
+    return e('section', { className: 'kbw-relations', 'data-fullscreen': fullscreen },
       e('div', { className: 'kbw-home-head' }, e('div', null, e('h2', null, '关系网络'), e('p', { className: 'kbw-meta' }, '从全库到分区，再到一份资料。点击卡片或连线，查看它们之间的真实联系。')), btn('检查链接与修复' + (data?.issueTotal ? ' · ' + data.issueTotal : ''), () => setIssues(true))),
       e('div', { className: 'kbw-network-toolbar' }, e('div', { className: 'kbw-actions' }, btn('全库分区', () => changeScope('overview'), false, { 'aria-current': overview && !scope }), btn('全部已连接资料', () => changeScope('connected'), false, { 'aria-current': graphMode === 'connected' }), btn('返回上一步', back, !history.length), btn('刷新关系', () => setRetry(n => n + 1), loadingGraph), btn('重新扫描关系', () => { forceScan.current = true; setRetry(n => n + 1) }, loadingGraph)),
         e('form', { className: 'kbw-actions', onSubmit: search }, e('input', { value: query, 'aria-label': '选择中心资料', placeholder: '搜索标题或路径，选择任意中心资料', onChange: ev => setQuery(ev.target.value) }), e('button', { type: 'submit', className: 'kbw-button', disabled: searching }, searching ? '查找中…' : '查找资料'))),
@@ -701,7 +757,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
       matches ? e('div', { className: 'kbw-search-results' }, matches.length ? matches.map(file => e('button', { key: file.path, className: 'kbw-row', onClick: () => changeScope('center', file.path) }, e('strong', null, file.title), e('span', { className: 'kbw-path' }, file.path))) : e('p', { role: 'status' }, '没有找到资料，请换一个标题或路径。'), btn('关闭搜索结果', () => setMatches(null))) : null,
       e('div', { className: 'kbw-toolbar kbw-relation-filters' }, select('关系类型', type, setType, [['', '全部类型'], ['source', '来源链接'], ['reference', '文中引用'], ['manual', '手动关联']]), graphMode === 'center' ? select('浏览范围', depth, setDepth, [['1', '直接关联'], ['2', '再展开一层']]) : null, check('显示归档资料', archive, setArchive), check('显示目录索引文档', navigation, setNavigation)),
       e('div', { className: 'kbw-breadcrumb' }, btn('全库', () => changeScope('overview')), overview && scope ? scope.split('/').map((part, i, all) => btn(part, () => changeScope('overview', all.slice(0, i + 1).join('/')), false, { key: i })) : null, !overview ? e('span', { className: 'kbw-path' }, graphMode === 'center' ? '中心资料：' + center : '全部已连接资料') : null),
-      e(SplitPanels, { id: 'relations', kbId: snapshot.kbId, className: 'kbw-network-workspace' },
+      e(SplitPanels, { id: 'relations', kbId: snapshot.kbId, className: 'kbw-network-workspace', sizeKey: String(fullscreen) },
         e('div', { className: 'kbw-network-stage' },
           e('div', { className: 'kbw-network-summary', role: 'status' }, data ? `${nodes.length} 个可见节点 · ${edges.length} 条可见连线` + (overview ? ` · ${data.totalNodes} 份资料` : '') : error ? '读取失败' : '正在读取关系…'),
           e('svg', { ref: svg, className: 'kbw-graph', viewBox: `0 0 ${width} ${height}`, role: 'group', 'aria-label': '知识关系地图', onPointerDown: ev => { moved.current = false; drag.current = { ...point(ev), original: transform }; if (!ev.target.closest('[data-node],[data-edge]')) ev.currentTarget.setPointerCapture(ev.pointerId) }, onPointerMove: ev => { if (!drag.current) return; const p = point(ev), dx = p.x - drag.current.x, dy = p.y - drag.current.y; if (Math.abs(dx) + Math.abs(dy) > 4) { moved.current = true; setTransform({ ...drag.current.original, x: drag.current.original.x + dx, y: drag.current.original.y + dy }) } }, onPointerUp: ev => { drag.current = null; if (!moved.current && !ev.target.closest('[data-node],[data-edge]')) { setSelected(null); setHover(null) } }, onPointerLeave: () => { drag.current = null; setHover(null) }, onPointerCancel: () => { drag.current = null } },
@@ -710,8 +766,8 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
               edges.map(edge => { const a = positions.get(edge.from), b = positions.get(edge.to); if (!a || !b) return null; const forward = a.x <= b.x, x1 = a.x + (forward ? nodeWidth : 0), x2 = b.x + (forward ? 0 : nodeWidth), mid = (x1 + x2) / 2, d = edge.from === edge.to ? `M${a.x + nodeWidth},${a.y + 20} C${a.x + nodeWidth + 65},${a.y - 35} ${a.x + nodeWidth + 65},${a.y + 95} ${a.x + nodeWidth},${a.y + 45}` : `M${x1},${a.y + 32} C${mid},${a.y + 32} ${mid},${b.y + 32} ${x2},${b.y + 32}`; return e('g', { key: edgeId(edge), 'data-edge': edgeId(edge), 'data-dimmed': Boolean(currentSelection && !activeEdges.has(edgeId(edge))), 'data-active': activeEdges.has(edgeId(edge)), role: 'button', tabIndex: 0, 'aria-label': (lookup.get(edge.from)?.title || edge.from) + ' → ' + (lookup.get(edge.to)?.title || edge.to), onClick: () => { if (!moved.current) chooseEdge(edge) }, onKeyDown: ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); chooseEdge(edge) } }, onMouseEnter: () => setHover({ kind: 'edge', id: edgeId(edge) }), onMouseLeave: () => setHover(null) }, e('path', { d, className: 'kbw-edge-hit' }), e('path', { d, markerEnd: 'url(#kbw-net-arrow)' }), e('title', null, overview ? edge.count + ' 条跨分区关系' : relationLabel(edge.type) + ' · ' + (edge.evidence || '未记录定位'))) }),
               nodes.map(node => { const p = positions.get(node.path); if (!p) return null; const name = node.title || node.path || '根目录', lines = [name.slice(0, 10), name.slice(10, 20) + (name.length > 20 ? '…' : '')]; return e('g', { key: node.path, 'data-node': node.path, 'data-selected': selected?.kind === 'node' && selected.id === node.path, 'data-active': activeNodes.has(node.path), 'data-center': !overview && node.path === center, 'data-dimmed': Boolean(currentSelection && !activeNodes.has(node.path)), transform: `translate(${p.x} ${p.y})`, role: 'button', tabIndex: 0, 'aria-label': '选择：' + name, onClick: () => { if (!moved.current) chooseNode(node.path) }, onKeyDown: ev => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); chooseNode(node.path) } }, onMouseEnter: () => setHover({ kind: 'node', id: node.path }), onMouseLeave: () => setHover(null) }, e('rect', { width: nodeWidth, height: nodeHeight, rx: 8 }), e('text', { x: 13, y: 24 }, lines[0]), e('text', { x: 13, y: 43 }, lines[1]), e('text', { x: nodeWidth - 10, y: 57, textAnchor: 'end', className: 'kbw-node-meta' }, overview && !node.leaf ? node.fileCount + ' 份资料' : node.path === center ? '中心' : '资料'), e('title', null, name + '\n' + node.path)) }))),
           data && !nodes.length ? e('div', { className: 'kbw-network-empty' }, '当前筛选下没有关系节点。请调整筛选，或搜索一份资料作为中心。') : null,
-          e('div', { className: 'kbw-canvas-controls' }, btn('−', () => setTransform(t => { const zoom = Math.max(.25, t.zoom / 1.2), ratio = zoom / t.zoom; return { zoom, x: 500 - (500 - t.x) * ratio, y: 310 - (310 - t.y) * ratio } }), false, { 'aria-label': '缩小' }), e('span', null, Math.round(transform.zoom * 100) + '%'), btn('+', () => setTransform(t => { const zoom = Math.min(4, t.zoom * 1.2), ratio = zoom / t.zoom; return { zoom, x: 500 - (500 - t.x) * ratio, y: 310 - (310 - t.y) * ratio } }), false, { 'aria-label': '放大' }), btn('适配画布', fitView), btn('重置视图', resetView), btn('清除选择', () => { setSelected(null); setHover(null) }, !selected)),
-          e('p', { className: 'kbw-canvas-hint' }, '拖动画布平移 · 滚轮缩放 · 点击节点或连线查看关联 · Esc 清除选择')),
+          e('div', { className: 'kbw-canvas-controls' }, btn('−', () => setTransform(t => { const zoom = Math.max(.25, t.zoom / 1.2), ratio = zoom / t.zoom; return { zoom, x: width / 2 - (width / 2 - t.x) * ratio, y: height / 2 - (height / 2 - t.y) * ratio } }), false, { 'aria-label': '缩小' }), e('span', null, Math.round(transform.zoom * 100) + '%'), btn('+', () => setTransform(t => { const zoom = Math.min(4, t.zoom * 1.2), ratio = zoom / t.zoom; return { zoom, x: width / 2 - (width / 2 - t.x) * ratio, y: height / 2 - (height / 2 - t.y) * ratio } }), false, { 'aria-label': '放大' }), btn('适配画布', fitView), btn('重置视图', resetView), btn('清除选择', () => { setSelected(null); setHover(null) }, !selected), btn(fullscreen ? '退出全屏' : '全屏画布', toggleFullscreen, false, { 'aria-pressed': fullscreen, title: '让关系画布铺满整个窗口（Esc 退出）' })),
+          e('p', { className: 'kbw-canvas-hint' }, fullscreen ? '拖动画布平移 · 滚轮缩放 · 点击节点或连线查看关联 · Esc 退出全屏' : '拖动画布平移 · 滚轮缩放 · 点击节点或连线查看关联 · Esc 清除选择')),
         e('aside', { className: 'kbw-network-inspector', 'aria-label': '关联详情' },
           e('h3', null, pickedNode ? pickedNode.title || '根目录' : pickedEdge ? '所选连线' : '探索关系'),
           pickedNode ? e(R.Fragment, null, e('p', { className: 'kbw-path' }, pickedNode.path || '根目录'), e('div', { className: 'kbw-actions' }, overview && !pickedNode.leaf ? btn('展开下一级', () => changeScope('overview', pickedNode.path), false, { className: 'kbw-button kbw-primary' }) : btn('以此为中心', () => changeScope('center', pickedNode.path), false, { className: 'kbw-button kbw-primary' }), overview && !pickedNode.leaf ? btn('查看资料清单', () => navigate('map', pickedNode.path, true)) : btn('开始阅读', () => navigate('reading', pickedNode.path)), !overview ? btn('展开下一层', () => { remember(); setDepth('2') }, depth === '2') : null)) : !pickedEdge ? e('p', { className: 'kbw-meta' }, '点击图中一张卡片，它与相邻资料的卡片和连线会一起高亮。点击连线，可查看两端资料与联系依据。') : null,
@@ -789,7 +845,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
                   extensionError ? e('div', { role: 'alert' }, e('p', null, extensionError), e('p', null, '下载浏览器扩展 ZIP：', ...[
                     ['Gitee 国内下载', 'https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip'],
                     ['GitCode 国内下载', 'https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main'],
-                    ['GitHub 下载', 'https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.1/knowledge-base-browser-extension.zip']
+                    ['GitHub 下载', 'https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.2/knowledge-base-browser-extension.zip']
                   ].map(([label, href], index) => e(R.Fragment, { key: href }, index ? ' · ' : '', e('a', { href, target: '_blank', rel: 'noopener noreferrer' }, label))))) : null,
                   e('p', { className: 'kbw-meta' }, '下载完成后先解压，加载直接包含 manifest.json 的文件夹。镜像可能存在同步延迟；某个源暂不可用时可切换其他源。'),
               e('p', null, '从知识库插件的文件包或源码仓库取得 browser-extension 文件夹。下载的是整个仓库时，先解压，再找到这个文件夹。'),

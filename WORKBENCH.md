@@ -1,6 +1,6 @@
-> 当前正式版本为 **2.1.1**，下载与最新能力以 [README](README.md)、[发布说明](RELEASE.md) 为准。以下保留相应功能与历史阶段说明。
+> 当前正式版本为 **2.1.2**，下载与最新能力以 [README](README.md)、[发布说明](RELEASE.md) 为准。以下保留相应功能与历史阶段说明。
 
-# 2.1.1 正式版使用说明
+# 2.1.2 正式版使用说明
 
 关系网络增量索引、右侧直接删除、所有 Agent 默认解析通道、任务历史和更新弹窗规则见 [BETA9.md](BETA9.md)。
 
@@ -36,6 +36,8 @@
 
 关系页先显示全库可展示资料的分区总览和跨区连接数；分区卡片可打开该区资料清单，也可从区内常用节点或全库搜索选择任意中心资料。中心画布显示该节点一层或两层关联，并提供缩放、适配当前图谱和关联清单。总览按当前关联类型及归档、导航文档筛选统计；单个中心画布上限 200 节点、500 连线，达到上限时明确提示。
 
+画布下方的「全屏画布」把关系视图铺满整个窗口，图和右侧关联清单同时可用；画布按窗口宽高比放宽，节点不会被压在中间一条。按 Esc 或「退出全屏」返回，切到其它页签时自动收起。
+
 关系来自 Markdown / Wiki 链接、HTML 本地超链接、`source`、`see_also`、导入来源及手动关联。代码示例不当作链接；同名歧义、断链不猜测目标。手动关联不改正文。链接检查分别说明文档链接问题、手动关系端点问题和 AI 新关系建议；选定目标后必须先看逐项预览，再明确确认应用。完成提示列出改动项数、文件数和受影响资料；记录保存逐条关系变化并支持撤销，旧记录仍可撤销但没有逐条明细。
 
 工作台页签和资料跳转会保留返回历史，包含资料选择、搜索、范围、筛选、排序、分页和滚动位置；返回“关系”时继续保留中心节点、关系筛选与链接修复页码。
@@ -56,7 +58,7 @@
 
 采集列表及详情提供“移入回收站”：即使对应知识笔记已删除，也可单独删除采集原件，确认后 30 天内可恢复。预览、列表和详情均支持正常滚动；底部输入框遮挡的内容可继续向下滚动查看。
 
-浏览器扩展 ZIP：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.1/knowledge-base-browser-extension.zip)。镜像可能存在同步延迟；文件暂不可用时可切换其他源。ZIP 解压后，选择直接包含 `manifest.json` 的文件夹加载扩展。
+浏览器扩展 ZIP：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.2/knowledge-base-browser-extension.zip)。镜像可能存在同步延迟；文件暂不可用时可切换其他源。ZIP 解压后，选择直接包含 `manifest.json` 的文件夹加载扩展。
 
 首次使用：
 
@@ -114,4 +116,4 @@ Markdown/文本提供安全只读展示和链接导航。PDF 使用随包 PDF.js
 
 客户端内下载入口：知识库 → 收件箱 → 浏览器扩展使用指南 → 首次使用：安装与连接，点击“下载浏览器扩展”，自动匹配 Gitee、GitCode、GitHub 并校验下载文件，源失败时自动切换；全部失败时显示原因与备用链接。
 
-当前发布：正式版 2.1.1；预览通道暂无可用版本。旧预览包已撤下，安装请使用当前正式版。
+当前发布：正式版 2.1.2；预览通道暂无可用版本。旧预览包已撤下，安装请使用当前正式版。
