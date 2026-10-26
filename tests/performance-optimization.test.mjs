@@ -98,7 +98,11 @@ test('external source changes invalidate before notification even with vector re
   let events=0,afterEvent
   const received=new Promise(resolve=>{const off=wb.subscribe(event=>{if(event.type==='snapshot-dirty'){events++;afterEvent=wb.dispatch({op:'atlas.snapshot'});off();resolve()}});t.after(off)})
   await writeFile(path.join(root,'outside.txt'),'external synthetic source')
-  await Promise.race([received,new Promise((_,reject)=>{const timer=setTimeout(()=>reject(Error('watcher notification missing')),4000);timer.unref()})])
+  // Production watchers/debounce timers deliberately unref themselves. The
+  // test must keep its own deadline referenced while awaiting their event.
+  let deadline
+  try { await Promise.race([received,new Promise((_,reject)=>{deadline=setTimeout(()=>reject(Error('watcher notification missing')),4000)})]) }
+  finally { clearTimeout(deadline) }
   const updated=await afterEvent
   assert.equal(events,1);assert.equal(updated.totals.files,initial.totals.files+1)
   const count=updated.scanMetrics.scans
