@@ -5,6 +5,11 @@ on:
     tags: ['v*.*.*']
   workflow_dispatch:
     inputs:
+      diagnose_only:
+        description: Read-only mirror API and git push dry-run diagnostics
+        required: false
+        type: boolean
+        default: false
       sanitize_history:
         description: Remove stale mirror branches and tags after a privacy cleanup
         required: false
@@ -36,8 +41,15 @@ jobs:
         with:
           python-version: '3.12'
       - name: Sync mirror branch and stable tag
+        if: inputs.diagnose_only != true
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
           GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
           SANITIZE_HISTORY: ${{ inputs.sanitize_history || github.ref_name == 'v2.0.2' }}
         run: python tools/publish-stable-mirror.py "${{ matrix.platform }}"
+      - name: Diagnose mirror without changing refs or releases
+        if: inputs.diagnose_only == true
+        env:
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+          GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
+        run: python tools/diagnose-mirror.py "${{ matrix.platform }}"
