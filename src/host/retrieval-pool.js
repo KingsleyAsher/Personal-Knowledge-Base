@@ -4,10 +4,11 @@ import { performance } from 'node:perf_hooks'
 
 // One active job per worker: request failures/cancellation never terminate a
 // worker underneath another request. Idle workers do not keep the host alive.
-export function createRankingPool() {
+export function createRankingPool({ maxQueue = 16 } = {}) {
+  if (!Number.isInteger(maxQueue) || maxQueue < 1) throw new Error('Invalid ranking queue limit')
   let worker, active, sequence = 0, stopped = false
   let resident = null, epoch = 0, workerEpoch = -1
-  const queue = [], stats = { started: 0, completed: 0, catalogLoads: 0, catalogRecordsSent: 0, catalogBytesSent: 0 }
+  const queue = [], stats = { started: 0, completed: 0, canceledActive: 0, rejectedBusy: 0, catalogLoads: 0, catalogRecordsSent: 0, catalogBytesSent: 0 }
   function finish(job, error, result) {
     job.signal?.removeEventListener('abort', job.abort)
     if (!job.settled) { job.settled = true; error ? job.reject(error) : job.resolve(result) }
@@ -22,6 +23,7 @@ export function createRankingPool() {
       resident = null; workerEpoch = -1
       current.on('message', message => {
         if (worker !== current || message.requestId !== active?.id) return
+        if (active.retiring) return
         const job = active; active = null; stats.completed++
         if (!message.error && job.epoch === epoch && message.result?.catalogResident) resident = job.catalog
         else resident = null
@@ -71,9 +73,19 @@ export function createRankingPool() {
     stats,
     run(message, signal) {
       if (stopped || signal?.aborted) return Promise.reject(fail('CANCELED', '检索已取消'))
+      if (queue.length >= maxQueue) { stats.rejectedBusy++; return Promise.reject(fail('SEARCH_BUSY', '检索队列已满，请稍后重试')) }
       return new Promise((resolve, reject) => {
         const job = { id: ++sequence, message, signal, resolve, reject, settled: false, queuedAt: performance.now() }
-        job.abort = () => { finish(job, fail('CANCELED', '检索已取消')); pump() }
+        job.abort = () => {
+          finish(job, fail('CANCELED', '检索已取消'))
+          const index = queue.indexOf(job)
+          if (index >= 0) queue.splice(index, 1)
+          // An abandoned CPU scan must release the worker, not just its caller.
+          // Delay replacement until exit so repeated cancellation cannot create
+          // overlapping workers holding multiple full catalogs in memory.
+          if (active === job) { job.retiring = true; stats.canceledActive++; void worker?.terminate() }
+          else pump()
+        }
         signal?.addEventListener('abort', job.abort, { once: true })
         queue.push(job); pump()
       })

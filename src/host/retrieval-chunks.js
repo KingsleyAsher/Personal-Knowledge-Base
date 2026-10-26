@@ -5,7 +5,11 @@ export const hash = value => createHash('sha256').update(value).digest('hex')
 export const bytes = value => Buffer.byteLength(value, 'utf8')
 export function byteEnd(text, start, budget) {
   let end = start, used = 0
-  for (const c of text.slice(start)) { const n = bytes(c); if (used + n > budget) break; used += n; end += c.length }
+  while (end < text.length) {
+    const cp = text.codePointAt(end), n = cp <= 0x7f ? 1 : cp <= 0x7ff ? 2 : cp <= 0xffff ? 3 : 4
+    if (used + n > budget) break
+    used += n; end += cp > 0xffff ? 2 : 1
+  }
   return end
 }
 export const byteSlice = (text, budget) => text.slice(0, byteEnd(text, 0, budget))
@@ -53,7 +57,11 @@ export function structureDocument(text, title = '', options = {}) {
     const s = sections[pending.section]
     const inputPrefix = byteSlice([title, ...s.headings, pending.hint].filter(Boolean).join('\n'), 512)
     const c = { ...pending, id: chunks.length, sectionStart: s.start, sectionEnd: s.end, headings: s.headings, inputPrefix }
-    c.line = 1 + (text.slice(0, c.start).match(/\n/g) || []).length
+    // Reuse the line starts collected above. Recounting the entire prefix for
+    // every chunk made a long document approach quadratic work.
+    let low=0,high=lines.length
+    while(low<high){const mid=(low+high)>>>1;if(lines[mid].start<=c.start)low=mid+1;else high=mid}
+    c.line = Math.max(1,low)
     chunks.push(c); pending = null
   }
   for (const b of blocks) {
@@ -66,7 +74,8 @@ export function structureDocument(text, title = '', options = {}) {
     emit()
     let start = b.start
     const raw = text.slice(b.start, b.end)
-    const structureHint = b.kind === 'table' ? raw.split('\n').slice(0, 2).join('\n') : b.kind === 'list' ? raw.split('\n')[0] : b.hint
+    const first=raw.indexOf('\n'),second=first<0?-1:raw.indexOf('\n',first+1)
+    const structureHint = b.kind === 'table' ? raw.slice(0,second<0?raw.length:second) : b.kind === 'list' ? raw.slice(0,first<0?raw.length:first) : b.hint
     while (start < b.end) {
       let end = Math.min(b.end, byteEnd(text, start, target))
       if (end < b.end) {
@@ -92,7 +101,7 @@ export function embeddingText(text, chunk) {
 
 export function expandRange(text, chunk, budget = 12 * 1024) {
   let start = chunk.start, end = chunk.end
-  if (bytes(text.slice(chunk.sectionStart, chunk.sectionEnd)) <= budget) { start = chunk.sectionStart; end = chunk.sectionEnd }
+  if (byteEnd(text,chunk.sectionStart,budget) >= chunk.sectionEnd) { start = chunk.sectionStart; end = chunk.sectionEnd }
   else {
     const before = text.lastIndexOf('\n\n', Math.max(chunk.sectionStart, start - 1200))
     start = Math.max(chunk.sectionStart, before < 0 ? start : before + 2)

@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { createNameLookup } from './relation-name-lookup.js'
 import { readFile, writeFile, rename, unlink, mkdir } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { digest, fail, safePath, atomicJson, readJson, locked } from './workbench-state.js'
@@ -54,8 +55,9 @@ export async function collectRelations({ files, readText, readDocument, visible,
   const paths = new Set(files.map(f => f.path)), names = new Map(), edges = [], issues = [], seen = new Set()
   const trashNames = new Set(trashedFiles.flatMap(f => [path.posix.basename(f.path), path.posix.basename(f.path, path.posix.extname(f.path)), f.title].filter(Boolean).map(n => n.toLowerCase())))
   for (const f of files) for (const n of new Set([path.posix.basename(f.path), path.posix.basename(f.path, path.posix.extname(f.path)), f.title])) {
-    const k = n.toLowerCase(); names.set(k, [...(names.get(k) || []), f.path])
+    const k = n.toLowerCase(); if(!names.has(k))names.set(k,[]);names.get(k).push(f.path)
   }
+  let hintLookup
   const add = e => { const k = [e.from, e.to, e.type].join('|'); if (!seen.has(k)) { seen.add(k); edges.push({ ...e, id: e.id || digest(k).slice(0, 20) }) } }
   if (type === 'directory') for (const f of files) { const parent = path.posix.dirname(f.path); if (parent !== '.') add({ from: parent, to: f.path, type: 'directory', evidence: '实际目录' }) }
   for (const f of files.filter(f => /\.(md|html?)$/i.test(f.path))) {
@@ -83,8 +85,9 @@ export async function collectRelations({ files, readText, readDocument, visible,
       if (candidates.length === 1 && !anchorMissing) add({ from: f.path, to: candidates[0], type: ref.type, line: ref.line, evidence: '第 ' + ref.line + ' 行' })
       else {
         const id = digest([f.path, ref.start, ref.rawTarget].join('|')).slice(0, 24)
-        const hints = (inTrash ? [] : [...names.entries()]).filter(([k]) => k.includes(path.posix.basename(decoded).replace(/\.md$/, '').toLowerCase())).flatMap(([, v]) => v)
-        issues.push({ ...ref, id, path: f.path, revision: content.revision, context: ref.context ?? content.text.split('\n')[ref.line - 1]?.slice(0, 1000), candidates: candidates.length ? candidates : [...new Set(hints)].slice(0, 12), reason: inTrash ? 'target-in-trash' : anchorMissing ? 'anchor-missing' : candidates.length > 1 ? 'ambiguous' : 'unresolved' })
+        if(!inTrash&&!candidates.length&&!hintLookup)hintLookup=createNameLookup(names)
+        const hints = inTrash||candidates.length?[]:hintLookup.find(path.posix.basename(decoded).replace(/\.md$/, '').toLowerCase())
+        issues.push({ ...ref, id, path: f.path, revision: content.revision, context: ref.context ?? content.text.split('\n')[ref.line - 1]?.slice(0, 1000), candidates: candidates.length ? candidates : hints, reason: inTrash ? 'target-in-trash' : anchorMissing ? 'anchor-missing' : candidates.length > 1 ? 'ambiguous' : 'unresolved' })
       }
     }
   }

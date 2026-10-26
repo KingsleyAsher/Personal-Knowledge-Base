@@ -7,6 +7,7 @@ import { atomicJson, readJson, locked, fail, safePath } from './workbench-state.
 import { createParseCredentials } from './parse-credentials.js'
 import { initialRetrievalConfig, validateConfig, createRetrievalAPI } from './retrieval-api.js'
 import { hash, bytes, byteSlice, structureDocument, embeddingText, expandRange, CHUNK_VERSION } from './retrieval-chunks.js'
+import { createByteCache } from './retrieval-cache.js'
 
 const modelKey = config => hash(JSON.stringify([config.endpoint, config.model, config.dimensions || null, config.queryTemplate, config.documentTemplate, config.chunkTarget, config.chunkOverlap, config.generation, CHUNK_VERSION])).slice(0,32)
 const emptyManifest = () => ({ format: 1, dimension: 0, nextSlot: 0, vectors: {} })
@@ -42,10 +43,13 @@ async function treeBytes(dir, parts) {
   return total
 }
 
-export function createRetrieval({ stateDir, binding, loadDocuments, visible, versionOf, verifyDocument = async () => true, notify = () => {}, credentials = createParseCredentials(path.join(stateDir,'retrieval')), fetcher, now = Date.now, openVector = open }) {
+export function createRetrieval({ stateDir, binding, loadDocuments, visible, versionOf, verifyDocument = async () => true, notify = () => {}, credentials = createParseCredentials(path.join(stateDir,'retrieval')), fetcher, now = Date.now, openVector = open, maxConcurrentQueries = 4 }) {
+  if(!Number.isInteger(maxConcurrentQueries)||maxConcurrentQueries<1||maxConcurrentQueries>16)throw fail('BAD_QUERY_LIMIT','并发检索预算须为1–16')
   const root = path.join(stateDir,'retrieval'), api = createRetrievalAPI({ credentials, fetcher })
   let stopped = false, running = null, watcher = null, watched = '', dirty = true, lastScan = 0, activeQueries = 0, job = { state: 'idle' }
-  const cache = new Map(), ranking=createRankingPool(), pendingVectors=new Map(), statusSnapshots=new Map(), traces=new Map()
+  const cache = createByteCache({maxBytes:128*1024*1024,sizeOf:d=>bytes(d.text)*2+d.rankingChunks.reduce((n,r)=>n+bytes(r.text)*2+512,0)+d.sections.length*512}), ranking=createRankingPool(), pendingVectors=new Map(), statusSnapshots=new Map(), traces=new Map()
+  const manifests=createByteCache({maxBytes:64*1024*1024,maxEntries:4,sizeOf:v=>v.fileBytes*4+1024})
+  const manifestMetrics={loads:0,hits:0}
   let rankingCatalog = null, sourceTimer = null, automaticPending = null
   function invalidateComputations() { rankingCatalog=null;ranking.invalidate() }
   // Provider settings and encrypted credentials live outside the installed package.
@@ -110,13 +114,22 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
     try{await pending}catch(e){storageReady.delete(b.key);throw e}
   }
   const activeOf = async b => {const active=await readJson(path.join(directory(b),'active.json'),null).catch(e=>{if(e.code==='STATE_CORRUPT')return null;throw e});return active&&active.embedding&&active.key===modelKey(active.embedding)&&(active.format==null||active.format===1)&&(active.chunkVersion==null||active.chunkVersion===CHUNK_VERSION)?active:null}
-  const manifestOf = async (b, c) => {
+  const manifestOf = async (b, c, {mutable=false}={}) => {
     await ensureStorage(b)
     const dir = await safePath(b.root,'索引层/'+modelKey(c),{missing:true})
     try {
-      const manifest = await readJson(path.join(dir,'manifest.json'),emptyManifest())
+      const file=path.join(dir,'manifest.json')
+      const stamp=async()=>{try{const s=await stat(file,{bigint:true});return{version:[s.dev,s.ino,s.size,s.mtimeNs,s.ctimeNs].join(':'),bytes:Number(s.size)}}catch(e){if(e.code==='ENOENT')return{version:'missing',bytes:0};throw e}}
+      const before=await stamp(),cached=manifests.get(file)
+      if(cached?.version===before.version){manifestMetrics.hits++;return{dir,manifest:mutable?structuredClone(cached.manifest):cached.manifest,revision:cached.revision}}
+      const manifest = await readJson(file,emptyManifest())
+      manifestMetrics.loads++
       if (manifest.format!==1 || !Number.isSafeInteger(manifest.dimension) || manifest.dimension<0 || !Number.isSafeInteger(manifest.nextSlot) || manifest.nextSlot<0 || !manifest.vectors || typeof manifest.vectors!=='object' || Array.isArray(manifest.vectors) || Object.values(manifest.vectors).some(x=>!Number.isSafeInteger(x)||x<0||x>=manifest.nextSlot)) throw fail('STATE_CORRUPT','向量清单无效')
-      return {dir,manifest}
+      const revision=hash(JSON.stringify(manifest)),after=await stamp()
+      if(before.version===after.version)manifests.set(file,{version:after.version,fileBytes:after.bytes,manifest,revision})
+      // Builders own their maps; uncommitted additions never mutate the shared
+      // read snapshot retained for searches.
+      return {dir,manifest:mutable?structuredClone(manifest):manifest,revision}
     }catch(e){if(e.code==='STATE_CORRUPT')return {dir,manifest:{...emptyManifest(),corrupt:true}};throw e}
   }
   async function collectOld(b) {
@@ -126,26 +139,28 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
     for(const row of await readdir(directory(b),{withFileTypes:true}).catch(()=>[]))if(row.isDirectory()&&/^[a-f0-9]{32}$/.test(row.name)&&!keep.has(row.name)){await rm(path.join(directory(b),row.name),{recursive:true,force:true});removed++}
     return removed
   }
-  async function documents(b, force = false, embeddingConfig = null) {
+  async function documents(b, force = false, embeddingConfig = null, selection = null) {
     const cfg = embeddingConfig || (await configuration(b)).embedding, {manifest} = await manifestOf(b,cfg)
     const target = manifest.effectiveTarget || cfg.chunkTarget || 2400, overlap = Math.min(cfg.chunkOverlap ?? 240, Math.floor(target/3)), chunkSignature = target + ':' + overlap
-    const loadStarted=performance.now(),loaded = await loadDocuments(b,force), out = []
+    const loadStarted=performance.now(),loaded = await loadDocuments(b,force,selection), out = []
     const loadDocumentsMs=performance.now()-loadStarted,chunkStarted=performance.now()
     let chunkCacheHits=0,chunkCacheMisses=0
     const alive = new Set()
     for (const d of loaded.documents) {
       const key = b.key + '\0' + d.path; alive.add(key)
       let entry = cache.get(key)
+      let weight = cache.cost(key)
       if (!entry || entry.revision !== d.revision || entry.title !== d.title || entry.chunkSignature !== chunkSignature) {
         chunkCacheMisses++
         entry = { ...d, ...structureDocument(d.text,d.title,{target,overlap}), chunkSignature }
         entry.rankingChunks=entry.chunks.map(c=>({c,text:d.text.slice(c.start,c.end),vectorHash:hash(embeddingText(d.text,c))}))
+        weight=undefined
       }
       else {entry = { ...entry, ...d };chunkCacheHits++}
-      cache.set(key,entry); out.push(entry)
+      cache.set(key,entry,weight); out.push(entry)
     }
-    for (const key of cache.keys()) if (!alive.has(key)) cache.delete(key)
-    return { ...loaded, documents: out,documentMetrics:{loadDocumentsMs,chunkingMs:performance.now()-chunkStarted,chunkCacheHits,chunkCacheMisses} }
+    if(!loaded.partial)for (const key of cache.keys()) if (!alive.has(key)) cache.delete(key)
+    return { ...loaded, documents: out,documentMetrics:{loadDocumentsMs,chunkingMs:performance.now()-chunkStarted,chunkCacheHits,chunkCacheMisses,chunkCache:cache.stats()} }
   }
   async function assertCurrent(b, configRevision, signal) {
     if (signal?.aborted || stopped) throw fail('CANCELED','任务已暂停')
@@ -159,22 +174,25 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
     job = { state:'scanning', startedAt:now(), completed:0, pending:0, failed:0, errors:[] }; await checkpoint(b)
     const catalog = await documents(b,true,config.embedding)
     const eligible = catalog.documents.filter(d => !d.private || config.allowPrivateCloud)
-    const { dir, manifest } = await manifestOf(b,config.embedding)
+    const { dir, manifest } = await manifestOf(b,config.embedding,{mutable:true})
     if(manifest.corrupt)throw fail('INDEX_CORRUPT','向量索引损坏，请使用重建操作')
     await mkdir(dir,{recursive:true})
-    const pending = new Map(), descriptions = []
-    for (const d of eligible) for (const c of d.chunks) {
-      const input = embeddingText(d.text,c), h = hash(input)
-      descriptions.push({ path:d.path, revision:d.revision, chunk:c, hash:h })
-      if (manifest.vectors[h] == null) pending.set(h,input)
+    const pending = new Map()
+    let totalChunks=0,reusedChunks=0
+    for (const d of eligible) for (const {c,vectorHash:h} of d.rankingChunks) {
+      totalChunks++
+      if (manifest.vectors[h] == null) pending.set(h,{d,c})
+      else reusedChunks++
     }
-    job = { ...job, state:'building', documents:catalog.documents.length, chunks:descriptions.length, total:pending.size, pending:pending.size, reused:descriptions.filter(x => manifest.vectors[x.hash] != null).length,
-      estimatedVectorBytes:descriptions.length * (manifest.dimension || config.embedding.dimensions || 1024) * 4, readErrors:catalog.errors, nameOnly:catalog.nameOnly }
+    job = { ...job, state:'building', documents:catalog.documents.length, chunks:totalChunks, total:pending.size, pending:pending.size, reused:reusedChunks,
+      estimatedVectorBytes:totalChunks * (manifest.dimension || config.embedding.dimensions || 1024) * 4, readErrors:catalog.errors, nameOnly:catalog.nameOnly }
     await checkpoint(b)
     const items = [...pending]
     for (let index = 0; index < items.length;) {
       await assertCurrent(b,config.revision,signal)
-      const batch = items.slice(index,index+config.embedding.batchSize)
+      // Materialize API input only for the active batch, not for every pending
+      // chunk in the library. The source and hashes remain unchanged.
+      const batch = items.slice(index,index+config.embedding.batchSize).map(([h,{d,c}])=>[h,embeddingText(d.text,c)])
       let vectors
       for (let attempt=0;;attempt++) {
         try { vectors = await api.embed(config.embedding,batch.map(x => x[1]),'document',{ signal, dimension:manifest.dimension || undefined }); break }
@@ -315,7 +333,7 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
     const data=await documents(b), chunks=data.documents.reduce((n,d)=>n+d.chunks.length,0), active=await activeOf(b)
     const components={vectors:0,metadata:0,temporary:0,other:0}, target=await manifestOf(b,config.embedding), actual=await treeBytes(directory(b),components)
     let available=null; try {const disk=await statfs(directory(b)); available=disk.bavail*disk.bsize}catch{}
-    const wanted=new Set(data.documents.filter(d=>!d.private||config.allowPrivateCloud).flatMap(d=>d.chunks.map(c=>hash(embeddingText(d.text,c)))))
+    const wanted=new Set(data.documents.filter(d=>!d.private||config.allowPrivateCloud).flatMap(d=>d.rankingChunks.map(r=>r.vectorHash)))
     const stored=Object.keys(target.manifest.vectors).filter(h=>wanted.has(h)).length
     const value={config,credentialStatus:{embedding:await credentials.configured?.(config.embedding.credentialRef)||false,rerank:await credentials.configured?.(config.rerank.credentialRef)||false},progress,estimate:{storagePath:directory(b),documents:data.documents.length,textBytes:data.documents.reduce((n,d)=>n+bytes(d.text),0),chunks,uniqueVectorInputs:wanted.size,
       vectorBytes:wanted.size*(target.manifest.dimension||config.detectedDimension||1024)*4,actualBytes:actual,metadataEstimateBytes:bytes(JSON.stringify(data.documents.map(d=>({path:d.path,sections:d.sections,chunks:d.chunks})))),
@@ -343,7 +361,7 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
     const vectorStarted=performance.now()
     const vectorPromise=(canVector?queryVector(b,config,embedding,query):Promise.resolve({})).then(result=>{timings.queryVectorMs=canVector?performance.now()-vectorStarted:0;return result})
     const loadStarted=performance.now()
-    const data=await documents(b,args.fresh===true,embedding), current=await binding(b.st.kbId)
+    const data=await documents(b,args.fresh===true,embedding,{question:args.question===true,includePrivate:args.includePrivate===true,path:args.path,prefix:args.prefix,direct:args.direct}), current=await binding(b.st.kbId)
     timings.documentLoadMs=performance.now()-loadStarted
     Object.assign(timings,data.documentMetrics)
     if(versionOf(current)!==versionOf(b))throw fail('SETTINGS_CHANGED','检索设置已改变')
@@ -351,9 +369,9 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
       (!args.path||d.path===args.path) && (!args.direct||args.prefix===undefined||path.posix.dirname(d.path)===(args.prefix||'.')) && (!args.prefix||d.path===args.prefix||d.path.startsWith(args.prefix.replace(/\/$/,'')+'/')) && (!args.layer||args.layer===d.layer) &&
       (!args.extension||args.extension===d.extension) && (!args.kind||args.kind===d.kind) && (!args.tag||d.tags?.includes(args.tag)) &&
       (!args.after||d.mtimeMs>=Date.parse(args.after)) && (!args.before||d.mtimeMs<Date.parse(args.before)+86400000))
-    const {dir,manifest}=await manifestOf(b,embedding), catalogStarted=performance.now()
+    const {dir,manifest,revision:manifestRevision}=await manifestOf(b,embedding), catalogStarted=performance.now()
     const scope=hash(JSON.stringify([b.key,b.root,versionOf(b),config.revision,modelKey(embedding),CHUNK_VERSION,args.question===true,args.includePrivate===true,config.allowPrivateCloud]))
-    const signature=hash(JSON.stringify([scope,manifest.dimension,manifest.nextSlot,manifest.vectors,manifest.checksums,sourceDocs.map(d=>[d.path,d.revision,d.chunkSignature,d.title,d.tags,d.private])]))
+    const signature=hash(JSON.stringify([scope,manifestRevision,sourceDocs.map(d=>[d.path,d.revision,d.chunkSignature,d.title,d.tags,d.private])]))
     let catalog=rankingCatalog?.revision===signature?rankingCatalog:null
     if(!catalog) {
       const rows=[],references=[];let size=0
@@ -456,7 +474,7 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
     steps.push('原文版本校验及章节、相邻上下文扩展')
     const retrievalTrace={requestedMode:mode,embeddingModel:semanticUsed?embedding.model:null,fulltext:true,semantic:semanticUsed,crossRounds:result.crossRounds,reranked,steps,warning,timings,transport:result.transport,scan:data.scanMetrics}
     const history=traces.get(b.key)||[];history.push({at:now(),...retrievalTrace,cache:result.cache});traces.set(b.key,history.slice(-10))
-    return {cache:{...result.cache,queryRequestMerged:Boolean(vectors.requestMerged)},retrievalTrace,retrievalDisclosure:retrievalDisclosure(retrievalTrace,b.preferences?.showRetrievalProcess!==false),items:items.slice(offset,offset+limit),total:args.question?ranked.length:items.length,offset,limit,mode:canVector&&!vectors.vector?'fulltext':mode,crossRounds:result.crossRounds,warning,
+    return {cache:{...result.cache,queryRequestMerged:Boolean(vectors.requestMerged),manifest:{...manifestMetrics,...manifests.stats()}},retrievalTrace,retrievalDisclosure:retrievalDisclosure(retrievalTrace,b.preferences?.showRetrievalProcess!==false),items:items.slice(offset,offset+limit),total:args.question?ranked.length:items.length,offset,limit,mode:canVector&&!vectors.vector?'fulltext':mode,crossRounds:result.crossRounds,warning,
       coverageNote:`全文覆盖 ${sourceDocs.length} 份资料、${chunkCount} 个片段；其中 ${covered} 个片段已向量化；仅名称 ${data.nameOnly} 份；读取失败 ${data.errors.length} 份。${warning}`,
       coverage:{documents:sourceDocs.length,chunks:chunkCount,vectors:covered,nameOnly:data.nameOnly,errors:data.errors.length},more:args.question?ranked.length>items.length:items.length>offset+limit}
   }
@@ -501,7 +519,13 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
       return {path:d.path,title:d.title,revision:d.revision,...range,nextStart:range.end<d.text.length?range.end:null,previousStart:range.start>0?Math.max(0,range.start-2000):null}
     },
     reconcile,
-    async search(b,args){activeQueries++;try{return await search(b,args)}finally{activeQueries--}},automatic,
+    async search(b,args){
+      if(stopped)throw fail('CANCELED','检索已关闭')
+      // Admit before catalog loading or API calls, not after each caller has
+      // already materialized a large request and reached the ranking queue.
+      if(activeQueries>=maxConcurrentQueries)throw fail('SEARCH_BUSY','并发检索已达工作预算，请稍后重试')
+      activeQueries++;try{return await search(b,args)}finally{activeQueries--}
+    },automatic,
     async dispatch(b,args,caller) {
       if(caller)throw fail('ADMIN_ONLY','检索服务配置与任务管理仅可在设置页操作')
       await ensureStorage(b)
@@ -523,7 +547,7 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
       }
       throw fail('BAD_OPERATION','未知检索操作')
     },
-    invalidate(){dirty=true;cache.clear();statusSnapshots.clear();traces.clear();invalidateComputations()},
-    dispose(){stopped=true;clearInterval(timer);clearTimeout(sourceTimer);watcher?.close();running?.controller.abort();ranking.dispose();rankingCatalog=null;cache.clear();pendingVectors.clear();statusSnapshots.clear();traces.clear()},
+    invalidate(){dirty=true;cache.clear();manifests.clear();statusSnapshots.clear();traces.clear();invalidateComputations()},
+    dispose(){stopped=true;clearInterval(timer);clearTimeout(sourceTimer);watcher?.close();running?.controller.abort();ranking.dispose();rankingCatalog=null;cache.clear();manifests.clear();pendingVectors.clear();statusSnapshots.clear();traces.clear()},
   }
 }

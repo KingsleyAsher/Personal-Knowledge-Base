@@ -14,6 +14,7 @@ import { collectRelations, createRepairService } from './workbench-links.js'
 import { createRelationIndex } from './workbench-relation-index.js'
 import { deliverablesOf, deliverablePrivate, createDeliverableService } from './workbench-deliverables.js'
 import { createRetrieval } from './retrieval.js'
+import { createByteCache } from './retrieval-cache.js'
 import { createSystemUpgrades } from './system-upgrades.js'
 import { VERSION, TEMPLATES } from './kbcore.js'
 
@@ -60,8 +61,8 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     for (const listener of subscribers) { try { listener(event) } catch { /* disconnected client */ } }
   }
   const relationIndex = createRelationIndex({ stateDir, readText: (b, file) => textOf(b, file, 8 * 1024 * 1024), now, notify })
-  const metadataText = new Map()
-  const retrievalText = new Map()
+  const metadataText = createByteCache({maxBytes:32*1024*1024,sizeOf:v=>Buffer.byteLength(v.text)*2+256})
+  const retrievalText = createByteCache({maxBytes:64*1024*1024,sizeOf:v=>Buffer.byteLength(v.text)*2+256})
   const retrieval = createRetrieval({ stateDir, binding, loadDocuments: retrievalDocuments, visible: (...args) => visible(...args), versionOf: b => versionOf(b), notify,
     verifyDocument: async (b,file,revision) => (await textOf(b,file,Number.MAX_SAFE_INTEGER)).revision === revision })
   const upgrades=createSystemUpgrades({binding,catalog:async()=>Object.entries(TEMPLATES).map(([name,content])=>({path:'_模板/'+name,content,version:VERSION})),runtime:getUpgradeContext,retrieval,now})
@@ -238,7 +239,6 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       })
       const value = { files, dirs: walk.dirs, coverage: walk.coverage, truncated: walk.truncated, indexed, indexFresh: index.freshness?.fresh === true,
         version: key + ':' + digest(files.map(f => `${f.path}:${f.bytes}:${f.mtimeMs}:${f.ctimeMs}:${f.title}`).join('\n')).slice(0, 12) }
-      if (metadataText.size > 2000) metadataText.clear()
       scanMetrics.scans++;scanMetrics.walkMs=walkMs;scanMetrics.indexMs=indexMs;scanMetrics.totalMs=performance.now()-started;scanMetrics.files=files.length;scanMetrics.directories=walk.dirs.length
       if(epoch===scanEpoch)cache = { key, at: now(), value }
       return value
@@ -319,22 +319,30 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       coverageNote: args.mode === 'body' ? '标题、标签、类型及已纳入知识层的正文；不含未解析二进制、排除目录。过期缓存回退读盘；超长正文最多扫描 8 MiB。' : '文件名与路径；排除系统元数据及目录链接。' }
   }
 
-  async function retrievalDocuments(b, fresh = false) {
+  async function retrievalDocuments(b, fresh = false, selection = null) {
     const snap = await scan(b, fresh), documents = [], names = [], errors = [], live = new Set()
+    let sourceReads=0,sourceBytes=0,textCacheHits=0
+    // Attached originals/derived entries are folded against the complete
+    // successfully-readable set. Preserve that behavior until scoped folding
+    // can prove the same result without loading the counterpart.
+    const filter=Object.values(b.sources||{}).some(s=>s.mode==='attach')?null:selection
+    const selected = (f,text=false) => !filter || visible(b,f.path,filter.question,filter.includePrivate) && (!filter.path||f.path===filter.path) && scopeMatch(f.path,filter.prefix) && (!text||!filter.direct||filter.prefix===undefined||path.posix.dirname(f.path)===(filter.prefix||'.'))
     const textType = /\.(md|txt|csv|tsv|json|jsonl|log|ya?ml|html?|xml)$/i
     const excluded = b.conf.excludeFromSearch || []
     for (const f of snap.files) {
       if (inside(stateDir,path.resolve(b.root,f.path))) continue
       if (excluded.some(p => scopeMatch(f.path,p)) || /^(AGENTS|INDEX|README)\.md$/.test(f.path)) continue
-      if (!textType.test(f.path) && !b.deliverables.items.some(x => x.path === f.path && x.text)) { names.push(f); continue }
+      if (!textType.test(f.path) && !b.deliverables.items.some(x => x.path === f.path && x.text)) { if(selected(f))names.push(f); continue }
       const key = b.key + '\0' + f.path, fingerprint = [f.bytes,f.mtimeMs,f.ctimeMs].join('|'); live.add(key)
+      if(!selected(f,true))continue
       try {
         let full = retrievalText.get(key)
         if (!full || full.fingerprint !== fingerprint || fresh) {
           const existing = snap.indexFresh && !fresh ? snap.indexed.get(f.path) : null
           const content = existing?.text && !existing.truncated ? { text: existing.text, revision: digest(existing.text), truncated:false } : await textOf(b,f.path,Number.MAX_SAFE_INTEGER)
+          if(!(existing?.text&&!existing.truncated)){sourceReads++;sourceBytes+=content.bytes||Buffer.byteLength(content.text)}
           full = { ...content, fingerprint }; retrievalText.set(key,full)
-        }
+        }else textCacheHits++
         const parsed = b.core._internal.parseFrontmatter(full.text)
         documents.push({ ...f, title:parsed.data.title || f.title, tags:Array.isArray(parsed.data.tags)?parsed.data.tags:f.tags,
           kind:parsed.data.type || f.kind, entryId:parsed.data.id || f.entryId, text:full.text, revision:full.revision })
@@ -343,7 +351,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     for (const key of retrievalText.keys()) if (!live.has(key)) retrievalText.delete(key)
     const pairs = foldGeneratedPairs(documents.map(d=>d.path), b.sources, { kbId:b.st.kbId,root:b.root })
     const existingTextCacheBytes=await stat(path.join(b.root,'.kbmeta','index','entries.json')).then(s=>s.size).catch(()=>0)
-    return {documents:documents.filter(d=>!pairs.has(d.path)),names,nameOnly:names.length,errors,coverage:snap.coverage,existingTextCacheBytes,scanMetrics:{...scanMetrics}}
+    return {documents:documents.filter(d=>!pairs.has(d.path)),names,nameOnly:names.length,errors,coverage:snap.coverage,existingTextCacheBytes,partial:Boolean(filter),scanMetrics:{...scanMetrics,sourceReads,sourceBytes,textCacheHits,textCache:retrievalText.stats(),metadataCache:metadataText.stats()}}
   }
 
   async function relations(b, args) {
@@ -839,7 +847,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     return { saved: Boolean(result.capture), duplicate: Boolean(result.duplicate), requiresConfirmation: result.requiresConfirmation === true }
   }
   return { dispatch, binding, versionOf, profile, preferences, runAutomatic, activeTasks, invalidate: () => { cache = null;scanEpoch++; retrieval.invalidate() }, backups,
-    retrieval, dispose: () => retrieval.dispose(),
+    retrieval, dispose: () => {retrieval.dispose();retrievalText.clear();metadataText.clear();cache=null},
     displayPolicy: async () => { const b = await binding(); return { privateDirs: b.preferences.showPrivate ? [] : b.privateDirs, revision: b.preferencesRevision } },
     notify,
     filterJobs: async jobs => { const b = await binding(); return jobs.filter(j => j.source?.external || visible(b, j.source?.relPath ?? '')) },
