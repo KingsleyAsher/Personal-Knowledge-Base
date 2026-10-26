@@ -13,7 +13,7 @@ GitHub is the source of truth for stable code and tags. A successful stable tag 
 
 The mirror workflow runs for each newly published non-prerelease GitHub Release. It reads files from the exact published tag, validates the archive against `release-manifest.json` and `SHA256SUMS`, then creates or updates the matching Release on Gitee and GitCode.
 
-It uploads the six stable distribution files as native Release attachments and verifies their SHA-256 values. Re-running is safe: existing attachments with matching bytes are kept, unrelated release notes remain, and the managed notes section is replaced in place. A same-name attachment with different bytes causes a clear failure; automation does not delete or overwrite it.
+It uploads the six stable distribution files as native Release attachments and verifies their SHA-256 values. Re-running is safe: existing attachments with matching bytes are kept, unrelated release notes remain, and the managed notes section is replaced in place. After a transient upload timeout, automation checks whether the attachment arrived before retrying. A same-name attachment with different bytes causes a clear failure; automation does not delete or overwrite it.
 
 GitHub Actions needs repository secrets named `GITEE_TOKEN` and `GITCODE_TOKEN`. The manual workflow options support read-only diagnosis and release-only reconciliation of a specified stable tag.
 

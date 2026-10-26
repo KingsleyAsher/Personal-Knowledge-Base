@@ -240,6 +240,50 @@ class MirrorReleaseTests(unittest.TestCase):
         self.assertNotIn('authorization', seen[0][1])
         self.assertNotIn('cookie', seen[0][1])
 
+    def test_timed_out_upload_is_verified_before_retrying(self):
+        _manifest, _commit, _notes, files = self.release_data
+        name, raw = next(iter(files.items()))
+        hashes = {name: hashlib.sha256(raw).hexdigest()}
+        existing = {'id': 17, 'tag_name': self.tag, 'name': '手工标题', 'body': '', 'assets': []}
+
+        class AcceptedThenTimeout(FakeAPI):
+            post_attempts = 0
+
+            def repo(self, route='', method='GET', data=None, query=None, missing=False, raw=False, headers=None):
+                if route == '/releases/17/attach_files' and method == 'POST':
+                    self.post_attempts += 1
+                    result = super().repo(route, method, data, query, missing, raw, headers)
+                    if self.post_attempts == 1:
+                        raise APIError('gitee', 'POST', route, 'network', 'connection failed')
+                    return result
+                return super().repo(route, method, data, query, missing, raw, headers)
+
+        api = AcceptedThenTimeout('gitee', hashes, existing)
+        publisher.upload(api, existing, self.tag, name, raw, sleep=lambda _seconds: None)
+        self.assertEqual(api.post_attempts, 1)
+        self.assertEqual(api.upload_count, 1)
+
+    def test_transient_upload_failure_retries_when_attachment_is_absent(self):
+        _manifest, _commit, _notes, files = self.release_data
+        name, raw = next(iter(files.items()))
+        hashes = {name: hashlib.sha256(raw).hexdigest()}
+        existing = {'id': 17, 'tag_name': self.tag, 'name': '手工标题', 'body': '', 'assets': []}
+
+        class RejectFirstUpload(FakeAPI):
+            post_attempts = 0
+
+            def repo(self, route='', method='GET', data=None, query=None, missing=False, raw=False, headers=None):
+                if route == '/releases/17/attach_files' and method == 'POST':
+                    self.post_attempts += 1
+                    if self.post_attempts == 1:
+                        raise APIError('gitee', 'POST', route, 'network', 'connection failed')
+                return super().repo(route, method, data, query, missing, raw, headers)
+
+        api = RejectFirstUpload('gitee', hashes, existing)
+        publisher.upload(api, existing, self.tag, name, raw, sleep=lambda _seconds: None)
+        self.assertEqual(api.post_attempts, 2)
+        self.assertEqual(api.upload_count, 1)
+
 
 if __name__ == '__main__':
     unittest.main()
