@@ -1,4 +1,4 @@
-# 个人知识库 2.1.3
+# 个人知识库 2.1.4
 
 ## 📘 [插件设计与演进记录 →](PROJECT-RECORD.md)
 
@@ -14,11 +14,13 @@
 
 ## 当前下载版本
 
-当前仅推荐正式版 **2.1.3**。预览通道暂无可用版本。
+当前仅推荐正式版 **2.1.4**。预览通道暂无可用版本。
 
-## 2.1.3 响应与检索优化
+## 2.1.4 后台更新与状态修复
 
-工作台沿用事件通道合并资料变更刷新，可见页面每 60 秒兜底，隐藏时暂停；关系索引完成后及时通知。检索目录按版本增量传入常驻 worker，复用词法数据和向量分片；向量按批次、按分片同步落盘，继续保留隐私、来源版本和损坏检测。
+同一大版本内的正式版静默下载、校验和安装，不再弹出更新前选择窗口；确认新版加载后同步刷新版本状态。补丁更新不弹更新内容，小版本或大版本升级才显示合并说明。跨大版本和预览版仍需手动选择。
+
+此前的性能优化继续保留：工作台沿用事件通道合并资料变更刷新，可见页面每 60 秒兜底，隐藏时暂停；关系索引完成后及时通知。检索目录按版本增量传入常驻 worker，复用词法数据和向量分片；向量按批次、按分片同步落盘，继续保留隐私、来源版本和损坏检测。
 
 20,000 份合成资料的 worker 暖查询中位耗时约从 109ms 降至 17ms；这不是整个界面或真实模型响应时间，冷查询略有增加。条件、数据与边界见 [性能优化记录](PERFORMANCE.md)。
 
@@ -36,11 +38,11 @@
 
 ## 选择下载版本
 
-- **正式版 2.1.3**：[GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.3/local-dsh-knowledge-base-2.1.3.tgz) · [Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.1.3.tgz) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.1.3.tgz?ref=main) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.1.3.tgz)。
-- **浏览器扩展（Chrome／Edge）**：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub Release 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.3/knowledge-base-browser-extension.zip) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/knowledge-base-browser-extension.zip)。镜像可能存在同步延迟；文件暂不可用时可切换其他下载源。
-- 历史安装包已从公开下载处撤下；旧版用户请先安装 2.1.3，再使用插件内更新器。
+- **正式版 2.1.4**：[GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.4/local-dsh-knowledge-base-2.1.4.tgz) · [Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.1.4.tgz) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.1.4.tgz?ref=main) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.1.4.tgz)。
+- **浏览器扩展（Chrome／Edge）**：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub Release 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.4/knowledge-base-browser-extension.zip) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/knowledge-base-browser-extension.zip)。镜像可能存在同步延迟；文件暂不可用时可切换其他下载源。
+- 历史安装包已从公开下载处撤下；旧版用户请先安装 2.1.4，再使用插件内更新器。
 
-新版更新器同时检查正式版和预览版；已安装正式版时只对正式版更新弹窗，预览版更新在设置页和知识库顶部的检查更新入口显示红点；已安装预览版时两个渠道的新版本都会弹出更新提示。同一大版本的正式版更新沿用自动安装资格判断，预览版仍需主动选择。当前正式版为 `2.1.3`，暂无预览版；旧预览版已退出当前下载入口。
+新版更新器同时检查正式版和预览版；同一大版本内可自动安装的正式版在后台更新，不弹更新前提醒。跨大版本与预览版保留手动选择；正式版用户的可选预览版仅在更新入口显示红点。宿主不支持客户端安装时通过宿主插件管理器更新。当前正式版为 `2.1.4`，暂无预览版；旧预览版已退出当前下载入口。
 
 以下能力沿袭自 1.1.x 并持续迭代至 2.1.0；逐项发布记录见 [正式版说明](RELEASE.md)。
 
@@ -52,7 +54,7 @@ DSH 个人知识库插件：目录绑定、条目管理与检索、资料导入�
 
 - 客户端内一键更新：点击「安装新版本」后自动下载并校验安装包，由 DSH 插件管理器安装并尝试热加载；仅当宿主报告需要重启时提示重启。热加载断线后通过安装请求编号与实际构建恢复结果。
 - 1.1.3：修复 `kb_import action=parse` 绕过解析授权门的问题；导入解析现在校验活跃调用方、实时知识库授权和 H1 就绪状态，并记录授权来源。更新公告按 Esc 关闭后也会持久化已读状态。
-- 安装后的更新说明：正式版跨大／小版本弹窗、单独补丁更新不弹；预览版每次更新弹窗。跨版本内容合并去重展示，不按历史版本分组，兼容已读标记。
+- 同一大版本内的正式版在后台自动更新，不弹更新前提醒；补丁更新不弹更新内容，只有正式版小版本或大版本升级才显示。预览版每次更新显示更新内容。跨大版本、预览版与渠道切换保留手动选择。跨版本内容合并去重展示，关闭后记录已读。
 - 新增产品展示网页，并配置 GitHub Pages 自动发布。
 - 保留 1.1.0 的 OCR / ASR、索引维护与数据保护能力。
 
@@ -67,7 +69,7 @@ DSH 个人知识库插件：目录绑定、条目管理与检索、资料导入�
 
 ## 安装
 
-首次安装或从旧版接入新更新器：在 DSH 插件管理器的安装源中填写 `https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.1.3.tgz`，由客户端下载和安装；也可安装仓库 `dist/` 下的本地包。旧版自身的下载按钮仍采用旧流程，需先安装本版才能获得新更新器。
+首次安装或从旧版接入新更新器：在 DSH 插件管理器的安装源中填写 `https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.1.4.tgz`，由客户端下载和安装；也可安装仓库 `dist/` 下的本地包。旧版自身的下载按钮仍采用旧流程，需先安装本版才能获得新更新器。
 
 安装本版后，插件内「检查版本更新 → 安装新版本 / 安装预览版」自动完成下载、SHA-256 与包身份校验、安装及加载核对。普通宿主支持时热加载，宿主返回需要重启时再完全退出（含托盘）并重开。核对版本及构建号，摘要见 [发布清单](release-manifest.json)。宿主未提供安装接口时，按钮会说明需使用宿主插件管理器。
 
@@ -75,7 +77,7 @@ DSH 个人知识库插件：目录绑定、条目管理与检索、资料导入�
 
 ## 验证与边界
 
-2.1.3 完成检索、索引、隐私和引用的定向回归，以及刷新调度与真实 watcher/SSE 的浏览器简查。完整 DSH React 宿主、正式桌面安装及真实云 API 未验证；未使用个人知识库。
+2.1.4 完成 26 项更新流程定向检查、客户端语法与包一致性检查；此前的检索、索引及刷新验证记录保留在性能文档。完整 DSH React 宿主、正式桌面安装及真实云 API 未验证；未使用个人知识库。
 
 2.1.0 发布前完成 25 项定向自动检查、安装包逐文件与 SHA-256 校验；GitHub 正式发布工作流和产品页部署均通过。用户已确认 2.1-beta4 预览版可用。正式包未在维护者本机安装验证，未调用真实云端 Embedding/Rerank API；自动化主要使用合成资料和模拟服务。
 

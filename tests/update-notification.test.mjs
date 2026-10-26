@@ -41,3 +41,17 @@ test('preview installation offers both channels and closing remembers exact rele
   r.setUpdate({ ...update, preview: { ...update.preview, latestVersion: '2.0.4-beta2' } })
   assert.deepEqual(Array.from(r.api.pendingUpdatePrompts(), x => x.latestVersion), ['2.0.4-beta2'])
 })
+
+test('automatic stable updates stay silent before installation; manual channels still prompt', () => {
+  const r = rules('2.0.2')
+  const automatic = { ...update, autoInstallEligible: true, buildId: 'a'.repeat(16) }
+  r.setUpdate(automatic)
+  assert.equal(r.api.pendingUpdatePrompts().length, 0)
+  assert.equal(r.api.availableUpdates().length, 1)
+  r.setUpdate({ ...automatic, installSupported: false })
+  assert.equal(r.api.pendingUpdatePrompts().length, 1)
+  r.setUpdate({ ...automatic, autoInstallEligible: false, latestVersion: '3.0.0' })
+  assert.equal(r.api.pendingUpdatePrompts().length, 1)
+  const preview = rules('2.0-beta9'); preview.setUpdate({ ...automatic, autoInstallEligible: false })
+  assert.deepEqual(Array.from(preview.api.pendingUpdatePrompts(), x => x.channel), ['stable', 'preview'])
+})

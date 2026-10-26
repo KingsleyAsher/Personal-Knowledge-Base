@@ -1,11 +1,11 @@
 {
   "package": "@local/dsh-knowledge-base",
-  "version": "2.1.3",
-  "buildId": "749c7d4fd152f583",
-  "tgz": "local-dsh-knowledge-base-2.1.3.tgz",
-  "bytes": 2895539,
-  "sha256": "2b3d8dfecde8bca8638915be33eea41a145eb620e15cee243153231be3da93b4",
-  "integrity": "sha512-p8kJAgtOon5F3jW6dAtr9PEV9hdj5ws9XRaWmRusS2+qfBKeUksG4jn3NF6K1i6XMVncZpkBB+OYhb1EKMYDaA==",
+  "version": "2.1.4",
+  "buildId": "10a6289310b698a3",
+  "tgz": "local-dsh-knowledge-base-2.1.4.tgz",
+  "bytes": 2896432,
+  "sha256": "7ececabf6d6035f9d8ddd46d011c1cc62607a7956c14e3fd57ce99fb6815c78b",
+  "integrity": "sha512-xWKOTeXky+bn5yaSgwXif7dxSS86s7aDEZdFcvEyhJ4JiJih94GMh/uSyencYiSAjLyCSSmowdujyiDb1vg94w==",
   "packageFileCount": 278,
   "buildFileCount": 267,
   "files": [
@@ -46,18 +46,18 @@
     },
     {
       "path": "PROJECT-RECORD.md",
-      "bytes": 34740,
-      "sha256": "09b9f93f621e9ef9a0894ca07c1c899d20115d88a2505589e36f4311f6ad3d3f"
+      "bytes": 35788,
+      "sha256": "3f60d9a1486892b5291a05f411e6e78c31567119075fbc54238ff5098fca1439"
     },
     {
       "path": "README.md",
-      "bytes": 9734,
-      "sha256": "fdf3389352d17c22e3751d34e4e499b04d0feb4048bd72d9f0ab51c3d28c0c59"
+      "bytes": 10173,
+      "sha256": "d62ef6522e6120da900e474d00336c7bcdb5824982e5cb867e1730ed1fc5a832"
     },
     {
       "path": "RELEASE.md",
-      "bytes": 14700,
-      "sha256": "9e1913807ec364268aa0b9243db95122d13b488d67cc8c8eab2d565edc62448e"
+      "bytes": 15496,
+      "sha256": "58abbb8ed5e3280ea009dc6ed0f8170825865969b749f501c383f934c5b4e6b9"
     },
     {
       "path": "RETRIEVAL.md",
@@ -66,13 +66,13 @@
     },
     {
       "path": "VERSIONING.md",
-      "bytes": 4259,
-      "sha256": "419f1b6fc84f0d08f77d4fbfad927c7bd55ecc9f2954db1f227dced8b857259d"
+      "bytes": 4444,
+      "sha256": "be4571b194de21f0df0897f9c29634feb449ef439e150f316a139383baedea81"
     },
     {
       "path": "WORKBENCH.md",
-      "bytes": 15046,
-      "sha256": "bbb989115eb9c72d18eb6cd99f86ee64b3bfdf47b8d11ba07f9d3dd80ba4bb4a"
+      "bytes": 15520,
+      "sha256": "a4c85c7892192e118dee84b9ca4ed11c9ae0e36cfd1615b9d0d0a249451bbd6b"
     },
     {
       "path": "browser-extension/background.js",
@@ -132,12 +132,12 @@
     {
       "path": "cordis.patch.yml",
       "bytes": 5018,
-      "sha256": "ffbfaaba44b8b5964656e08fa83b2be0e1d32bef6317c62163c12c897a5c1cb7"
+      "sha256": "3e9900e319317e645405cc2d0ad7c015a3623f93814488cb2b7d812216c8d80a"
     },
     {
       "path": "package.json",
       "bytes": 1112,
-      "sha256": "4279d9ae93744a60d7892688cac8ae7685a9f67dc3c21856fdf889bf6c7a7968"
+      "sha256": "76f33d67c25f5f2f3bd5f68696fce20d7fcba25c2a3b907bfe1cb984ac756d06"
     },
     {
       "path": "presets/01-knowledge-agent.patch.yml",
@@ -191,8 +191,8 @@
     },
     {
       "path": "src/client/index.js",
-      "bytes": 395569,
-      "sha256": "7ece1a6fde0c0c0ef795dfa7533844eda1d131029fe5e499acc5058153ff54ac"
+      "bytes": 397146,
+      "sha256": "5a6f5dd91db121062c1bcff5d436b5e338753de8e4038679e551342b5c282145"
     },
     {
       "path": "src/client/pdfjs/LICENSE",
@@ -1202,7 +1202,7 @@
     {
       "path": "src/client/workbench-ui.js",
       "bytes": 204816,
-      "sha256": "39c835f3cc128614c82878908ffd9bae7c311f79979d14c4b11c2b7672a7fbed"
+      "sha256": "444f42cc2f3e8939caf32d86eedaf7b5ba3bbaf5845dc25adbe636dffd0ce46a"
     },
     {
       "path": "src/host/capture-surface.js",
@@ -1257,7 +1257,7 @@
     {
       "path": "src/host/kbcore.js",
       "bytes": 119633,
-      "sha256": "363fc05be2f25cb22e47a53b80214cd63e64329b7b8bf57828d1b61aaa2546a4"
+      "sha256": "ed0c14d42e81a48127232b4db2e6fb0ebb026d9b4ceec76b9f27124d3fca94cf"
     },
     {
       "path": "src/host/managed-files.js",
@@ -1404,11 +1404,6 @@
     "productionInstalled": false,
     "formalRuntimeVerified": false,
     "realModelAnswerVerified": false,
-    "realCloudApiTested": false,
-    "automatedChecksPassed": true,
-    "nodeTests": 125,
-    "browserUiVerifiedWithSyntheticHost": false,
-    "mobileSystemShareVerified": false,
-    "extensionInstalledVerified": false
+    "realCloudApiTested": false
   }
 }
