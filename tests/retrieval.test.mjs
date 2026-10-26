@@ -69,7 +69,8 @@ test('automatic API build, cross-language retrieval, one-round cooperation, reus
   await assert.rejects(service.dispatch(b,{op:'retrieval.save',config},'model-session'),{code:'ADMIN_ONLY'})
   const previous=stats.estimate.activeModel
   const changed=structuredClone(stats.config);changed.embedding.model='other-embedding'
-  await service.dispatch(b,{op:'retrieval.save',config:changed});await finish()
+  await service.dispatch(b,{op:'retrieval.save',config:changed});const switched=await finish()
+  assert.equal(switched.progress.state,'synced',JSON.stringify(switched.progress))
   assert.notEqual((await service.dispatch(b,{op:'retrieval.get'})).estimate.activeModel,previous)
 })
 
