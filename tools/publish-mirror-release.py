@@ -48,10 +48,12 @@ def release_files(repo, tag):
     return manifest, commit, notes.strip(), files
 
 
-def multipart(name, raw):
+def multipart(name, raw, access_token=None):
     boundary = 'kb-release-' + uuid4().hex
+    auth = (f'--{boundary}\r\nContent-Disposition: form-data; name="access_token"\r\n\r\n'.encode()
+            + access_token.encode() + b'\r\n') if access_token else b''
     header = f'--{boundary}\r\nContent-Disposition: form-data; name="file"; filename="{name}"\r\nContent-Type: application/octet-stream\r\n\r\n'.encode()
-    return header + raw + f'\r\n--{boundary}--\r\n'.encode(), 'multipart/form-data; boundary=' + boundary
+    return auth + header + raw + f'\r\n--{boundary}--\r\n'.encode(), 'multipart/form-data; boundary=' + boundary
 
 
 class UploadFailure(RuntimeError):
@@ -62,8 +64,8 @@ class UploadFailure(RuntimeError):
 
 def upload_once(api, release, tag, name, raw):
     if api.platform == 'gitee':
-        payload, content_type = multipart(name, raw)
-        api.repo('/releases/' + str(release['id']) + '/attach_files', method='POST', data=payload, headers={'Content-Type': content_type})
+        payload, content_type = multipart(name, raw, getattr(api, 'token', None))
+        api.repo('/releases/' + str(release['id']) + '/attach_files', method='POST', data=payload, headers={'Content-Type': content_type}, token_in_query=False)
     else:
         signed = api.repo('/releases/' + quote(tag, safe='') + '/upload_url', query={'file_name': name})
         target = urlsplit(signed['url'])

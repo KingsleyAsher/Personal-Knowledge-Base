@@ -40,14 +40,16 @@ class FakeResponse:
 class FakeAPI:
     def __init__(self, platform, hashes, existing=None):
         self.platform = platform
+        self.token = 'test-upload-token'
         self.hashes = hashes
         self.release = existing
         self.rows = []
         self.pending_name = None
         self.upload_count = 0
         self.patch_count = 0
+        self.upload_requests = []
 
-    def repo(self, route='', method='GET', data=None, query=None, missing=False, raw=False, headers=None):
+    def repo(self, route='', method='GET', data=None, query=None, missing=False, raw=False, headers=None, token_in_query=True):
         if route == '/releases/tags/v2.1.3':
             if method == 'GET':
                 if self.release is None and missing:
@@ -68,6 +70,7 @@ class FakeAPI:
             if method == 'GET':
                 return self.rows
             if method == 'POST':
+                self.upload_requests.append({'token_in_query': token_in_query, 'data': data, 'headers': headers})
                 match = re.search(rb'filename="([^"]+)"', data)
                 name = match.group(1).decode()
                 self.rows.append({'name': name, 'sha256': self.hashes[name]})
@@ -159,6 +162,22 @@ class MirrorReleaseTests(unittest.TestCase):
         self.assertNotIn(token, str(caught.exception))
         self.assertIn('[redacted]', str(caught.exception))
 
+    def test_gitee_upload_sends_token_as_multipart_field(self):
+        _manifest, _commit, _notes, files = self.release_data
+        name, raw = next(iter(files.items()))
+        hashes = {name: hashlib.sha256(raw).hexdigest()}
+        existing = {'id': 17, 'tag_name': self.tag, 'name': 'manual title', 'body': '', 'assets': []}
+        api = FakeAPI('gitee', hashes, existing)
+
+        publisher.upload(api, existing, self.tag, name, raw)
+
+        request = api.upload_requests[0]
+        self.assertFalse(request['token_in_query'])
+        self.assertIn(b'name="access_token"', request['data'])
+        self.assertIn(b'test-upload-token', request['data'])
+        self.assertIn(b'name="file"; filename="' + name.encode() + b'"', request['data'])
+        self.assertTrue(request['headers']['Content-Type'].startswith('multipart/form-data; boundary='))
+
     def test_release_creation_preserves_manual_notes_and_is_idempotent(self):
         manifest, commit, _notes, files = self.release_data
         hashes = {name: hashlib.sha256(raw).hexdigest() for name, raw in files.items()}
@@ -227,7 +246,7 @@ class MirrorReleaseTests(unittest.TestCase):
             publisher.upload(UntrustedAPI(), {'id': None}, self.tag, name, raw)
 
         class SignedAPI(FakeAPI):
-            def repo(self, route='', method='GET', data=None, query=None, missing=False, raw=False, headers=None):
+            def repo(self, route='', method='GET', data=None, query=None, missing=False, raw=False, headers=None, token_in_query=True):
                 self.pending_name = name
                 return {'url': 'https://upload.myhuaweicloud.com/object',
                         'headers': {'x-obs-meta-project-id': 'fixture'}}
@@ -249,14 +268,14 @@ class MirrorReleaseTests(unittest.TestCase):
         class AcceptedThenTimeout(FakeAPI):
             post_attempts = 0
 
-            def repo(self, route='', method='GET', data=None, query=None, missing=False, raw=False, headers=None):
+            def repo(self, route='', method='GET', data=None, query=None, missing=False, raw=False, headers=None, token_in_query=True):
                 if route == '/releases/17/attach_files' and method == 'POST':
                     self.post_attempts += 1
-                    result = super().repo(route, method, data, query, missing, raw, headers)
+                    result = super().repo(route, method, data, query, missing, raw, headers, token_in_query)
                     if self.post_attempts == 1:
                         raise APIError('gitee', 'POST', route, 'network', 'connection failed')
                     return result
-                return super().repo(route, method, data, query, missing, raw, headers)
+                return super().repo(route, method, data, query, missing, raw, headers, token_in_query)
 
         api = AcceptedThenTimeout('gitee', hashes, existing)
         publisher.upload(api, existing, self.tag, name, raw, sleep=lambda _seconds: None)
@@ -272,12 +291,12 @@ class MirrorReleaseTests(unittest.TestCase):
         class RejectFirstUpload(FakeAPI):
             post_attempts = 0
 
-            def repo(self, route='', method='GET', data=None, query=None, missing=False, raw=False, headers=None):
+            def repo(self, route='', method='GET', data=None, query=None, missing=False, raw=False, headers=None, token_in_query=True):
                 if route == '/releases/17/attach_files' and method == 'POST':
                     self.post_attempts += 1
                     if self.post_attempts == 1:
                         raise APIError('gitee', 'POST', route, 'network', 'connection failed')
-                return super().repo(route, method, data, query, missing, raw, headers)
+                return super().repo(route, method, data, query, missing, raw, headers, token_in_query)
 
         api = RejectFirstUpload('gitee', hashes, existing)
         publisher.upload(api, existing, self.tag, name, raw, sleep=lambda _seconds: None)

@@ -46,8 +46,10 @@ class MirrorAPI:
             text = text.replace(self.token, '[redacted]').replace(quote(self.token, safe=''), '[redacted]')
         return text[:800]
 
-    def request(self, route, method='GET', data=None, query=None, missing=False, raw=False, headers=None):
-        params = {**(query or {}), 'access_token': self.token}
+    def request(self, route, method='GET', data=None, query=None, missing=False, raw=False, headers=None, token_in_query=True):
+        params = {**(query or {})}
+        if token_in_query:
+            params['access_token'] = self.token
         url = self.host + '/api/v5' + route + '?' + urlencode(params)
         request_headers = {'User-Agent': 'knowledge-base-mirror-release', 'Accept': 'application/json', **(headers or {})}
         payload = data
