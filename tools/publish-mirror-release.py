@@ -17,7 +17,7 @@ from mirror_release import MirrorAPI, APIError, PROJECT, redact
 
 
 def git_bytes(repo, *args):
-    return subprocess.run(['git', *args], cwd=repo, check=True, capture_output=True).stdout
+    return subprocess.run(['git', *args], cwd=repo, check=True, capture_output=True, timeout=120).stdout
 
 
 def release_files(repo, tag):
@@ -119,30 +119,38 @@ def publish(platform, repo=None, tag=None, api=None):
         raise RuntimeError(platform + ': mirror tag does not match published GitHub commit')
     route = '/releases/tags/' + quote(tag, safe='')
     release = api.repo(route, missing=True)
-    name = manifest['version'] + ' · 个人知识库'
+    default_name = manifest['version'] + ' · 个人知识库'
     begin, end = '<!-- kb-release-managed:start -->', '<!-- kb-release-managed:end -->'
     links = '\n'.join('- [' + filename + '](' + ('https://gitee.com/' + PROJECT + '/raw/' + tag + '/' + ('dist/' if filename not in ['release-manifest.json', 'SHA256SUMS'] else '') + filename if platform == 'gitee' else 'https://api.gitcode.com/api/v5/repos/' + PROJECT + '/raw/' + ('dist/' if filename not in ['release-manifest.json', 'SHA256SUMS'] else '') + filename + '?ref=' + tag) + ')' for filename in files)
     managed = begin + '\n' + notes + '\n\n构建：`' + manifest['buildId'] + '`\n\n安装包 SHA-256：`' + manifest['sha256'] + '`\n\n本站下载（附件也会自动上传）：\n' + links + '\n' + end
-    previous = release.get('body', '') if release else ''
-    if begin in previous and end in previous:
-        body = previous[:previous.index(begin)] + managed + previous[previous.index(end) + len(end):]
-    else:
-        body = previous.rstrip() + ('\n\n' if previous.strip() else '') + managed
-    payload = {'name': name, 'body': body}
-    if platform == 'gitee':
-        payload.update(tag_name=tag, prerelease=False)
-    else:
-        payload['release_status'] = 'latest'
+    def merge_managed(previous):
+        if begin in previous and end in previous:
+            return previous[:previous.index(begin)] + managed + previous[previous.index(end) + len(end):]
+        return previous.rstrip() + ('\n\n' if previous.strip() else '') + managed
+
     if release is None:
+        create_payload = {'name': default_name, 'body': merge_managed(''), 'tag_name': tag, 'target_commitish': commit}
+        if platform == 'gitee':
+            create_payload['prerelease'] = False
+        else:
+            create_payload['release_status'] = 'latest'
         try:
-            release = api.repo('/releases', method='POST', data={**payload, 'tag_name': tag, 'target_commitish': commit})
+            release = api.repo('/releases', method='POST', data=create_payload)
         except APIError:
             # A lost response or another publisher may have already created it.
             release = api.repo(route, missing=True)
             if release is None:
                 raise
+    name = release.get('name') or default_name
+    body = merge_managed(release.get('body', ''))
+    payload = {'name': name, 'body': body}
+    if platform == 'gitee':
+        payload.update(tag_name=tag, prerelease=False)
+    else:
+        payload['release_status'] = 'latest'
     update_route = '/releases/' + (str(release['id']) if platform == 'gitee' else quote(tag, safe=''))
-    if release.get('name') != name or release.get('body') != body or release.get('prerelease'):
+    if (release.get('name') != name or release.get('body') != body or release.get('prerelease') or
+            (platform == 'gitcode' and release.get('release_status') != 'latest')):
         api.repo(update_route, method='PATCH', data=payload)
     release = api.repo(route)
     if release.get('tag_name') != tag or manifest['sha256'] not in release.get('body', ''):

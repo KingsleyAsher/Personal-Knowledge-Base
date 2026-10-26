@@ -1,22 +1,29 @@
-name: Sync Git mirrors
+name: Sync mirror code and stable releases
 
 on:
-  push:
-    tags: ['v*.*.*']
+  workflow_run:
+    workflows: [Validate and publish stable release]
+    types: [completed]
+  release:
+    types: [published]
+  pull_request:
+    paths:
+      - 'tools/*mirror*.py'
+      - 'tests/test_mirror_release.py'
+      - '.github/workflows/sync-stable-mirrors.yml'
   workflow_dispatch:
     inputs:
+      release_tag:
+        description: Stable tag to publish (empty uses current stable manifest)
+        required: false
+        type: string
+      release_only:
+        description: Only reconcile the published tag's Release and attachments
+        required: false
+        type: boolean
+        default: false
       diagnose_only:
-        description: Read-only mirror API and git push dry-run diagnostics
-        required: false
-        type: boolean
-        default: false
-      trigger_pull:
-        description: Also request the existing GitCode pull mirror to sync
-        required: false
-        type: boolean
-        default: false
-      sanitize_history:
-        description: Remove stale mirror branches and tags after a privacy cleanup
+        description: Read-only API and GitCode Pull mirror diagnostics
         required: false
         type: boolean
         default: false
@@ -29,32 +36,58 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  sync:
-    if: github.event_name == 'workflow_dispatch' || !contains(github.ref_name, '-')
+  test:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s tests -p test_mirror_release.py -v
+
+  sync:
+    needs: test
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'release' && !github.event.release.prerelease && !github.event.release.draft) ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
         platform: [gitee, gitcode]
+    env:
+      GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+      GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
+      RELEASE_TAG: ${{ inputs.release_tag || github.event.release.tag_name || github.event.workflow_run.head_branch }}
     steps:
       - uses: actions/checkout@v6
         with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.ref || 'main' }}
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Sync mirror branch and stable tag
-        if: inputs.diagnose_only != true
-        env:
-          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
-          GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
-          SANITIZE_HISTORY: ${{ inputs.sanitize_history || github.ref_name == 'v2.0.2' }}
-        run: python tools/publish-stable-mirror.py "${{ matrix.platform }}"
-      - name: Diagnose mirror without changing refs or releases
+      - name: Diagnose mirror
         if: inputs.diagnose_only == true
+        run: python tools/diagnose-mirror.py "${{ matrix.platform }}"
+      - name: Sync mirror code and stable tag
+        id: refs
+        if: inputs.diagnose_only != true && inputs.release_only != true
+        continue-on-error: true
+        run: python tools/publish-stable-mirror.py "${{ matrix.platform }}"
+      - name: Create or update Release and verify native attachments
+        id: release
+        if: inputs.diagnose_only != true
+        continue-on-error: true
+        run: python tools/publish-mirror-release.py "${{ matrix.platform }}"
+      - name: Report synchronization result
+        if: always() && inputs.diagnose_only != true
         env:
-          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
-          GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
-        run: python tools/diagnose-mirror.py "${{ matrix.platform }}" ${{ inputs.trigger_pull && '--trigger-pull' || '' }}
+          REFS_RESULT: ${{ steps.refs.outcome }}
+          RELEASE_RESULT: ${{ steps.release.outcome }}
+        run: |
+          echo "${{ matrix.platform }} code=$REFS_RESULT release=$RELEASE_RESULT" >> "$GITHUB_STEP_SUMMARY"
+          test "$REFS_RESULT" != failure && test "$RELEASE_RESULT" = success

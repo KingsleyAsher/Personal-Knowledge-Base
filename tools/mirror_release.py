@@ -39,6 +39,13 @@ class MirrorAPI:
         self.host = 'https://gitee.com' if platform == 'gitee' else 'https://api.gitcode.com'
         self.opener = opener
 
+    def _redact(self, value):
+        text = redact(value)
+        if self.token:
+            from urllib.parse import quote
+            text = text.replace(self.token, '[redacted]').replace(quote(self.token, safe=''), '[redacted]')
+        return text[:800]
+
     def request(self, route, method='GET', data=None, query=None, missing=False, raw=False, headers=None):
         params = {**(query or {}), 'access_token': self.token}
         url = self.host + '/api/v5' + route + '?' + urlencode(params)
@@ -60,31 +67,9 @@ class MirrorAPI:
                 detail = body.get('message') or body.get('error_description') or body.get('error') or 'request refused'
             except (ValueError, AttributeError):
                 detail = 'request refused'
-            raise APIError(self.platform, method, route, error.code, detail) from None
+            raise APIError(self.platform, method, route, error.code, self._redact(detail)) from None
         except (urllib.error.URLError, TimeoutError):
-            raise APIError(self.platform, method, route, 'network', 'connection failed or timed out') from None
+            raise APIError(self.platform, method, route, 'network', self._redact('connection failed or timed out')) from None
 
     def repo(self, route='', **kwargs):
         return self.request('/repos/' + PROJECT + route, **kwargs)
-
-    def sync_pull(self, project_id):
-        """The same operation as GitCode's web UI 'sync mirror' button.
-
-        Contract: official site's assets/index-2b342e54.js, function rm.
-        It does not replace the source URL, credentials or mirror policy.
-        """
-        if self.platform != 'gitcode' or not str(project_id).isdigit():
-            raise ValueError('A GitCode numeric project ID is required')
-        route = '/api/v2/projects/' + str(project_id) + '/sync_remote_mirror'
-        request = urllib.request.Request('https://web-api.gitcode.com' + route, data=b'{}', method='POST',
-            headers={'Authorization': 'Bearer ' + self.token, 'PRIVATE-TOKEN': self.token, 'Content-Type': 'application/json', 'User-Agent': 'knowledge-base-mirror-release'})
-        try:
-            with self.opener(request, timeout=60) as response:
-                result = json.load(response)
-            if result.get('success') is False:
-                raise APIError('gitcode', 'POST', route, result.get('code'), result.get('message', 'mirror pull refused'))
-            return result
-        except urllib.error.HTTPError as error:
-            raise APIError('gitcode', 'POST', route, error.code, 'mirror sync endpoint rejected the token') from None
-        except (urllib.error.URLError, TimeoutError, ValueError):
-            raise APIError('gitcode', 'POST', route, 'network', 'mirror sync did not return valid JSON') from None

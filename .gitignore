@@ -4,6 +4,8 @@ node_modules/
 !dist/local-dsh-knowledge-base-*.tgz
 !website/downloads/local-dsh-knowledge-base-*.tgz
 pnpm-lock.yaml
+__pycache__/
+*.py[cod]
 
 # 日志与临时状态
 *.log
