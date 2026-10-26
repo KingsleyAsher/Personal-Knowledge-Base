@@ -10,6 +10,8 @@ import os
 import re
 import subprocess
 import sys
+import time
+import urllib.error
 import urllib.request
 from urllib.parse import quote, urlsplit
 from uuid import uuid4
@@ -52,7 +54,13 @@ def multipart(name, raw):
     return header + raw + f'\r\n--{boundary}--\r\n'.encode(), 'multipart/form-data; boundary=' + boundary
 
 
-def upload(api, release, tag, name, raw):
+class UploadFailure(RuntimeError):
+    def __init__(self, message, retryable=False):
+        self.retryable = retryable
+        super().__init__(message)
+
+
+def upload_once(api, release, tag, name, raw):
     if api.platform == 'gitee':
         payload, content_type = multipart(name, raw)
         api.repo('/releases/' + str(release['id']) + '/attach_files', method='POST', data=payload, headers={'Content-Type': content_type})
@@ -70,8 +78,13 @@ def upload(api, release, tag, name, raw):
         try:
             with api.opener(urllib.request.Request(signed['url'], data=raw, method='PUT', headers=headers), timeout=120) as response:
                 response.read()
+        except urllib.error.HTTPError as error:
+            raise UploadFailure('gitcode: signed attachment upload failed for ' + name,
+                                error.code in (408, 425, 429, 500, 502, 503, 504)) from None
+        except (urllib.error.URLError, TimeoutError, OSError):
+            raise UploadFailure('gitcode: signed attachment upload failed for ' + name, True) from None
         except Exception:
-            raise RuntimeError('gitcode: signed attachment upload failed for ' + name) from None
+            raise UploadFailure('gitcode: signed attachment upload failed for ' + name) from None
 
 
 def attachment_rows(api, release):
@@ -103,6 +116,35 @@ def verify_attachment(api, release, tag, row, name, raw):
     actual = api.repo(route, raw=True)
     if hashlib.sha256(actual).hexdigest() != expected:
         raise RuntimeError('Conflicting attachment; preserved existing file: ' + name)
+
+
+def upload(api, release, tag, name, raw, *, attempts=3, sleep=time.sleep):
+    for attempt in range(attempts):
+        try:
+            upload_once(api, release, tag, name, raw)
+            return
+        except (APIError, UploadFailure) as error:
+            retryable = (isinstance(error, APIError) and error.status in ('network', 408, 425, 429, 500, 502, 503, 504)) or (isinstance(error, UploadFailure) and error.retryable)
+            if not retryable:
+                raise
+
+            # A timed-out upload may have succeeded. Re-read and verify before
+            # retrying so a lost response cannot create duplicate attachments.
+            for check in range(3):
+                try:
+                    current = api.repo('/releases/tags/' + quote(tag, safe=''))
+                    rows = attachment_rows(api, current)
+                    row = next((item for item in rows if item.get('name') == name or item.get('filename') == name), None)
+                    if row is not None:
+                        verify_attachment(api, current, tag, row, name, raw)
+                        return
+                except APIError:
+                    pass
+                if check < 2:
+                    sleep(1)
+            if attempt + 1 == attempts:
+                raise
+            sleep(min(2 ** attempt, 4))
 
 
 def publish(platform, repo=None, tag=None, api=None):
