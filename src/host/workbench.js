@@ -3,6 +3,7 @@ import path from 'node:path'
 import { mkdir, readFile, writeFile, stat, realpath, access, open, rename, unlink } from 'node:fs/promises'
 import { constants } from 'node:fs'
 import { randomUUID, randomBytes, timingSafeEqual } from 'node:crypto'
+import { performance } from 'node:perf_hooks'
 import { walkTree, privateRootOf, effectivePrivateDirs, readImportSources, derivedPrivatePartitions, knowledgeCount, foldGeneratedPairs } from './fsindex.js'
 import { digest, inside, fail, safePath, relativePath, readJson, atomicJson, locked, DEFAULT_PREFERENCES, validatePreferences } from './workbench-state.js'
 import { fileRole, fileCapabilities } from './workbench-files.js'
@@ -49,10 +50,15 @@ export function extractLinks(text) {
 export function createWorkbench({ stateDir, getCore, getParsing = () => null, getFlows = () => null, getImports = () => null, getFileActions = () => null, getAIWorkspace = () => null, log = () => {}, now = Date.now, getUpgradeContext = async()=>({version:VERSION,buildId:'development'}) }) {
   const profileFile = path.join(stateDir, 'workbench', 'profile.json')
   let cache = null, scanPending = null
+  let scanEpoch = 0
+  const scanMetrics = { scans:0, cacheHits:0, merged:0 }
   const questions = new Map()
   const activeTasks = new Map()
   const subscribers = new Set()
-  const notify = event => { for (const listener of subscribers) { try { listener(event) } catch { /* disconnected client */ } } }
+  const notify = event => {
+    if(['snapshot-dirty','files-changed','links-changed','preferences'].includes(event.type)) { cache=null;scanEpoch++ }
+    for (const listener of subscribers) { try { listener(event) } catch { /* disconnected client */ } }
+  }
   const relationIndex = createRelationIndex({ stateDir, readText: (b, file) => textOf(b, file, 8 * 1024 * 1024), now, notify })
   const metadataText = new Map()
   const retrievalText = new Map()
@@ -190,11 +196,15 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
 
   async function scan(b, fresh = false, verifyContent = false) {
     const key = versionOf(b) + ':' + digest(JSON.stringify(b.deliverables))
-    if (!fresh && cache?.key === key && now() - cache.at < 5000) return cache.value
-    if (scanPending?.key === key) return scanPending.promise
+    if (!fresh && cache?.key === key && now() - cache.at < 5000) { scanMetrics.cacheHits++;return cache.value }
+    if (scanPending?.key === key && scanPending.epoch===scanEpoch && (!verifyContent || scanPending.verifyContent)) { scanMetrics.merged++;return scanPending.promise }
+    const epoch=scanEpoch,started=performance.now()
     const promise = (async () => {
+      const walkStarted=performance.now()
       const walk = await walkTree(b.root, b.root, { maxFiles: Number.MAX_SAFE_INTEGER, maxDepth: Number.MAX_SAFE_INTEGER, followLinks: false })
+      const walkMs=performance.now()-walkStarted,indexStarted=performance.now()
       const index = await b.core._internal.indexSnapshot(b.conf)
+      const indexMs=performance.now()-indexStarted
       const excluded = ['_模板', '_手册', '.kbmeta', '.kb-state', '50-底稿', '90-收件箱', ...(b.conf.excludeFromSearch ?? [])]
       const indexed = new Map((index.entries ?? []).filter(e => !excluded.some(p => scopeMatch(e.path, p))).map(e => [e.path, e]))
       if (index.freshness?.fresh !== true || verifyContent) {
@@ -229,10 +239,11 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       const value = { files, dirs: walk.dirs, coverage: walk.coverage, truncated: walk.truncated, indexed, indexFresh: index.freshness?.fresh === true,
         version: key + ':' + digest(files.map(f => `${f.path}:${f.bytes}:${f.mtimeMs}:${f.ctimeMs}:${f.title}`).join('\n')).slice(0, 12) }
       if (metadataText.size > 2000) metadataText.clear()
-      cache = { key, at: now(), value }
+      scanMetrics.scans++;scanMetrics.walkMs=walkMs;scanMetrics.indexMs=indexMs;scanMetrics.totalMs=performance.now()-started;scanMetrics.files=files.length;scanMetrics.directories=walk.dirs.length
+      if(epoch===scanEpoch)cache = { key, at: now(), value }
       return value
     })()
-    scanPending = { key, promise }
+    scanPending = { key, promise, epoch, verifyContent }
     try { return await promise } finally { if (scanPending?.promise === promise) scanPending = null }
   }
 
@@ -332,7 +343,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     for (const key of retrievalText.keys()) if (!live.has(key)) retrievalText.delete(key)
     const pairs = foldGeneratedPairs(documents.map(d=>d.path), b.sources, { kbId:b.st.kbId,root:b.root })
     const existingTextCacheBytes=await stat(path.join(b.root,'.kbmeta','index','entries.json')).then(s=>s.size).catch(()=>0)
-    return {documents:documents.filter(d=>!pairs.has(d.path)),names,nameOnly:names.length,errors,coverage:snap.coverage,existingTextCacheBytes}
+    return {documents:documents.filter(d=>!pairs.has(d.path)),names,nameOnly:names.length,errors,coverage:snap.coverage,existingTextCacheBytes,scanMetrics:{...scanMetrics}}
   }
 
   async function relations(b, args) {
@@ -481,7 +492,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       const snap = await scan(b, args.fresh), data = await userData(b)
       const knowledge = knowledgeCount(snap.files.filter(f => snap.indexed.has(f.path)).map(f => f.path), b.sources, { kbId: b.st.kbId, root: b.root })
       const sectionNames = [...new Set([...snap.dirs.map(d => typeof d === 'string' ? d : d.path).filter(p => p && !p.includes('/')), ...snap.files.filter(f => f.path.includes('/')).map(f => f.path.split('/')[0])])].sort()
-      return { ok: true, kbId: b.st.kbId, root: b.root, policyVersion: versionOf(b), version: snap.version, relationVersion: digest(snap.version + JSON.stringify(data.links)), revision: data.revision, preferences: b.preferences, guideComplete: Boolean(b.profile.onboarding[GUIDE_ID]?.completedAt), needsConfirmation: b.needsConfirmation,
+      return { ok: true, kbId: b.st.kbId, root: b.root, policyVersion: versionOf(b), version: snap.version, relationVersion: digest(snap.version + JSON.stringify(data.links)), revision: data.revision, preferences: b.preferences, guideComplete: Boolean(b.profile.onboarding[GUIDE_ID]?.completedAt), needsConfirmation: b.needsConfirmation,scanMetrics:{...scanMetrics},
         totals: { files: snap.files.length, knowledge: knowledge.knowledge, visible: snap.files.filter(f => visible(b, f.path)).length, private: snap.files.filter(f => f.private).length }, coverage: snap.coverage,
         recentSystem: snap.files.filter(f => visible(b, f.path) && f.system).sort((a, z) => z.mtimeMs - a.mtimeMs).slice(0, 12),
         recent: snap.files.filter(f => visible(b, f.path) && !f.system).sort((a, z) => z.mtimeMs - a.mtimeMs).slice(0, 12).map(f => ({ ...f })),
@@ -827,7 +838,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       text: String(item.text ?? ''), title: String(item.title ?? ''), url: String(item.url ?? ''), completeness: item.completeness === 'selection' ? 'selection' : item.completeness === 'article' ? 'article' : 'url-only' })
     return { saved: Boolean(result.capture), duplicate: Boolean(result.duplicate), requiresConfirmation: result.requiresConfirmation === true }
   }
-  return { dispatch, binding, versionOf, profile, preferences, runAutomatic, activeTasks, invalidate: () => { cache = null; retrieval.invalidate() }, backups,
+  return { dispatch, binding, versionOf, profile, preferences, runAutomatic, activeTasks, invalidate: () => { cache = null;scanEpoch++; retrieval.invalidate() }, backups,
     retrieval, dispose: () => retrieval.dispose(),
     displayPolicy: async () => { const b = await binding(); return { privateDirs: b.preferences.showPrivate ? [] : b.privateDirs, revision: b.preferencesRevision } },
     notify,

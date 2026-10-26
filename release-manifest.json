@@ -1,13 +1,13 @@
 {
   "package": "@local/dsh-knowledge-base",
-  "version": "2.1.2",
-  "buildId": "0976ca61aa29f6e9",
-  "tgz": "local-dsh-knowledge-base-2.1.2.tgz",
-  "bytes": 2886106,
-  "sha256": "ea7a3c7c24e313e8fe5ba56c4211793043a292824c494f82a135e2a45d0240ac",
-  "integrity": "sha512-hawCun/1u/204BJuvSMj36LUR2H9wU/8kkuQm5CZsQdcHZ4hZCf746wrzBzvX7gv//xKDbAVyCpExCYHj8HkCA==",
-  "packageFileCount": 277,
-  "buildFileCount": 266,
+  "version": "2.1.3",
+  "buildId": "749c7d4fd152f583",
+  "tgz": "local-dsh-knowledge-base-2.1.3.tgz",
+  "bytes": 2895539,
+  "sha256": "2b3d8dfecde8bca8638915be33eea41a145eb620e15cee243153231be3da93b4",
+  "integrity": "sha512-p8kJAgtOon5F3jW6dAtr9PEV9hdj5ws9XRaWmRusS2+qfBKeUksG4jn3NF6K1i6XMVncZpkBB+OYhb1EKMYDaA==",
+  "packageFileCount": 278,
+  "buildFileCount": 267,
   "files": [
     {
       "path": "BETA4.md",
@@ -40,24 +40,29 @@
       "sha256": "de714139dd6cc3fa3991ead61a3142c8ee79e6d3abca1865260ba560f60d4bdf"
     },
     {
+      "path": "PERFORMANCE.md",
+      "bytes": 4787,
+      "sha256": "051601714e98713c65fe86d9d06e661b6564b2802d460f97964e2c051e51412a"
+    },
+    {
       "path": "PROJECT-RECORD.md",
-      "bytes": 32928,
-      "sha256": "5b8872f78e74b1368ca350a9a55760139a9b8660deaa7039780e7e6b2cf3eac3"
+      "bytes": 34740,
+      "sha256": "09b9f93f621e9ef9a0894ca07c1c899d20115d88a2505589e36f4311f6ad3d3f"
     },
     {
       "path": "README.md",
-      "bytes": 8912,
-      "sha256": "8e0b39a6d4928eb8a4e6cec3ce6c16dd78fe334e1579857a9cb1cee0b959fabc"
+      "bytes": 9734,
+      "sha256": "fdf3389352d17c22e3751d34e4e499b04d0feb4048bd72d9f0ab51c3d28c0c59"
     },
     {
       "path": "RELEASE.md",
-      "bytes": 13157,
-      "sha256": "47a7be98d1c3cff10e6e7e23cd1e0d5df1c5c8e77228f50dcad5a819162e652e"
+      "bytes": 14700,
+      "sha256": "9e1913807ec364268aa0b9243db95122d13b488d67cc8c8eab2d565edc62448e"
     },
     {
       "path": "RETRIEVAL.md",
-      "bytes": 7940,
-      "sha256": "28e04ca1ca40e0a171083544e92cb27b27d92748742f6041f6042a7c7d2ad570"
+      "bytes": 9479,
+      "sha256": "3530e62db5408791da6d875d59a198d07e3c2615b82fdb9840f352611a128eb1"
     },
     {
       "path": "VERSIONING.md",
@@ -66,8 +71,8 @@
     },
     {
       "path": "WORKBENCH.md",
-      "bytes": 14608,
-      "sha256": "0ebed16489cb0ba0d532475f9f5eb07b6de15da6e05946040c2c48e121b312f2"
+      "bytes": 15046,
+      "sha256": "bbb989115eb9c72d18eb6cd99f86ee64b3bfdf47b8d11ba07f9d3dd80ba4bb4a"
     },
     {
       "path": "browser-extension/background.js",
@@ -127,12 +132,12 @@
     {
       "path": "cordis.patch.yml",
       "bytes": 5018,
-      "sha256": "dcc2081e20c632c7e08315feef5a509faeed0e039625442841d1a4d0c53162be"
+      "sha256": "ffbfaaba44b8b5964656e08fa83b2be0e1d32bef6317c62163c12c897a5c1cb7"
     },
     {
       "path": "package.json",
-      "bytes": 1090,
-      "sha256": "3da425692729bdfeb237ef155fc324a84a0a5fd824424987b0709bf9606bf309"
+      "bytes": 1112,
+      "sha256": "4279d9ae93744a60d7892688cac8ae7685a9f67dc3c21856fdf889bf6c7a7968"
     },
     {
       "path": "presets/01-knowledge-agent.patch.yml",
@@ -186,8 +191,8 @@
     },
     {
       "path": "src/client/index.js",
-      "bytes": 392678,
-      "sha256": "7be946ece72be4ded1f6953adf7e01fc953cb4448c775747d6cad740c9b3599f"
+      "bytes": 395569,
+      "sha256": "7ece1a6fde0c0c0ef795dfa7533844eda1d131029fe5e499acc5058153ff54ac"
     },
     {
       "path": "src/client/pdfjs/LICENSE",
@@ -1196,8 +1201,8 @@
     },
     {
       "path": "src/client/workbench-ui.js",
-      "bytes": 202637,
-      "sha256": "a52c3580ee843c6ccb11c3dcd4169714fc356dbf7eef1008680ab5275bff4882"
+      "bytes": 204816,
+      "sha256": "39c835f3cc128614c82878908ffd9bae7c311f79979d14c4b11c2b7672a7fbed"
     },
     {
       "path": "src/host/capture-surface.js",
@@ -1246,13 +1251,13 @@
     },
     {
       "path": "src/host/index.js",
-      "bytes": 154169,
-      "sha256": "b9e2012ac5760a72b28b187eb05622db1349ce7f0e1ba8f4a53c0215cb8b38be"
+      "bytes": 154230,
+      "sha256": "a85fe581d9babd5b621b72fb7c64a68eff78a6bc51bf1d93bda1106e7257e43d"
     },
     {
       "path": "src/host/kbcore.js",
       "bytes": 119633,
-      "sha256": "c91c52e44ae7773ba56494a33248064578e72874eff82fd6f10108e1821ce06b"
+      "sha256": "363fc05be2f25cb22e47a53b80214cd63e64329b7b8bf57828d1b61aaa2546a4"
     },
     {
       "path": "src/host/managed-files.js",
@@ -1306,18 +1311,18 @@
     },
     {
       "path": "src/host/retrieval-pool.js",
-      "bytes": 2578,
-      "sha256": "a738f01f1587e7523ccf6aab53589b6a88c50e08b91e66f55c95cb1a80c0eb11"
+      "bytes": 5092,
+      "sha256": "561abb22c6a10389c7751c118151819b49b62dfc79461c33dceb92da4414d947"
     },
     {
       "path": "src/host/retrieval-worker.js",
-      "bytes": 5290,
-      "sha256": "cd1305d1d0da4c48f62d8182c39e5f4498efcdd98d26080459b82f6ba93f00f4"
+      "bytes": 10129,
+      "sha256": "415c77ed1802586d8d558fdd86d3c969ebcb03f9a53bbebafce520b5cf3c657e"
     },
     {
       "path": "src/host/retrieval.js",
-      "bytes": 38295,
-      "sha256": "0fd2b2c780dc7ca4bef855718c5b36daa011af99b5fbce56a29cae629eabae34"
+      "bytes": 42414,
+      "sha256": "53143baa9dfd48db9856037c5ab4676d9ce6e9b591c19819d6dc52579b0576ab"
     },
     {
       "path": "src/host/selftest.js",
@@ -1366,8 +1371,8 @@
     },
     {
       "path": "src/host/workbench-relation-index.js",
-      "bytes": 4595,
-      "sha256": "366b1405c57fc00c3cb5151444e8962a5ae097e61432e4ee48f4921d31e75733"
+      "bytes": 4677,
+      "sha256": "776c670512b655ff59b849f03ffdb51aa27576d465d744364ed9620dda9201c9"
     },
     {
       "path": "src/host/workbench-state.js",
@@ -1381,8 +1386,8 @@
     },
     {
       "path": "src/host/workbench.js",
-      "bytes": 67245,
-      "sha256": "ecfa430d13c648fa17e776b965200c3819f68aa269ef88726054b74f0edaa0e0"
+      "bytes": 68166,
+      "sha256": "e8a53147d7ab6ad1175216a912a32099e8ca679131c698231787c9925d647452"
     },
     {
       "path": "tools/kb-local-model.py",
@@ -1399,6 +1404,11 @@
     "productionInstalled": false,
     "formalRuntimeVerified": false,
     "realModelAnswerVerified": false,
-    "realCloudApiTested": false
+    "realCloudApiTested": false,
+    "automatedChecksPassed": true,
+    "nodeTests": 125,
+    "browserUiVerifiedWithSyntheticHost": false,
+    "mobileSystemShareVerified": false,
+    "extensionInstalledVerified": false
   }
 }

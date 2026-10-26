@@ -11,8 +11,8 @@ test('global knowledge settings mounts shared retrieval form and uses decimal hu
   const react={Fragment:'fragment',useState(initial){const at=index++;if(!(at in slots))slots[at]=typeof initial==='function'?initial():initial;return [slots[at],v=>{slots[at]=typeof v==='function'?v(slots[at]):v}]},useRef(initial){const [value]=this.useState({current:initial});return value},useEffect(callback){effects.push(callback)}}
   const requests=[],config={revision:0,...initialRetrievalConfig(),enabled:true}
   const factory=vm.runInNewContext(source+'\ncreateWorkbenchUI',{
-    document:{createElement:()=>({dataset:{},remove(){}}),head:{appendChild(){}}},
-    window:{},setInterval:()=>0,clearInterval(){},setTimeout,clearTimeout,console,
+    document:{createElement:()=>({dataset:{},remove(){}}),head:{appendChild(){}},addEventListener(){},removeEventListener(){}},
+    window:{addEventListener(){},removeEventListener(){}},setInterval:()=>0,clearInterval(){},setTimeout,clearTimeout,console,
   })
   const ui=factory({react,e:element,api:async body=>{requests.push(body);return body.op==='preferences.get'?{ok:true,kbId:'current-library',version:'policy'}:{ok:true,config,progress:{state:requests.some(r=>r.op==='retrieval.pause')?'paused':'building'}}}})
   const render=(component,props)=>{index=0;return component(props)}

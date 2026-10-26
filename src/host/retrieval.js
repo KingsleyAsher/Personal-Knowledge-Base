@@ -1,6 +1,7 @@
 import path from 'node:path'
 import { mkdir, readFile, open, readdir, rm, stat, statfs, copyFile, rename, lstat, rmdir } from 'node:fs/promises'
 import { watch } from 'node:fs'
+import { performance } from 'node:perf_hooks'
 import { createRankingPool } from './retrieval-pool.js'
 import { atomicJson, readJson, locked, fail, safePath } from './workbench-state.js'
 import { createParseCredentials } from './parse-credentials.js'
@@ -41,10 +42,12 @@ async function treeBytes(dir, parts) {
   return total
 }
 
-export function createRetrieval({ stateDir, binding, loadDocuments, visible, versionOf, verifyDocument = async () => true, notify = () => {}, credentials = createParseCredentials(path.join(stateDir,'retrieval')), fetcher, now = Date.now }) {
+export function createRetrieval({ stateDir, binding, loadDocuments, visible, versionOf, verifyDocument = async () => true, notify = () => {}, credentials = createParseCredentials(path.join(stateDir,'retrieval')), fetcher, now = Date.now, openVector = open }) {
   const root = path.join(stateDir,'retrieval'), api = createRetrievalAPI({ credentials, fetcher })
   let stopped = false, running = null, watcher = null, watched = '', dirty = true, lastScan = 0, activeQueries = 0, job = { state: 'idle' }
   const cache = new Map(), ranking=createRankingPool(), pendingVectors=new Map(), statusSnapshots=new Map(), traces=new Map()
+  let rankingCatalog = null, sourceTimer = null, automaticPending = null
+  function invalidateComputations() { rankingCatalog=null;ranking.invalidate() }
   // Provider settings and encrypted credentials live outside the installed package.
   // Indexes belong to the library, never to the system-drive plugin state.
   const legacyDirectory = b => path.join(root,b.key)
@@ -126,17 +129,23 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
   async function documents(b, force = false, embeddingConfig = null) {
     const cfg = embeddingConfig || (await configuration(b)).embedding, {manifest} = await manifestOf(b,cfg)
     const target = manifest.effectiveTarget || cfg.chunkTarget || 2400, overlap = Math.min(cfg.chunkOverlap ?? 240, Math.floor(target/3)), chunkSignature = target + ':' + overlap
-    const loaded = await loadDocuments(b,force), out = []
+    const loadStarted=performance.now(),loaded = await loadDocuments(b,force), out = []
+    const loadDocumentsMs=performance.now()-loadStarted,chunkStarted=performance.now()
+    let chunkCacheHits=0,chunkCacheMisses=0
     const alive = new Set()
     for (const d of loaded.documents) {
       const key = b.key + '\0' + d.path; alive.add(key)
       let entry = cache.get(key)
-      if (!entry || entry.revision !== d.revision || entry.title !== d.title || entry.chunkSignature !== chunkSignature) entry = { ...d, ...structureDocument(d.text,d.title,{target,overlap}), chunkSignature }
-      else entry = { ...entry, ...d }
+      if (!entry || entry.revision !== d.revision || entry.title !== d.title || entry.chunkSignature !== chunkSignature) {
+        chunkCacheMisses++
+        entry = { ...d, ...structureDocument(d.text,d.title,{target,overlap}), chunkSignature }
+        entry.rankingChunks=entry.chunks.map(c=>({c,text:d.text.slice(c.start,c.end),vectorHash:hash(embeddingText(d.text,c))}))
+      }
+      else {entry = { ...entry, ...d };chunkCacheHits++}
       cache.set(key,entry); out.push(entry)
     }
     for (const key of cache.keys()) if (!alive.has(key)) cache.delete(key)
-    return { ...loaded, documents: out }
+    return { ...loaded, documents: out,documentMetrics:{loadDocumentsMs,chunkingMs:performance.now()-chunkStarted,chunkCacheHits,chunkCacheMisses} }
   }
   async function assertCurrent(b, configRevision, signal) {
     if (signal?.aborted || stopped) throw fail('CANCELED','任务已暂停')
@@ -186,22 +195,31 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
       await assertCurrent(b,config.revision,signal)
       const dimension = vectors[0]?.length || manifest.dimension
       if (manifest.dimension && dimension !== manifest.dimension) throw fail('API_VECTOR','模型向量维度发生变化，请重建')
-      const additions = []; manifest.checksums ||= {}
+      const additions = [], checksums = {}, shards = new Map()
       for (let i=0;i<batch.length;i++) {
-        const slot = manifest.nextSlot + i, file = path.join(dir,'vectors-'+Math.floor(slot/4096)+'.bin')
-        let fh
-        try { fh = await open(file,'r+') } catch(e) { if(e.code!=='ENOENT') throw e; fh=await open(file,'w+') }
-        try {
-          const buf=Buffer.alloc(dimension*4); vectors[i].forEach((n,j)=>buf.writeFloatLE(n,j*4))
-          let written=0; while(written<buf.length) { const r=await fh.write(buf,written,buf.length-written,(slot%4096)*dimension*4+written); if(!r.bytesWritten) throw fail('IO_ERROR','向量写入未完成'); written+=r.bytesWritten }
-          await fh.sync()
-          manifest.checksums[slot]=hash(buf)
-        } finally { await fh.close() }
-        additions.push([batch[i][0],slot])
+        const slot=manifest.nextSlot+i, shard=Math.floor(slot/4096), buf=Buffer.alloc(dimension*4)
+        vectors[i].forEach((n,j)=>buf.writeFloatLE(n,j*4))
+        if(!shards.has(shard))shards.set(shard,[])
+        shards.get(shard).push({slot,buf});checksums[slot]=hash(buf);additions.push([batch[i][0],slot])
       }
-      manifest.dimension=dimension; manifest.nextSlot+=batch.length
-      for(const [h,slot] of additions) manifest.vectors[h]=slot
-      await atomicJson(path.join(dir,'manifest.json'),manifest)
+      let shardSyncs=0
+      for(const [shard,rows] of shards) {
+        const file=path.join(dir,'vectors-'+shard+'.bin')
+        let fh
+        try { fh = await openVector(file,'r+') } catch(e) { if(e.code!=='ENOENT') throw e; fh=await openVector(file,'w+') }
+        try {
+          for(const {slot,buf} of rows) {
+            if(signal.aborted||stopped)throw fail('CANCELED','任务已暂停')
+            let written=0; while(written<buf.length) { const r=await fh.write(buf,written,buf.length-written,(slot%4096)*dimension*4+written); if(!r.bytesWritten) throw fail('IO_ERROR','向量写入未完成'); written+=r.bytesWritten }
+          }
+          await fh.sync();shardSyncs++
+        } finally { await fh.close() }
+      }
+      await assertCurrent(b,config.revision,signal)
+      const committed={...manifest,dimension,nextSlot:manifest.nextSlot+batch.length,checksums:{...manifest.checksums,...checksums},vectors:{...manifest.vectors,...Object.fromEntries(additions)}}
+      await atomicJson(path.join(dir,'manifest.json'),committed)
+      Object.assign(manifest,committed);rankingCatalog=null
+      job.shardSyncs=(job.shardSyncs||0)+shardSyncs
       index+=batch.length; job.completed=index; job.pending=items.length-index; job.state='building'; await checkpoint(b)
     }
     await assertCurrent(b,config.revision,signal)
@@ -229,19 +247,29 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
     }).finally(()=>{running=null})
     running={key:b.key,controller,promise}; void promise; return { ...job,running:true }
   }
-  async function automatic() {
+  async function automaticPass() {
     if(stopped) return
-    let b; try {b=await binding()} catch { running?.controller.abort(); watcher?.close(); watcher=null; watched=''; return }
-    if(watched!==b.key) {
-      running?.controller.abort(); watcher?.close(); watched=b.key; dirty=true
+    let b; try {b=await binding()} catch { running?.controller.abort(); watcher?.close(); watcher=null; watched='';clearTimeout(sourceTimer);invalidateComputations();return }
+    if(watched!==b.key || !watcher) {
+      if(watched!==b.key){running?.controller.abort();cache.clear();statusSnapshots.clear();invalidateComputations()}
+      watcher?.close(); clearTimeout(sourceTimer); watched=b.key; dirty=true
       try {watcher=watch(b.root,{recursive:true},(_event,file)=>{
+        if(stopped||watched!==b.key)return
         const rel=path.relative(stateDir,path.resolve(b.root,String(file||'')))
         if(rel===''||!rel.startsWith('..')&&!path.isAbsolute(rel))return
-        if(!/(^|[\\/])(?:\.kb|\.kbmeta|\.kb-state|\.git|node_modules|索引层)([\\/]|$)/.test(String(file||''))) {dirty=true; cache.clear();statusSnapshots.clear()}
-      }); watcher.unref?.(); watcher.on('error',()=>{dirty=true})}catch{watcher=null}
+        if(!/(^|[\\/])(?:\.kb|\.kbmeta|\.kb-state|\.git|node_modules|索引层)([\\/]|$)/.test(String(file||''))) {
+          dirty=true;statusSnapshots.clear();rankingCatalog=null
+          clearTimeout(sourceTimer);sourceTimer=setTimeout(()=>{sourceTimer=null;if(!stopped&&watched===b.key)notify({type:'snapshot-dirty',kbId:b.st.kbId})},200);sourceTimer.unref?.()
+        }
+      }); watcher.unref?.(); const currentWatcher=watcher;watcher.on('error',()=>{if(watcher!==currentWatcher)return;currentWatcher.close();watcher=null;dirty=true;notify({type:'snapshot-dirty',kbId:b.st.kbId})})}catch{watcher=null}
     }
     const config=await configuration(b)
     if(config.enabled && (dirty || now()-lastScan>300000)) await start(b)
+  }
+  function automatic() {
+    if(automaticPending)return automaticPending
+    automaticPending=automaticPass().finally(()=>{automaticPending=null})
+    return automaticPending
   }
   async function stageConfig(b,args) {
     const old=await configuration(b)
@@ -273,6 +301,7 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
       const id=modelKey(config.embedding)
       config.profiles=[...(old.profiles||[]).filter(p=>p.id!==id),{id,embedding:config.embedding}]
       config.revision=old.revision+1; await atomicJson(configFile(b),config)
+      invalidateComputations();statusSnapshots.clear()
       await atomicJson(path.join(directory(b),'progress.json'),{state:config.enabled?'waiting':'disabled'})
       dirty=true; if(config.enabled) await start(b,true)
       return {saved:true,revision:config.revision,automatic:config.enabled}
@@ -304,25 +333,42 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
     try{return await pending}finally{if(pendingVectors.get(key)===pending)pendingVectors.delete(key)}
   }
   async function search(b,args={}) {
+    const searchStarted=performance.now(),timings={}
     const signal=args.signal instanceof AbortSignal?args.signal:undefined
     if(signal?.aborted)throw fail('CANCELED','检索已取消')
     const query=String(args.query??args.q??'').trim(); if(!query) return {items:[],total:0,coverageNote:'请输入检索词'}
     const mode=args.retrievalMode||'hybrid'; if(!['hybrid','fulltext','semantic','exact'].includes(mode))throw fail('BAD_SEARCH_MODE','检索方式无效')
     const config=await configuration(b), active=await activeOf(b), embedding=active?.embedding||config.embedding
     const canVector=config.enabled && ['hybrid','semantic'].includes(mode)
-    const vectorPromise=canVector?queryVector(b,config,embedding,query):Promise.resolve({})
+    const vectorStarted=performance.now()
+    const vectorPromise=(canVector?queryVector(b,config,embedding,query):Promise.resolve({})).then(result=>{timings.queryVectorMs=canVector?performance.now()-vectorStarted:0;return result})
+    const loadStarted=performance.now()
     const data=await documents(b,args.fresh===true,embedding), current=await binding(b.st.kbId)
+    timings.documentLoadMs=performance.now()-loadStarted
+    Object.assign(timings,data.documentMetrics)
     if(versionOf(current)!==versionOf(b))throw fail('SETTINGS_CHANGED','检索设置已改变')
     const sourceDocs=data.documents.filter(d=>visible(current,d.path,args.question===true,args.includePrivate===true) &&
       (!args.path||d.path===args.path) && (!args.direct||args.prefix===undefined||path.posix.dirname(d.path)===(args.prefix||'.')) && (!args.prefix||d.path===args.prefix||d.path.startsWith(args.prefix.replace(/\/$/,'')+'/')) && (!args.layer||args.layer===d.layer) &&
       (!args.extension||args.extension===d.extension) && (!args.kind||args.kind===d.kind) && (!args.tag||d.tags?.includes(args.tag)) &&
       (!args.after||d.mtimeMs>=Date.parse(args.after)) && (!args.before||d.mtimeMs<Date.parse(args.before)+86400000))
-    const {dir,manifest}=await manifestOf(b,embedding), records=[], refs=[]
-    for(const d of sourceDocs) for(const c of d.chunks) {
-      const id=records.length, h=hash(embeddingText(d.text,c))
-      const slot=d.private&&!config.allowPrivateCloud?null:manifest.vectors[h]
-      records.push({id,path:d.path,title:d.title,tags:d.tags,section:c.section,text:d.text.slice(c.start,c.end),slot,checksum:manifest.checksums?.[slot]}); refs.push({d,c})
+    const {dir,manifest}=await manifestOf(b,embedding), catalogStarted=performance.now()
+    const scope=hash(JSON.stringify([b.key,b.root,versionOf(b),config.revision,modelKey(embedding),CHUNK_VERSION,args.question===true,args.includePrivate===true,config.allowPrivateCloud]))
+    const signature=hash(JSON.stringify([scope,manifest.dimension,manifest.nextSlot,manifest.vectors,manifest.checksums,sourceDocs.map(d=>[d.path,d.revision,d.chunkSignature,d.title,d.tags,d.private])]))
+    let catalog=rankingCatalog?.revision===signature?rankingCatalog:null
+    if(!catalog) {
+      const rows=[],references=[];let size=0
+      for(const d of sourceDocs)for(const {c,text,vectorHash} of d.rankingChunks) {
+        const id=rows.length,slot=d.private&&!config.allowPrivateCloud?null:manifest.vectors[vectorHash],checksum=manifest.checksums?.[slot]
+        const key=hash(JSON.stringify([d.path,d.revision,d.title,d.tags,d.chunkSignature,c.start,c.end,slot,checksum]))
+        rows.push({id,key,path:d.path,title:d.title,tags:d.tags,section:c.section,text,slot,checksum});references.push({d,c})
+        size+=bytes(text)+bytes(d.title||'')+bytes(d.path)+256
+      }
+      catalog={revision:signature,scope,records:rows,refs:references,allowedIds:rows.map(r=>r.id),bytes:size}
+      rankingCatalog=size<=128*1024*1024?catalog:null
     }
+    const currentDocs=new Map(sourceDocs.map(d=>[d.path,d]))
+    const refs=catalog.refs.map(({d,c})=>({d:currentDocs.get(d.path)||d,c})),records=[]
+    const nextId=()=>refs.length
     // Full-document exact matching remains independent of segmentation: even a
     // phrase longer than the overlap must survive a chunk boundary.
     for(const d of sourceDocs) {
@@ -332,19 +378,22 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
         if(at<0||d.chunks.some(c=>c.start<=at&&c.end>=at+needle.length))continue
         const base=d.chunks.find(c=>c.start<=at&&c.end>at)||d.chunks[0]
         if(!base)continue
-        const c={...base,start:at,end:at+needle.length},id=records.length
+        const c={...base,start:at,end:at+needle.length},id=nextId()
         records.push({id,path:d.path,title:d.title,tags:d.tags,section:c.section,text:d.text.slice(c.start,c.end)});refs.push({d,c})
       }
     }
     // Name-only binary sources are still discoverable; never embed bytes.
     for(const d of data.names||[]) if(visible(current,d.path,args.question===true,args.includePrivate===true) && (!args.prefix||d.path===args.prefix||d.path.startsWith(args.prefix.replace(/\/$/,'')+'/')) && (!args.path||args.path===d.path) && (!args.layer||args.layer===d.layer) && (!args.extension||args.extension===d.extension) && (!args.kind||args.kind===d.kind) && (!args.tag||d.tags?.includes(args.tag)) && (!args.after||d.mtimeMs>=Date.parse(args.after)) && (!args.before||d.mtimeMs<Date.parse(args.before)+86400000) && !args.question) {
-      const id=records.length; records.push({id,path:d.path,title:d.title,text:d.path,section:0});refs.push({d,c:null})
+      const id=nextId(); records.push({id,path:d.path,title:d.title,text:d.path,section:0});refs.push({d,c:null})
     }
+    timings.catalogMs=performance.now()-catalogStarted
     const vectors=await vectorPromise; let warning=vectors.warning||''
     if(vectors.vector && vectors.vector.length!==manifest.dimension) {delete vectors.vector;warning='向量索引尚未就绪或维度已改变，已使用全文'}
-    const result=await ranking.run({records,query,vector:vectors.vector,vectorDir:dir,dimension:manifest.dimension,mode,useCache:args.useCache!==false},signal)
+    const result=await ranking.run({catalog:{revision:catalog.revision,scope:catalog.scope,records:catalog.records,bytes:catalog.bytes},allowedIds:catalog.allowedIds,records,query,vector:vectors.vector,vectorDir:dir,dimension:manifest.dimension,mode,useCache:args.useCache!==false},signal)
+    timings.queueWaitMs=result.transport.queueWaitMs
     if(result.vectorErrors.length)warning='部分向量分片缺失或损坏，全文结果仍可用，请重建'
     let ranked=result.ranked, reranked=false
+    const rerankStarted=performance.now()
     if(config.rerank.enabled && ranked.length && ['hybrid','semantic'].includes(mode)) {
       try {
         await assertCurrent(b,config.revision)
@@ -356,6 +405,8 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
         ranked=[...sorted.map(r=>({...top[r.index],rerankScore:r.relevance_score})),...top.filter((_,i)=>!indices.has(i)),...ranked.filter(r=>!topIds.has(r.id))].sort((a,z)=>Number(z.exact)-Number(a.exact)); reranked=true
       }catch(e){warning=[warning,'重排序未完成，使用融合结果'].filter(Boolean).join('；')}
     }
+    timings.rerankMs=performance.now()-rerankStarted
+    const verifyStarted=performance.now()
     const items=[], perDoc=new Map(), limit=Math.max(1,Math.min(500,Number(args.limit)||20)), offset=Math.max(0,Number(args.offset)||0)
     let remaining=48*1024
     const verified=new Map()
@@ -383,7 +434,7 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
       if(args.question && bytes(range.text)>remaining) {range.text=byteSlice(range.text,remaining);range.end=range.start+range.text.length;range.more=true}
       if(args.question)remaining-=bytes(range.text)
       perDoc.set(d.path,(perDoc.get(d.path)||0)+1)
-      items.push({...d,text:undefined,chunks:undefined,sections:undefined,...range,snippet:range.text?byteSlice(d.text.slice(Math.max(range.start,c.start-80),range.end),600):'仅名称可检索',score:r.score,channels:r.channels,reranked,contentTruncated:range.more,chunk:c,ranges:[{start:range.start,end:range.end,line:range.line}]})
+      items.push({...d,text:undefined,chunks:undefined,sections:undefined,rankingChunks:undefined,...range,snippet:range.text?byteSlice(d.text.slice(Math.max(range.start,c.start-80),range.end),600):'仅名称可检索',score:r.score,channels:r.channels,reranked,contentTruncated:range.more,chunk:c,ranges:[{start:range.start,end:range.end,line:range.line}]})
       if(args.question && items.length>=offset+limit)break
     }
     for(const file of new Set(items.filter(i=>i.chunk).map(i=>i.path))){const d=sourceDocs.find(d=>d.path===file);if(!await verifyDocument(b,file,d.revision))throw fail('FILE_CHANGED','来源在检索期间改变，请重新检索')}
@@ -392,7 +443,8 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
       if(args.sort==='name')items.sort((a,z)=>a.path.localeCompare(z.path))
       if(args.sort==='modified')items.sort((a,z)=>z.mtimeMs-a.mtimeMs||a.path.localeCompare(z.path))
     }
-    const covered=records.filter(r=>r.slot!=null).length
+    timings.verifyAndResultsMs=performance.now()-verifyStarted;timings.totalMs=performance.now()-searchStarted
+    const covered=catalog.records.filter(r=>r.slot!=null).length,chunkCount=catalog.records.length+records.length
     const semanticUsed=Boolean(vectors.vector&&result.semantic>0)
     const steps=[mode==='exact'?'全文精确匹配':`全文检索（${sourceDocs.length} 份可读资料，子串匹配 + BM25，词面候选 ${result.lexical}）`]
     if(semanticUsed)steps.push(`向量检索（${embedding.model}，语义候选 ${result.semantic}）`)
@@ -402,11 +454,11 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
     steps.push('按文档与原文范围去重')
     if(reranked)steps.push(`API 重排序（${config.rerank.model}）`)
     steps.push('原文版本校验及章节、相邻上下文扩展')
-    const retrievalTrace={requestedMode:mode,embeddingModel:semanticUsed?embedding.model:null,fulltext:true,semantic:semanticUsed,crossRounds:result.crossRounds,reranked,steps,warning}
+    const retrievalTrace={requestedMode:mode,embeddingModel:semanticUsed?embedding.model:null,fulltext:true,semantic:semanticUsed,crossRounds:result.crossRounds,reranked,steps,warning,timings,transport:result.transport,scan:data.scanMetrics}
     const history=traces.get(b.key)||[];history.push({at:now(),...retrievalTrace,cache:result.cache});traces.set(b.key,history.slice(-10))
     return {cache:{...result.cache,queryRequestMerged:Boolean(vectors.requestMerged)},retrievalTrace,retrievalDisclosure:retrievalDisclosure(retrievalTrace,b.preferences?.showRetrievalProcess!==false),items:items.slice(offset,offset+limit),total:args.question?ranked.length:items.length,offset,limit,mode:canVector&&!vectors.vector?'fulltext':mode,crossRounds:result.crossRounds,warning,
-      coverageNote:`全文覆盖 ${sourceDocs.length} 份资料、${records.length} 个片段；其中 ${covered} 个片段已向量化；仅名称 ${data.nameOnly} 份；读取失败 ${data.errors.length} 份。${warning}`,
-      coverage:{documents:sourceDocs.length,chunks:records.length,vectors:covered,nameOnly:data.nameOnly,errors:data.errors.length},more:args.question?ranked.length>items.length:items.length>offset+limit}
+      coverageNote:`全文覆盖 ${sourceDocs.length} 份资料、${chunkCount} 个片段；其中 ${covered} 个片段已向量化；仅名称 ${data.nameOnly} 份；读取失败 ${data.errors.length} 份。${warning}`,
+      coverage:{documents:sourceDocs.length,chunks:chunkCount,vectors:covered,nameOnly:data.nameOnly,errors:data.errors.length},more:args.question?ranked.length>items.length:items.length>offset+limit}
   }
   async function reconcile(b) {
     await ensureStorage(b)
@@ -471,7 +523,7 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
       }
       throw fail('BAD_OPERATION','未知检索操作')
     },
-    invalidate(){dirty=true;cache.clear();statusSnapshots.clear();traces.clear()},
-    dispose(){stopped=true;clearInterval(timer);watcher?.close();running?.controller.abort();ranking.dispose();cache.clear();pendingVectors.clear();statusSnapshots.clear();traces.clear()},
+    invalidate(){dirty=true;cache.clear();statusSnapshots.clear();traces.clear();invalidateComputations()},
+    dispose(){stopped=true;clearInterval(timer);clearTimeout(sourceTimer);watcher?.close();running?.controller.abort();ranking.dispose();rankingCatalog=null;cache.clear();pendingVectors.clear();statusSnapshots.clear();traces.clear()},
   }
 }

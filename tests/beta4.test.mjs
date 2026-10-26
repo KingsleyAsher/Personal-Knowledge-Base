@@ -32,11 +32,12 @@ test('beta4 reference is short, session-bound and read incrementally; relative d
   assert.equal(result.sources.length,1);assert(result.normalizedQuery.includes('2026-10-19'))
   assert(!JSON.stringify(result).includes('secret.md'));assert(result.sources.reduce((n,s)=>n+s.text.length,0)<=6000)
   const read=await f.call({op:'question.read',questionId:q.questionId,sourceId:'S1',line:7},'session-a');assert(read.source.text.includes('有界性'))
-  const valid=await f.call({op:'question.validate',questionId:q.questionId,answer:'有界性 [S1]'},'session-a');assert.equal(valid.invalid.length,0)
+  const valid=await f.call({op:'question.validate',questionId:q.questionId,answer:'有界性 '+read.source.citation},'session-a');assert.equal(valid.invalid.length,0)
+  const bare=await f.call({op:'question.validate',questionId:q.questionId,answer:'有界性 [S1]'},'session-a');assert.deepEqual(bare.invalid,['S1'])
   const forged=await f.call({op:'question.validate',questionId:q.questionId,answer:'[S1](https://invalid.example/#L2)'},'session-a');assert.deepEqual(forged.invalid,['S1'])
   await assert.rejects(f.call({op:'question.read',questionId:q.questionId,sourceId:'S1',line:999999},'session-a'),{code:'LINE_OUT_OF_RANGE'})
   await writeFile(path.join(f.root,result.sources[0].path),'changed')
-  const changed=await f.call({op:'question.validate',questionId:q.questionId,answer:'[S1]'},'session-a');assert.deepEqual(changed.invalid,['S1'])
+  const changed=await f.call({op:'question.validate',questionId:q.questionId,answer:read.source.citation},'session-a');assert.deepEqual(changed.invalid,['S1'])
 })
 
 test('beta4 private reference revokes after privacy policy changes',async()=>{
@@ -125,9 +126,15 @@ test('beta4 native @ codec exposes exactly two choices and never serializes sour
   const code=await readFile(new URL('../src/client/workbench-ui.js',import.meta.url),'utf8'), calls=[]
   const factory=vm.runInNewContext(code+'\ncreateWorkbenchUI', {window:{dispatchEvent(){}},CustomEvent:class{constructor(name,detail){this.name=name;this.detail=detail}},URL,Blob,AbortController,crypto:globalThis.crypto})
   let source
-  const ctx={inject:(_names,fn)=>fn(ctx),effect:fn=>fn(),get:name=>name==='inputTriggers'?{registerSource:s=>{source=s;return()=>{}}}:null}
+  const matchers=[],renderers=[]
+  const ctx={inject:(_names,fn)=>fn(ctx),effect:fn=>fn(),get:name=>({
+    inputTriggers:{registerSource:s=>{source=s;return()=>{}}},
+    uiConversation:{userText:{register:rule=>{matchers.push(rule);return()=>{}}}},
+    slots:{inject:(_slot,fn)=>fn(),register:(slot,component)=>{renderers.push({slot,component});return()=>{}}},
+  })[name]}
   const ui=factory({react:{},e:()=>null,api:async args=>{calls.push(args);return args.op==='atlas.snapshot'?{ok:true,kbId:'k',policyVersion:'p',preferences:{allowPrivateQuestions:false},sections:[{name:'项目'}]}:{ok:true,questionId:'short-reference-id',label:'基于知识库回答（不含隐私）'}},ctx:()=>ctx})
   ui.registerReferences(ctx)
+  assert.equal(matchers.length,1);assert.equal(renderers.length,1)
   const rows=await source.candidates({sessionId:'s'},{query:'',signal:new AbortController().signal})
   assert.deepEqual(Array.from(rows,r=>r.label),['基于知识库回答（含隐私）','基于知识库回答（不含隐私）'])
   assert.throws(()=>source.onPick({candidate:rows[0]}),/允许隐私提问/)

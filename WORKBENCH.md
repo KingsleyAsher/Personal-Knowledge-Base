@@ -1,6 +1,8 @@
-> 当前正式版本为 **2.1.2**，下载与最新能力以 [README](README.md)、[发布说明](RELEASE.md) 为准。以下保留相应功能与历史阶段说明。
+> 当前正式版本为 **2.1.3**，下载与最新能力以 [README](README.md)、[发布说明](RELEASE.md) 为准。以下保留相应功能与历史阶段说明。
 
-# 2.1.2 正式版使用说明
+# 2.1.3 正式版使用说明
+
+本版减少空闲页面刷新，资料变更会自动合并更新；页面可见时每 60 秒兜底，从后台返回时立即刷新。关系更新完成后自动通知，检索配置页按任务变化更新。检索计算和向量分片会复用缓存，向量构建按批同步；搜索方式、隐私开关和引用用法不变，不需要迁移个人资料。性能条件与验证范围见 [性能优化记录](PERFORMANCE.md)。
 
 关系网络增量索引、右侧直接删除、所有 Agent 默认解析通道、任务历史和更新弹窗规则见 [BETA9.md](BETA9.md)。
 
@@ -58,7 +60,7 @@
 
 采集列表及详情提供“移入回收站”：即使对应知识笔记已删除，也可单独删除采集原件，确认后 30 天内可恢复。预览、列表和详情均支持正常滚动；底部输入框遮挡的内容可继续向下滚动查看。
 
-浏览器扩展 ZIP：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.2/knowledge-base-browser-extension.zip)。镜像可能存在同步延迟；文件暂不可用时可切换其他源。ZIP 解压后，选择直接包含 `manifest.json` 的文件夹加载扩展。
+浏览器扩展 ZIP：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.3/knowledge-base-browser-extension.zip)。镜像可能存在同步延迟；文件暂不可用时可切换其他源。ZIP 解压后，选择直接包含 `manifest.json` 的文件夹加载扩展。
 
 首次使用：
 
@@ -116,4 +118,4 @@ Markdown/文本提供安全只读展示和链接导航。PDF 使用随包 PDF.js
 
 客户端内下载入口：知识库 → 收件箱 → 浏览器扩展使用指南 → 首次使用：安装与连接，点击“下载浏览器扩展”，自动匹配 Gitee、GitCode、GitHub 并校验下载文件，源失败时自动切换；全部失败时显示原因与备用链接。
 
-当前发布：正式版 2.1.2；预览通道暂无可用版本。旧预览包已撤下，安装请使用当前正式版。
+当前发布：正式版 2.1.3；预览通道暂无可用版本。旧预览包已撤下，安装请使用当前正式版。

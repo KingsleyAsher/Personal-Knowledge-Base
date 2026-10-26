@@ -10,7 +10,7 @@ commands = [
     ['python', '-X', 'utf8', 'tools/sync-workbench-build.py'],
     ['node', '--check', 'src/client/index.js'],
     ['node', '--check', 'src/host/index.js'],
-    ['node', '--test', 'tests/parsing-setup.test.mjs', 'tests/parsing-boundaries.test.mjs', 'tests/index-maintenance.test.mjs', 'tests/import-parse-auth.test.mjs', 'tests/client-update-flow.test.mjs', 'tests/update-download.test.mjs', 'tests/release-notice-dismiss.test.mjs', 'tests/workbench.test.mjs', 'tests/beta4.test.mjs', 'tests/startup-view.test.mjs', 'tests/preview-updates.test.mjs', 'tests/mirror-updates.test.mjs'],
+    ['node', '--test', 'tests/parsing-setup.test.mjs', 'tests/parsing-boundaries.test.mjs', 'tests/index-maintenance.test.mjs', 'tests/import-parse-auth.test.mjs', 'tests/client-update-flow.test.mjs', 'tests/update-download.test.mjs', 'tests/release-notice-dismiss.test.mjs', 'tests/workbench.test.mjs', 'tests/beta4.test.mjs', 'tests/startup-view.test.mjs', 'tests/preview-updates.test.mjs', 'tests/mirror-updates.test.mjs', 'tests/performance-optimization.test.mjs', 'tests/retrieval.test.mjs', 'tests/retrieval-storage.test.mjs', 'tests/retrieval-settings.test.mjs', 'tests/beta2-directed.test.mjs'],
     ['node', 'tests/release-fixes-probe.mjs'],
     ['node', 'tests/flow-workspace-probe.mjs'],
     ['node', 'tests/flow-conversation-probe.mjs'],

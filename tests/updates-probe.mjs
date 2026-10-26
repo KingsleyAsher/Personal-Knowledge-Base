@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { createUpdateChecker, startAutomaticChecks, compareStableVersions, UPDATE_MANIFEST_URL, UPDATE_INTERVAL_MS } from '../src/host/updates.js'
 
-const manifest = version => ({ package: '@local/dsh-knowledge-base', version, tgz: 'local-dsh-knowledge-base-' + version + '.tgz', sha256: 'a'.repeat(64) })
+const manifest = version => ({ package: '@local/dsh-knowledge-base', version, tgz: 'local-dsh-knowledge-base-' + version + '.tgz', sha256: 'a'.repeat(64), buildId: 'b'.repeat(16), bytes: 1000 })
 assert.equal(compareStableVersions('1.0.10', '1.0.9'), 1)
 assert.equal(compareStableVersions('2.0.0', '1.99.99'), 1)
 assert.equal(compareStableVersions('1.0.3', '1.0.3'), 0)
@@ -61,8 +61,8 @@ assert.equal((await checker.check()).ok, true)
 assert.equal(calls, before + 1)
 const timeout = createUpdateChecker({ sourceIds: ['github'], previewManifestUrl: null,currentVersion:'1.0.3', timeoutMs:20, fetch:(_url,{signal})=>new Promise((_,reject)=>signal.addEventListener('abort',()=>reject(Error('aborted'))))})
 assert.ok((await timeout.check()).sourceStatus[0].error.includes('超时'))
-const preview = createUpdateChecker({ sourceIds: ['github'], previewManifestUrl: null,currentVersion:'1.0.7-preview.1',fetch:async()=>Response.json(manifest(latest))})
+const preview = createUpdateChecker({ sourceIds: ['github'], previewManifestUrl: null,currentVersion:'1.1-beta1',fetch:async()=>Response.json(manifest(latest))})
 latest='1.0.6';assert.equal((await preview.check({force:true})).ahead,true)
-latest='1.0.7';assert.equal((await preview.check({force:true})).updateAvailable,true)
-latest='1.0.8';assert.equal((await preview.check({force:true})).updateAvailable,true)
+latest='1.1.0';assert.equal((await preview.check({force:true})).updateAvailable,true)
+latest='1.1.1';assert.equal((await preview.check({force:true})).updateAvailable,true)
 console.log('PASS: numeric versions; newer/equal/ahead; six-hour cache; concurrent/manual dedup; forced refresh; error retry; network/HTTP/JSON/size/package/path/prerelease failures; timeout')
