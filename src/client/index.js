@@ -28,6 +28,21 @@ window.__ModuleLoader__.load({
         return out
       }
       const event = (name, detail) => window.dispatchEvent(new CustomEvent(name, { detail }))
+      // One request at a time; burst events collapse into one follow-up refresh.
+      function refreshSchedule(run, fallbackMs = 60000) {
+        let timer = null, running = false, pending = false, disposed = false
+        const flush = async () => {
+          timer = null
+          if (disposed || document.hidden || running) return
+          pending = false; running = true
+          try { await run() } catch {} finally { running = false; if (pending && !disposed) schedule() }
+        }
+        const schedule = (delay = 200) => { if (disposed) return; pending = true; if (!timer && !running && !document.hidden) timer = setTimeout(flush, delay) }
+        const wake = () => { if (!document.hidden) schedule(0) }
+        const fallback = setInterval(wake, fallbackMs)
+        window.addEventListener('focus', wake); document.addEventListener('visibilitychange', wake)
+        return { schedule, dispose() { disposed = true;clearTimeout(timer);clearInterval(fallback);window.removeEventListener('focus', wake);document.removeEventListener('visibilitychange', wake) } }
+      }
       const btn = (label, action, disabled = false, extra = {}) => e('button', { type: 'button', className: 'kbw-button', onClick: action, disabled, ...extra }, label)
       const field = (label, value, change, props = {}) => e('label', { className: 'kbw-field' }, e('span', null, label), e('input', { value: value ?? '', onChange: ev => change(ev.target.value), ...props }))
       const check = (label, value, change, disabled = false) => e('label', { className: 'kbw-check' }, e('input', { type: 'checkbox', checked: Boolean(value), onChange: ev => change(ev.target.checked), disabled }), label)
@@ -681,7 +696,7 @@ window.__ModuleLoader__.load({
         const [data, setData] = R.useState(null), [error, setError] = R.useState(''), [type, setType] = R.useState(''), [archive, setArchive] = R.useState(false), [navigation, setNavigation] = R.useState(false), [depth, setDepth] = R.useState('1')
         const [selected, setSelected] = R.useState(null), [hover, setHover] = R.useState(null), [history, setHistory] = R.useState([]), [issues, setIssues] = R.useState(false), [retry, setRetry] = R.useState(0)
         const [query, setQuery] = R.useState(''), [matches, setMatches] = R.useState(null), [searching, setSearching] = R.useState(false), [transform, setTransform] = R.useState({ x: 0, y: 0, zoom: 1 })
-        const svg = R.useRef(null), drag = R.useRef(null), moved = R.useRef(false), searchRequest = R.useRef(0), autoFit = R.useRef(true)
+        const svg = R.useRef(null), drag = R.useRef(null), moved = R.useRef(false), searchRequest = R.useRef(0), autoFit = R.useRef(true), graphRevision = R.useRef(null)
         const [fullscreen, setFullscreen] = R.useState(false), [canvas, setCanvas] = R.useState({ width: 1000, height: 620 })
         const fitCanvas = R.useRef(null), canvasBox = R.useRef({ width: 1000, height: 620 })
         canvasBox.current = canvas
@@ -707,9 +722,17 @@ window.__ModuleLoader__.load({
         R.useEffect(() => { if (fitCanvas.current) fitCanvas.current(canvas) }, [canvas.width, canvas.height])
         R.useEffect(() => { setCenter(focus || ''); setScope(''); setGraphMode(focus ? 'center' : 'overview'); setData(null); setSelected(null); setHover(null); setHistory([]); setMatches(null); searchRequest.current++; autoFit.current = true; resetView() }, [snapshot.kbId, snapshot.policyVersion, focus])
         R.useEffect(() => {
+          if (!active || issues) return
+          const updates = refreshSchedule(() => setRetry(n => n + 1))
           const onChange = ev => {
             const change = ev.detail || {}
-            if (change.kbId !== snapshot.kbId || !['files-changed', 'links-changed'].includes(change.type)) return
+            if (change.kbId && change.kbId !== snapshot.kbId) return
+            if (change.type === 'relations-progress') {
+              setSyncStatus(change)
+              if (change.status === 'synced' && change.revision !== graphRevision.current) updates.schedule()
+              return
+            }
+            if (!['files-changed', 'links-changed', 'snapshot-dirty'].includes(change.type)) return
             setError('')
             const removesFile = change.type === 'files-changed' && ['trash.move', 'trash.purge'].includes(change.operation)
             const removesCenter = removesFile && change.path === center
@@ -718,20 +741,36 @@ window.__ModuleLoader__.load({
             if (removesCenter) {
               setCenter(''); setScope(''); setGraphMode('overview'); setSelected(null); setHistory(items => items.filter(item => item.center !== change.path)); autoFit.current = true; resetView()
             }
-            setRetry(n => n + 1)
+            updates.schedule()
           }
           window.addEventListener('kbw-policy', onChange)
-          return () => window.removeEventListener('kbw-policy', onChange)
-        }, [center, snapshot.kbId])
+          return () => { updates.dispose();window.removeEventListener('kbw-policy', onChange) }
+        }, [active, issues, center, snapshot.kbId])
         R.useEffect(() => {
           if (!active || issues) return
           let live = true; setError(''); setLoadingGraph(true)
           const force = forceScan.current; forceScan.current = false
-          const progress = setInterval(() => { api({ op: 'atlas.relations.status', expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion }).then(r => { if (live) setSyncStatus(r.sync) }).catch(() => {}) }, 1000)
-          api({ op: 'atlas.relations', force, background: !force, expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion, mode: graphMode === 'overview' ? 'overview' : undefined, prefix: graphMode === 'overview' ? scope : undefined, path: graphMode === 'center' ? center : undefined, type: type || undefined, includeArchive: archive, includeNavigation: navigation, depth: Number(depth), limit: 500 }).then(d => { if (live) { setData(d); setSyncStatus(d.sync); if (autoFit.current) { const box = canvasBox.current; setTransform(relationFit(relationPositions((graphMode === 'overview' ? d.sections : d.nodes) || [], graphMode === 'center' ? center : '', box.width, box.height), box.width, box.height)); autoFit.current = false } setSelected(s => s && (s.kind === 'node' ? (d.sections || d.nodes || []).some(n => n.path === s.id) : (d.sectionEdges || d.edges || []).some(edge => (edge.id || edge.from + '→' + edge.to) === s.id)) ? s : null) } }).catch(err => { if (live) { if (graphMode === 'center' && err.code === 'NOT_FOUND') { setCenter(''); setScope(''); setGraphMode('overview'); setSelected(null); setHistory(items => items.filter(item => item.center !== center)); autoFit.current = true; resetView() } else setError(err.message) } }).finally(() => { clearInterval(progress); if (live) setLoadingGraph(false) })
-          return () => { live = false; clearInterval(progress) }
+          api({ op: 'atlas.relations', force, background: !force, expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion, mode: graphMode === 'overview' ? 'overview' : undefined, prefix: graphMode === 'overview' ? scope : undefined, path: graphMode === 'center' ? center : undefined, type: type || undefined, includeArchive: archive, includeNavigation: navigation, depth: Number(depth), limit: 500 }).then(d => { if (live) { setData(d); setSyncStatus(d.sync); graphRevision.current=d.sync?.revision; if (autoFit.current) { const box = canvasBox.current; setTransform(relationFit(relationPositions((graphMode === 'overview' ? d.sections : d.nodes) || [], graphMode === 'center' ? center : '', box.width, box.height), box.width, box.height)); autoFit.current = false } setSelected(s => s && (s.kind === 'node' ? (d.sections || d.nodes || []).some(n => n.path === s.id) : (d.sectionEdges || d.edges || []).some(edge => (edge.id || edge.from + '→' + edge.to) === s.id)) ? s : null) } }).catch(err => { if (live) { if (graphMode === 'center' && err.code === 'NOT_FOUND') { setCenter(''); setScope(''); setGraphMode('overview'); setSelected(null); setHistory(items => items.filter(item => item.center !== center)); autoFit.current = true; resetView() } else setError(err.message) } }).finally(() => { if (live) setLoadingGraph(false) })
+          return () => { live = false }
         }, [active, issues, graphMode, scope, center, type, depth, archive, navigation, snapshot.kbId, snapshot.policyVersion, snapshot.version, snapshot.relationVersion, retry])
-        R.useEffect(() => { if (!active || issues) return; const timer = setInterval(() => { if (!document.hidden) setRetry(n => n + 1) }, 5000); return () => clearInterval(timer) }, [active, issues])
+        R.useEffect(() => {
+          if (!active || issues || syncStatus?.status !== 'updating') return
+          let live = true, timer
+          const poll = async () => {
+            if (!live) return
+            if (document.hidden) { timer=setTimeout(poll,1000); return }
+            try {
+              const r=await api({op:'atlas.relations.status',expectedKbId:snapshot.kbId,policyVersion:snapshot.policyVersion})
+              if (!live) return
+              setSyncStatus(r.sync)
+              if(r.sync?.status==='synced'&&r.sync.revision!==graphRevision.current)setRetry(n=>n+1)
+              if(r.sync?.status!=='updating')return
+            } catch {}
+            if(live)timer=setTimeout(poll,1000)
+          }
+          timer=setTimeout(poll,1000)
+          return()=>{live=false;clearTimeout(timer)}
+        }, [active, issues, syncStatus?.status, snapshot.kbId, snapshot.policyVersion])
         const remember = () => setHistory(h => [...h, { scope, center, graphMode, depth, selected, transform }].slice(-40))
         const changeScope = (mode, path = '') => { remember(); autoFit.current = true; setData(null); setGraphMode(mode); if (mode === 'center') setCenter(path); else setScope(path); setDepth('1'); setSelected(null); setHover(null); setMatches(null); resetView() }
         const back = () => { const previous = history.at(-1); if (!previous) return; autoFit.current = false; setHistory(h => h.slice(0, -1)); setScope(previous.scope); setCenter(previous.center); setGraphMode(previous.graphMode); setDepth(previous.depth); setSelected(previous.selected); setTransform(previous.transform); setData(null); setHover(null) }
@@ -864,7 +903,7 @@ window.__ModuleLoader__.load({
                       extensionError ? e('div', { role: 'alert' }, e('p', null, extensionError), e('p', null, '下载浏览器扩展 ZIP：', ...[
                         ['Gitee 国内下载', 'https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip'],
                         ['GitCode 国内下载', 'https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main'],
-                        ['GitHub 下载', 'https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.2/knowledge-base-browser-extension.zip']
+                        ['GitHub 下载', 'https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.3/knowledge-base-browser-extension.zip']
                       ].map(([label, href], index) => e(R.Fragment, { key: href }, index ? ' · ' : '', e('a', { href, target: '_blank', rel: 'noopener noreferrer' }, label))))) : null,
                       e('p', { className: 'kbw-meta' }, '下载完成后先解压，加载直接包含 manifest.json 的文件夹。镜像可能存在同步延迟；某个源暂不可用时可切换其他源。'),
                   e('p', null, '从知识库插件的文件包或源码仓库取得 browser-extension 文件夹。下载的是整个仓库时，先解压，再找到这个文件夹。'),
@@ -1026,7 +1065,14 @@ window.__ModuleLoader__.load({
         const [data,setData]=R.useState(null), [config,setConfig]=R.useState(null), [embeddingKey,setEmbeddingKey]=R.useState(''), [rerankKey,setRerankKey]=R.useState(''), [busy,setBusy]=R.useState(false), [message,setMessage]=R.useState('')
         const current=R.useRef(true),[trace,setTrace]=R.useState([])
         const refresh=async(lightweight=false)=>{ const d=await api({op:'retrieval.get',lightweight,expectedKbId:snapshot.kbId}); if(current.current){setData(d);setConfig(c=>c||d.config)} }
-        R.useEffect(()=>{current.current=true;void refresh().catch(e=>setMessage(e.message));const timer=setInterval(()=>void refresh(true).catch(()=>{}),5000);return()=>{current.current=false;clearInterval(timer)}},[snapshot.kbId])
+        R.useEffect(()=>{
+          current.current=true
+          const updates=refreshSchedule(()=>refresh(true))
+          void refresh().catch(e=>setMessage(e.message))
+          const changed=ev=>{if(ev.detail?.type==='retrieval'&&ev.detail.kbId===snapshot.kbId)updates.schedule()}
+          window.addEventListener('kbw-policy',changed)
+          return()=>{current.current=false;updates.dispose();window.removeEventListener('kbw-policy',changed)}
+        },[snapshot.kbId])
         const change=(type,key,value)=>setConfig(c=>({...c,[type]:{...c[type],[key]:value}}))
         const action=async(op,enable)=>{setBusy(true);setMessage('');try{
           const result=await api({op:'retrieval.'+op,expectedKbId:snapshot.kbId,expectedRevision:config?.revision,
@@ -1207,19 +1253,18 @@ window.__ModuleLoader__.load({
           } catch (err) { if (gen === generation.current) { setError(err.message); setSnapshot(null); setList(null); setSelected('') } }
         }, [])
         R.useEffect(() => {
-          connectEvents(); void refresh()
+          connectEvents(); const updates=refreshSchedule(refresh);updates.schedule(0)
           const policy = ev => {
             if (['parse-jobs-changed', 'relations-progress', 'retrieval'].includes(ev.detail?.type)) return
-            if (['links-changed', 'files-changed'].includes(ev.detail?.type)) { if (ev.detail.type === 'files-changed' && ev.detail.operation !== 'trash.restore') setSelected(old => old === ev.detail.path ? '' : old); void refresh(); return }
+            if (['links-changed', 'files-changed','snapshot-dirty'].includes(ev.detail?.type)) { if (ev.detail.kbId&&ev.detail.kbId!==current.current?.kbId)return; if (ev.detail.type === 'files-changed' && ev.detail.operation !== 'trash.restore') setSelected(old => old === ev.detail.path ? '' : old); updates.schedule(); return }
             if (ev.detail?.type === 'review-due') { if (ev.detail.kbId === current.current?.kbId) setReminder(ev.detail.count); return }
-            generation.current++; request.current++; current.current = null; setSnapshot(null); setList(null); setSelected(''); setRelationFocus(''); setTasks(null); routeHistory.current = []; setCanGoBack(false); void refresh()
+            generation.current++; request.current++; current.current = null; setSnapshot(null); setList(null); setSelected(''); setRelationFocus(''); setTasks(null); routeHistory.current = []; setCanGoBack(false); updates.schedule(0)
           }
           const toastListener = ev => setToast(String(ev.detail || '')); window.addEventListener('kbw-toast', toastListener)
-          const timer = setInterval(() => { if (!document.hidden) void refresh() }, 5000)
           const defer = () => setDeferred(true)
           const capture = ev => { if ((ev.ctrlKey || ev.metaKey) && ev.shiftKey && ev.key.toLowerCase() === 'k') { ev.preventDefault(); routePushRef.current?.(); setTab('inbox') } }
           window.addEventListener('kbw-policy', policy); window.addEventListener('kbw-deferred', defer); window.addEventListener('keydown', capture)
-          return () => { generation.current++; request.current++; clearInterval(timer); window.removeEventListener('kbw-toast', toastListener); window.removeEventListener('kbw-policy', policy); window.removeEventListener('kbw-deferred', defer); window.removeEventListener('keydown', capture) }
+          return () => { generation.current++; request.current++; updates.dispose(); window.removeEventListener('kbw-toast', toastListener); window.removeEventListener('kbw-policy', policy); window.removeEventListener('kbw-deferred', defer); window.removeEventListener('keydown', capture) }
         }, [refresh])
         const pushRoute = R.useCallback(() => {
           const scrollSelector = tab === 'relations' ? '.kbw-relations, .kbw-content' : (tab === 'map' || tab === 'reading') && selected ? '.kbw-detail' : tab === 'map' ? '.kbw-list, .kbw-content' : '.kbw-content'
@@ -3801,7 +3846,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         toast?e('div',{className:'kbm-toast'},toast):null)
     }
 
-    const RELEASE_VERSION = '2.1.2'
+    const RELEASE_VERSION = '2.1.3'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.
@@ -3827,6 +3872,9 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       { version: '2.1-beta3', items: ['修复问答引用保留契约：缺少来源链接时明确要求修正，校验后返回可复制的有效来源链接。'] },
       { version: '2.1-beta2', items: ['复用检索计算并保留证据范围，按缺口补查；新版问答协议减少整篇答案回传。', '新增机制升级检查、托管文件保护和待生效提示，保留用户规则与凭据。'] },
       { version: '2.1-beta1', items: ['新增全文与多语言向量协同检索，支持长文结构切片和章节上下文展开。', '内置 BGE-M3 API 配置、通用向量及重排序接口，保存启用后自动增量建库，仅估算空间。'] },
+      { version: '2.1.1', items: ['收件箱原件可移入回收站；改善工作台窗口高度、预览与滚动。', '统一插件图标、正式版下载入口及浏览器扩展下载。'] },
+      { version: '2.1.2', items: ['关系网络支持全屏画布、按区域宽高比布局和 Esc 安全退出。'] },
+      { version: '2.1.3', items: ['资料变更通过事件合并刷新，空闲页面减少扫描，返回页面时及时更新。', '复用检索目录、词法计算与向量分片，批量写入同步；保留隐私、引用与损坏索引检查。'] },
       { version: '2.0.3', items: ['同一大版本内的正式版小版本与补丁更新可自动下载、校验并交由 DSH 安装；保留现有更新提示和安装后更新说明机制。'] },
     ]
     const LEGACY_RELEASE_NOTICE_VERSIONS = ['1.1.1', '1.1.2', '1.1.3']

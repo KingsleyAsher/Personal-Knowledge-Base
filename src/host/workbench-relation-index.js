@@ -61,6 +61,7 @@ export function createRelationIndex({ stateDir, readText, now = Date.now, notify
         await atomicJson(file, { format: FORMAT, key: e.key, updatedAt: e.at, documents: next })
         return next
       } catch (error) { e.status = 'error'; e.error = error.message; throw error }
+      finally { notify({type:'relations-progress',kbId:b.st.kbId,...status(b)}) }
     })()
     const pending = e.pending
     const completed = pending.finally(() => { if (e.pending === completed) e.pending = null })
