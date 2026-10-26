@@ -10,6 +10,11 @@ on:
         required: false
         type: boolean
         default: false
+      trigger_pull:
+        description: Also request the existing GitCode pull mirror to sync
+        required: false
+        type: boolean
+        default: false
       sanitize_history:
         description: Remove stale mirror branches and tags after a privacy cleanup
         required: false
@@ -52,4 +57,4 @@ jobs:
         env:
           GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
           GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
-        run: python tools/diagnose-mirror.py "${{ matrix.platform }}"
+        run: python tools/diagnose-mirror.py "${{ matrix.platform }}" ${{ inputs.trigger_pull && '--trigger-pull' || '' }}

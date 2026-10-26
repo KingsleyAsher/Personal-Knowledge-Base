@@ -22,6 +22,9 @@ def diagnose(platform):
         if mirror:
             selected = {key: mirror.get(key) for key in ['mirroring_enabled', 'update_status', 'number_of_failures', 'last_error', 'error_message', 'last_update_at', 'last_successful_update_at'] if key in mirror}
             print(platform + ': mirror=' + redact(json.dumps(selected, ensure_ascii=False)))
+        if '--trigger-pull' in sys.argv:
+            result=api.sync_pull(repo['id'])
+            print(platform + ': trigger pull=' + redact(json.dumps({key:result.get(key) for key in ['success','message','code']})))
     root = Path(__file__).resolve().parents[1]
     manifest = json.loads((root / 'release-manifest.json').read_text(encoding='utf-8'))
     tag = 'v' + manifest['version']

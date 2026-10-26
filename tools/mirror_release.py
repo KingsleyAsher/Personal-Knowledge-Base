@@ -66,3 +66,25 @@ class MirrorAPI:
 
     def repo(self, route='', **kwargs):
         return self.request('/repos/' + PROJECT + route, **kwargs)
+
+    def sync_pull(self, project_id):
+        """The same operation as GitCode's web UI 'sync mirror' button.
+
+        Contract: official site's assets/index-2b342e54.js, function rm.
+        It does not replace the source URL, credentials or mirror policy.
+        """
+        if self.platform != 'gitcode' or not str(project_id).isdigit():
+            raise ValueError('A GitCode numeric project ID is required')
+        route = '/api/v2/projects/' + str(project_id) + '/sync_remote_mirror'
+        request = urllib.request.Request('https://web-api.gitcode.com' + route, data=b'{}', method='POST',
+            headers={'Authorization': 'Bearer ' + self.token, 'PRIVATE-TOKEN': self.token, 'Content-Type': 'application/json', 'User-Agent': 'knowledge-base-mirror-release'})
+        try:
+            with self.opener(request, timeout=60) as response:
+                result = json.load(response)
+            if result.get('success') is False:
+                raise APIError('gitcode', 'POST', route, result.get('code'), result.get('message', 'mirror pull refused'))
+            return result
+        except urllib.error.HTTPError as error:
+            raise APIError('gitcode', 'POST', route, error.code, 'mirror sync endpoint rejected the token') from None
+        except (urllib.error.URLError, TimeoutError, ValueError):
+            raise APIError('gitcode', 'POST', route, 'network', 'mirror sync did not return valid JSON') from None
