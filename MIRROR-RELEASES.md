@@ -17,4 +17,6 @@ It uploads the six stable distribution files as native Release attachments and v
 
 GitHub Actions needs repository secrets named `GITEE_TOKEN` and `GITCODE_TOKEN`. The manual workflow options support read-only diagnosis and release-only reconciliation of a specified stable tag.
 
+The mirror test API follows the version in `release-manifest.json`, including release lookup, update and signed-upload routes. This fixes the stale `v2.1.3` test routes that blocked synchronization after the 2.1.4 release; it does not change the published tag or installation archive.
+
 GitCode mirror documentation: <https://docs.gitcode.com/docs/help/home/org_project/project_manage/project_settings/repository_mirroring/>.

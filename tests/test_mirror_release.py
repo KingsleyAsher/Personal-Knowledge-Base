@@ -40,6 +40,7 @@ class FakeResponse:
 class FakeAPI:
     def __init__(self, platform, hashes, existing=None):
         self.platform = platform
+        self.tag = 'v' + json.loads((ROOT / 'release-manifest.json').read_text(encoding='utf-8'))['version']
         self.token = 'test-upload-token'
         self.hashes = hashes
         self.release = existing
@@ -50,7 +51,7 @@ class FakeAPI:
         self.upload_requests = []
 
     def repo(self, route='', method='GET', data=None, query=None, missing=False, raw=False, headers=None, token_in_query=True):
-        if route == '/releases/tags/v2.1.3':
+        if route == '/releases/tags/' + self.tag:
             if method == 'GET':
                 if self.release is None and missing:
                     return None
@@ -62,7 +63,7 @@ class FakeAPI:
             self.release = {**data, 'id': 17 if self.platform == 'gitee' else None,
                             'prerelease': False, 'release_status': 'latest', 'assets': []}
             return self.release
-        if route in ('/releases/17', '/releases/v2.1.3') and method == 'PATCH':
+        if route in ('/releases/17', '/releases/' + self.tag) and method == 'PATCH':
             self.patch_count += 1
             self.release.update(data)
             return self.release
@@ -76,7 +77,7 @@ class FakeAPI:
                 self.rows.append({'name': name, 'sha256': self.hashes[name]})
                 self.upload_count += 1
                 return {}
-        if self.platform == 'gitcode' and route == '/releases/v2.1.3/upload_url':
+        if self.platform == 'gitcode' and route == '/releases/' + self.tag + '/upload_url':
             self.pending_name = query['file_name']
             return {'url': 'https://upload.myhuaweicloud.com/object',
                     'headers': {'x-obs-meta-project-id': 'fixture', 'Content-Type': 'application/octet-stream'}}
