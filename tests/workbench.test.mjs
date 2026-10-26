@@ -1,6 +1,6 @@
-import test from 'node:test'
+import test, { after } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, writeFile, readFile, readdir, symlink } from 'node:fs/promises'
+import { mkdtemp, mkdir, writeFile, readFile, readdir, symlink, rm } from 'node:fs/promises'
 import path from 'node:path'
 import os from 'node:os'
 import { createCore } from '../src/host/kbcore.js'
@@ -8,8 +8,15 @@ import { createWorkbench, extractLinks } from '../src/host/workbench.js'
 import { sharedDraft, captureDocument } from '../src/host/capture-surface.js'
 import { Readable } from 'node:stream'
 
+const services = [], directories = []
+after(async () => {
+  for (const service of services) service.dispose()
+  for (const directory of directories) await rm(directory, { recursive: true, force: true })
+})
+
 async function fixture() {
   const base = await mkdtemp(path.resolve('..', 'workbench-qa-'))
+  directories.push(base)
   const root = path.join(base, 'library'), stateDir = path.join(base, 'state')
   await mkdir(root)
   const core = createCore({ stateDir }, () => {})
@@ -20,6 +27,7 @@ async function fixture() {
   await writeFile(path.join(root, '00-画像', 'secret.md'), '# 私密标题\n私密蓝鲸证据。')
   assert.equal((await core.maintainIndex()).ok, true)
   const wb = createWorkbench({ stateDir, getCore: () => core })
+  services.push(wb)
   const kbId = (await core.status()).kbId
   const call = args => wb.dispatch({ expectedKbId: kbId, ...args })
   const prefs = async patch => {
@@ -68,6 +76,7 @@ test('onboarding lease is unique, defer is incomplete and completion survives in
   assert.equal((await f.call({ op: 'preferences.get' })).guideComplete, false)
   await f.call({ op: 'onboarding.complete', owner: second, expectedRevision: p.revision, preferences: p.preferences })
   const restarted = createWorkbench({ stateDir: f.stateDir, getCore: () => f.core })
+  services.push(restarted)
   assert.equal((await restarted.dispatch({ op: 'onboarding.claim', owner: first })).completed, true)
 })
 
@@ -183,6 +192,7 @@ test('ten thousand files paginate without silent loss and relation graph stays b
 test('unbound onboarding saves future preferences but each newly bound library confirms before exposure', async () => {
   const base = await mkdtemp(path.resolve('..', 'workbench-unbound-')), stateDir = path.join(base, 'state')
   const core = createCore({ stateDir }, () => {}), wb = createWorkbench({ stateDir, getCore: () => core })
+  directories.push(base); services.push(wb)
   const p = await wb.dispatch({ op: 'preferences.get' })
   assert.equal(p.kbId, null)
   await wb.dispatch({ op: 'onboarding.claim', owner: 'unbound-window' })
@@ -199,6 +209,7 @@ test('automatic parsing requires completed onboarding and selected opt-in', asyn
   const f = await fixture(); let submissions = 0
   const parser = { submit: async () => { submissions++; return { ok: true, jobId: 'synthetic-parse' } }, readJob: async () => null }
   const wb = createWorkbench({ stateDir: f.stateDir, getCore: () => f.core, getParsing: () => parser })
+  services.push(wb)
   const snap = await f.call({ op: 'atlas.snapshot' })
   await f.call({ op: 'capture.create', filename: 'synthetic.png', base64: Buffer.from('fake image').toString('base64'), expectedRevision: snap.revision })
   await f.prefs({ autoParse: true })

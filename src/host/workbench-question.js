@@ -31,9 +31,8 @@ export function createQuestionService({ binding, versionOf, visible, list, textO
     const citation = `[${s.id}](<${url}>)`
     return { id: s.id, path: s.path, title: s.title, revision: s.revision, line, url, citation, text: redactReferences(b, file.path, text, q.includePrivate) }
   }
-  return {
-    clear: () => contexts.clear(),
-    async dispatch(b, args, caller) {
+  const lanes = new Map()
+  async function dispatch(b, args, caller) {
       if (args.op === 'question.create') {
         if (!args.sessionId || typeof args.sessionId !== 'string') throw fail('SESSION_REQUIRED', '缺少提问会话')
         if (args.policyVersion !== versionOf(b)) throw fail('SETTINGS_CHANGED', '知识库设置已改变，请重新选择')
@@ -115,6 +114,18 @@ export function createQuestionService({ binding, versionOf, visible, list, textO
 
       }
       throw fail('BAD_QUESTION_OPERATION', '未知问答操作')
+  }
+  return {
+    clear: () => contexts.clear(),
+    dispatch(b, args, caller) {
+      if (!args.questionId) return dispatch(b, args, caller)
+      const key = args.questionId, previous = lanes.get(key)
+      if ((previous?.count || 0) >= 8) return Promise.reject(fail('QUESTION_BUSY', '本次问题取证队列已满'))
+      const entry = { count: (previous?.count || 0) + 1 }
+      const pending = (previous?.pending || Promise.resolve()).catch(() => {}).then(() => dispatch(b, args, caller))
+      entry.pending = pending.finally(() => { const live = lanes.get(key); if (live === entry) lanes.delete(key); else if (live) live.count-- })
+      lanes.set(key, entry)
+      return entry.pending
     },
   }
 }

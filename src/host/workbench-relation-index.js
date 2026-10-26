@@ -23,7 +23,7 @@ export function createRelationIndex({ stateDir, readText, now = Date.now, notify
   const status = b => { const e = entry(b); return { status: e.status, updatedAt: e.at, progress: e.progress, error: e.error, revision: e.revision || null } }
   async function documents(b, files, { force = false, background = false } = {}) {
     const e = entry(b)
-    if (e.pending) { if (background && !force && e.at) return e.documents; await e.pending; if (!force) return e.documents }
+    if (e.pending) { if (background && !force && e.at) return e.documents; await e.pending; return documents(b, files, { force, background }) }
     const input = digest(JSON.stringify(files.map(f => [f.path, f.bytes, f.mtimeMs, f.ctimeMs])))
     if (!force && e.input === input && e.status === 'synced') return e.documents
     const file = path.join(stateDir, 'workbench', 'relations', e.key + '.json')
@@ -55,10 +55,11 @@ export function createRelationIndex({ stateDir, readText, now = Date.now, notify
           if (e.progress.done % 50 === 0) notify({ type: 'relations-progress', kbId: b.st.kbId, ...status(b) })
         }
         const revision = digest(JSON.stringify(Object.entries(next).map(([p, d]) => [p, d.revision])))
-        e.documents = next; e.revision = revision; e.input = input; e.at = new Date(now()).toISOString(); e.status = 'synced'; e.reads = reads
-        if (changed || force) e.graph = null
         // Metadata changes are persisted too, avoiding unnecessary reads after restart.
-        await atomicJson(file, { format: FORMAT, key: e.key, updatedAt: e.at, documents: next })
+        const at = new Date(now()).toISOString()
+        await atomicJson(file, { format: FORMAT, key: e.key, updatedAt: at, documents: next })
+        e.documents = next; e.revision = revision; e.input = input; e.at = at; e.status = 'synced'; e.reads = reads
+        if (changed || force) e.graph = null
         return next
       } catch (error) { e.status = 'error'; e.error = error.message; throw error }
       finally { notify({type:'relations-progress',kbId:b.st.kbId,...status(b)}) }

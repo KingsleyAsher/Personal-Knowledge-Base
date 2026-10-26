@@ -1160,7 +1160,7 @@ window.__ModuleLoader__.load({
         const labels={current:'已检查，机制兼容',attention:'有自定义文件待处理',failed:'升级未完成，可重试',checking:'检查中','index-building':'新索引后台构建中','index-paused':'索引尚未就绪，保留暂停或失败状态，可在检索设置中继续'}
         const activation={'new-session-required':'已有会话请新建会话以加载当前规则；新会话使用当前机制','restart-required':'托管预设已更新，重启宿主后生效',current:'当前运行机制已加载'}
         return e('section',{className:'kbw-panel'},e('h3',null,'系统版本与机制升级'),
-          data?e('div',null,e('p',null,'程序 '+data.program.version+' · 构建 '+data.program.buildId),e('p',null,labels[data.status]||data.status),
+          data?e('div',null,e('p',null,'版本 '+data.program.version),e('p',null,labels[data.status]||data.status),
             e('p',{className:'kbw-meta'},activation[data.activation]||data.activation),
             data.mechanisms?e('p',{className:'kbw-meta'},'全文 '+data.mechanisms.fulltext.format+' / '+data.mechanisms.fulltext.tokenizer+' · 向量 '+data.mechanisms.vector.format+' / '+data.mechanisms.vector.chunkVersion+' · 问答协议 '+data.mechanisms.questionProtocol):null,
             e('p',{className:'kbw-meta'},'AGENTS 正文、人工 INDEX 和用户自定义内容保留；未被修改的插件托管文件自动更新。'),
@@ -3871,7 +3871,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         toast?e('div',{className:'kbm-toast'},toast):null)
     }
 
-    const RELEASE_VERSION = '2.1.4'
+    const RELEASE_VERSION = '2.1.5'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.
@@ -3900,6 +3900,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       { version: '2.1.1', items: ['收件箱原件可移入回收站；改善工作台窗口高度、预览与滚动。', '统一插件图标、正式版下载入口及浏览器扩展下载。'] },
       { version: '2.1.2', items: ['关系网络支持全屏画布、按区域宽高比布局和 Esc 安全退出。'] },
       { version: '2.1.3', items: ['资料变更通过事件合并刷新，空闲页面减少扫描，返回页面时及时更新。', '复用检索目录、词法计算与向量分片，批量写入同步；保留隐私、引用与损坏索引检查。'] },
+      { version: '2.1.5', items: ['优化长文分块、全量精确检索和大库内存管理，保留现有索引格式与召回范围。', '改进任务取消、范围筛选、清单缓存与关系更新一致性；新增可复现性能对照。'] },
       { version: '2.1.4', items: ['同一大版本内的正式版在后台自动更新，不再弹出更新前选择窗口。', '更新完成后同步刷新版本状态，避免继续显示发现新版本；补丁升级保持静默。'] },
       { version: '2.0.3', items: ['同一大版本内的正式版小版本与补丁更新可自动下载、校验并交由 DSH 安装；保留现有更新提示和安装后更新说明机制。'] },
     ]
