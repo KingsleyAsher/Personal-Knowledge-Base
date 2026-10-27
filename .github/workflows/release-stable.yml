@@ -39,6 +39,12 @@ jobs:
         run: python -X utf8 tools/verify-release.py
       - name: Focused release checks
         run: |
+          node --test tests/flow-model-selection.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tests/flow-conversation-probe.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node tests/flow-workspace-probe.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node --check src/client/index.js
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node --check src/host/index.js

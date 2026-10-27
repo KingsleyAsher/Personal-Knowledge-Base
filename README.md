@@ -1,6 +1,6 @@
-# 个人知识库 2.2.0
+# 个人知识库 2.2.1
 
-本版完成底层稳定性与重复工作优化，不增加依赖安装、配置或手动索引迁移，详见[优化与验证记录](EXISTING-FRAMEWORK-OPTIMIZATION.md)。
+自定义流程新增执行模型与推理强度选择，可保存默认设置，也可在运行前临时更换；无需新增依赖或迁移已有流程。
 
 ## 📘 [插件设计与演进记录 →](PROJECT-RECORD.md)
 
@@ -16,19 +16,19 @@
 
 ## 当前下载版本
 
-当前仅推荐正式版 **2.2.0**。预览通道暂无可用版本。
+当前仅推荐正式版 **2.2.1**。预览通道暂无可用版本。
 
-## 2.2.0 现有框架与大库优化
+## 2.2.1 自定义流程选模
 
-全量精确检索、长文分块与内存管理优化，改进取消及关系更新一致性；保留现有索引与问答协议。验证、收益和限制见 [优化记录](EXISTING-FRAMEWORK-OPTIMIZATION.md)。
+新增／编辑流程时可保存执行模型与推理强度；点击“立即运行”后可临时调整，选模成功后才发送任务。已有流程保留默认行为，后台流程也会使用保存的模型设置。此前的检索与稳定性优化继续保留，见 [优化记录](EXISTING-FRAMEWORK-OPTIMIZATION.md)。
 
 ## 选择下载版本
 
-- **正式版 2.2.0**：[GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.2.0/local-dsh-knowledge-base-2.2.0.tgz) · [Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.2.0.tgz) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.2.0.tgz?ref=main) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.2.0.tgz)。
-- **浏览器扩展（Chrome／Edge）**：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub Release 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.2.0/knowledge-base-browser-extension.zip) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/knowledge-base-browser-extension.zip)。镜像可能存在同步延迟；文件暂不可用时可切换其他下载源。
-- 历史安装包已从公开下载处撤下；旧版用户请先安装 2.2.0，再使用插件内更新器。
+- **正式版 2.2.1**：[GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.2.1/local-dsh-knowledge-base-2.2.1.tgz) · [Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.2.1.tgz) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.2.1.tgz?ref=main) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.2.1.tgz)。
+- **浏览器扩展（Chrome／Edge）**：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub Release 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.2.1/knowledge-base-browser-extension.zip) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/knowledge-base-browser-extension.zip)。镜像可能存在同步延迟；文件暂不可用时可切换其他下载源。
+- 历史安装包已从公开下载处撤下；旧版用户请先安装 2.2.1，再使用插件内更新器。
 
-新版更新器同时检查正式版和预览版；同一大版本内可自动安装的正式版在后台更新，不弹更新前提醒。跨大版本与预览版保留手动选择；正式版用户的可选预览版仅在更新入口显示红点。宿主不支持客户端安装时通过宿主插件管理器更新。当前正式版为 `2.2.0`，暂无预览版；旧预览版已退出当前下载入口。
+新版更新器同时检查正式版和预览版；同一大版本内可自动安装的正式版在后台更新，不弹更新前提醒。跨大版本与预览版保留手动选择；正式版用户的可选预览版仅在更新入口显示红点。宿主不支持客户端安装时通过宿主插件管理器更新。当前正式版为 `2.2.1`，暂无预览版；旧预览版已退出当前下载入口。
 
 以下能力沿袭自 1.1.x 并持续迭代至 2.1.0；逐项发布记录见 [正式版说明](RELEASE.md)。
 
@@ -55,7 +55,7 @@ DSH 个人知识库插件：目录绑定、条目管理与检索、资料导入�
 
 ## 安装
 
-首次安装或从旧版接入新更新器：在 DSH 插件管理器的安装源中填写 `https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.2.0.tgz`，由客户端下载和安装；也可安装仓库 `dist/` 下的本地包。旧版自身的下载按钮仍采用旧流程，需先安装本版才能获得新更新器。
+首次安装或从旧版接入新更新器：在 DSH 插件管理器的安装源中填写 `https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.2.1.tgz`，由客户端下载和安装；也可安装仓库 `dist/` 下的本地包。旧版自身的下载按钮仍采用旧流程，需先安装本版才能获得新更新器。
 
 安装本版后，插件内「检查版本更新 → 安装新版本 / 安装预览版」自动完成下载、SHA-256 与包身份校验、安装及加载核对。普通宿主支持时热加载，宿主返回需要重启时再完全退出（含托盘）并重开。核对版本及构建号，摘要见 [发布清单](release-manifest.json)。宿主未提供安装接口时，按钮会说明需使用宿主插件管理器。
 
@@ -63,7 +63,7 @@ DSH 个人知识库插件：目录绑定、条目管理与检索、资料导入�
 
 ## 验证与边界
 
-2.2.0 完成34项定向回归及Windows包内隔离后端冒烟，另通过协议、存储和版本相关检查；此前的检索、索引及刷新验证记录保留在性能文档。完整 DSH React 宿主、正式桌面安装及真实云 API 未验证；未使用个人知识库。
+2.2.1 通过流程模型保存、单次覆盖、发送前选模和失败阻断的定向检查，包体与摘要经发布脚本校验。2.2.0 完成34项定向回归及Windows包内隔离后端冒烟，另通过协议、存储和版本相关检查；此前的检索、索引及刷新验证记录保留在性能文档。完整 DSH React 宿主、正式桌面安装及真实云 API 未验证；未使用个人知识库。
 
 2.1.0 发布前完成 25 项定向自动检查、安装包逐文件与 SHA-256 校验；GitHub 正式发布工作流和产品页部署均通过。用户已确认 2.1-beta4 预览版可用。正式包未在维护者本机安装验证，未调用真实云端 Embedding/Rerank API；自动化主要使用合成资料和模拟服务。
 

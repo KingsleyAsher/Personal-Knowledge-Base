@@ -129,6 +129,17 @@ export function validateFlow(flow) {
   const names = arr(flow.params).filter(isPlainObject).map((p) => str(p.name)).filter((n) => n !== '')
   if (new Set(names).size !== names.length) errors.push('params 名字重复')
   if (flow.capabilities !== undefined && flow.capabilities !== null && !Array.isArray(flow.capabilities)) errors.push('capabilities 必须是数组')
+  if (flow.execution !== undefined && flow.execution !== null) {
+    const route = flow.execution
+    if (!isPlainObject(route)) errors.push('execution 必须是对象')
+    else {
+      for (const key of ['provider', 'model', 'reasoningEffort']) {
+        if (route[key] !== undefined && (typeof route[key] !== 'string' || route[key].length > 256)) errors.push(`execution.${key} 必须是 ≤256 字的字符串`)
+      }
+      if (Boolean(str(route.provider)) !== Boolean(str(route.model))) errors.push('执行模型必须同时指定 provider 和 model')
+      if (str(route.reasoningEffort) && !str(route.model)) errors.push('选择推理强度前请先选择执行模型')
+    }
+  }
   const rules = flow.outputRules === undefined || flow.outputRules === null ? {} : flow.outputRules
   if (!isPlainObject(rules)) errors.push('outputRules 必须是对象')
   else {
@@ -172,6 +183,7 @@ export function normalizeFlow(input, ctxIn = {}) {
     name: str(input.name),
     triggers: Array.from(new Set(arr(input.triggers).map(str).filter((t) => t !== ''))),
     description: str(input.description),
+    execution: Object.fromEntries(['provider', 'model', 'reasoningEffort'].filter(key => str(input.execution?.[key])).map(key => [key, str(input.execution[key])])),
     params: params,
     steps: steps,
     capabilities: Array.from(new Set(arr(input.capabilities).map(str).filter((c) => c !== ''))),
@@ -548,6 +560,9 @@ export function createFlowEngine(opts) {
     if (flow.archived === true) return fail('archived', '该流程已归档：恢复后才能运行')
     if (flow.enabled === false) return fail('disabled', '该流程已停用：启用后才能运行')
     if (flow.revision !== input.expectedRevision) return fail('flow-changed', '流程定义已变化，请刷新页面后再运行')
+    const execution = input.execution === undefined ? (flow.execution || {}) : input.execution
+    const executionErrors = validateFlow({ ...flow, execution })
+    if (executionErrors.length) return fail('invalid-flow', executionErrors.join('；'))
     const running = active.get(flow.id)
     if (running) return fail('flow-busy', '该流程仍有后台任务运行，请等待结束或先取消（' + running.runId + '）')
     const resolved = resolveParams(flow, input.params)
@@ -578,7 +593,8 @@ export function createFlowEngine(opts) {
     lines.push(rules.land === true
       ? '只有全部步骤成功后，才按上述输出规则通过知识库条目工具写入最终成果；失败、取消或等待确认时不写成功报告。完成后给出条目位置和实际产出。'
       : '最终成果保留在本会话，不额外创建知识库条目。')
-    return { ok: true, kbId: b.kbId, kbPath: b.kbPath, cwd: b.kbPath, flowId: flow.id, flowRevision: flow.revision, prompt: lines.join('\n') }
+    const route = Object.fromEntries(['provider', 'model', 'reasoningEffort'].filter(key => str(execution?.[key])).map(key => [key, str(execution[key])]))
+    return { ok: true, kbId: b.kbId, kbPath: b.kbPath, cwd: b.kbPath, flowId: flow.id, flowRevision: flow.revision, execution: route, prompt: lines.join('\n') }
   }
 
   /**
@@ -824,6 +840,7 @@ export function createFlowEngine(opts) {
               kind: isSideEffectStep(step) ? 'write' : 'read',
               context: `流程「${flow.name}」第 ${i + 1}/${flow.steps.length} 步。运行 ${runId}，定义版本 v${flow.revision}。`,
               parentAgent: parentAgent ?? null,
+              execution: flow.execution || {},
               signal: entry.controller.signal,
               label: 'kb_flow',
             })

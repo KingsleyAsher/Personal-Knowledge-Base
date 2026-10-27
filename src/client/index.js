@@ -903,7 +903,7 @@ window.__ModuleLoader__.load({
                       extensionError ? e('div', { role: 'alert' }, e('p', null, extensionError), e('p', null, '下载浏览器扩展 ZIP：', ...[
                         ['Gitee 国内下载', 'https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip'],
                         ['GitCode 国内下载', 'https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main'],
-                        ['GitHub 下载', 'https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.2.0/knowledge-base-browser-extension.zip']
+                        ['GitHub 下载', 'https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.2.1/knowledge-base-browser-extension.zip']
                       ].map(([label, href], index) => e(R.Fragment, { key: href }, index ? ' · ' : '', e('a', { href, target: '_blank', rel: 'noopener noreferrer' }, label))))) : null,
                       e('p', { className: 'kbw-meta' }, '下载完成后先解压，加载直接包含 manifest.json 的文件夹。镜像可能存在同步延迟；某个源暂不可用时可切换其他源。'),
                   e('p', null, '从知识库插件的文件包或源码仓库取得 browser-extension 文件夹。下载的是整个仓库时，先解压，再找到这个文件夹。'),
@@ -2400,6 +2400,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       name: '',
       triggersText: '',
       description: '',
+      execution: {},
       params: [],
       capabilities: [],
       steps: [{ id: 's1', title: '', instruction: '', capability: '' }],
@@ -2414,6 +2415,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       name: flow.name,
       triggersText: (flow.triggers || []).join('，'),
       description: flow.description || '',
+      execution: { ...(flow.execution || {}) },
       params: (flow.params || []).map((p) => ({ name: p.name, default: p.default === undefined ? '' : String(p.default), required: p.required === true })),
       capabilities: (flow.capabilities || []).slice(),
       steps: (flow.steps || []).map((s, i) => ({ id: s.id || 's' + (i + 1), title: s.title || '', instruction: s.instruction || '', capability: s.capability || '' })),
@@ -2434,6 +2436,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       name: d.name,
       triggers: splitList(d.triggersText),
       description: d.description,
+      execution: { ...(d.execution || {}) },
       params: d.params.filter((p) => String(p.name || '').trim() !== '').map((p) => ({ name: p.name.trim(), default: String(p.default ?? ''), required: p.required === true })),
       steps: d.steps.filter((s) => String(s.title || '').trim() !== '' || String(s.instruction || '').trim() !== '').map((s, i) => {
         const one = { id: s.id || 's' + (i + 1), title: s.title, instruction: s.instruction }
@@ -2456,7 +2459,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     let flowClientContext = null
     let flowLaunchPending = false
 
-    async function launchFlowConversation(flow, kbId, params) {
+    async function launchFlowConversation(flow, kbId, params, execution = flow.execution || {}) {
       if (flowLaunchPending) throw new Error('正在创建流程会话，请勿重复点击')
       flowLaunchPending = true
       let reference = null
@@ -2466,7 +2469,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         const workspace = flowClientContext && flowClientContext.get('uiWorkspace')
         const views = flowClientContext && flowClientContext.get('uiConversation')
         if (!sessions || !workspace || !views) throw new Error('宿主会话服务尚未就绪，请稍后重试')
-        const prepared = await callApi({ op: 'flows.prepare-conversation', id: flow.id, kbId, expectedRevision: flow.revision, params })
+        const prepared = await callApi({ op: 'flows.prepare-conversation', id: flow.id, kbId, expectedRevision: flow.revision, params, execution })
         if (!prepared || !prepared.ok) throw new Error((prepared && (prepared.error || prepared.reason)) || '无法读取流程提示词')
         if (!prepared.workspaceId) throw new Error('未获得流程工作区，未创建会话；请确认宿主已加载最新插件')
         sessionId = await sessions.create({ workspaceId: prepared.workspaceId, agentPreset: 'knowledge' })
@@ -2475,6 +2478,11 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         const scope = sessions.scope(sessionId)
         const conversation = scope && scope.get('conversation')
         if (!conversation || typeof conversation.send !== 'function') throw new Error('新会话未就绪，未发送提示词')
+        if (prepared.execution?.provider && prepared.execution?.model) {
+          const directories = flowClientContext.get('modelDirectories')
+          if (!directories?.directoryFor) throw new Error('宿主模型选择服务尚未就绪，未发送任务')
+          await directories.directoryFor(sessionId).select(prepared.execution)
+        }
         workspace.openSession(sessionId)
         views.binding(sessionId).activate('chat')
         // 原样发送完整步骤，普通会话负责流式回复、工具事件与停止操作。
@@ -2495,6 +2503,8 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       const [busy, setBusy] = react.useState(false)
       const [draft, setDraft] = react.useState(null)
       const [runRequest, setRunRequest] = react.useState(null)
+      const [modelDirectory, setModelDirectory] = react.useState({ groups: [], failures: [] })
+      const [modelError, setModelError] = react.useState('')
       const launching = react.useRef(false)
       const requesting = react.useRef(false)
       const [records, setRecords] = react.useState(null)
@@ -2518,6 +2528,16 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         ensureStyle()
         load()
       }, [load])
+
+      const loadModels = async () => {
+        try {
+          const result = await callApi({ op: 'flows.models' })
+          if (!result?.ok) throw new Error(result?.error || '读取模型失败')
+          setModelDirectory(result)
+          setModelError(result.failures?.length ? '部分模型读取失败，可刷新重试：' + result.failures.map(p => p.name).join('、') : '')
+        } catch (err) { setModelError(String(err.message || err)) }
+      }
+      react.useEffect(() => { void loadModels() }, [])
 
       const save = async () => {
         if (draft === null) return
@@ -2566,7 +2586,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         }
       }
 
-      const startRun = async (flow, kbId, params) => {
+      const startRun = async (flow, kbId, params, execution = flow.execution || {}) => {
         if (launching.current) return
         const missing = (flow.params || []).filter(p => p.required && !String(params && Object.hasOwn(params, p.name) ? params[p.name] : p.default || '').trim())
         if (missing.length) { setMsg('请填写必填参数：' + missing.map(p => p.name).join('、')); return }
@@ -2575,7 +2595,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         setMsg('正在新建会话并发送流程提示词…')
         setRecords(null)
         try {
-          await launchFlowConversation(flow, kbId, params)
+          await launchFlowConversation(flow, kbId, params, execution)
           setRunRequest(null)
           setMsg('提示词已发送，请在新会话中查看实时执行过程')
         } catch (err) {
@@ -2599,8 +2619,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           const flow = result.flow
           if (flow.revision !== summary.revision) throw new Error('流程定义已变化，请刷新页面后再运行')
           setMsg('')
-          if ((flow.params || []).length === 0) { await startRun(flow, result.kbId, {}); return }
-          setRunRequest({ flow, kbId: result.kbId, params: Object.fromEntries(flow.params.map(p => [p.name, String(p.default ?? '')])) })
+          setRunRequest({ flow, kbId: result.kbId, execution: { ...(flow.execution || {}) }, params: Object.fromEntries((flow.params || []).map(p => [p.name, String(p.default ?? '')])) })
           setDraft(null)
         } catch (err) {
           setMsg('未能启动：' + String((err && err.message) || err))
@@ -2652,6 +2671,25 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       const addParam = () => setDraft((prev) => prev === null ? prev : Object.assign({}, prev, { params: prev.params.concat([{ name: '', default: '', required: false }]) }))
 
       const field = (label, node) => e('div', { className: 'kbf-field' }, e('label', null, label), node)
+      const executionFields = (value, change) => {
+        const key = route => route?.provider && route?.model ? JSON.stringify([route.provider, route.model]) : ''
+        const models = modelDirectory.groups.flatMap(p => p.models.map(m => ({ ...m, provider: p.id, providerName: p.name })))
+        const selected = models.find(m => m.provider === value.provider && m.id === value.model)
+        const efforts = selected?.reasoning?.efforts || []
+        return e(react.Fragment, null,
+          field('执行任务的模型', e('select', { className: 'kbc-set-input', 'aria-label': '执行任务的模型', disabled: busy, value: key(value),
+            onChange: ev => { const v = ev.target.value; const [provider, model] = v ? JSON.parse(v) : []; change(v ? { provider, model } : {}) } },
+          e('option', { value: '' }, '使用宿主默认模型'),
+          value.model && !selected ? e('option', { value: key(value) }, value.provider + ' / ' + value.model + '（目录中暂不可用）') : null,
+          models.map(m => e('option', { key: key({ provider: m.provider, model: m.id }), value: key({ provider: m.provider, model: m.id }) }, m.providerName + ' / ' + m.name)))),
+          field('推理强度', e('select', { className: 'kbc-set-input', 'aria-label': '推理强度', value: value.reasoningEffort || '', disabled: busy || !efforts.length,
+            onChange: ev => { const next = { ...value }; delete next.reasoningEffort; if (ev.target.value) next.reasoningEffort = ev.target.value; change(next) } },
+          e('option', { value: '' }, value.model ? (efforts.length ? '使用该模型默认强度' : '该模型未提供可选推理强度') : '请先选择模型'),
+          value.reasoningEffort && !efforts.some(x => x.id === value.reasoningEffort) ? e('option', { value: value.reasoningEffort }, value.reasoningEffort + '（当前不可用，请重新选择模型）') : null,
+          efforts.map(effort => e('option', { key: effort.id, value: effort.id }, effort.name)))),
+          modelError ? e('p', { className: 'kbc-set-hint', role: 'status' }, modelError) : null,
+          e('button', { type: 'button', className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: loadModels }, '刷新可用模型'))
+      }
       const input = (value, onChange, placeholder) => e('input', {
         className: 'kbc-set-input',
         value: value,
@@ -2683,11 +2721,12 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
 
       const runPanel = runRequest === null ? null : e('form', {
         className: 'kbf-run', 'aria-label': '流程运行参数',
-        onSubmit: ev => { ev.preventDefault(); void startRun(runRequest.flow, runRequest.kbId, runRequest.params) },
+        onSubmit: ev => { ev.preventDefault(); void startRun(runRequest.flow, runRequest.kbId, runRequest.params, runRequest.execution) },
       },
       e('div', { className: 'kbf-run-row' }, '运行参数 · ' + runRequest.flow.name),
-      e('p', { className: 'kbc-set-hint' }, '填写本次运行的参数；不会修改流程的默认值。确认后才会新建会话。'),
-      runRequest.flow.params.map((p, i) => e('div', { className: 'kbf-field', key: p.name },
+      e('p', { className: 'kbc-set-hint' }, '选择本次运行的模型、推理强度和参数；不会修改流程的默认值。确认后才会新建会话。'),
+      executionFields(runRequest.execution, execution => setRunRequest(prev => prev && ({ ...prev, execution }))),
+      (runRequest.flow.params || []).map((p, i) => e('div', { className: 'kbf-field', key: p.name },
         e('label', { htmlFor: 'kbf-run-param-' + i }, p.name + (p.required ? '（必填）' : '（可选）')),
         e('input', { id: 'kbf-run-param-' + i, className: 'kbc-set-input', required: p.required === true,
           disabled: busy, value: runRequest.params[p.name], autoFocus: i === 0,
@@ -2700,6 +2739,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       const form = draft === null ? null : e('div', { className: 'kbf-run' },
         e('div', { className: 'kbf-run-row' }, draft.isNew ? '新增流程' : ('编辑流程 ' + draft.id + '（当前 v' + draft.expectedRevision + '）')),
         field('名称', input(draft.name, (v) => patch({ name: v }), '例：信息报')),
+        executionFields(draft.execution, execution => patch({ execution })),
         field('什么时候用到它（说哪句话会触发；多个用逗号隔开）', input(draft.triggersText, (v) => patch({ triggersText: v }), '例：信息报，每周信息')),
         field('它是做什么的（一句话）', area(draft.description, (v) => patch({ description: v }), '例：按上次交付到现在的窗口出一期《信息报》并发出来')),
         e('div', { className: 'kbf-field' }, e('label', null, '要做的事（按顺序执行，一步一件事）'),
@@ -3871,11 +3911,12 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         toast?e('div',{className:'kbm-toast'},toast):null)
     }
 
-    const RELEASE_VERSION = '2.2.0'
+    const RELEASE_VERSION = '2.2.1'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.
     const RELEASE_NOTICES = [
+      { version: '2.2.1', items: ['自定义流程可保存执行模型和推理强度，按模型支持的档位选择。', '运行前可临时更换模型和参数；新会话先选模再发送任务，选模失败时不启动。'] },
       { version: '1.1.1', items: ['新增产品介绍页、源码、发布包与使用说明入口。'] },
       { version: '1.1.3', items: ['加强解析调用授权与任务来源记录；加入校验后的一键更新。'] },
       { version: '1.1.4', items: ['增加正式版与预览版更新通道选择。'] },
