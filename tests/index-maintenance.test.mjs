@@ -130,7 +130,7 @@ test('patrol compensates missing watcher events and failure pause is not reset b
   callback('change','private/nested/test.md');assert.equal(s.status().pending,false)
   clock=300000;await s.tick();assert.equal(calls,2)
   core.maintainIndex=async()=>{calls++;return{ok:false,reason:'scan-incomplete'}}
-  for(const time of [600000,630000,660000]){clock=time;callback('change','note.md');clock+=5000;await s.tick()}
+  for(const time of [600000,630000,690000]){clock=time;callback('change','note.md');clock+=5000;await s.tick()}
   assert.equal(s.status().state,'paused')
   callback('change','more.md');clock=1000000;await s.tick();assert.equal(calls,5);s.dispose()
 })

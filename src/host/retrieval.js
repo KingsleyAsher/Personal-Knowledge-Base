@@ -8,6 +8,7 @@ import { createParseCredentials } from './parse-credentials.js'
 import { initialRetrievalConfig, validateConfig, createRetrievalAPI } from './retrieval-api.js'
 import { hash, bytes, byteSlice, structureDocument, embeddingText, expandRange, CHUNK_VERSION } from './retrieval-chunks.js'
 import { createByteCache } from './retrieval-cache.js'
+import { atomicJsonStream } from './storage-io.js'
 
 const modelKey = config => hash(JSON.stringify([config.endpoint, config.model, config.dimensions || null, config.queryTemplate, config.documentTemplate, config.chunkTarget, config.chunkOverlap, config.generation, CHUNK_VERSION])).slice(0,32)
 const emptyManifest = () => ({ format: 1, dimension: 0, nextSlot: 0, vectors: {} })
@@ -43,7 +44,7 @@ async function treeBytes(dir, parts) {
   return total
 }
 
-export function createRetrieval({ stateDir, binding, loadDocuments, visible, versionOf, verifyDocument = async () => true, notify = () => {}, credentials = createParseCredentials(path.join(stateDir,'retrieval')), fetcher, now = Date.now, openVector = open, maxConcurrentQueries = 4 }) {
+export function createRetrieval({ stateDir, binding, loadDocuments, visible, versionOf, verifyDocument = async () => true, notify = () => {}, credentials = createParseCredentials(path.join(stateDir,'retrieval')), fetcher, now = Date.now, openVector = open, maxConcurrentQueries = 4, resources }) {
   if(!Number.isInteger(maxConcurrentQueries)||maxConcurrentQueries<1||maxConcurrentQueries>16)throw fail('BAD_QUERY_LIMIT','并发检索预算须为1–16')
   const root = path.join(stateDir,'retrieval'), api = createRetrievalAPI({ credentials, fetcher })
   let stopped = false, running = null, watcher = null, watched = '', dirty = true, lastScan = 0, activeQueries = 0, job = { state: 'idle' }
@@ -144,9 +145,10 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
     const target = manifest.effectiveTarget || cfg.chunkTarget || 2400, overlap = Math.min(cfg.chunkOverlap ?? 240, Math.floor(target/3)), chunkSignature = target + ':' + overlap
     const loadStarted=performance.now(),loaded = await loadDocuments(b,force,selection), out = []
     const loadDocumentsMs=performance.now()-loadStarted,chunkStarted=performance.now()
-    let chunkCacheHits=0,chunkCacheMisses=0
+    let chunkCacheHits=0,chunkCacheMisses=0,prepared=0
     const alive = new Set()
     for (const d of loaded.documents) {
+      if (++prepared % 50 === 0) await resources?.checkpoint()
       const key = b.key + '\0' + d.path; alive.add(key)
       let entry = cache.get(key)
       let weight = cache.cost(key)
@@ -172,7 +174,9 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
   async function checkpoint(b) { await atomicJson(path.join(directory(b),'progress.json'),job); notify({ type:'retrieval', kbId:b.st.kbId, state:job.state }) }
   async function build(b, config, signal, depth=0) {
     job = { state:'scanning', startedAt:now(), completed:0, pending:0, failed:0, errors:[] }; await checkpoint(b)
-    const catalog = await documents(b,true,config.embedding)
+    // A build retains the existing forced source verification: an index whose
+    // mtime was preserved must not become authoritative input for new vectors.
+    const catalog = await (resources ? resources.background(() => documents(b,true,config.embedding), signal) : documents(b,true,config.embedding))
     const eligible = catalog.documents.filter(d => !d.private || config.allowPrivateCloud)
     const { dir, manifest } = await manifestOf(b,config.embedding,{mutable:true})
     if(manifest.corrupt)throw fail('INDEX_CORRUPT','向量索引损坏，请使用重建操作')
@@ -189,6 +193,7 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
     await checkpoint(b)
     const items = [...pending]
     for (let index = 0; index < items.length;) {
+      await resources?.background(async () => {}, signal)
       await assertCurrent(b,config.revision,signal)
       // Materialize API input only for the active batch, not for every pending
       // chunk in the library. The source and hashes remain unchanged.
@@ -199,7 +204,7 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
         catch (e) {
           if(e.code==='API_TOO_LONG' && depth<5 && (manifest.effectiveTarget||config.embedding.chunkTarget||2400)>128) {
             manifest.effectiveTarget=Math.max(128,Math.floor((manifest.effectiveTarget||config.embedding.chunkTarget||2400)/2))
-            await atomicJson(path.join(dir,'manifest.json'),manifest);cache.clear();return build(b,config,signal,depth+1)
+            await atomicJsonStream(path.join(dir,'manifest.json'),manifest);cache.clear();return build(b,config,signal,depth+1)
           }
           if (['API_LIMIT','API_TEMPORARY','API_TIMEOUT','API_NETWORK'].includes(e.code) && attempt < 3 && !signal.aborted) {
             job.state='retrying'; job.retryAt=now()+(e.retryAfter || 1000*2**attempt); await checkpoint(b)
@@ -221,6 +226,7 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
         shards.get(shard).push({slot,buf});checksums[slot]=hash(buf);additions.push([batch[i][0],slot])
       }
       let shardSyncs=0
+      const persistBatch = async () => {
       for(const [shard,rows] of shards) {
         const file=path.join(dir,'vectors-'+shard+'.bin')
         let fh
@@ -235,14 +241,21 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
       }
       await assertCurrent(b,config.revision,signal)
       const committed={...manifest,dimension,nextSlot:manifest.nextSlot+batch.length,checksums:{...manifest.checksums,...checksums},vectors:{...manifest.vectors,...Object.fromEntries(additions)}}
-      await atomicJson(path.join(dir,'manifest.json'),committed)
+      await atomicJsonStream(path.join(dir,'manifest.json'),committed, { beforePublish: () => assertCurrent(b,config.revision,signal) })
       Object.assign(manifest,committed);rankingCatalog=null
+      }
+      if (resources) await resources.background(persistBatch, signal)
+      else await persistBatch()
       job.shardSyncs=(job.shardSyncs||0)+shardSyncs
       index+=batch.length; job.completed=index; job.pending=items.length-index; job.state='building'; await checkpoint(b)
     }
     await assertCurrent(b,config.revision,signal)
-    await atomicJson(path.join(dir,'catalog.json'),{ format:1, documents:eligible.map(d=>({path:d.path,revision:d.revision,sections:d.sections,chunks:d.chunks})) })
-    await atomicJson(path.join(directory(b),'active.json'),{ key:modelKey(config.embedding), embedding:config.embedding, dimension:manifest.dimension,format:1,chunkVersion:CHUNK_VERSION, at:now() })
+    const publish = async () => {
+    await atomicJsonStream(path.join(dir,'catalog.json'),{ format:1, documents:eligible.map(d=>({path:d.path,revision:d.revision,sections:d.sections,chunks:d.chunks})) }, { beforePublish: () => assertCurrent(b,config.revision,signal) })
+    await atomicJsonStream(path.join(directory(b),'active.json'),{ key:modelKey(config.embedding), embedding:config.embedding, dimension:manifest.dimension,format:1,chunkVersion:CHUNK_VERSION, at:now() }, { beforePublish: () => assertCurrent(b,config.revision,signal) })
+    }
+    if (resources) await resources.background(publish, signal)
+    else await publish()
     job.state=catalog.errors.length?'partial':'synced'; job.finishedAt=now(); job.failed=catalog.errors.length; await checkpoint(b)
     // Keep the previous generation available for rollback; explicit clean reclaims it.
     return job
@@ -254,7 +267,14 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
     if (!config.enabled) return { state:'disabled' }
     const progress=await readJson(path.join(directory(b),'progress.json'),{})
     if(running){dirty=true;return {...job,running:true}}
-    if (progress.state==='paused' && !force) return progress
+    if (progress.state==='paused' && !force) {
+      if (!['ENOSPC', 'EACCES', 'EPERM', 'EBUSY'].includes(progress.code)) return progress
+      if (now() - lastScan < 300000) return progress
+      if (progress.code === 'ENOSPC') {
+        const space = await statfs(b.root).catch(() => null)
+        if (!space || space.bavail * space.bsize < 1024 * 1024) return progress
+      }
+    }
     const controller=new AbortController(); dirty=false; lastScan=now()
     // The new job is queued before its asynchronous build acquires the lock.
     // Do not expose the previous generation's completed state in this gap.
@@ -271,7 +291,7 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
     if(watched!==b.key || !watcher) {
       if(watched!==b.key){running?.controller.abort();cache.clear();statusSnapshots.clear();invalidateComputations()}
       watcher?.close(); clearTimeout(sourceTimer); watched=b.key; dirty=true
-      try {watcher=watch(b.root,{recursive:true},(_event,file)=>{
+      try {watcher=(resources?.watch || watch)(b.root,{recursive:true},(_event,file)=>{
         if(stopped||watched!==b.key)return
         const rel=path.relative(stateDir,path.resolve(b.root,String(file||'')))
         if(rel===''||!rel.startsWith('..')&&!path.isAbsolute(rel))return
@@ -524,7 +544,7 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
       // Admit before catalog loading or API calls, not after each caller has
       // already materialized a large request and reached the ranking queue.
       if(activeQueries>=maxConcurrentQueries)throw fail('SEARCH_BUSY','并发检索已达工作预算，请稍后重试')
-      activeQueries++;try{return await search(b,args)}finally{activeQueries--}
+      activeQueries++;try{return await (resources ? resources.foreground(() => search(b,args)) : search(b,args))}finally{activeQueries--}
     },automatic,
     async dispatch(b,args,caller) {
       if(caller)throw fail('ADMIN_ONLY','检索服务配置与任务管理仅可在设置页操作')
@@ -532,7 +552,7 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
       if(args.op==='retrieval.trace')return {traces:traces.get(b.key)||[]}
       if(args.op==='retrieval.get')return status(b,args.lightweight===true)
       if(['retrieval.save','retrieval.test'].includes(args.op))return stageConfig(b,args)
-      if(args.op==='retrieval.pause'){running?.controller.abort();if(running)await running.promise;job={...await readJson(path.join(directory(b),'progress.json'),{}),state:'paused'};await checkpoint(b);return {paused:true}}
+      if(args.op==='retrieval.pause'){running?.controller.abort();if(running)await running.promise;job={...await readJson(path.join(directory(b),'progress.json'),{}),state:'paused',code:undefined};await checkpoint(b);return {paused:true}}
       if(args.op==='retrieval.resume'||args.op==='retrieval.retry') {await atomicJson(path.join(directory(b),'progress.json'),{state:'waiting'});return start(b,true)}
       if(args.op==='retrieval.rebuild') {
         if(running){running.controller.abort();await running.promise}

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { fail } from './workbench-state.js'
 import { retrievalDisclosure } from './retrieval.js'
 import { byteSlice, bytes } from './retrieval-chunks.js'
+import { sourceLine, sourceLineStart } from './storage-io.js'
 
 // The reference carries no evidence. Evidence enters the turn only through tools.
 export function createQuestionService({ binding, versionOf, visible, list, textOf, redactReferences, now, search }) {
@@ -23,8 +24,8 @@ export function createQuestionService({ binding, versionOf, visible, list, textO
     if (s && s.revision !== content.revision) throw fail('FILE_CHANGED', '来源已改变，请重新选择知识库提问')
     if (!s) { s = { id: 'S' + (q.sources.length + 1), path: file.path, title: file.title, revision: content.revision, url: b.root.replaceAll('\\', '/') + '/' + file.path, ranges: [] }; q.sources.push(s) }
     const text = content.text.slice(start, end)
-    const line = content.text.slice(0, start).split('\n').length
-    const endLine=line+text.split('\n').length-1
+    const line = sourceLine(content, start)
+    const endLine = sourceLine(content, Math.min(end, content.text.length))
     if(!s.ranges.some(r=>r.line===line&&r.endLine===endLine))s.ranges.push({line,endLine})
     const url = s.url + '#L' + line
     // Angle brackets keep Windows paths with spaces valid as Markdown destinations.
@@ -76,9 +77,8 @@ export function createQuestionService({ binding, versionOf, visible, list, textO
         if (!s || !visible(b, s.path, true, q.includePrivate)) throw fail('SOURCE_DENIED', '请先检索该来源')
         const content = await textOf(b, s.path, Number.MAX_SAFE_INTEGER)
         if (s.revision !== content.revision) throw fail('FILE_CHANGED', '来源已改变，请重新提问')
-        const lines = content.text.split('\n'), line = Math.max(1, Math.floor(Number(args.line) || 1))
-        if (line > lines.length) throw fail('LINE_OUT_OF_RANGE', '行号超出来源范围')
-        const start = lines.slice(0, line - 1).join('\n').length + (line > 1 ? 1 : 0)
+        const line = Math.max(1, Math.floor(Number(args.line) || 1)), start = sourceLineStart(content, line)
+        if (start === undefined) throw fail('LINE_OUT_OF_RANGE', '行号超出来源范围')
         const out = source(q, b, s, content, start, Math.min(content.text.length, start + 6000))
         await context(await binding(b.st.kbId), args, caller)
         q.readOriginal=true

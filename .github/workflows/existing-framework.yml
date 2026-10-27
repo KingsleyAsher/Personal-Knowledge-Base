@@ -6,6 +6,12 @@ on:
       - 'src/host/retrieval*'
       - 'src/host/workbench*'
       - 'src/host/relation-name-lookup.js'
+      - 'src/host/runtime-resources.js'
+      - 'src/host/storage-io.js'
+      - 'src/host/index-maintenance.js'
+      - 'src/host/fsindex.js'
+      - 'src/host/kbcore.js'
+      - 'tests/runtime-optimization.test.mjs'
       - 'tests/large-library.test.mjs'
       - 'tests/retrieval-limits.test.mjs'
       - 'tests/fixtures/retrieval-*-original.mjs'
@@ -21,4 +27,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - run: node --test tests/large-library.test.mjs tests/retrieval-limits.test.mjs tests/retrieval.test.mjs tests/retrieval-storage.test.mjs tests/performance-optimization.test.mjs tests/beta2-directed.test.mjs tests/knowledge-reference.test.mjs
+      - run: node --test tests/runtime-optimization.test.mjs tests/large-library.test.mjs tests/retrieval-limits.test.mjs tests/retrieval.test.mjs tests/retrieval-storage.test.mjs tests/performance-optimization.test.mjs tests/beta2-directed.test.mjs tests/knowledge-reference.test.mjs

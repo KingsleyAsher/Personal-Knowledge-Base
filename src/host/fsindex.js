@@ -58,7 +58,18 @@ export async function readImportSources(root) {
   if (!root) return {}
   try {
     const raw = JSON.parse(await readFile(path.join(root, '.kbmeta', 'import-sources.json'), 'utf8'))
-    return raw && typeof raw.entries === 'object' && raw.entries !== null ? raw.entries : {}
+    const entries = raw && typeof raw.entries === 'object' && raw.entries !== null ? raw.entries : {}
+    // Windows TEMP may use an 8.3 alias while binding() resolves the long path.
+    // Canonicalize only mappings that actually refer to this very same root.
+    if (process.platform === 'win32') {
+      const actual = await realpath(root), resolved = new Map()
+      for (const entry of Object.values(entries)) {
+        if (entry?.mode !== 'attach' || typeof entry.sourceRoot !== 'string') continue
+        if (!resolved.has(entry.sourceRoot)) resolved.set(entry.sourceRoot, await realpath(entry.sourceRoot).catch(() => entry.sourceRoot))
+        if (normAbs(resolved.get(entry.sourceRoot)) === normAbs(actual)) entry.sourceRoot = actual
+      }
+    }
+    return entries
   } catch {
     return {}
   }
