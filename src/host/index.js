@@ -442,7 +442,7 @@ let parsingService = null
       core: core,
       targetId: 'knowledge',
       log: log,
-      delegate: async (req) => inst.delegateTo(req.targetId, req.task, req.kind, req.context, { agent: req.parentAgent ?? null, signal: req.signal ?? null }, req.label),
+      delegate: async (req) => inst.delegateTo(req.targetId, req.task, req.kind, req.context, { agent: req.parentAgent ?? null, signal: req.signal ?? null, execution: req.execution }, req.label),
       // 第二轮：流程里的 OCR/ASR 能力步骤由**同一个任务服务**执行（不另开捷径）。
       parseStep: async (req) => kbRunParseStep(req),
     })
@@ -1963,7 +1963,25 @@ let parsingService = null
                 const sub = String(body.op).slice('flows.'.length)
                 let out
                 try {
-                  if (sub === 'list') out = await engine.list({ includeArchived: body.includeArchived === true })
+                  if (sub === 'models') {
+                    const llm = ctx.get('llm')
+                    if (!llm?.listProviders || !llm?.resolveModelInfo) throw new Error('宿主尚未提供模型目录，请升级宿主后重试')
+                    const groups = [], failures = []
+                    for (const provider of llm.listProviders()) {
+                      try {
+                        const models = []
+                        for (const model of await llm.listModels(provider.id)) {
+                          try {
+                            const info = await llm.resolveModelInfo(provider.id, model.id)
+                            models.push({ id: model.id, name: info.name || model.name || model.id, reasoning: info.reasoning })
+                          } catch { failures.push({ name: provider.name + ' / ' + model.id }) }
+                        }
+                        groups.push({ id: provider.id, name: provider.name || provider.id, models })
+                      } catch { failures.push({ name: provider.name || provider.id }) }
+                    }
+                    out = { ok: true, groups, failures }
+                  }
+                  else if (sub === 'list') out = await engine.list({ includeArchived: body.includeArchived === true })
                   else if (sub === 'get') out = await engine.get(body.id)
                   else if (sub === 'save') out = await engine.save({ flow: body.flow, expectedRevision: body.expectedRevision })
                   else if (sub === 'enable') out = await engine.setEnabled(body.id, body.enabled === true)

@@ -449,7 +449,11 @@ async function runDelegationBody(env, target, task, kind, extra, exec, label) {
   // 同一份 profile，用户正在用的那条就是可用路由）。两条都拿不到 → 明确报错，不硬起。
   // 为什么非有不可：预设人设里的 {{model}} 模板取不到值 → turn 直接 error，连模型请求都不发。
   let route = {}
-  if (parentHeader !== null) {
+  if (safeExec.execution?.provider && safeExec.execution?.model) {
+    // A complete flow route replaces inherited controls from another model.
+    route = { provider: safeExec.execution.provider, model: safeExec.execution.model }
+    if (safeExec.execution.reasoningEffort) route.reasoningEffort = safeExec.execution.reasoningEffort
+  } else if (parentHeader !== null) {
     route = inheritRoute(parent)
   } else {
     const borrowed = borrowLiveRoute(env)
