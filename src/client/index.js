@@ -903,7 +903,7 @@ window.__ModuleLoader__.load({
                       extensionError ? e('div', { role: 'alert' }, e('p', null, extensionError), e('p', null, '下载浏览器扩展 ZIP：', ...[
                         ['Gitee 国内下载', 'https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip'],
                         ['GitCode 国内下载', 'https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main'],
-                        ['GitHub 下载', 'https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.4/knowledge-base-browser-extension.zip']
+                        ['GitHub 下载', 'https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.2.0/knowledge-base-browser-extension.zip']
                       ].map(([label, href], index) => e(R.Fragment, { key: href }, index ? ' · ' : '', e('a', { href, target: '_blank', rel: 'noopener noreferrer' }, label))))) : null,
                       e('p', { className: 'kbw-meta' }, '下载完成后先解压，加载直接包含 manifest.json 的文件夹。镜像可能存在同步延迟；某个源暂不可用时可切换其他源。'),
                   e('p', null, '从知识库插件的文件包或源码仓库取得 browser-extension 文件夹。下载的是整个仓库时，先解压，再找到这个文件夹。'),
@@ -3871,7 +3871,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         toast?e('div',{className:'kbm-toast'},toast):null)
     }
 
-    const RELEASE_VERSION = '2.1.5'
+    const RELEASE_VERSION = '2.2.0'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.
@@ -3900,6 +3900,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       { version: '2.1.1', items: ['收件箱原件可移入回收站；改善工作台窗口高度、预览与滚动。', '统一插件图标、正式版下载入口及浏览器扩展下载。'] },
       { version: '2.1.2', items: ['关系网络支持全屏画布、按区域宽高比布局和 Esc 安全退出。'] },
       { version: '2.1.3', items: ['资料变更通过事件合并刷新，空闲页面减少扫描，返回页面时及时更新。', '复用检索目录、词法计算与向量分片，批量写入同步；保留隐私、引用与损坏索引检查。'] },
+      { version: '2.2.0', items: ['复用基础索引与同次请求的原文读取，减少重复解析及校验；保留精确检索与引用语义。', '共享文件监听并协调后台任务，派生索引分段写入；改善临时故障恢复和 Windows 来源折叠。'] },
       { version: '2.1.5', items: ['优化长文分块、全量精确检索和大库内存管理，保留现有索引格式与召回范围。', '改进任务取消、范围筛选、清单缓存与关系更新一致性；新增可复现性能对照。'] },
       { version: '2.1.4', items: ['同一大版本内的正式版在后台自动更新，不再弹出更新前选择窗口。', '更新完成后同步刷新版本状态，避免继续显示发现新版本；补丁升级保持静默。'] },
       { version: '2.0.3', items: ['同一大版本内的正式版小版本与补丁更新可自动下载、校验并交由 DSH 安装；保留现有更新提示和安装后更新说明机制。'] },

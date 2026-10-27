@@ -15,6 +15,8 @@ import { createRelationIndex } from './workbench-relation-index.js'
 import { deliverablesOf, deliverablePrivate, createDeliverableService } from './workbench-deliverables.js'
 import { createRetrieval } from './retrieval.js'
 import { createByteCache } from './retrieval-cache.js'
+import { createRuntimeResources } from './runtime-resources.js'
+import { createSourceReader } from './storage-io.js'
 import { createSystemUpgrades } from './system-upgrades.js'
 import { VERSION, TEMPLATES } from './kbcore.js'
 
@@ -56,14 +58,15 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
   const questions = new Map()
   const activeTasks = new Map()
   const subscribers = new Set()
+  const resources = createRuntimeResources(), sourceReader = createSourceReader()
   const notify = event => {
     if(['snapshot-dirty','files-changed','links-changed','preferences'].includes(event.type)) { cache=null;scanEpoch++ }
     for (const listener of subscribers) { try { listener(event) } catch { /* disconnected client */ } }
   }
-  const relationIndex = createRelationIndex({ stateDir, readText: (b, file) => textOf(b, file, 8 * 1024 * 1024), now, notify })
+  const relationIndex = createRelationIndex({ stateDir, readText: (b, file) => textOf(b, file, 8 * 1024 * 1024), now, notify, resources })
   const metadataText = createByteCache({maxBytes:32*1024*1024,sizeOf:v=>Buffer.byteLength(v.text)*2+256})
   const retrievalText = createByteCache({maxBytes:64*1024*1024,sizeOf:v=>Buffer.byteLength(v.text)*2+256})
-  const retrieval = createRetrieval({ stateDir, binding, loadDocuments: retrievalDocuments, visible: (...args) => visible(...args), versionOf: b => versionOf(b), notify,
+  const retrieval = createRetrieval({ stateDir, binding, loadDocuments: retrievalDocuments, visible: (...args) => visible(...args), versionOf: b => versionOf(b), notify, resources,
     verifyDocument: async (b,file,revision) => (await textOf(b,file,Number.MAX_SAFE_INTEGER)).revision === revision })
   const upgrades=createSystemUpgrades({binding,catalog:async()=>Object.entries(TEMPLATES).map(([name,content])=>({path:'_模板/'+name,content,version:VERSION})),runtime:getUpgradeContext,retrieval,now})
   const profile = () => readJson(profileFile, INITIAL)
@@ -255,22 +258,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       const text = [product.description, product.text].filter(Boolean).join('\n')
       return { text: text.slice(0, max), revision: digest(text), truncated: text.length > max, bytes: bytes.length }
     }
-    const abs = await safePath(b.root, file)
-    const fh = await open(abs, 'r')
-    try {
-      const st = await fh.stat(), buf = Buffer.alloc(Math.min(st.size, max))
-      const { bytesRead } = await fh.read(buf, 0, buf.length, 0)
-      const bytes = buf.subarray(0, bytesRead)
-      const after = await fh.stat()
-      if (st.mtimeMs !== after.mtimeMs || st.size !== after.size) throw fail('FILE_CHANGED', '文件在读取期间发生变化，请重试')
-      let text = bytes.toString('utf8')
-      if (max === Number.MAX_SAFE_INTEGER) {
-        const encoding = bytes[0]===0xff&&bytes[1]===0xfe?'utf-16le':bytes[0]===0xfe&&bytes[1]===0xff?'utf-16be':'utf-8'
-        try { text = new TextDecoder(encoding,{fatal:true,ignoreBOM:true}).decode(bytes) }
-        catch { throw fail('TEXT_ENCODING','文本编码不是有效 UTF-8 或带 BOM 的 UTF-16，请先转换编码') }
-      }
-      return { text, revision: digest(bytes), truncated: st.size > max, bytes: st.size }
-    } finally { await fh.close() }
+    return sourceReader.read(await safePath(b.root, file), max, max === Number.MAX_SAFE_INTEGER)
   }
 
   async function list(b, args) {
@@ -321,7 +309,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
 
   async function retrievalDocuments(b, fresh = false, selection = null) {
     const snap = await scan(b, fresh), documents = [], names = [], errors = [], live = new Set()
-    let sourceReads=0,sourceBytes=0,textCacheHits=0
+    let sourceReads=0,sourceBytes=0,textCacheHits=0,visitedFiles=0
     // Attached originals/derived entries are folded against the complete
     // successfully-readable set. Preserve that behavior until scoped folding
     // can prove the same result without loading the counterpart.
@@ -330,6 +318,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     const textType = /\.(md|txt|csv|tsv|json|jsonl|log|ya?ml|html?|xml)$/i
     const excluded = b.conf.excludeFromSearch || []
     for (const f of snap.files) {
+      if (++visitedFiles % 50 === 0) await resources.checkpoint()
       if (inside(stateDir,path.resolve(b.root,f.path))) continue
       if (excluded.some(p => scopeMatch(f.path,p)) || /^(AGENTS|INDEX|README)\.md$/.test(f.path)) continue
       if (!textType.test(f.path) && !b.deliverables.items.some(x => x.path === f.path && x.text)) { if(selected(f))names.push(f); continue }
@@ -351,7 +340,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     for (const key of retrievalText.keys()) if (!live.has(key)) retrievalText.delete(key)
     const pairs = foldGeneratedPairs(documents.map(d=>d.path), b.sources, { kbId:b.st.kbId,root:b.root })
     const existingTextCacheBytes=await stat(path.join(b.root,'.kbmeta','index','entries.json')).then(s=>s.size).catch(()=>0)
-    return {documents:documents.filter(d=>!pairs.has(d.path)),names,nameOnly:names.length,errors,coverage:snap.coverage,existingTextCacheBytes,partial:Boolean(filter),scanMetrics:{...scanMetrics,sourceReads,sourceBytes,textCacheHits,textCache:retrievalText.stats(),metadataCache:metadataText.stats()}}
+    return {documents:documents.filter(d=>!pairs.has(d.path)),names,nameOnly:names.length,errors,coverage:snap.coverage,existingTextCacheBytes,partial:Boolean(filter),scanMetrics:{...scanMetrics,sourceReads,sourceBytes,textCacheHits,textCache:retrievalText.stats(),metadataCache:metadataText.stats(),runtime:resources.stats(),sourceReader:sourceReader.stats(),indexIO:b.core._internal.ioStats?.()}}
   }
 
   async function relations(b, args) {
@@ -763,7 +752,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     if (!args || typeof args.op !== 'string') throw fail('BAD_OPERATION', '缺少操作类型')
     const management = /^(preferences|onboarding)\./.test(args.op)
     const before = management ? null : await binding(args.expectedKbId)
-    const result = await execute(args, caller)
+    const result = await sourceReader.run(() => execute(args, caller))
     if (before) {
       const after = await binding(before.st.kbId)
       if (versionOf(before) !== versionOf(after)) throw fail('SETTINGS_CHANGED', '设置已改变，本次旧结果已作废')
@@ -847,7 +836,8 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     return { saved: Boolean(result.capture), duplicate: Boolean(result.duplicate), requiresConfirmation: result.requiresConfirmation === true }
   }
   return { dispatch, binding, versionOf, profile, preferences, runAutomatic, activeTasks, invalidate: () => { cache = null;scanEpoch++; retrieval.invalidate() }, backups,
-    retrieval, dispose: () => {retrieval.dispose();retrievalText.clear();metadataText.clear();cache=null},
+    retrieval, resources, runtimeStats: () => ({ resources: resources.stats(), sourceReads: sourceReader.stats() }),
+    dispose: () => {retrieval.dispose();resources.dispose();retrievalText.clear();metadataText.clear();cache=null},
     displayPolicy: async () => { const b = await binding(); return { privateDirs: b.preferences.showPrivate ? [] : b.privateDirs, revision: b.preferencesRevision } },
     notify,
     filterJobs: async jobs => { const b = await binding(); return jobs.filter(j => j.source?.external || visible(b, j.source?.relPath ?? '')) },

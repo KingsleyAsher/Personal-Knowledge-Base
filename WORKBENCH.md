@@ -1,6 +1,6 @@
-> 当前正式版本为 **2.1.5**，下载与最新能力以 [README](README.md)、[发布说明](RELEASE.md) 为准。以下保留相应功能与历史阶段说明。
+> 当前正式版本为 **2.2.0**，下载与最新能力以 [README](README.md)、[发布说明](RELEASE.md) 为准。以下保留相应功能与历史阶段说明。
 
-# 2.1.5 正式版使用说明
+# 2.2.0 正式版使用说明
 
 本版修复自动更新体验：同一大版本内的正式版在后台下载、校验和安装，不再弹更新前选择窗口。新版实际加载后，顶部与设置页同步刷新版本状态；补丁更新不弹更新内容，小版本或大版本升级才显示合并说明。
 
@@ -62,7 +62,7 @@
 
 采集列表及详情提供“移入回收站”：即使对应知识笔记已删除，也可单独删除采集原件，确认后 30 天内可恢复。预览、列表和详情均支持正常滚动；底部输入框遮挡的内容可继续向下滚动查看。
 
-浏览器扩展 ZIP：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.1.5/knowledge-base-browser-extension.zip)。镜像可能存在同步延迟；文件暂不可用时可切换其他源。ZIP 解压后，选择直接包含 `manifest.json` 的文件夹加载扩展。
+浏览器扩展 ZIP：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.2.0/knowledge-base-browser-extension.zip)。镜像可能存在同步延迟；文件暂不可用时可切换其他源。ZIP 解压后，选择直接包含 `manifest.json` 的文件夹加载扩展。
 
 首次使用：
 
@@ -112,7 +112,7 @@ Markdown/文本提供安全只读展示和链接导航。PDF 使用随包 PDF.js
 
 ## 正式版与预览版更新
 
-正式版和预览版清单分别维护，当前正式版为 `2.1.5`，预览通道暂无可用版本。同一大版本内的正式版小版本与补丁更新在后台自动下载、校验和安装，不弹更新前提醒。跨大版本、预览版更新和渠道切换仍需手动选择。补丁升级不弹更新内容；小版本或大版本升级时，合并展示期间未读的更新条目，关闭后不重复提示。自动安装要求宿主提供客户端插件安装接口；接口不可用时从宿主插件管理器更新。安装完成后会同步刷新版本状态；宿主要求重启或界面尚未加载新版时，按版本入口提示完成操作。
+正式版和预览版清单分别维护，当前正式版为 `2.2.0`，预览通道暂无可用版本。同一大版本内的正式版小版本与补丁更新在后台自动下载、校验和安装，不弹更新前提醒。跨大版本、预览版更新和渠道切换仍需手动选择。补丁升级不弹更新内容；小版本或大版本升级时，合并展示期间未读的更新条目，关闭后不重复提示。自动安装要求宿主提供客户端插件安装接口；接口不可用时从宿主插件管理器更新。安装完成后会同步刷新版本状态；宿主要求重启或界面尚未加载新版时，按版本入口提示完成操作。
 
 ## 国内更新源
 
@@ -120,4 +120,4 @@ Markdown/文本提供安全只读展示和链接导航。PDF 使用随包 PDF.js
 
 客户端内下载入口：知识库 → 收件箱 → 浏览器扩展使用指南 → 首次使用：安装与连接，点击“下载浏览器扩展”，自动匹配 Gitee、GitCode、GitHub 并校验下载文件，源失败时自动切换；全部失败时显示原因与备用链接。
 
-当前发布：正式版 2.1.5；预览通道暂无可用版本。旧预览包已撤下，安装请使用当前正式版。
+当前发布：正式版 2.2.0；预览通道暂无可用版本。旧预览包已撤下，安装请使用当前正式版。

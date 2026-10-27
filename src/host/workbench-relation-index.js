@@ -1,5 +1,7 @@
 import path from 'node:path'
-import { digest, atomicJson, readJson } from './workbench-state.js'
+import { mkdir } from 'node:fs/promises'
+import { atomicJsonStream } from './storage-io.js'
+import { digest, readJson } from './workbench-state.js'
 import { extractReferences, extractHtmlReferences } from './workbench-links.js'
 
 const FORMAT = 1
@@ -12,7 +14,7 @@ export function parseRelationDocument(content, file) {
 }
 
 // A profile-local, disposable index. Only references and anchor metadata are persisted.
-export function createRelationIndex({ stateDir, readText, now = Date.now, notify = () => {} }) {
+export function createRelationIndex({ stateDir, readText, now = Date.now, notify = () => {}, resources }) {
   const entries = new Map()
   const keyOf = b => digest(b.key + '\0' + b.root + '\0' + FORMAT)
   function entry(b) {
@@ -23,7 +25,15 @@ export function createRelationIndex({ stateDir, readText, now = Date.now, notify
   const status = b => { const e = entry(b); return { status: e.status, updatedAt: e.at, progress: e.progress, error: e.error, revision: e.revision || null } }
   async function documents(b, files, { force = false, background = false } = {}) {
     const e = entry(b)
-    if (e.pending) { if (background && !force && e.at) return e.documents; await e.pending; return documents(b, files, { force, background }) }
+    if (e.pending) {
+      if (background && !force && e.at) {
+        // Retain only the newest requested background snapshot. Do not require
+        // another UI poll to discover changes that arrived during this scan.
+        e.followUp = { b, files }
+        return e.documents
+      }
+      await e.pending; return documents(b, files, { force, background })
+    }
     const input = digest(JSON.stringify(files.map(f => [f.path, f.bytes, f.mtimeMs, f.ctimeMs])))
     if (!force && e.input === input && e.status === 'synced') return e.documents
     const file = path.join(stateDir, 'workbench', 'relations', e.key + '.json')
@@ -38,12 +48,13 @@ export function createRelationIndex({ stateDir, readText, now = Date.now, notify
       if (e.pending) return documents(b, files, { force, background })
     }
     const previous = e.documents
-    e.pending = (async () => {
+    const update = async () => {
       const candidates = files.filter(f => /\.(md|html?)$/i.test(f.path)), next = Object.create(null)
       e.status = 'updating'; e.error = null; e.progress = { done: 0, total: candidates.length }
       let reads = 0, changed = Object.keys(e.documents).length !== candidates.length
       try {
         for (const f of candidates) {
+          if (e.progress.done % 50 === 0) await resources?.checkpoint()
           const fingerprint = [f.bytes, f.mtimeMs, f.ctimeMs].join('|'), old = e.documents[f.path]
           if (!force && old?.fingerprint === fingerprint) next[f.path] = old
           else {
@@ -57,15 +68,25 @@ export function createRelationIndex({ stateDir, readText, now = Date.now, notify
         const revision = digest(JSON.stringify(Object.entries(next).map(([p, d]) => [p, d.revision])))
         // Metadata changes are persisted too, avoiding unnecessary reads after restart.
         const at = new Date(now()).toISOString()
-        await atomicJson(file, { format: FORMAT, key: e.key, updatedAt: at, documents: next })
+        const persist = force || Object.keys(previous).length !== candidates.length || candidates.some(f => previous[f.path]?.fingerprint !== next[f.path].fingerprint)
+        if (persist) {
+          await mkdir(path.dirname(file), { recursive: true })
+          await atomicJsonStream(file, { format: FORMAT, key: e.key, updatedAt: at, documents: next })
+          e.commits = (e.commits || 0) + 1
+        }
         e.documents = next; e.revision = revision; e.input = input; e.at = at; e.status = 'synced'; e.reads = reads
         if (changed || force) e.graph = null
         return next
       } catch (error) { e.status = 'error'; e.error = error.message; throw error }
       finally { notify({type:'relations-progress',kbId:b.st.kbId,...status(b)}) }
-    })()
+    }
+    e.pending = background && resources ? resources.background(update) : update()
     const pending = e.pending
-    const completed = pending.finally(() => { if (e.pending === completed) e.pending = null })
+    const completed = pending.finally(() => {
+      if (e.pending === completed) e.pending = null
+      const next = e.followUp; e.followUp = null
+      if (next) void documents(next.b, next.files, { background: true }).catch(() => {})
+    })
     e.pending = completed
     if (background && !force && e.at) { void completed.catch(() => {}); return previous }
     return completed

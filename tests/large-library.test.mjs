@@ -109,5 +109,5 @@ test('scoped searches avoid out-of-scope chunking and preserve attached-source f
   await writeFile(path.join(root,'.kbmeta','import-sources.json'),JSON.stringify({entries:{attached:{mode:'attach',sourceRoot:root,kbId:b.st.kbId,originalPath:'20-知识笔记/original.md',entryPath:'20-知识笔记/target/selected.md'}}}))
   wb.invalidate()
   const attached=await wb.binding(),folded=await wb.retrieval.search(attached,args)
-  assert.equal(folded.items.length,0)
+  assert.equal(folded.items.length,0,JSON.stringify({sources:attached.sources,items:folded.items.map(r=>r.path)}))
 })

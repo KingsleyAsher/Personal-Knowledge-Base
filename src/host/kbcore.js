@@ -15,10 +15,12 @@ import os from 'node:os'
 import { constants, existsSync } from 'node:fs'
 import { access, appendFile, lstat, mkdir, open, readdir, readFile, realpath, rename, rm, stat, writeFile } from 'node:fs/promises'
 import path from 'node:path'
+import { atomicJsonStream, fileFingerprint } from './storage-io.js'
+import { createByteCache } from './retrieval-cache.js'
 import { readImportSources, derivedPrivatePartitions, effectivePrivateDirs, foldGeneratedPairs } from './fsindex.js'
 
 // 版本单一来源：package.json 的 version 必须与此一致（详见 INSTALL 说明）
-export const VERSION = '2.1.5'
+export const VERSION = '2.2.0'
 
 export const REQUIRED_FIELDS = ['title', 'type', 'tags', 'status', 'updated']
 export const SCHEMA_VERSION = 1
@@ -450,6 +452,37 @@ export function createCore(cfg, logger) {
   let config = null
   let configHealth = { ok: true, state: 'unloaded', detail: '' }
   const locks = new Map()
+  const indexCache = createByteCache({ maxBytes: 64 * 1024 * 1024, maxEntries: 4, sizeOf: v => v.bytes * 4 + 512 })
+  const indexPending = new Map(), diskPending = new Map(), validPayloads = new WeakSet()
+  const ioMetrics = { indexReads: 0, indexCacheHits: 0, indexValidations: 0, indexCommits: 0, diskScans: 0, diskMerged: 0 }
+  async function readIndexState(file) {
+    try {
+      const before = await stat(file, { bigint: true }), fingerprint = fileFingerprint(before)
+      const old = indexCache.get(file)
+      if (old?.fingerprint === fingerprint) { ioMetrics.indexCacheHits++; return old.result }
+      const key = file + '\0' + fingerprint
+      if (indexPending.has(key)) return indexPending.get(key)
+      const pending = (async () => {
+        ioMetrics.indexReads++
+        const result = await readJsonState(file), after = await stat(file, { bigint: true })
+        if (fingerprint !== fileFingerprint(after)) return { state: 'unreadable', error: '索引在读取期间改变，请重试' }
+        if (result.state === 'ok') {
+          const compact = { state: result.state, value: result.value }
+          indexCache.set(file, { fingerprint, result: compact, bytes: Number(after.size) })
+          return compact
+        }
+        indexCache.delete(file); return result
+      })().finally(() => indexPending.delete(key))
+      indexPending.set(key, pending); return pending
+    } catch (error) {
+      indexCache.delete(file)
+      return { state: error.code === 'ENOENT' ? 'missing' : 'unreadable', error: String(error.code || error.message) }
+    }
+  }
+  async function commitIndex(file, payload) {
+    await atomicJsonStream(file, payload)
+    indexCache.delete(file); ioMetrics.indexCommits++
+  }
 
   async function writeLog(level, message) {
     try {
@@ -869,12 +902,16 @@ export function createCore(cfg, logger) {
   }
 
   function validIndexPayload(payload) {
-    return payload?.meta?.format === INDEX_FORMAT && payload.meta.tokenizer === INDEX_TOKENIZER
+    if (payload && validPayloads.has(payload)) return true
+    ioMetrics.indexValidations++
+    const valid = payload?.meta?.format === INDEX_FORMAT && payload.meta.tokenizer === INDEX_TOKENIZER
       && Array.isArray(payload.entries) && payload.meta.entries === payload.entries.length
       && payload.entries.every(r => r && typeof r.path === 'string' && typeof r.text === 'string'
         && Number.isFinite(r.mtimeMs) && r.size === Buffer.byteLength(r.text)
         && r.revision === sha12(Buffer.from(r.text)))
       && payload.meta.fingerprint === fingerprintOf(payload.entries)
+    if (valid) validPayloads.add(payload)
+    return valid
   }
 
   function entryFromBuffer(relPath, abs, buf, mtimeMs) {
@@ -940,7 +977,7 @@ export function createCore(cfg, logger) {
   /** 读索引并判新鲜度：一次读取、一个快照（避免 search 里重复 readIndex） */
   async function indexSnapshot(conf) {
     const root = kbRootOf(conf)
-    const res = await readJsonState(indexPath(root))
+    const res = await readIndexState(indexPath(root))
     if (res.state !== 'ok') {
       return { state: res.state, entries: [], freshness: { fresh: false, reason: res.state === 'missing' ? 'index-missing' : 'index-corrupt', detail: res.error ?? '' } }
     }
@@ -979,7 +1016,7 @@ export function createCore(cfg, logger) {
       else entries.push(entry)
     }
     const payload = { generatedAt: nowIso(), meta: await indexMetaOf(conf, entries), entries }
-    await atomicWrite(indexPath(root), JSON.stringify(payload))
+    await commitIndex(indexPath(root), payload)
     return { mode: 'incremental', count: entries.length }
   }
 
@@ -1382,7 +1419,7 @@ export function createCore(cfg, logger) {
   }
 
   async function readIndex(conf) {
-    const res = await readJsonState(indexPath(kbRootOf(conf)))
+    const res = await readIndexState(indexPath(kbRootOf(conf)))
     if (res.state === 'ok') {
       if (!res.value || !Array.isArray(res.value.entries)) return { state: 'corrupt', entries: [] }
       return { state: 'ok', ...res.value, entries: res.value.entries.filter(e => e && typeof e.path === 'string') }
@@ -1400,7 +1437,7 @@ export function createCore(cfg, logger) {
     if (kbRootOf(currentConf) !== root || currentConf.revision !== conf.revision) throw Object.assign(new Error('绑定或配置已改变，索引未替换'), { code: 'binding-changed' })
     const disk = await diskFingerprint(conf)
     if (disk.error || disk.fingerprint !== fingerprintOf(entries)) throw Object.assign(new Error('扫描期间文件发生变化或不可读，旧索引已保留'), { code: 'source-unstable' })
-    const old = await readJsonState(indexPath(root))
+    const old = await readIndexState(indexPath(root))
     if (old.state === 'ok' && Array.isArray(old.value?.entries) && typeof old.value.meta?.kbId === 'string' && old.value.meta.kbId.trim() && old.value.meta.kbId !== payload.meta.kbId) throw Object.assign(new Error('索引知识库身份不匹配'), { code: 'index-kbid-mismatch' })
     const oldCount = Array.isArray(old.value?.entries) ? old.value.entries.filter(e => e && typeof e.path === 'string').length : 0
     const drop = oldCount - entries.length
@@ -1414,11 +1451,15 @@ export function createCore(cfg, logger) {
       const directory = path.join(root, '.kbmeta', 'index', 'snapshots')
       await mkdir(directory, { recursive: true })
       const name = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}.json`
-      await atomicWrite(path.join(directory, name), JSON.stringify(old.value))
+      await atomicJsonStream(path.join(directory, name), old.value)
       const snapshots = (await readdir(directory)).filter(n => /^\d+-[a-f0-9]+\.json$/.test(n)).sort().reverse()
       for (const file of snapshots.slice(3)) await rm(path.join(directory, file), { force: true }).catch(() => {})
     }
-    await atomicWrite(indexPath(root), JSON.stringify(payload))
+    await atomicJsonStream(indexPath(root), payload, { beforePublish: async () => {
+      const current = await getConfigFresh(), live = await diskFingerprint(conf, true)
+      if (kbRootOf(current) !== root || current.revision !== conf.revision || live.error || live.fingerprint !== payload.meta.fingerprint) throw Object.assign(new Error('提交前资料或配置已改变，旧索引已保留'), { code: 'source-unstable' })
+    } })
+    indexCache.delete(indexPath(root)); ioMetrics.indexCommits++
     return payload
   }
 
@@ -1450,7 +1491,9 @@ export function createCore(cfg, logger) {
         if (incremental) {
           const files = await walkMd(root, excludesOf(conf), root, [], errors, [])
           const dirty = new Set(paths.map(p => toPosix(p)))
+          let processed = 0
           for (const file of files) {
+            if (++processed % 50 === 0) await cfg.resources?.checkpoint(signal)
             if (signal?.aborted) throw Object.assign(new Error('维护已取消'), { code: 'canceled' })
             const rel = toPosix(path.relative(root, file)), before = await stat(file), old = previous.get(rel)
             if (old && old.size === before.size && old.mtimeMs === before.mtimeMs && !dirty.has(rel)) entries.push(old)
@@ -1509,7 +1552,7 @@ export function createCore(cfg, logger) {
       const disabled = { ...current, autoIndex: false, revision: (current.revision ?? 1) + 1, updatedAt: nowIso() }
       await atomicWrite(configFile, JSON.stringify(disabled, null, 2))
       config = disabled
-      await atomicWrite(indexPath(root), JSON.stringify(r.value))
+      await commitIndex(indexPath(root), r.value)
       maintenanceState = { state: 'restored', reason: 'snapshot-restored', lastCompletedAt: nowIso() }
       return { ok: true, note: '仅恢复索引缓存，未恢复或修改原文；自动维护已关闭' }
     })) } finally { await releaseConfigLock(configLock.token) }
@@ -1518,7 +1561,7 @@ export function createCore(cfg, logger) {
   /** 对**指定根目录**写索引（R6：初始化新库时当前绑定还没切，不能用 kbRootOf(conf)） */
   async function writeIndexAtRoot(root, conf, entries) {
     const payload = { generatedAt: nowIso(), meta: await indexMetaOf(conf, entries, root), entries }
-    await atomicWrite(indexPath(root), JSON.stringify(payload))
+    await commitIndex(indexPath(root), payload)
     return payload
   }
 
@@ -1598,7 +1641,15 @@ export function createCore(cfg, logger) {
   }
 
   /** 只 stat 不读内容的指纹（用于"外部是否改过"的廉价检测） */
-  async function diskFingerprint(conf) {
+  function diskFingerprint(conf, fresh = false) {
+    const key = JSON.stringify([kbRootOf(conf), excludesOf(conf)])
+    if (!fresh && diskPending.has(key)) { ioMetrics.diskMerged++; return diskPending.get(key) }
+    ioMetrics.diskScans++
+    const pending = scanDiskFingerprint(conf).finally(() => { if (diskPending.get(key) === pending) diskPending.delete(key) })
+    if (!fresh) diskPending.set(key, pending)
+    return pending
+  }
+  async function scanDiskFingerprint(conf) {
     const root = kbRootOf(conf)
     const dirErrors = []
     const links = []
@@ -2318,6 +2369,7 @@ export function createCore(cfg, logger) {
       parseFrontmatter, buildFile, isInside, sha12, sha256, composeWithHeader, splitFrontmatter, contentHashOf,
       // 供定向测试用（不属于公开契约）：锁的获取/释放是 R2 的核心不变量
       acquireKbLock, releaseKbLock, indexSnapshot, fingerprintOf,
+      ioStats: () => ({ ...ioMetrics, indexCache: indexCache.stats() }),
       withMutationLock: (root, fn) => withLock(root, () => withKbLock(root, 'workbench-repair', fn)),
     },
     paths: { stateDir, configFile, bindingFile, logFile },
