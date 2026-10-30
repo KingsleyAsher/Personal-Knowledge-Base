@@ -1,76 +1,70 @@
-# 个人知识库 2.2.1
+# Personal Knowledge Base for DSH 2.2.1
 
-自定义流程新增执行模型与推理强度选择，可保存默认设置，也可在运行前临时更换；无需新增依赖或迁移已有流程。
+[English](README.md) · [简体中文](README.zh-CN.md)
 
-## 📘 [插件设计与演进记录 →](PROJECT-RECORD.md)
+Keep files, ideas, and experience connected as a personal knowledge base you can use over time. The DSH plugin supports importing materials, OCR and ASR, retrieval, and custom workflows while keeping your data and choices under your control.
 
-产品定位、基础能力、底层架构、实现方案、源码导航、演进路线与未来方向。此文档随每次发布维护，并随安装包提供版本快照。
+## Product and project references
 
-## 🌐 [访问产品展示网页 →](https://kingsleyasher.github.io/Personal-Knowledge-Base/)
+- [Product design and development record](PROJECT-RECORD.en.md): product goals, capabilities, architecture, implementation, source map, roadmap, and current boundaries. This record is maintained with each release; the package includes a versioned snapshot.
+- [Product showcase](https://kingsleyasher.github.io/Personal-Knowledge-Base/): browse the product concepts, workflows, download, and setup guide. The page supports English and Simplified Chinese.
+- [Workbench guide](WORKBENCH.en.md): capabilities, usage, privacy controls, and recovery boundaries.
+- [Release notes](RELEASE.en.md): shipped changes and current development status.
+- [Versioning policy](VERSIONING.en.md): version formats, update ordering, and update notices.
+- [Retrieval guide](RETRIEVAL.en.md), [parsing and index maintenance](PARSING-PREVIEW.en.md), and [performance records](PERFORMANCE.en.md).
 
-了解产品功能、查看界面展示与使用场景，快速找到下载和安装入口。
+English reference pages are authored for English readers and paired with their Chinese counterparts. They preserve the same project facts, scope, and evidence boundaries. Older beta notes remain historical records.
 
-知识工作台提供可控隐私、首次及跨版本设置引导、目录与关系地图、快速收集、PDF 阅读摘录、原生 @ 知识库提问和默认关闭的完整备份。完整使用与边界见 [工作台说明](WORKBENCH.md)。
+## Current release
 
-关系索引加速、回收站、统一解析记录和更新弹窗规则见 [正式版说明](RELEASE.md)；版本命名及旧预览版迁移规则见 [VERSIONING.md](VERSIONING.md)。
+The currently recommended stable release is **2.2.1**. No preview build is currently offered. The repository also contains ongoing 2.3.0 development work; it is not a public release. Custom workflows can save a model and reasoning level as defaults or choose temporary overrides before a run. This requires no new dependency or migration of existing workflows.
 
-## 当前下载版本
+The workbench includes privacy controls, setup guidance, a directory and relationship map, quick capture, PDF reading and annotations, native `@` knowledge-base questions, and optional full backups. See the [workbench guide](WORKBENCH.en.md) for detailed capabilities and boundaries.
 
-当前仅推荐正式版 **2.2.1**。预览通道暂无可用版本。
+## Download
 
-## 2.2.1 自定义流程选模
+- **Stable release 2.2.1:** [GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.2.1/local-dsh-knowledge-base-2.2.1.tgz) · [Gitee](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.2.1.tgz) · [GitCode](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.2.1.tgz?ref=main) · [GitHub direct link](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.2.1.tgz).
+- **Browser extension for Chrome and Edge:** [Gitee](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.2.1/knowledge-base-browser-extension.zip) · [GitHub direct link](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/knowledge-base-browser-extension.zip). Mirrors can lag behind. If a file is unavailable, try another source.
+- Historical packages are no longer offered from public download locations. Users of older versions should install 2.2.1 first, then use the in-plugin updater.
 
-新增／编辑流程时可保存执行模型与推理强度；点击“立即运行”后可临时调整，选模成功后才发送任务。已有流程保留默认行为，后台流程也会使用保存的模型设置。此前的检索与稳定性优化继续保留，见 [优化记录](EXISTING-FRAMEWORK-OPTIMIZATION.md)。
+The updater checks stable and preview channels. Stable updates within the same major version can install in the background; major-version changes and preview-channel changes require a manual choice. If the host cannot install from the client, update through the DSH plugin manager. See the [release notes](RELEASE.en.md) and [versioning policy](VERSIONING.en.md).
 
-## 选择下载版本
+## What the plugin does
 
-- **正式版 2.2.1**：[GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.2.1/local-dsh-knowledge-base-2.2.1.tgz) · [Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.2.1.tgz) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.2.1.tgz?ref=main) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.2.1.tgz)。
-- **浏览器扩展（Chrome／Edge）**：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub Release 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.2.1/knowledge-base-browser-extension.zip) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/knowledge-base-browser-extension.zip)。镜像可能存在同步延迟；文件暂不可用时可切换其他下载源。
-- 历史安装包已从公开下载处撤下；旧版用户请先安装 2.2.1，再使用插件内更新器。
+The DSH Personal Knowledge Base plugin provides directory binding, item management and retrieval, material import, OCR and ASR parsing, custom workflows, and knowledge-base presets. Capabilities introduced since 1.1.x have continued to evolve through 2.1.0 and later releases.
 
-新版更新器同时检查正式版和预览版；同一大版本内可自动安装的正式版在后台更新，不弹更新前提醒。跨大版本与预览版保留手动选择；正式版用户的可选预览版仅在更新入口显示红点。宿主不支持客户端安装时通过宿主插件管理器更新。当前正式版为 `2.2.1`，暂无预览版；旧预览版已退出当前下载入口。
+- **Updates:** the plugin downloads and verifies packages, then asks the DSH plugin manager to install them. Hot loading is used when supported; the host requests a restart when needed.
+- **Parsing:** OCR and ASR requests from managed agents, imports, and workflows use the configured parsing service. Results return to the originating session. Parsing and writing into the knowledge base require separate authorization.
+- **Retrieval:** the current stable release includes full-text retrieval. The repository documents later retrieval and indexing work separately; see the [retrieval guide](RETRIEVAL.en.md).
+- **Privacy:** private-material display, use in knowledge questions, and outbound processing are distinct controls. Adding a cloud service does not change the local default. The plugin does not automatically send local failures to a cloud service.
+- **Backups:** full automatic backups are off by default. Index snapshots restore indexes only; they do not restore deleted source files, chats, or other memory.
 
-以下能力沿袭自 1.1.x 并持续迭代至 2.1.0；逐项发布记录见 [正式版说明](RELEASE.md)。
+The showcase source is in [`website/`](website/) and is deployed with GitHub Pages.
 
-DSH 个人知识库插件：目录绑定、条目管理与检索、资料导入、OCR / ASR 解析、自定义流程及知识库预设。
+## Install
 
-产品展示页源码位于 [`website/`](website/)，通过 GitHub Pages 自动部署。
+For a first install or to move to the current updater, enter this package URL in the DSH plugin manager's installation source:
 
-## 基础能力与演进记录
+```text
+https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.2.1.tgz
+```
 
-- 客户端内一键更新：点击「安装新版本」后自动下载并校验安装包，由 DSH 插件管理器安装并尝试热加载；仅当宿主报告需要重启时提示重启。热加载断线后通过安装请求编号与实际构建恢复结果。
-- 1.1.3：修复 `kb_import action=parse` 绕过解析授权门的问题；导入解析现在校验活跃调用方、实时知识库授权和 H1 就绪状态，并记录授权来源。更新公告按 Esc 关闭后也会持久化已读状态。
-- 同一大版本内的正式版在后台自动更新，不弹更新前提醒；补丁更新不弹更新内容，只有正式版小版本或大版本升级才显示。预览版每次更新显示更新内容。跨大版本、预览版与渠道切换保留手动选择。跨版本内容合并去重展示，关闭后记录已读。
-- 新增产品展示网页，并配置 GitHub Pages 自动发布。
-- 保留 1.1.0 的 OCR / ASR、索引维护与数据保护能力。
+The client downloads and installs the package. You can also install a local package from `dist/`. Older versions may use the old download flow, so install this release before using the new updater.
 
-- OCR / ASR 简易配置与高级设置分层，新增 Qwen、百度原生接口及凭据引用管理，保留 OpenAI 兼容和 CLI 配置。
-- 本地模型快速扫描及选择目录扫描，识别权重、运行环境和配套组件；修复 PaddleOCR-VL 与 Qwen3-ASR 分散目录关联。
-- 桌面识别与转写界面重新整理，分开配置、发现模型和任务记录；本版没有新增手机适配。
-- 知识库索引后台增量维护，提示框可直接重建；提供具体原因、快照、不完整扫描和异常下降保护。
-- 会话解析、导入解析和工作流解析强制跟随设置中的默认服务，模型记忆里的服务 ID 不再覆盖；用户可在设置页单次选择服务。已提交任务与重试保留原快照。
-- 修复源路径逃逸、任务切库串写、外发策略收紧后继续请求、排除规则告警不消失和异常旧索引无法修复。
+After installation, use **Check for updates → Install stable / Install preview** in the plugin. It verifies the download's SHA-256 and package identity, installs it, and checks the loaded version. Restart DSH only if the host requests it. The [release manifest](release-manifest.json) contains the package and build details. If the host does not expose a client installation interface, use its plugin manager.
 
-详细接入方式、依赖及边界见 [解析与维护说明](PARSING-PREVIEW.md)。不自动安装模型依赖，不自动降级到云端。
+Upgrading preserves bindings and runtime data. A separate legacy delegation gateway is not required. Actual calls remain subject to the host's knowledge-base preset, delegation, and isolation rules.
 
-## 安装
+## Verification and limits
 
-首次安装或从旧版接入新更新器：在 DSH 插件管理器的安装源中填写 `https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.2.1.tgz`，由客户端下载和安装；也可安装仓库 `dist/` 下的本地包。旧版自身的下载按钮仍采用旧流程，需先安装本版才能获得新更新器。
+The 2.2.1 workflow-model changes passed targeted checks for saved settings, one-run overrides, model selection before sending, and failure blocking. The package and digest were checked by the release script. Version 2.2.0 passed 34 targeted regression checks and an isolated backend smoke check in a Windows package. Full integration with the DSH React host, installation in a production desktop host, and real cloud API calls were not verified. Tests used synthetic materials and simulated services; the maintainer's personal knowledge base was not used.
 
-安装本版后，插件内「检查版本更新 → 安装新版本 / 安装预览版」自动完成下载、SHA-256 与包身份校验、安装及加载核对。普通宿主支持时热加载，宿主返回需要重启时再完全退出（含托盘）并重开。核对版本及构建号，摘要见 [发布清单](release-manifest.json)。宿主未提供安装接口时，按钮会说明需使用宿主插件管理器。
+Version 2.1.0 passed 25 targeted automated checks, per-file package and SHA-256 checks, the GitHub release workflow, and the product-page deployment. The user confirmed the 2.1-beta4 preview was usable. The stable package was not installed on the maintainer's machine, and no live cloud Embedding or Rerank API was called. Automated checks mainly used synthetic materials and simulated services.
 
-升级保留绑定和运行数据。不需要另装旧委派网关；真实调用仍须满足宿主知识库预设、委派及隔离授权规则。
+Index maintenance changes indexes and maintenance state; it does not modify knowledge text, source files, chats, or other memory. Managed agents, imports, and workflows use the unified parsing channel by default. Standalone scripts and other plugins are outside this plugin's routing control.
 
-## 验证与边界
+## Regional update mirrors
 
-2.2.1 通过流程模型保存、单次覆盖、发送前选模和失败阻断的定向检查，包体与摘要经发布脚本校验。2.2.0 完成34项定向回归及Windows包内隔离后端冒烟，另通过协议、存储和版本相关检查；此前的检索、索引及刷新验证记录保留在性能文档。完整 DSH React 宿主、正式桌面安装及真实云 API 未验证；未使用个人知识库。
+Stable 2.1.0 and preview 2.1-beta4 included Gitee, GitCode, and GitHub as update sources. The updater checks stable and preview manifests concurrently and selects the newest version available from a working source. A digest mismatch for the same version blocks installation. It prefers regional mirrors and switches sources after a download or package-verification failure. GitCode uses its official file API; Gitee uses a retrievable raw-file URL rather than a temporary signed URL. At the time of the 2.1.0 release, the Gitee mirror workflow succeeded and the GitCode mirror workflow failed. Mirror availability must be checked against the platform's current status. If all sources fail, the updater reports an error instead of claiming the package is up to date. Older versions must first install an updater that supports these sources.
 
-2.1.0 发布前完成 25 项定向自动检查、安装包逐文件与 SHA-256 校验；GitHub 正式发布工作流和产品页部署均通过。用户已确认 2.1-beta4 预览版可用。正式包未在维护者本机安装验证，未调用真实云端 Embedding/Rerank API；自动化主要使用合成资料和模拟服务。
-
-索引维护只改索引及维护状态，不改知识正文、原件、聊天和其他记忆。快照恢复仅恢复索引。所有受管 Agent、导入和流程解析默认进入统一解析通道；独立脚本或其他插件不受本插件路由控制。
-
-## 国内更新源
-
-2.1.0 正式版与 2.1-beta4 预览版内置 Gitee、GitCode 和 GitHub。三个源并发检查正式/预览清单，采用可用源中的最新版本；同版本摘要冲突时阻止更新。优先使用国内源，下载失败或包校验失败时切换其他源。正常更新自动选择可用源，不展示来源清单；只有全部源失败时才列出原因与备用入口。GitCode 使用官方文件 API，Gitee 使用可重新获取的原始文件链接，不保存临时签名地址。v2.1.0 发布时 Gitee 镜像工作流成功，GitCode 镜像工作流失败；镜像可用性以实际平台状态为准。全部源不可用会明确报错，不视为最新。旧版需要先安装支持新源的更新器。
-
-客户端内下载入口：知识库 → 收件箱 → 浏览器扩展使用指南 → 首次使用：安装与连接，点击“下载浏览器扩展”，自动匹配 Gitee、GitCode、GitHub 并校验下载文件，源失败时自动切换；全部失败时显示原因与备用链接。
+In the client, open **Knowledge Base → Inbox → Browser Extension Guide → First Use: Install and Connect**, then choose **Download browser extension**. The updater selects and verifies a file from Gitee, GitCode, or GitHub, then tries another source if needed. If every source fails, it shows the errors and fallback links.

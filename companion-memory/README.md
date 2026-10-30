@@ -1,5 +1,7 @@
 # memory-evolve 动态状态隔离补丁
 
+[简体中文](README.md) · [English](README.en.md)
+
 这是知识库 2.1.0 的独立配套补丁，适用于 `dsh-memory-evolve` 0.1.0 的特定代码基线。脚本按 SHA-256 严格检查；若不匹配，请保留现状并针对所装版本适配，不能强制覆盖。
 
 ## 修改内容

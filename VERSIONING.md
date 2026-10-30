@@ -1,5 +1,7 @@
 # 版本命名与更新判断
 
+[简体中文](VERSIONING.md) · [English](VERSIONING.en.md)
+
 从 `2.0-beta9` 起，发布版本只使用以下两种格式：
 
 | 渠道 | 格式 | 示例 | 含义 |

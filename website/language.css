@@ -1,0 +1,4 @@
+.language-toggle{border:1px solid #657b7e;border-radius:24px;padding:8px 12px;color:#c1d6d2;font-size:12px;white-space:nowrap;transition:border-color .2s,color .2s,background .2s}
+.language-toggle:hover{border-color:var(--mint);color:var(--mint);background:#93f3d709}
+@media(max-width:850px){.header{gap:12px}.header nav{gap:18px}.nav-cta{padding-inline:12px;gap:8px}}
+@media(max-width:600px){.header{gap:8px}.header nav{display:none}.header>.brand{gap:6px}.header>.brand span{font-size:13px}.language-toggle{padding:5px 8px;font-size:10px}.nav-cta{padding:6px 8px;min-height:34px;font-size:10px;gap:4px}.nav-cta span{font-size:13px}}

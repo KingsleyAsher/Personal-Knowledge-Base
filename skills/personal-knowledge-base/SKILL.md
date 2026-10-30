@@ -1,6 +1,6 @@
 ---
 name: personal-knowledge-base
-description: 通过宿主知识库接口安全地检索、阅读、整理和维护用户授权的资料。用于用户要求查找、归档、总结或维护个人知识库内容时。
+description: Safely search, read, organize, and maintain user-authorized materials through the host knowledge-base interface. Use when the user asks to find, archive, summarize, or maintain personal knowledge-base content.
 ---
 
 # Personal Knowledge Base
