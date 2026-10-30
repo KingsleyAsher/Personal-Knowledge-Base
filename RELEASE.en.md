@@ -22,7 +22,7 @@ Version 2.3.0 release: verified knowledge agents can submit OCR and ASR on stand
 - Host settings group library and import, preferences and privacy, retrieval, parsing, capture, backup, and version. The workbench and host reuse the same preference form. Changing host-setting categories preserves unsaved retrieval fields. Technical runtime details are collapsed by default.
 - [Editable Figma design](https://www.figma.com/design/9O89rqsKJ8ufkiPQGhqGTn). The shared style source is `src/client/knowledge-ui.css`; a synchronization script embeds it into the client and validates it through the build inventory. This work covers desktop only and adds no mobile adaptation.
 
-Verification: all 9 targeted checks passed. Edge checks with a fictional library covered file selection/drag-and-drop, individual and batch exclusion, model selection and send order, saving host settings and switching categories, toggling exclusion for archived materials, and rendering light/dark desktop themes. Host services were test substitutes; the build was not installed in a production DSH host and no real model was called. Version 2.3.0 remains in development.
+Verification: all 9 targeted checks passed. Edge checks with a fictional library covered file selection/drag-and-drop, individual and batch exclusion, model selection and send order, saving host settings and switching categories, toggling exclusion for archived materials, and rendering light/dark desktop themes. Host services were test substitutes; the build was not installed in a production DSH host and no real model was called. Version 2.3.0 is published as a stable release.
 
 # 2.3.0 stable: inbox entry and one-click organization (2026-10-29)
 
