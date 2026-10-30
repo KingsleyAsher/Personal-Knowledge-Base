@@ -12,7 +12,7 @@
 
 ## 2.3.0 正式版：统一桌面界面（2026-10-30）
 
-[Figma 设计](https://www.figma.com/design/9O89rqsKJ8ufkiPQGhqGTn)采用可编辑组件与文字，包含收件箱、宿主设置和深色主题。源码以 `src/client/knowledge-ui.css` 作为统一样式源，由 `sync-workbench-client.py` 嵌入 `index.js`，由 `sync-workbench-build.py` 纳入构建指纹。后续修改样式源或 `workbench-ui.js` 后必须同步，避免只改生成片段。
+采用可编辑组件与文字，包含收件箱、宿主设置和深色主题。源码以 `src/client/knowledge-ui.css` 作为统一样式源，由 `sync-workbench-client.py` 嵌入 `index.js`，由 `sync-workbench-build.py` 纳入构建指纹。后续修改样式源或 `workbench-ui.js` 后必须同步，避免只改生成片段。
 
 收件箱与归档详情共用可键盘操作的排除索引开关；服务返回成功前禁用相关操作，失败保持后端状态。归档资料切换后按新路径刷新并保留详情；仅同一知识库、查看权限未变时恢复选中资料。宿主设置通过分类导航复用已有服务表单，偏好保存仍校验 kbId 与 revision，切换检索分类不丢失未保存字段。此次只推进桌面设计，没有新增手机适配。
 
