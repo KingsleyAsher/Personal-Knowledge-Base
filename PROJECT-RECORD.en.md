@@ -1,16 +1,19 @@
 # Plugin Design and Development Record
 
+
+Version 2.3.0 release: verified knowledge agents can submit OCR and ASR on standard desktop hosts without H1. Explicit isolation requirements remain enforced, and an installed but unavailable H1 backend never falls back. Knowledge flows in a separate workspace can resolve originals in the bound library. Submission records now expose persisted details and original failure reasons. Six focused authorization checks passed, including synthetic OCR and ASR HTTP execution; real model inference and production installation were not verified.
+
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
 <!-- project-record-version: 2.3.0 -->
 
-**Implementation covered: 2.3.0 (in development) · Updated: 2026-10-30 · Maintenance: review this record alongside the source with every release.**
+**Implementation covered: 2.3.0 (stable) · Updated: 2026-10-30 · Maintenance: review this record alongside the source with every release.**
 
 This long-term record is for users, maintainers, and future contributors. It explains why the product is built this way, what it can currently do, how its features fit together, where data is stored, and what may come next. “Implemented” refers to source code in this repository. Roadmap items are future directions, not features already delivered. The installed version and build ID must be checked in the client and the corresponding release manifest.
 
 See the [workbench guide](WORKBENCH.en.md) for usage, [release notes](RELEASE.en.md) for changes in each release, and [versioning policy](VERSIONING.en.md) for version comparisons. This record explains the product as a whole; release notes are not an architecture document.
 
-## 2.3.0 in development: unified desktop UI (2026-10-30)
+## 2.3.0 stable: unified desktop UI (2026-10-30)
 
 The [Figma design](https://www.figma.com/design/9O89rqsKJ8ufkiPQGhqGTn) uses editable components and text, and covers the inbox, host settings, and dark theme. `src/client/knowledge-ui.css` is the source of shared styles. `sync-workbench-client.py` embeds it into `index.js`, while `sync-workbench-build.py` includes it in the build fingerprint. After editing the style source or `workbench-ui.js`, run the synchronization steps; do not change only generated fragments.
 
@@ -18,7 +21,7 @@ Inbox cards and archived-item details share a keyboard-operable **Exclude from i
 
 Interaction checks in Edge used a fictional library and host-service substitutes. No personal materials were accessed. A formal DSH installation and real model-based filing were not verified. The changes remain in a local 2.3.0 development package for further iteration.
 
-## 2.3.0 in development: one-click inbox organization (2026-10-29)
+## 2.3.0 stable: one-click inbox organization (2026-10-29)
 
 Added `index-policy.js` and `index-policy-service.js` to unify material ownership, exclusion policy, and file-move progress. They are connected to the core full-text index, hybrid retrieval, relationship index, map, parsing, and archive entry points. Exclusion and restoration both update relationship links. Excluded materials and their registered derivatives are stored in a separate **Excluded from index** section. The old vector manifest lacks complete source ownership, so changing state clears the old generation and then rebuilds vectors for allowed materials. `kb_inbox` supplies the organization queue without depending on search indexes. The source field on `kb_record` determines how archived items inherit rules; completion explicitly registers the archive result.
 
@@ -26,7 +29,7 @@ Validation used fictional materials and simulated local Embedding and OCR respon
 
 The inbox now saves files immediately after multi-file selection or drag-and-drop, and independently scans inbox contents, including files added manually. Existing identity, permission, upload-size, and duplicate checks remain. The backend provides a permanent `builtin-inbox-organize` workflow that cannot be changed, disabled, or deleted. The inbox and workflow page reuse the new-session execution entry point. Users select a model; reasoning is fixed at High. The inbox saves the model choice locally in the browser per `kbId`. The model must still be available and support High, and model selection must succeed before the organization prompt is sent. This workflow uses session execution so a background route cannot bypass the High requirement. Backend and browser interaction checks used a fictional library; no model was called in a real host.
 
-## 2.3.0 in development: sidebar entry (2026-10-28)
+## 2.3.0 stable: sidebar entry (2026-10-28)
 
 Added a **Knowledge Base** row in the left session directory, alongside plugins and scheduled tasks (order 20). Clicking it opens the same workbench. The top tab remains; both entries use the same UI, data, and settings, without registering a second copy.
 

@@ -30,6 +30,7 @@ import http from 'node:http'
 import https from 'node:https'
 import net from 'node:net'
 import path from 'node:path'
+import { resolveAssetPath, excludedSource, EXCLUDED_PARTITION, registerDerived } from './index-policy.js'
 import { presetProvider, NATIVE_PROTOCOLS } from './parse-presets.js'
 import { createParseCredentials } from './parse-credentials.js'
 import { createNativeAdapter } from './parse-native.js'
@@ -987,7 +988,10 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
       return { ok: false, code: 'NO_RENDERER', detail: 'PDF 需要提供方配置 renderCommand 指向固定 Python 可执行文件（如本机 ocr-venv 的 python.exe）' }
     }
     await mkdir(outDir, { recursive: true })
-    const args = [PDF_HELPER, '--pdf', pdfPath, '--outdir', outDir, '--dpi', '150', '--max-pages', String(maxPages)]
+    // 子进程管道下 Python 的 stdout 用本地 ANSI 代码页（中文 Windows 上是 GBK），
+    // 而本模块按 UTF-8 解码；不加 -X utf8 时含中文的路径会变成乱码，文件读不到。
+    // 本文件其他 Python 调用都带 -X utf8，这里必须与它们一致。
+    const args = ['-X', 'utf8', PDF_HELPER, '--pdf', pdfPath, '--outdir', outDir, '--dpi', '150', '--max-pages', String(maxPages)]
     const r = await runChild(python, args, { signal, timeoutMs: 300_000, onChild })
     if (!r.ok) return { ok: false, code: r.code || 'RENDER_FAILED', detail: (r.stderr || r.stdout || '').slice(-800) }
     try {
@@ -1191,6 +1195,21 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     try {
       await ensureDirs(binding)
       const file = jobPath(binding, job.jobId)
+      if (!job.source.external && job.result && ['succeeded','partial'].includes(job.status) && excludedSource(binding.kbPath, resolveAssetPath(binding.kbPath, job.source.relPath))) {
+        const core = getCore()
+        await core._internal.withMutationLock(binding.kbPath, async () => {
+          const source = resolveAssetPath(binding.kbPath, job.source.relPath)
+          if (!excludedSource(binding.kbPath, source)) return
+          const rel = EXCLUDED_PARTITION + '/解析文件/' + job.jobId + '.md'
+          const target = await safePath(binding.kbPath, rel, { missing: true })
+          await mkdir(path.dirname(target), { recursive: true })
+          const text = '---\nsource: ' + JSON.stringify(source) + '\n---\n\n' + String(job.result.plainText ?? job.result.text ?? '')
+          const temp = target + '.' + randomUUID() + '.tmp'
+          await writeFile(temp, text, { encoding: 'utf8', flag: 'wx' }); await rename(temp, target)
+          await registerDerived(binding.kbPath, source, rel, '50-底稿/解析文件/' + job.jobId + '.md')
+          job.materializedFile = rel
+        })
+      }
       writeSeq = (writeSeq + 1) % 1_000_000
       const tmp = `${file}.tmp-${process.pid}-${writeSeq}`
       await writeFile(tmp, JSON.stringify(job, null, 2), 'utf8')
@@ -1255,7 +1274,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
   async function resolveSource(sourceRel, bindingIn) {
     const binding = snapshotBinding(bindingIn || await getBinding())
     if (!binding || !binding.kbPath) return { ok: false, code: 'KB_UNBOUND', message: '知识库未绑定：先选择并绑定知识库文件夹' }
-    const rel = String(sourceRel ?? '').trim().replace(/\\/g, '/')
+    const rel = resolveAssetPath(binding.kbPath, String(sourceRel ?? '').trim().replace(/\\/g, '/'))
     if (rel === '') return { ok: false, code: 'NO_SOURCE', message: '缺少 sourceRel（库内相对路径）' }
     if (path.posix.isAbsolute(rel) || rel.split('/').includes('..')) {
       return { ok: false, code: 'SOURCE_ESCAPE', message: 'sourceRel 必须是库内相对路径，且不能含 ..' }
@@ -1880,7 +1899,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     }
     if (!job.result) return { ok: false, reason: 'no-result', detail: `解析还没有结果（status=${job.status}）` }
     if (job.status === 'failed' || job.status === 'canceled') return { ok: false, reason: 'parse-not-successful', status: job.status }
-    let sourceRel = job.source.relPath
+    let sourceRel = resolveAssetPath(binding.kbPath, job.source.relPath)
     if (job.source.external) {
       // Explicit land imports an immutable original before creating a KB reference.
       sourceRel = '90-收件箱/解析原件/' + job.jobId + '.' + job.source.format

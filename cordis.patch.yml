@@ -59,14 +59,14 @@
         logLevel: info
 
         # ── 第二轮：解析（OCR/ASR）的入口闸门（2026-10-18 定向修复新增）──
-        # parse.allowWithoutIsolation 默认 false：**没有启用 H1 隔离后端的 profile 上，
-        # kb_parse 一律拒绝**（fail closed，返回 H1_REQUIRED），并且不会退回宿主执行。
-        # 只有管理员明确接受"无隔离运行"时才在这个 profile 里显式打开；打开后工具返回的
-        # gate 字段会写成 non-h1-explicit，便于事后区分——这种部署不得当作严格隔离交付。
+        # 普通桌面 profile 没有 H1 时，kb_parse 核验活的知识库根会话或实时委派授权，
+        # 可正常解析库内资料；来源路径、隐私、提供方及外发策略继续逐项校验。
+        # 这属于应用层授权（isolation:none），不声称具备系统级文件隔离。
+        # 如管理员要求 H1，请显式设置 allowWithoutIsolation:false；缺少 H1 就拒绝。
+        # H1 已安装但未就绪时始终拒绝执行，不会自动退回普通模式。
         #
         # parse:
-        #   allowWithoutIsolation: true
-        # 开启后仍要求知识库根会话或实时委派授权；gate.isolation=none，不提供系统级读隔离。
+        #   allowWithoutIsolation: false
 
         # ── 合并后的委派工具（原 @local/dsh-agent-gateway 的配置在此）──
         # 不写 targets 时，自动用一个自带的知识库目标：

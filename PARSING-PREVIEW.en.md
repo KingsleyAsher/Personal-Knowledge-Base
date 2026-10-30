@@ -1,5 +1,8 @@
 # Parsing and Index Maintenance · 2.1.0
 
+
+Version 2.3.0 release: verified knowledge agents can submit OCR and ASR on standard desktop hosts without H1. Explicit isolation requirements remain enforced, and an installed but unavailable H1 backend never falls back. Knowledge flows in a separate workspace can resolve originals in the bound library. Submission records now expose persisted details and original failure reasons. Six focused authorization checks passed, including synthetic OCR and ASR HTTP execution; real model inference and production installation were not verified.
+
 [English](PARSING-PREVIEW.en.md) · [简体中文](PARSING-PREVIEW.md)
 
 The current stable version described here is 2.1.0; the current download and capabilities are in the [README](README.md) and [release notes](RELEASE.en.md). This page preserves the corresponding feature and historical-stage notes.

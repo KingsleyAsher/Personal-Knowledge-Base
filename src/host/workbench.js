@@ -19,6 +19,8 @@ import { createRuntimeResources } from './runtime-resources.js'
 import { createSourceReader } from './storage-io.js'
 import { createSystemUpgrades } from './system-upgrades.js'
 import { VERSION, TEMPLATES } from './kbcore.js'
+import { readIndexPolicy, policyExcluded, policyExcludes, groupFor, resolveAssetPath, EXCLUDED_PARTITION, referenceExcluded, policyFile, savePolicy } from './index-policy.js'
+import { createIndexPolicyService } from './index-policy-service.js'
 
 export const GUIDE_ID = 'knowledge-workbench-v1'
 const INITIAL = { format: 1, revision: 0, defaults: DEFAULT_PREFERENCES, libraries: {}, onboarding: {}, pairs: {} }
@@ -68,6 +70,26 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
   const retrievalText = createByteCache({maxBytes:64*1024*1024,sizeOf:v=>Buffer.byteLength(v.text)*2+256})
   const retrieval = createRetrieval({ stateDir, binding, loadDocuments: retrievalDocuments, visible: (...args) => visible(...args), versionOf: b => versionOf(b), notify, resources,
     verifyDocument: async (b,file,revision) => (await textOf(b,file,Number.MAX_SAFE_INTEGER)).revision === revision })
+  const invalidatePolicyCaches = () => { cache = null; scanEpoch++; metadataText.clear(); retrievalText.clear(); retrieval.invalidate(); questions.clear(); questionService.clear() }
+  const policyService = createIndexPolicyService({ userData: (...args) => userData(...args), getParsing, invalidate: invalidatePolicyCaches, notify,
+    purge: async b => { await retrieval.purgePolicy(b); await relationIndex.purgePolicy(b); const result = await b.core.purgePolicyIndex({ expectedRoot: b.root, expectedKbId: b.st.kbId }); if (!result.ok) throw fail('INDEX_PURGE_FAILED', result.reason) },
+    rebuild: async (b, removed) => {
+      const result = await b.core.maintainIndex({ expectedKbId: b.st.kbId, knownRemovedPaths: removed })
+      if (!result.ok) throw fail('INDEX_REBUILD_FAILED', result.detail || result.reason)
+      const current = await binding(b.st.kbId)
+      await relations(current, { force: true })
+      await retrieval.automatic()
+    } })
+  const completePolicyGroup = async (b, file) => locked(policyFile(b.root), async () => {
+    const p = readIndexPolicy(b.root), g = groupFor(p, file)
+    if (g?.pending) { g.pending = false; await savePolicy(b.root, p) }
+  })
+  const indexCompletedArchive = async b => {
+    invalidatePolicyCaches()
+    const result = await b.core.maintainIndex({ expectedKbId: b.st.kbId })
+    if (!result.ok) throw fail('INDEX_REBUILD_FAILED', result.detail || result.reason)
+    await relations(await binding(b.st.kbId), { force: true }); await retrieval.automatic()
+  }
   const upgrades=createSystemUpgrades({binding,catalog:async()=>Object.entries(TEMPLATES).map(([name,content])=>({path:'_模板/'+name,content,version:VERSION})),runtime:getUpgradeContext,retrieval,now})
   const profile = () => readJson(profileFile, INITIAL)
   async function binding(expected) {
@@ -87,11 +109,12 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     const privateDirs = effectivePrivateDirs(conf.privateDirs, derivedPrivatePartitions(sources))
     const needsConfirmation = !stored && JSON.stringify(validatePreferences(prefs.defaults)) !== JSON.stringify(validatePreferences(DEFAULT_PREFERENCES))
     return { core, st, root, key, preferences, needsConfirmation, preferencesRevision: stored?.revision ?? 0, profile: prefs, conf, sources, privateDirs,
-      deliverables, dataFile: path.join(stateDir, 'workbench', 'libraries', key + '.json') }
+      deliverables, indexPolicy: readIndexPolicy(root), dataFile: path.join(stateDir, 'workbench', 'libraries', key + '.json') }
   }
-  const versionOf = b => digest([b.key, b.preferencesRevision, b.conf.revision].join('|')).slice(0, 20)
-  const isPrivate = (b, file) => privateRootOf(file, b.privateDirs) !== null || deliverablePrivate(b.deliverables, file)
-  const visible = (b, file, question = false, includePrivate = false) => !isPrivate(b, file) || (question ? b.preferences.showPrivate && b.preferences.allowPrivateQuestions && includePrivate : b.preferences.showPrivate)
+  const versionOf = b => digest([b.key, b.preferencesRevision, b.conf.revision, b.indexPolicy?.revision || 0].join('|')).slice(0, 20)
+  const isPrivate = (b, file) => privateRootOf(file, b.privateDirs) !== null || deliverablePrivate(b.deliverables, file) || Boolean(groupFor(b.indexPolicy, file)?.files.some(f => f.current === file && privateRootOf(f.normal, b.privateDirs) !== null))
+  const visible = (b, file, question = false, includePrivate = false) => (!question || !policyExcluded(b.indexPolicy, file)) && (!isPrivate(b, file) || (question ? b.preferences.showPrivate && b.preferences.allowPrivateQuestions && includePrivate : b.preferences.showPrivate))
+  const indexable = (b, file) => !policyExcluded(b.indexPolicy, file)
   function redactReferences(b, file, text, allowPrivate = b.preferences.showPrivate) {
     if (allowPrivate) return text
     const hidden = target => {
@@ -109,13 +132,16 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     if (!visible(b, file)) throw fail('PRIVATE_HIDDEN', '此内容属于未展示的隐私分区')
   }
   const userData = async b => {
-    try { await stat(b.dataFile); return readJson(b.dataFile, LIBRARY) }
+    try { await stat(b.dataFile); const data = await readJson(b.dataFile, LIBRARY), policy = readIndexPolicy(b.root); for (const c of data.captures) { c.path = resolveAssetPath(b.root, c.path, policy); if (c.entryPath) c.entryPath = resolveAssetPath(b.root, c.entryPath, policy) }; return data }
     catch (error) { if (error.code !== 'ENOENT') throw error }
     let restored
     try { restored = await readJson(await safePath(b.root, '.kbmeta/workbench-user-data.json'), LIBRARY) }
     catch (error) { if (error.code !== 'ENOENT') throw error; return structuredClone(LIBRARY) }
     if (restored.format !== 1 || !Array.isArray(restored.links) || !Array.isArray(restored.annotations) || !Array.isArray(restored.captures)) throw fail('STATE_CORRUPT', '恢复的用户数据格式不兼容')
-    return { ...structuredClone(LIBRARY), ...restored }
+    const result = { ...structuredClone(LIBRARY), ...restored }
+    const policy = readIndexPolicy(b.root)
+    for (const c of result.captures) { c.path = resolveAssetPath(b.root, c.path, policy); if (c.entryPath) c.entryPath = resolveAssetPath(b.root, c.entryPath, policy) }
+    return result
   }
   async function mutate(b, args, fn) {
     if (args.expectedKbId !== b.st.kbId) throw fail('IDENTITY_REQUIRED', '写入必须绑定当前知识库身份')
@@ -209,7 +235,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       const walkMs=performance.now()-walkStarted,indexStarted=performance.now()
       const index = await b.core._internal.indexSnapshot(b.conf)
       const indexMs=performance.now()-indexStarted
-      const excluded = ['_模板', '_手册', '.kbmeta', '.kb-state', '50-底稿', '90-收件箱', ...(b.conf.excludeFromSearch ?? [])]
+      const excluded = ['_模板', '_手册', '.kbmeta', '.kb-state', '50-底稿', '90-收件箱', ...policyExcludes(b.root), ...(b.conf.excludeFromSearch ?? [])]
       const indexed = new Map((index.entries ?? []).filter(e => !excluded.some(p => scopeMatch(e.path, p))).map(e => [e.path, e]))
       if (index.freshness?.fresh !== true || verifyContent) {
         for (const f of walk.files) {
@@ -234,7 +260,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       }
       const files = walk.files.map(f => {
         const e = indexed.get(f.path)
-        return { path: f.path, bytes: f.bytes ?? f.size ?? 0, mtimeMs: f.mtimeMs, ctimeMs: f.ctimeMs, title: e?.title ?? path.posix.basename(f.path),
+        return { path: f.path, excludedFromIndex: policyExcluded(b.indexPolicy, f.path, false), policyState: groupFor(b.indexPolicy, f.path)?.state, bytes: f.bytes ?? f.size ?? 0, mtimeMs: f.mtimeMs, ctimeMs: f.ctimeMs, title: e?.title ?? path.posix.basename(f.path),
           tags: e?.tags ?? [], kind: e?.kind ?? null, status: e?.status ?? null, entryId: e?.entryId ?? null,
           ...fileCapabilities(f.path, f.writable !== false), extension: path.posix.extname(f.path).slice(1).toLowerCase(), private: isPrivate(b, f.path),
           summary: redactReferences(b, f.path, e?.text || '').replace(/^---[\s\S]*?---\s*/, '').replace(/[#*`>|]/g, '').trim().slice(0, 160),
@@ -275,6 +301,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     }
     const snap = await scan(b, args.fresh === true)
     let files = snap.files.filter(f => visible(b, f.path) && scopeMatch(f.path, args.prefix))
+    if (String(args.q || '').trim() || args.question) files = files.filter(f => indexable(b, f.path))
     if (args.direct && args.prefix !== undefined) files = files.filter(f => path.posix.dirname(f.path) === (args.prefix || '.'))
     if (args.layer) files = files.filter(f => f.layer === args.layer)
     if (args.extension) files = files.filter(f => f.extension === args.extension)
@@ -318,6 +345,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     const textType = /\.(md|txt|csv|tsv|json|jsonl|log|ya?ml|html?|xml)$/i
     const excluded = b.conf.excludeFromSearch || []
     for (const f of snap.files) {
+      if (!indexable(b, f.path)) continue
       if (++visitedFiles % 50 === 0) await resources.checkpoint()
       if (inside(stateDir,path.resolve(b.root,f.path))) continue
       if (excluded.some(p => scopeMatch(f.path,p)) || /^(AGENTS|INDEX|README)\.md$/.test(f.path)) continue
@@ -347,13 +375,13 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     if (args.force === true) metadataText.clear()
     const snap = await scan(b, args.force === true || args.fresh === true, args.force === true), data = await userData(b)
     const directories = snap.dirs.map(d => typeof d === 'string' ? d : d.path).filter(Boolean).map(p => ({ path: p, title: path.posix.basename(p), layer: 'directory' }))
-    const accessible = [...snap.files, ...directories].filter(f => visible(b, f.path))
+    const accessible = [...snap.files, ...directories].filter(f => visible(b, f.path) && indexable(b, f.path))
     if (args.path && !accessible.some(f => f.path === args.path && f.layer !== 'directory')) throw fail('NOT_FOUND', '中心资料已不存在或当前不可见，请重新选择资料')
     const trashItems = (await trash.entries(b)).filter(i => i.state === 'stored' && visible(b, i.path))
-    const documents = await relationIndex.documents(b, snap.files, { force: args.force === true, background: args.background === true && !args.allIssues })
+    const documents = await relationIndex.documents(b, snap.files.filter(f => indexable(b, f.path)), { force: args.force === true, background: args.background === true && !args.allIssues })
     const index = relationIndex.entry(b), graphKey = digest(JSON.stringify([snap.version, index.revision, versionOf(b), data.links, trashItems.map(i => [i.id, i.path]), args.type === 'directory']))
-    if (index.graph?.key !== graphKey) index.graph = { key: graphKey, value: await collectRelations({ files: accessible, trashedPaths: new Set(trashItems.map(i => i.path)), trashedFiles: trashItems, readDocument: async p => documents[p], visible: p => visible(b, p), links: data.links, type: args.type }) }
-    const collected = { edges: index.graph.value.edges, issues: index.graph.value.issues }
+    if (index.graph?.key !== graphKey) index.graph = { key: graphKey, value: await collectRelations({ files: accessible, trashedPaths: new Set(trashItems.map(i => i.path)), trashedFiles: trashItems, readDocument: async p => documents[p], visible: p => visible(b, p) && indexable(b, p), links: data.links, type: args.type }) }
+    const collected = { edges: index.graph.value.edges.filter(e => indexable(b, e.from) && indexable(b, e.to)), issues: index.graph.value.issues.filter(i => indexable(b, i.path) && !referenceExcluded(b.indexPolicy, i.path, i.rawTarget || '')) }
     const sync = relationIndex.status(b), relationVersion = digest(graphKey + index.revision).slice(0, 20)
     const byPath = new Map(accessible.map(f => [f.path, f]))
     const navigation = p => /(^|\/)(INDEX|AGENTS|README)\.md$/.test(p)
@@ -467,6 +495,12 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     const b = await binding(args.expectedKbId)
     if (args.policyVersion && args.policyVersion !== versionOf(b)) throw fail('SETTINGS_CHANGED', '隐私或知识库设置已改变，请刷新')
     if (args.op.startsWith('upgrade.'))return {ok:true,...await upgrades.dispatch(b,args,caller)}
+    if (args.op === 'index.policy.set') {
+      if (caller) throw fail('ADMIN_ONLY', '排除索引规则只能由用户在界面修改')
+      return policyService.set(b, args)
+    }
+    if (args.op === 'inbox.list') return { ok: true, ...await capture(b, { ...args, op: 'capture.inbox-files' }) }
+    if (args.op === 'inbox.complete') { const result = await capture(b, { ...args, op: 'capture.complete', expectedRevision: (await userData(b)).revision }); await indexCompletedArchive(b); return { ok: true, ...result } }
     if (args.op.startsWith('retrieval.')) return { ok:true, ...await retrieval.dispatch(b,args,caller) }
     if (args.op === 'search.expand') {const out=await retrieval.expand(b,args);return {ok:true,...out,text:redactReferences(b,args.path,out.text)}}
     if (args.op === 'atlas.relations.status') return { ok: true, sync: relationIndex.status(b) }
@@ -533,6 +567,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     if (args.op === 'atlas.link.save' || args.op === 'atlas.link.delete') return { ok: true, ...await mutate(b, args, async data => {
       if (args.op.endsWith('.delete')) { const old = data.links.find(e => e.id === args.id); if (!old) throw fail('NOT_FOUND', '关联不存在'); assertVisible(b, old.from); assertVisible(b, old.to); data.links = data.links.filter(e => e.id !== args.id); return {} }
       const from = relativePath(args.from), to = relativePath(args.to)
+      if (!indexable(b, from) || !indexable(b, to)) throw fail('INDEX_EXCLUDED', '待整理或排除索引的资料不能建立关联')
       assertVisible(b, from); assertVisible(b, to)
       await safePath(b.root, from); await safePath(b.root, to)
       if (from === to) throw fail('SELF_LINK', '不能关联自身')
@@ -620,6 +655,42 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       return { revoked: true }
     }
     if (args.op === 'capture.extension.download') return downloadBrowserExtension()
+    if (args.op === 'capture.inbox-files') {
+      const inbox = await safePath(b.root, '90-收件箱', { missing: true })
+      const exists = await stat(inbox).catch(error => { if (error.code === 'ENOENT') return null; throw error })
+      const snap = exists ? await walkTree(inbox, b.root, { maxFiles: Number.MAX_SAFE_INTEGER, maxDepth: Number.MAX_SAFE_INTEGER, followLinks: false }) : { files: [], truncated: null }
+      const data = await userData(b), policy = readIndexPolicy(b.root)
+      for (const g of Object.values(policy.groups).filter(g => g.pending)) for (const f of g.files.filter(f => f.normal.startsWith('90-收件箱/'))) {
+        if (snap.files.some(x => x.path === f.current)) continue
+        const info = await stat(await safePath(b.root, f.current, { missing: true })).catch(e => { if (e.code === 'ENOENT') return null; throw e })
+        if (info?.isFile()) snap.files.push({ path: f.current, bytes: info.size, mtimeMs: info.mtimeMs })
+      }
+      const captures = new Map(data.captures.map(c => [c.path, c]))
+      // Historical archives may predate capture/policy metadata.
+      const normalPath = file => (groupFor(policy, file)?.files.find(f => f.current === file)?.normal || file).replaceAll('\\', '/')
+      const archivedOriginal = file => /(^|\/)(原件归档|_archive)(\/|$)/i.test(normalPath(file))
+      // Inbox navigation is not material to archive, including legacy README
+      // files without metadata and navigation moved into the excluded partition.
+      const systemInboxFile = file => {
+        const normal = normalPath(file)
+        return fileRole(normal) !== 'document' || /^(readme\.md|知识库清单\.md)$/i.test(path.posix.basename(normal))
+      }
+      const files = snap.files.filter(f => !archivedOriginal(f.path) && !systemInboxFile(f.path) && visible(b, f.path) && !['done','ignored'].includes(captures.get(f.path)?.status) && groupFor(policy, f.path)?.pending !== false)
+        .sort((a, z) => z.mtimeMs - a.mtimeMs).map(f => ({ path: f.path, title: captures.get(f.path)?.title || path.posix.basename(f.path), bytes: f.bytes, status: captures.get(f.path)?.status || 'pending', excludedFromIndex: policyExcluded(policy, f.path, false), policyState: groupFor(policy, f.path)?.state }))
+      return { ...slicePage(files, args), coverage: snap.coverage, truncated: snap.truncated }
+    }
+    if (args.op === 'capture.complete') return mutate(b, args, async data => {
+      const source = resolveAssetPath(b.root, relativePath(args.path)), entryPath = resolveAssetPath(b.root, relativePath(args.entryPath))
+      assertVisible(b, source); assertVisible(b, entryPath)
+      const text = await textOf(b, entryPath, Number.MAX_SAFE_INTEGER), meta = b.core._internal.parseFrontmatter(text.text).data
+      const provenance = Array.isArray(meta.source) ? meta.source : [meta.source]
+      if (!provenance.some(p => typeof p === 'string' && resolveAssetPath(b.root, p) === source)) throw fail('SOURCE_MISMATCH', '归档产物必须明确记录该原件的 source')
+      let item = data.captures.find(c => c.path === source)
+      if (!item) { item = { id: randomUUID(), path: source, title: path.posix.basename(source), createdAt: stamp() }; data.captures.push(item) }
+      item.status = 'done'; item.entryPath = entryPath; item.entryId = meta.id
+      await completePolicyGroup(b, source)
+      return { capture: item }
+    })
     if (args.op === 'capture.list') { await reconcileCaptures(b); const data = await userData(b); return { ...slicePage(data.captures.filter(c => visible(b, c.path) && (!args.status || c.status === args.status)).sort((a, z) => z.createdAt.localeCompare(a.createdAt)), args), revision: data.revision } }
     if (args.op === 'capture.create') return mutate(b, args, async data => {
       const url = args.url ? safeUrl(args.url) : null
@@ -685,6 +756,9 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
         requestId: 'capture-' + item.id, expectedBinding: { kbId: b.st.kbId, kbPath: b.root, revision: b.conf.revision } })
       if (!result.ok) throw fail(result.reason || 'LAND_FAILED', result.detail || result.reason)
       item.status = 'done'; item.entryId = result.entryId; item.entryPath = result.path; delete item.error
+      await completePolicyGroup(b, item.path)
+      const index = await b.core.maintainIndex({ expectedKbId: b.st.kbId })
+      if (!index.ok) throw fail('INDEX_REBUILD_FAILED', index.detail || index.reason)
       return { capture: item }
     })
     throw fail('UNKNOWN_CAPTURE', '未知收件箱操作')
@@ -709,7 +783,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       if (!chosen.length) throw fail('NO_SELECTION', '请先选择摘录')
       for (const item of chosen) assertVisible(b, item.path)
       const content = chosen.map(a => `> ${a.quote.replaceAll('\n', '\n> ')}\n\n${a.note || ''}\n\n[来源](${a.path}${a.line ? '#L' + a.line : ''})\n`).join('\n---\n\n')
-      const result = await b.core.createEntry({ title: String(args.title || '阅读摘录'), kind: '知识', tags: ['阅读摘录'], content, requestId: args.requestId || randomUUID(), expectedBinding: { kbId: b.st.kbId, kbPath: b.root, revision: b.conf.revision } })
+      const result = await b.core.createEntry({ title: String(args.title || '阅读摘录'), kind: '知识', tags: ['阅读摘录'], content, source: [...new Set(chosen.map(a => a.path))], requestId: args.requestId || randomUUID(), expectedBinding: { kbId: b.st.kbId, kbPath: b.root, revision: b.conf.revision } })
       if (!result.ok) throw fail(result.reason || 'LAND_FAILED', result.detail || result.reason)
       return { entry: result }
     })
@@ -755,7 +829,8 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     const result = await sourceReader.run(() => execute(args, caller))
     if (before) {
       const after = await binding(before.st.kbId)
-      if (versionOf(before) !== versionOf(after)) throw fail('SETTINGS_CHANGED', '设置已改变，本次旧结果已作废')
+      const policyMutation = ['index.policy.set','inbox.complete','capture.complete','capture.organize','capture.list','reading.note'].includes(args.op)
+      if (versionOf(before) !== versionOf(after) && !(policyMutation && before.key === after.key && before.conf.revision === after.conf.revision && before.preferencesRevision === after.preferencesRevision)) throw fail('SETTINGS_CHANGED', '设置已改变，本次旧结果已作废')
     }
     return result
   }
@@ -790,6 +865,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     const parser = getParsing()
     const data = await userData(b)
     if (!data.captures.length) return
+    let completed = false
     await locked(b.dataFile, async () => {
       const latest = await userData(b); let changed = false
       const retained = []
@@ -806,13 +882,14 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
         }
         if (parser && c.status === 'processing' && c.jobId) {
           const job = await parser.readJob(c.jobId)
-          if (job?.land?.status === 'landed') { c.status = 'done'; c.entryId = job.land.entryId; c.entryPath = job.land.path; delete c.error; changed = true }
+          if (job?.land?.status === 'landed') { c.status = 'done'; c.entryId = job.land.entryId; c.entryPath = resolveAssetPath(b.root, job.land.path); delete c.error; changed = true; completed = true; await completePolicyGroup(b, c.path) }
           else if (job && ['failed', 'canceled', 'interrupted'].includes(job.status)) { c.status = 'failed'; c.error = job.status; changed = true }
         }
         retained.push(c)
       }
       if (changed) { latest.captures = retained; await binding(b.st.kbId); latest.revision++; await atomicJson(b.dataFile, latest); cache = null }
     })
+    if (completed) await indexCompletedArchive(b)
   }
 
   async function clipper({ origin, token, code, item }) {

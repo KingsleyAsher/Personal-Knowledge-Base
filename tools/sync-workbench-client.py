@@ -1,4 +1,5 @@
 from pathlib import Path
+import json
 
 root = Path(__file__).resolve().parents[1]
 target = root / 'src/client/index.js'
@@ -6,7 +7,8 @@ text = target.read_text(encoding='utf-8')
 begin = '    // BEGIN GENERATED WORKBENCH UI\n'
 end = '    // END GENERATED WORKBENCH UI\n'
 source = (root / 'src/client/workbench-ui.js').read_text(encoding='utf-8')
-generated = begin + '\n'.join('    ' + line if line else '' for line in source.splitlines()) + '\n' + end
+theme = (root / 'src/client/knowledge-ui.css').read_text(encoding='utf-8')
+generated = begin + '    const KNOWLEDGE_UI_THEME = ' + json.dumps(theme, ensure_ascii=False) + '\n' + '\n'.join('    ' + line if line else '' for line in source.splitlines()) + '\n' + end
 if begin in text:
     start = text.index(begin)
     stop = text.index(end, start) + len(end)

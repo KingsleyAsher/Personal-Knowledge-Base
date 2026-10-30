@@ -3,6 +3,7 @@ import { mkdir } from 'node:fs/promises'
 import { atomicJsonStream } from './storage-io.js'
 import { digest, readJson } from './workbench-state.js'
 import { extractReferences, extractHtmlReferences } from './workbench-links.js'
+import { readIndexPolicy, policyExcluded, referenceExcluded } from './index-policy.js'
 
 const FORMAT = 1
 export function parseRelationDocument(content, file) {
@@ -24,6 +25,8 @@ export function createRelationIndex({ stateDir, readText, now = Date.now, notify
   }
   const status = b => { const e = entry(b); return { status: e.status, updatedAt: e.at, progress: e.progress, error: e.error, revision: e.revision || null } }
   async function documents(b, files, { force = false, background = false } = {}) {
+    const policy = readIndexPolicy(b.root), policyRevision = policy.revision
+    files = files.filter(f => !policyExcluded(policy, f.path))
     const e = entry(b)
     if (e.pending) {
       if (background && !force && e.at) {
@@ -34,7 +37,7 @@ export function createRelationIndex({ stateDir, readText, now = Date.now, notify
       }
       await e.pending; return documents(b, files, { force, background })
     }
-    const input = digest(JSON.stringify(files.map(f => [f.path, f.bytes, f.mtimeMs, f.ctimeMs])))
+    const input = digest(JSON.stringify([policyRevision, files.map(f => [f.path, f.bytes, f.mtimeMs, f.ctimeMs])]))
     if (!force && e.input === input && e.status === 'synced') return e.documents
     const file = path.join(stateDir, 'workbench', 'relations', e.key + '.json')
     if (!e.documents) {
@@ -43,6 +46,7 @@ export function createRelationIndex({ stateDir, readText, now = Date.now, notify
         try { disk = await readJson(file, null) } catch { disk = null }
         e.documents = disk?.format === FORMAT && disk.key === e.key && disk.documents && typeof disk.documents === 'object' && !Array.isArray(disk.documents) && Object.values(disk.documents).every(d => Array.isArray(d?.refs) && Array.isArray(d?.anchors) && typeof d.revision === 'string') ? disk.documents : {}
         e.at = disk?.updatedAt || null
+        e.policyRevision = disk?.policyRevision ?? 0
       })()
       await e.loading
       if (e.pending) return documents(b, files, { force, background })
@@ -59,22 +63,25 @@ export function createRelationIndex({ stateDir, readText, now = Date.now, notify
           if (!force && old?.fingerprint === fingerprint) next[f.path] = old
           else {
             const content = await readText(b, f.path); reads++
-            next[f.path] = { fingerprint, ...parseRelationDocument(content, f.path) }
+            const parsed = parseRelationDocument(content, f.path)
+            parsed.refs = parsed.refs.filter(ref => !referenceExcluded(policy, f.path, ref.rawTarget || ref.target))
+            next[f.path] = { fingerprint, ...parsed }
             if (old?.revision !== content.revision) changed = true
           }
+          next[f.path] = { ...next[f.path], refs: next[f.path].refs.filter(ref => !referenceExcluded(policy, f.path, ref.rawTarget || ref.target)) }
           e.progress.done++
           if (e.progress.done % 50 === 0) notify({ type: 'relations-progress', kbId: b.st.kbId, ...status(b) })
         }
         const revision = digest(JSON.stringify(Object.entries(next).map(([p, d]) => [p, d.revision])))
         // Metadata changes are persisted too, avoiding unnecessary reads after restart.
         const at = new Date(now()).toISOString()
-        const persist = force || Object.keys(previous).length !== candidates.length || candidates.some(f => previous[f.path]?.fingerprint !== next[f.path].fingerprint)
+        const persist = force || e.policyRevision !== policyRevision || Object.keys(previous).length !== candidates.length || candidates.some(f => previous[f.path]?.fingerprint !== next[f.path].fingerprint)
         if (persist) {
           await mkdir(path.dirname(file), { recursive: true })
-          await atomicJsonStream(file, { format: FORMAT, key: e.key, updatedAt: at, documents: next })
+          await atomicJsonStream(file, { format: FORMAT, key: e.key, policyRevision, updatedAt: at, documents: next }, { beforePublish: () => { if (readIndexPolicy(b.root).revision !== policyRevision) throw new Error('索引排除策略已变化，请重试') } })
           e.commits = (e.commits || 0) + 1
         }
-        e.documents = next; e.revision = revision; e.input = input; e.at = at; e.status = 'synced'; e.reads = reads
+        e.documents = next; e.revision = revision; e.input = input; e.at = at; e.status = 'synced'; e.reads = reads; e.policyRevision = policyRevision
         if (changed || force) e.graph = null
         return next
       } catch (error) { e.status = 'error'; e.error = error.message; throw error }
@@ -91,5 +98,13 @@ export function createRelationIndex({ stateDir, readText, now = Date.now, notify
     if (background && !force && e.at) { void completed.catch(() => {}); return previous }
     return completed
   }
-  return { documents, status, entry, invalidate(b) { if (b) entry(b).graph = null; else for (const e of entries.values()) e.graph = null } }
+  return { documents, status, entry,
+    async purgePolicy(b) {
+      const e = entry(b); e.followUp = null
+      if (e.pending) await e.pending.catch(() => {})
+      e.documents = {}; e.graph = null; e.input = null; e.at = null; e.status = 'empty'
+      await mkdir(path.join(stateDir, 'workbench', 'relations'), { recursive: true })
+      await atomicJsonStream(path.join(stateDir, 'workbench', 'relations', e.key + '.json'), { format: FORMAT, key: e.key, documents: {}, updatedAt: new Date(now()).toISOString() })
+    },
+    invalidate(b) { if (b) entry(b).graph = null; else for (const e of entries.values()) e.graph = null } }
 }

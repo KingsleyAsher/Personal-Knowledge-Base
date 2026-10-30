@@ -17,10 +17,11 @@ import { access, appendFile, lstat, mkdir, open, readdir, readFile, realpath, re
 import path from 'node:path'
 import { atomicJsonStream, fileFingerprint } from './storage-io.js'
 import { createByteCache } from './retrieval-cache.js'
+import { policyExcludes, readIndexPolicy, policyExcluded, excludedSource, EXCLUDED_PARTITION, registerDerived, resolveAssetPath } from './index-policy.js'
 import { readImportSources, derivedPrivatePartitions, effectivePrivateDirs, foldGeneratedPairs } from './fsindex.js'
 
 // 版本单一来源：package.json 的 version 必须与此一致（详见 INSTALL 说明）
-export const VERSION = '2.2.1'
+export const VERSION = '2.3.0'
 
 export const REQUIRED_FIELDS = ['title', 'type', 'tags', 'status', 'updated']
 export const SCHEMA_VERSION = 1
@@ -725,7 +726,7 @@ export function createCore(cfg, logger) {
   }
   function excludesOf(conf) {
     const fromConf = Array.isArray(conf.excludeFromSearch) ? conf.excludeFromSearch : []
-    return [...new Set([...DEFAULT_EXCLUDES, '索引层', ...fromConf])]
+    return [...new Set([...DEFAULT_EXCLUDES, '索引层', ...policyExcludes(kbRootOf(conf)), ...fromConf])]
   }
 
   async function readMeta(root) {
@@ -997,13 +998,15 @@ export function createCore(cfg, logger) {
   /** 只更新索引里的某一条（增量）；索引不可用时退回整库重建（重建失败则如实报 failed） */
   async function updateIndexFor(conf, relPath, action = 'upsert') {
     const root = kbRootOf(conf)
+    if (policyExcluded(readIndexPolicy(root), relPath)) action = 'remove'
     const idx = await readIndex(conf)
     if (idx.state !== 'ok') {
       const rebuilt = await reindexLocked(conf)
       if (rebuilt.ok === false) return { mode: 'failed', reason: rebuilt.reason, scanErrors: rebuilt.scanErrors ?? [] }
       return { mode: 'full', reason: idx.state, count: rebuilt.entries.length }
     }
-    const entries = Array.isArray(idx.entries) ? idx.entries.slice() : []
+    const policy = readIndexPolicy(root)
+    const entries = Array.isArray(idx.entries) ? idx.entries.filter(e => !policyExcluded(policy, e.path)) : []
     const at = entries.findIndex((e) => e.path === relPath)
     if (action === 'remove') {
       if (at >= 0) entries.splice(at, 1)
@@ -1463,6 +1466,33 @@ export function createCore(cfg, logger) {
     return payload
   }
 
+  async function purgePolicyIndex({ expectedRoot, expectedKbId } = {}) {
+    const conf = await getConfigFresh(), root = kbRootOf(conf)
+    if (expectedRoot && await realpath(root) !== await realpath(expectedRoot) || expectedKbId && (await readMeta(root)).value?.kbId !== expectedKbId) throw Object.assign(new Error('知识库绑定已变化，未清理索引'), { code: 'BINDING_CHANGED' })
+    return withLock(root, () => withKbLock(root, 'index-policy-purge', async () => {
+      const current = await getConfigFresh()
+      if (kbRootOf(current) !== root || current.revision !== conf.revision) throw Object.assign(new Error('知识库绑定已变化，未清理索引'), { code: 'BINDING_CHANGED' })
+      const guard = await indexStorageGuard(root)
+      if (!guard.ok) throw Object.assign(new Error(guard.detail), { code: guard.reason })
+      const old = await readIndexState(indexPath(root)), policy = readIndexPolicy(root)
+      if (old.value?.meta?.kbId && old.value.meta.kbId !== (await readMeta(root)).value?.kbId) throw Object.assign(new Error('索引知识库身份不一致，未修改'), { code: 'index-kbid-mismatch' })
+      if (old.state === 'ok' && Array.isArray(old.value?.entries)) {
+        const entries = old.value.entries.filter(e => !policyExcluded(policy, e.path))
+        await commitIndex(indexPath(root), { generatedAt: nowIso(), entries, meta: await indexMetaOf(conf, entries) })
+      }
+      // Disposable index history must not retain excluded text or restore it later.
+      const directory = path.join(root, '.kbmeta', 'index', 'snapshots')
+      for (const name of await readdir(directory).catch(e => { if (e.code === 'ENOENT') return []; throw e })) {
+        if (!/^\d+-[a-f0-9]+\.json$/.test(name)) continue
+        const checked = await checkRealPath(root, path.join(directory, name))
+        if (!checked.ok) throw new Error(checked.detail)
+        await rm(path.join(directory, name))
+      }
+      indexCache.clear()
+      return { ok: true }
+    }))
+  }
+
   let maintenanceState = { state: 'idle', reason: null, lastCompletedAt: null, diff: null }
   const maintenanceStatus = () => ({ ...maintenanceState })
   async function maintainIndex({ expectedKbId, expectedRevision, paths = [], full = false, confirmDrop, knownRemovedPaths = [], automatic = false, signal } = {}) {
@@ -1552,7 +1582,8 @@ export function createCore(cfg, logger) {
       const disabled = { ...current, autoIndex: false, revision: (current.revision ?? 1) + 1, updatedAt: nowIso() }
       await atomicWrite(configFile, JSON.stringify(disabled, null, 2))
       config = disabled
-      await commitIndex(indexPath(root), r.value)
+      const entries = r.value.entries.filter(e => !policyExcluded(readIndexPolicy(root), e.path))
+      await commitIndex(indexPath(root), { ...r.value, entries, meta: await indexMetaOf(disabled, entries) })
       maintenanceState = { state: 'restored', reason: 'snapshot-restored', lastCompletedAt: nowIso() }
       return { ok: true, note: '仅恢复索引缓存，未恢复或修改原文；自动维护已关闭' }
     })) } finally { await releaseConfigLock(configLock.token) }
@@ -1819,6 +1850,7 @@ export function createCore(cfg, logger) {
         if (cand) { resume = cand; reqId = cand.requestId }
       }
       if (resume !== null) {
+        resume = { ...resume, path: resolveAssetPath(root, resume.path) }
         // F1：同一 requestId 的**不同 payload** 必须拒绝，而不是返回旧结果
         if (requestIdIn !== null && (resume.title !== titleIn || (typeof resume.contentHash === 'string' && resume.contentHash !== contentHash))) {
           await writeLog('warn', `create 拒绝：requestId=${reqId} 的 payload 与上次不同`)
@@ -1848,7 +1880,11 @@ export function createCore(cfg, logger) {
         }
       }
       const entryId = 'kb-' + crypto.randomBytes(4).toString('hex')
-      const dir = path.join(root, category)
+      const sources = (Array.isArray(args.source) ? args.source : args.source ? [args.source] : []).map(p => resolveAssetPath(root, p))
+      const source = sources.find(p => excludedSource(root, p)) || sources[0] || null
+      const excludeIndex = source && excludedSource(root, source)
+      const archiveCategory = excludeIndex ? EXCLUDED_PARTITION + '/' + category : category
+      const dir = path.join(root, archiveCategory)
       if (!isInside(root, dir)) return { ok: false, reason: 'path-escape', detail: category }
       // P1-A：分类目录若是链接/重解析点（或指到库外），拒绝写入
       const dirCheck = await checkRealPath(root, dir, { followLinks: conf.followLinks })
@@ -1881,10 +1917,11 @@ export function createCore(cfg, logger) {
         created: dayStamp,
         updated: dayStamp,
       }
-      if (args.source) data.source = args.source
+      if (source) data.source = sources.length > 1 ? sources : source
       await atomicWrite(file, buildFile(data, String(args.content ?? '').trimEnd() + '\n'))
       const buf = await readFile(file)
       const relPath = toPosix(path.relative(root, file))
+      for (const source of sources) await registerDerived(root, source, relPath, excludeIndex ? relPath.slice(EXCLUDED_PARTITION.length + 1) : relPath)
       const recId = reqId ?? entryId
       // P1-D/F：只更新自己那一条，不再整库重建；索引不可用才退回全量
       let indexMode = 'incremental'
@@ -1931,7 +1968,16 @@ export function createCore(cfg, logger) {
       if (index.state !== 'ok') {
         return { ok: false, reason: 'index-unavailable', detail: `索引状态=${index.state}；先跑 kb_check（rebuild）再更新` }
       }
-      const hit = index.entries.find((e) => e.entryId === args.entryId)
+      let hit = index.entries.find((e) => e.entryId === args.entryId)
+      if (!hit) {
+        for (const f of Object.values(readIndexPolicy(root).groups).flatMap(g => g.files)) {
+          if (!f.current.endsWith('.md')) continue
+          const checked = await checkRealPath(root, path.join(root, f.current))
+          if (!checked.ok) continue
+          const bytes = await readFile(path.join(root, f.current)).catch(e => { if (e.code === 'ENOENT') return null; throw e })
+          if (bytes && parseFrontmatter(bytes.toString('utf8')).data.id === args.entryId) { hit = { path: f.current }; break }
+        }
+      }
       if (!hit) return { ok: false, notFound: true, entryId: args.entryId, detail: '索引中没有这个 entryId' }
       if (path.isAbsolute(hit.path) || hit.path.includes('..') || !isInside(root, path.join(root, hit.path))) {
         await writeLog('warn', `拒绝越界路径 entryId=${args.entryId} path=${hit.path}`)
@@ -2000,6 +2046,9 @@ export function createCore(cfg, logger) {
         }
       }
       if (changed.length === 0) return { ok: false, reason: 'no-change', detail: 'update 需要 content 或 patch 至少一项' }
+      const sources = (Array.isArray(data.source) ? data.source : data.source ? [data.source] : []).map(p => resolveAssetPath(root, p))
+      if (sources.some(p => excludedSource(root, p)) && !policyExcluded(readIndexPolicy(root), hit.path, false)) return { ok: false, reason: 'excluded-source-requires-new-entry', detail: '排除索引的来源不能覆盖正常索引条目，请为该资料新建排除分区条目' }
+      for (const source of sources) await registerDerived(root, source, hit.path, hit.path.startsWith(EXCLUDED_PARTITION + '/') ? hit.path.slice(EXCLUDED_PARTITION.length + 1) : hit.path)
       data.updated = today()
       const backupDir = path.join(root, '.kbmeta', 'backups', nowIso().replace(/[:.]/g, '-'))
       await mkdir(backupDir, { recursive: true })
@@ -2044,6 +2093,7 @@ export function createCore(cfg, logger) {
     const query = String(args.query ?? '').trim()
     if (query === '') return { ok: false, reason: 'empty-query', hits: [], coverageNote: 'query 不能为空' }
     const lower = query.toLowerCase()
+    const searchPolicyRevision = readIndexPolicy(root).revision
 
     // 只读一次索引、只判一次新鲜度（P1 里这两步各读一遍索引）
     const snap = await indexSnapshot(conf)
@@ -2106,7 +2156,9 @@ export function createCore(cfg, logger) {
     } catch {
       /* 没有来源映射就不去重（宁多一条，不少一条） */
     }
-    const hits = deduped.slice(0, limit)
+    const currentPolicy = readIndexPolicy(root)
+    if (currentPolicy.revision !== searchPolicyRevision) return { ok: false, reason: 'index-policy-changed', hits: [], coverageNote: '索引排除策略已变化，请重新检索' }
+    const hits = deduped.filter(e => !policyExcluded(currentPolicy, e.path)).slice(0, limit)
     const coverageNote =
       (hits.length === 0 ? '未找到匹配内容。' : '') +
       (note ? note + ' ' : '') +
@@ -2346,7 +2398,7 @@ export function createCore(cfg, logger) {
   }
 
   return {
-    maintainIndex, maintenanceStatus, indexSnapshots,
+    maintainIndex, maintenanceStatus, indexSnapshots, purgePolicyIndex,
     loadConfig,
     getConfig,
     getConfigHealth,

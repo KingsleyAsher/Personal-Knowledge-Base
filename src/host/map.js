@@ -10,6 +10,7 @@
 import { readdir, stat } from 'node:fs/promises'
 import path from 'node:path'
 import { privateRootOf } from './fsindex.js'
+import { readIndexPolicy, policyExcluded } from './index-policy.js'
 
 export const MAP_RULES_VERSION = 'map-v2'
 export const DEFAULT_PRIVATE = ['00-画像', '30-人物关系']
@@ -40,6 +41,7 @@ async function walk(dir, ctx, rel = '') {
     }
     const full = path.join(dir, item.name)
     const relPath = rel ? rel + '/' + item.name : item.name
+    if (policyExcluded(ctx.policy, relPath)) continue
     if (isDir(item)) {
       ctx.dirs += 1
       await walk(full, ctx, relPath)
@@ -119,7 +121,7 @@ export async function buildMap(root, opts = {}) {
     }
   }
 
-  const ctx = { files: 0, dirs: 0, bytes: 0, links: 0, sections: new Map(), recent: [], skip, privateTop: new Set(privateDirs), errors: [] }
+  const ctx = { files: 0, dirs: 0, bytes: 0, links: 0, sections: new Map(), recent: [], skip, privateTop: new Set(privateDirs), errors: [], policy: readIndexPolicy(absRoot) }
   await walk(absRoot, ctx)
 
   const sections = [...ctx.sections.values()]

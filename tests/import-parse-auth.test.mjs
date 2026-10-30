@@ -27,7 +27,7 @@ test('kb_import parse rejects live ordinary agents before invoking import parsin
   assert.equal(calls, 0)
 })
 
-test('kb_import parse rejects impersonated, missing-H1, and unavailable-H1 callers', async () => {
+test('kb_import parse accepts verified desktop knowledge roots and rejects impersonation or unavailable H1', async () => {
   const liveGeneral = { id: 'agent-1', session: { header: { id: 'session-1', agentPreset: 'general' } } }
   const forgedKnowledge = { id: 'agent-1', session: { header: { id: 'session-forged', agentPreset: 'knowledge' } } }
   let calls = 0
@@ -52,10 +52,10 @@ test('kb_import parse rejects impersonated, missing-H1, and unavailable-H1 calle
     parseCaller: createParseCaller(name => name === 'agents' ? rootRegistry : name === 'h1Isolation' ? h1Ready : null, {}),
   })
   assert.equal(canceledResult.reason, 'PARSE_CANCELED')
-  assert.equal((await invoke(rootKnowledge, rootRegistry, null)).reason, 'H1_REQUIRED')
+  assert.equal((await invoke(rootKnowledge, rootRegistry, null)).ok, true)
   assert.equal((await invoke(rootKnowledge, rootRegistry, { getStatus: () => ({ ready: false, code: 'STOPPED' }) })).reason, 'H1_BACKEND_NOT_READY')
   assert.equal((await invoke(rootKnowledge, rootRegistry)).ok, true)
-  assert.equal(calls, 1)
+  assert.equal(calls, 2)
 })
 
 test('live knowledge grant can parse imports, preserves gate provenance, and ignores remembered provider IDs', async () => {

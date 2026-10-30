@@ -48,7 +48,9 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
   if(!Number.isInteger(maxConcurrentQueries)||maxConcurrentQueries<1||maxConcurrentQueries>16)throw fail('BAD_QUERY_LIMIT','并发检索预算须为1–16')
   const root = path.join(stateDir,'retrieval'), api = createRetrievalAPI({ credentials, fetcher })
   let stopped = false, running = null, watcher = null, watched = '', dirty = true, lastScan = 0, activeQueries = 0, job = { state: 'idle' }
-  const cache = createByteCache({maxBytes:128*1024*1024,sizeOf:d=>bytes(d.text)*2+d.rankingChunks.reduce((n,r)=>n+bytes(r.text)*2+512,0)+d.sections.length*512}), ranking=createRankingPool(), pendingVectors=new Map(), statusSnapshots=new Map(), traces=new Map()
+  const cache = createByteCache({maxBytes:128*1024*1024,sizeOf:d=>bytes(d.text)*2+d.rankingChunks.reduce((n,r)=>n+bytes(r.text)*2+512,0)+d.sections.length*512}), pendingVectors=new Map(), statusSnapshots=new Map(), traces=new Map()
+  let ranking = createRankingPool(), policyPurging = false
+  const queries = new Set()
   const manifests=createByteCache({maxBytes:64*1024*1024,maxEntries:4,sizeOf:v=>v.fileBytes*4+1024})
   const manifestMetrics={loads:0,hits:0}
   let rankingCatalog = null, sourceTimer = null, automaticPending = null
@@ -261,6 +263,7 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
     return job
   }
   async function start(b, force=false) {
+    if (policyPurging) return { state: 'waiting' }
     await ensureStorage(b)
     if (running) { dirty=true; return { ...job, running:true } }
     const config=await configuration(b)
@@ -528,6 +531,28 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
   }
   const timer=setInterval(()=>void automatic().catch(()=>{}),30000);timer.unref?.()
   return {
+    async purgePolicy(b) {
+      policyPurging = true
+      try {
+        const previous = await readJson(await safePath(b.root, '索引层/progress.json', { missing: true }), {})
+        if (running?.key === b.key) { running.controller.abort(); await running.promise }
+        for (const q of queries) q.abort()
+        ranking.dispose(); ranking = createRankingPool()
+        // Older manifests do not record every vector's source. Reclaim every
+        // generation rather than leave untraceable excluded vectors on disk.
+        await ensureStorage(b)
+        await locked(path.join(directory(b), 'build.lock'), async () => {
+          const rows = await readdir(await safePath(b.root, '索引层'), { withFileTypes: true })
+          for (const row of rows) if (/^[a-f0-9]{32}$/.test(row.name) || ['active.json','progress.json'].includes(row.name)) {
+            const target = await safePath(b.root, '索引层/' + row.name)
+            await rm(target, { recursive: row.isDirectory(), force: true })
+          }
+        })
+        const config = await configuration(b)
+        await atomicJson(path.join(directory(b), 'progress.json'), { state: previous.state === 'paused' ? 'paused' : config.enabled ? 'waiting' : 'disabled', ...(previous.state === 'paused' ? { code: previous.code } : {}) })
+        cache.clear(); manifests.clear(); statusSnapshots.clear(); traces.clear(); pendingVectors.clear(); invalidateComputations(); dirty = true
+      } finally { policyPurging = false }
+    },
     async expand(b,args){
       if(!visible(b,args.path))throw fail('PRIVATE_HIDDEN','资料不可见')
       const data=await documents(b), d=data.documents.find(x=>x.path===args.path)
@@ -541,10 +566,13 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
     reconcile,
     async search(b,args){
       if(stopped)throw fail('CANCELED','检索已关闭')
+      if(policyPurging)throw fail('SETTINGS_CHANGED','索引排除策略正在更新，请稍后重试')
       // Admit before catalog loading or API calls, not after each caller has
       // already materialized a large request and reached the ranking queue.
       if(activeQueries>=maxConcurrentQueries)throw fail('SEARCH_BUSY','并发检索已达工作预算，请稍后重试')
-      activeQueries++;try{return await (resources ? resources.foreground(() => search(b,args)) : search(b,args))}finally{activeQueries--}
+      const controller = new AbortController(); queries.add(controller)
+      const input = { ...args, signal: args.signal ? AbortSignal.any([args.signal, controller.signal]) : controller.signal }
+      activeQueries++;try{return await (resources ? resources.foreground(() => search(b,input)) : search(b,input))}finally{activeQueries--;queries.delete(controller)}
     },automatic,
     async dispatch(b,args,caller) {
       if(caller)throw fail('ADMIN_ONLY','检索服务配置与任务管理仅可在设置页操作')

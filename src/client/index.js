@@ -1,9 +1,13 @@
 // P1-G 客户端半边
 //   1) settings.section  → 设置里的「个人知识库」
 //   2) conversation.view → 顶栏页签「知识库」（简化版知识库地图，只读）
+//   3) main + sidebar.panellist → 会话目录列的「知识库」面板行；行与面板成对，共用 2) 的主界面
 // 契约抄自已安装插件（dsh-lorebookmd / dsh-client-ui-trajectory）：
 //   window.__ModuleLoader__.load({ id, factory })
 //   顶栏页签 = ctx.slots.register({ name:'conversation.view', id, order, label }, Component)
+//   会话目录行 = ctx.slots.register({ name:'main', key:面板 id }, Component)
+//               + ctx.slots.register({ name:'sidebar.panellist', id:同一个面板 id, order, label }, Icon)
+//   行上的 id 必须指向已登记的主区面板；主区键位缺失时宿主会抛错、当前选择不变。
 window.__ModuleLoader__.load({
   id: '@local/dsh-knowledge-base',
   factory: (require) => {
@@ -17,9 +21,10 @@ window.__ModuleLoader__.load({
     const e = react.createElement
     let workbenchUI = null
     // BEGIN GENERATED WORKBENCH UI
+    const KNOWLEDGE_UI_THEME = "/* Knowledge UI 2.3 — shared by the workbench and host settings.\n   Source: https://www.figma.com/design/9O89rqsKJ8ufkiPQGhqGTn\n   Embedded by sync-workbench-client.py; no runtime stylesheet request. */\n:root {\n  --kbw-bg: var(--dsw-alias-bg-base, #f4f6f8);\n  --kbw-surface: var(--dsw-alias-bg-elevated, #fff);\n  --kbw-fg: var(--dsw-alias-label-primary, #1d2935);\n  --kbw-muted: #647384;\n  --kbw-line: #e1e7ec;\n  --kbw-soft: #f7f9fb;\n  --kbw-accent: #176f60;\n  --kbw-accent-fg: #fff;\n  --kbw-accent-soft: #e9f4ef;\n  --kbw-danger: #b4433a;\n  --kbw-warning: #93651b;\n  --kbw-warning-soft: #fcf5e6;\n  --kbu-radius: 10px;\n  --kbu-control-height: 36px;\n  --kbu-font: 'Inter', 'Noto Sans SC', 'Microsoft YaHei', system-ui, sans-serif;\n}\nbody[data-ds-dark-theme] {\n  --kbw-bg: var(--dsw-alias-bg-base, #151a20);\n  --kbw-surface: var(--dsw-alias-bg-elevated, #1d242d);\n  --kbw-fg: var(--dsw-alias-label-primary, #edf2f7);\n  --kbw-muted: #a1afbf;\n  --kbw-line: #35414f;\n  --kbw-soft: #252e38;\n  --kbw-accent: #78cfb5;\n  --kbw-accent-fg: #102c24;\n  --kbw-accent-soft: #213c34;\n  --kbw-danger: #f5aaa2;\n  --kbw-warning: #e0b76f;\n  --kbw-warning-soft: #3d3322;\n}\n.kbw, .kbu-settings, .kbc-set, .kbc-parse-workspace, .kbm {\n  font-family: var(--kbu-font);\n  color: var(--kbw-fg);\n  font-size: 14px;\n  line-height: 1.65;\n  -webkit-font-smoothing: antialiased;\n}\n.kbw *, .kbu-settings * { box-sizing: border-box; }\n.kbw h2, .kbu-settings h2 { font-size: 25px; font-weight: 650; letter-spacing: -.6px; line-height: 1.4; }\n.kbw h3, .kbu-settings h3 { font-size: 17px; font-weight: 600; line-height: 1.5; letter-spacing: -.25px; }\n.kbw h4, .kbu-settings h4 { font-size: 14px; font-weight: 600; }\n.kbw .kbw-meta, .kbw .kbw-path, .kbu-settings .kbc-set-hint, .kbu-settings .kbc-parse-meta { color: var(--kbw-muted); opacity: 1; }\n.kbu-icon { display: inline-block; flex: 0 0 auto; width: 18px; height: 18px; vertical-align: middle; }\n.kbu-switch { position: relative; display: inline-flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 36px; margin: 0; cursor: pointer; font-size: 13px; }\n.kbu-switch-copy { display: flex; flex-direction: column; gap: 5px; min-width: 0; }\n.kbu-switch-copy small { font-size: 12px; font-weight: 400; color: var(--kbw-muted); }\n.kbu-switch input[type=checkbox] { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }\n.kbu-switch-track { position: relative; display: inline-block; width: 34px; height: 20px; flex: 0 0 34px; border-radius: 99px; background: var(--kbw-muted); transition: background .12s; }\n.kbu-switch-track::after { content: ''; position: absolute; width: 14px; height: 14px; top: 3px; left: 3px; border-radius: 50%; background: var(--kbw-surface); transition: transform .12s; }\n.kbu-switch input:checked+.kbu-switch-track { background: var(--kbw-accent); }\n.kbu-switch input:checked+.kbu-switch-track::after { transform: translateX(14px); background: var(--kbw-accent-fg); }\n.kbu-switch input:focus-visible+.kbu-switch-track { outline: 2px solid var(--kbw-accent); outline-offset: 3px; }\n.kbu-switch[data-disabled=true] { opacity: .45; cursor: not-allowed; }\n.kbu-preferences-fields>.kbu-switch { display: flex; width: 100%; padding: 12px 0; border-bottom: 1px solid var(--kbw-line); }\n.kbu-preferences-fields>.kbw-meta { margin: 8px 0 18px; }\n.kbw .kbu-inbox-card-actions .kbu-switch { min-width: 130px; margin-right: 8px; }\n.kbu-detail-policy { margin: 16px 0; padding: 14px 16px; background: var(--kbw-soft); border: 1px solid var(--kbw-line); border-radius: 8px; }\n.kbu-detail-policy .kbu-switch { display: flex; width: 100%; }\n.kbw .kbu-detail-policy p { margin: 8px 0 0; }\n.kbw .kbw-button, .kbw .kbc-btn, .kbu-settings .kbc-btn, .kbc-parse-workspace .kbc-btn {\n  display: inline-flex; align-items: center; justify-content: center; gap: 7px;\n  height: var(--kbu-control-height); min-height: var(--kbu-control-height);\n  padding: 0 13px; border: 1px solid var(--kbw-line); border-radius: 8px;\n  background: var(--kbw-surface); color: var(--kbw-fg);\n  font: 500 13px/1.25 var(--kbu-font); text-decoration: none;\n  white-space: nowrap; cursor: pointer; box-shadow: none; opacity: 1;\n  transition: background .12s, border-color .12s, color .12s;\n}\n.kbw .kbw-button:hover:enabled, .kbw .kbc-btn:hover:enabled, .kbu-settings .kbc-btn:hover:enabled {\n  background: var(--kbw-soft); border-color: var(--kbw-muted); box-shadow: none;\n}\n.kbw .kbw-button.kbw-primary, .kbw .kbc-btn.kbc-btn-primary, .kbu-settings .kbc-btn.kbc-btn-primary,\n.kbw .kbw-button.kbw-primary:hover:enabled, .kbw .kbc-btn.kbc-btn-primary:hover:enabled, .kbu-settings .kbc-btn.kbc-btn-primary:hover:enabled {\n  background: var(--kbw-accent); border-color: var(--kbw-accent); color: var(--kbw-accent-fg); filter: none;\n}\n.kbw button:disabled, .kbu-settings button:disabled { opacity: .45; cursor: not-allowed; }\n.kbw :focus-visible, .kbu-settings :focus-visible { outline: 2px solid var(--kbw-accent); outline-offset: 3px; }\n.kbw input:not([type=checkbox]):not([type=file]), .kbw select, .kbw textarea,\n.kbu-settings .kbc-set-input, .kbu-settings .kbc-parse-inline, .kbu-settings .kbf-ta {\n  height: var(--kbu-control-height); min-height: var(--kbu-control-height);\n  padding: 7px 11px; border: 1px solid var(--kbw-line); border-radius: 8px;\n  background: var(--kbw-surface); color: var(--kbw-fg); font: 13px/1.5 var(--kbu-font);\n  box-shadow: none; min-width: 0; max-width: 100%;\n}\n.kbw textarea, .kbu-settings textarea.kbc-set-input, .kbu-settings .kbf-ta { height: auto; min-height: 108px; resize: vertical; }\n.kbw input::placeholder, .kbw textarea::placeholder, .kbu-settings input::placeholder { color: var(--kbw-muted); opacity: .85; }\n.kbw input:focus, .kbw select:focus, .kbw textarea:focus, .kbu-settings .kbc-set-input:focus { border-color: var(--kbw-accent); box-shadow: none; }\n.kbw input[type=checkbox], .kbu-settings input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--kbw-accent); }\n.kbw select option, .kbu-settings select option { background: var(--kbw-surface); color: var(--kbw-fg); }\n.kbw .kbw-field { margin: 0 0 16px; gap: 6px; min-width: 0; }\n.kbw .kbw-field>span { font-size: 13px; font-weight: 500; }\n.kbw .kbw-check { font-size: 13px; gap: 10px; line-height: 1.6; }\n.kbw .kbw-actions, .kbu-settings .kbc-set-actions, .kbu-settings .kbc-parse-actions { gap: 8px; align-items: center; }\n.kbw .kbw-app-header {\n  min-height: 76px; padding: 18px 28px; gap: 24px;\n  background: var(--kbw-surface); border-bottom: 1px solid var(--kbw-line);\n}\n.kbw .kbw-brand { gap: 12px; align-items: center; }\n.kbw .kbw-brand strong { font-size: 19px; letter-spacing: -.4px; }\n.kbw .kbu-brand-mark { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 9px; background: var(--kbw-accent); color: var(--kbw-accent-fg); }\n.kbw .kbw-brand .kbw-meta { display: block; font-size: 10px; line-height: 1.2; letter-spacing: 1px; }\n.kbw .kbw-global-search { max-width: 420px; gap: 8px; }\n.kbw .kbw-nav { padding: 9px 24px; gap: 4px; min-height: 54px; background: var(--kbw-surface); }\n.kbw .kbw-nav .kbw-button { height: 34px; min-height: 34px; padding: 0 14px; color: var(--kbw-muted); border-color: transparent; background: transparent; }\n.kbw .kbw-nav .kbw-button[aria-current=true] { background: var(--kbw-accent-soft); color: var(--kbw-accent); border-color: transparent; }\n.kbw .kbw-nav .kbw-button:hover:enabled { background: var(--kbw-soft); border-color: transparent; }\n.kbw .kbw-status { min-height: 36px; padding: 6px 28px; font-size: 11px; background: var(--kbw-bg); border-color: var(--kbw-line); }\n.kbw .kbw-status .kbw-button { height: 24px; min-height: 24px; font-size: 11px; padding: 0 8px; }\n.kbw .kbw-update-bar:empty { display: none; }\n.kbw .kbw-content { padding: 30px 32px max(40px,var(--kbw-composer-inset,40px)); }\n.kbw .kbw-form { max-width: 1120px; }\n.kbw .kbw-home { max-width: 1240px; padding-top: 4px; }\n.kbw .kbw-home-head { align-items: center; margin-bottom: 24px; }\n.kbw .kbw-home-head h2 { font-size: 25px; margin-bottom: 7px; }\n.kbw .kbw-home-head p { margin: 0; }\n.kbw .kbw-section, .kbw .kbw-card, .kbw .kbw-panel, .kbu-settings-card {\n  border: 1px solid var(--kbw-line); border-radius: var(--kbu-radius);\n  background: var(--kbw-surface); box-shadow: none;\n}\n.kbw .kbw-section { min-height: 116px; padding: 20px; gap: 10px; }\n.kbw .kbw-section:hover, .kbw .kbw-card:hover, .kbw .kbw-card[aria-current=true] { background: var(--kbw-soft); border-color: var(--kbw-accent); }\n.kbw .kbw-card { padding: 20px; min-height: 148px; }\n.kbw .kbw-panel { padding: 24px; }\n.kbw .kbw-panel>h3 { margin-top: 0; }\n.kbw .kbw-row { border-bottom-color: var(--kbw-line); }\n.kbw .kbw-detail { background: var(--kbw-surface); }\n.kbw .kbw-toolbar { padding: 16px 28px; background: var(--kbw-surface); gap: 10px; }\n.kbw .kbw-tree { background: var(--kbw-surface); }\n.kbw .kbw-network-workspace, .kbw .kbw-split.kbw-master-detail { border-radius: var(--kbu-radius); border-color: var(--kbw-line); }\n.kbw .kbw-network-inspector { background: var(--kbw-surface); }\n.kbu-page-head { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-bottom: 24px; }\n.kbu-page-head h2 { margin: 0 0 8px; }\n.kbu-page-head p { margin: 0; color: var(--kbw-muted); }\n.kbu-page-icon { color: var(--kbw-accent); }\n.kbu-chip { display: inline-flex; align-items: center; gap: 6px; border-radius: 6px; padding: 3px 9px; font-size: 11px; font-weight: 500; line-height: 1.7; background: var(--kbw-accent-soft); color: var(--kbw-accent); white-space: nowrap; }\n.kbu-chip[data-tone=warning] { background: var(--kbw-warning-soft); color: var(--kbw-warning); }\n.kbw .kbu-dropzone { display: flex; align-items: center; gap: 20px; min-height: 142px; padding: 28px; margin: 0 0 16px; border-style: dashed; background: var(--kbw-surface); }\n.kbw .kbu-dropzone[data-dragging=true] { background: var(--kbw-accent-soft); border-color: var(--kbw-accent); }\n.kbu-drop-icon { display: grid; place-items: center; width: 44px; height: 44px; flex: 0 0 auto; color: var(--kbw-accent); background: var(--kbw-accent-soft); border-radius: 10px; }\n.kbu-drop-icon .kbu-icon { width: 24px; height: 24px; }\n.kbu-drop-copy { flex: 1; min-width: 0; }\n.kbu-drop-copy strong { font-size: 16px; font-weight: 600; }\n.kbw .kbu-drop-copy p { margin: 8px 0 0; font-size: 12px; }\n.kbw .kbu-file-picker { position: relative; overflow: hidden; flex-shrink: 0; margin: 0; }\n.kbw .kbu-file-picker input[type=file] { position: absolute; inset: 0; width: 100%; height: 100%; min-height: 0; opacity: 0; cursor: pointer; padding: 0; }\n.kbw .kbu-file-picker[aria-disabled=true] { opacity: .45; cursor: not-allowed; }\n.kbw .kbw-inbox-controls { padding: 20px 24px; margin: 0 0 24px; background: var(--kbw-surface); border: 1px solid var(--kbw-line); border-radius: var(--kbu-radius); gap: 10px; align-items: flex-end; }\n.kbw .kbw-inbox-controls>.kbw-field { flex: 1 1 280px; max-width: 410px; margin-bottom: 0; }\n.kbw .kbw-inbox-controls .kbw-field select { width: 100%; }\n.kbw .kbw-inbox-controls .kbu-chip { margin: 0 auto 4px 4px; }\n.kbw .kbu-inbox-guidance { margin-top: -10px; margin-bottom: 24px; }\n.kbw .kbu-inbox-list-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 26px 0 8px; }\n.kbw .kbu-inbox-list-head h3 { margin: 0; display: flex; align-items: center; gap: 12px; }\n.kbw .kbu-batch-actions { margin: 16px 0 12px; padding: 10px 12px; border-radius: 8px; background: var(--kbw-soft); }\n.kbw .kbu-batch-actions>.kbw-button { background: transparent; }\n.kbw .kbw-inbox-card { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin: 10px 0 0; padding: 18px 20px; }\n.kbw .kbu-inbox-file { display: flex; align-items: center; gap: 14px; flex: 1 1 280px; min-width: 0; }\n.kbw .kbu-file-mark { display: grid; place-items: center; width: 42px; height: 42px; flex: 0 0 auto; background: var(--kbw-soft); color: var(--kbw-muted); border-radius: 9px; font: 600 10px/1 var(--kbu-font); text-transform: uppercase; }\n.kbw .kbu-inbox-file-copy { min-width: 0; flex: 1; }\n.kbw .kbu-inbox-file-copy strong { display: block; font-size: 14px; font-weight: 550; overflow-wrap: anywhere; }\n.kbw .kbu-inbox-file-copy .kbw-path { display: block; margin-top: 4px; font-size: 10px; }\n.kbw .kbu-inbox-file-copy p { margin: 5px 0 0; }\n.kbw .kbu-inbox-card-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }\n.kbw .kbu-inbox-card-actions .kbw-button[aria-pressed=true] { color: var(--kbw-warning); background: var(--kbw-warning-soft); border-color: transparent; }\n.kbw .kbu-notice, .kbw .kbc-set-msg, .kbu-settings .kbc-set-msg { padding: 12px 16px; border-radius: 8px; color: var(--kbw-fg); background: var(--kbw-accent-soft); font-size: 13px; line-height: 1.7; opacity: 1; overflow-wrap: anywhere; }\n.kbw .kbw-error { padding: 12px 16px; color: var(--kbw-danger); font-size: 13px; }\n.kbw .kbw-service { border-color: var(--kbw-line); border-radius: var(--kbu-radius); padding: 18px 20px; background: var(--kbw-surface); }\n.kbw details>summary, .kbu-settings details>summary { cursor: pointer; color: var(--kbw-muted); font-size: 13px; line-height: 1.6; padding: 10px 0; }\n.kbw details[open]>summary, .kbu-settings details[open]>summary { color: var(--kbw-fg); margin-bottom: 12px; }\n.kbw .kbw-clipper-help { margin-top: 16px; }\n.kbw .kbw-settings-layout { grid-template-columns: 196px minmax(0,1fr); gap: 24px; align-items: start; max-width: 1200px; }\n.kbw .kbw-settings-nav { padding: 10px; border: 1px solid var(--kbw-line); border-radius: var(--kbu-radius); background: var(--kbw-surface); gap: 4px; }\n.kbw .kbw-settings-nav .kbw-button { justify-content: flex-start; border-color: transparent; background: transparent; color: var(--kbw-muted); white-space: normal; height: auto; min-height: 38px; }\n.kbw .kbw-settings-nav .kbw-button[aria-current=true] { background: var(--kbw-accent-soft); color: var(--kbw-accent); border-color: transparent; }\n.kbw .kbw-settings-panel { min-width: 0; padding: 0; border: 0; background: transparent; }\n.kbw .kbu-setting-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; padding: 16px 0; border-bottom: 1px solid var(--kbw-line); }\n.kbw .kbu-setting-row:last-of-type { border-bottom: 0; }\n.kbw .kbu-setting-row strong { display: block; font-size: 14px; font-weight: 500; }\n.kbw .kbu-setting-row p { margin: 4px 0 0; }\n.kbw .kbu-field-grid { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 0 20px; }\n.kbw .kbu-index-state { margin-top: 20px; padding: 16px 18px; border: 1px solid var(--kbw-line); border-radius: 8px; background: var(--kbw-soft); }\n.kbw .kbu-index-state p { margin: 0 0 10px; font-size: 13px; }\n.kbw .kbu-index-state p:last-child { margin-bottom: 0; }\n.kbw progress { width: 100%; height: 6px; accent-color: var(--kbw-accent); border: 0; border-radius: 4px; }\n.kbw progress::-webkit-progress-bar { background: var(--kbw-line); border-radius: 4px; }\n.kbw progress::-webkit-progress-value { background: var(--kbw-accent); border-radius: 4px; }\n.kbu-settings.kbw-global-settings { padding: 4px 0 24px; margin: 0; border: 0; background: transparent; width: 100%; max-width: 1120px; }\n.kbu-settings .kbu-page-head { margin: 0 0 22px; }\n.kbu-settings .kbu-page-head h2 { margin: 0 0 6px; }\n.kbu-settings .kbu-settings-links { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }\n.kbu-settings .kbc-set { padding: 0; gap: 20px; background: transparent; }\n.kbu-settings [hidden] { display: none!important; }\n.kbu-fieldset { border: 0; padding: 0; margin: 0 0 20px; min-width: 0; }\n.kbu-fieldset:disabled { opacity: .65; }\n.kbu-settings .kbu-settings-card { padding: 24px; }\n.kbu-settings .kbu-settings-card>header { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 20px; }\n.kbu-settings .kbu-settings-card>header h3 { margin: 0; }\n.kbu-settings .kbu-settings-card>header p { margin: 6px 0 0; font-size: 12px; color: var(--kbw-muted); }\n.kbu-settings .kbc-set-intro { display: none; }\n.kbu-settings .kbc-set-info { gap: 10px; margin-bottom: 18px; }\n.kbu-settings .kbc-set-row { align-items: flex-start; font-size: 13px; gap: 20px; }\n.kbu-settings .kbc-set-key { min-width: 92px; color: var(--kbw-muted); opacity: 1; }\n.kbu-settings .kbc-set-val { min-width: 0; overflow-wrap: anywhere; word-break: normal; }\n.kbu-settings .kbc-set-h { font-size: 16px; font-weight: 600; color: var(--kbw-fg); margin: 4px 0 14px; opacity: 1; }\n.kbu-settings .kbc-set-hint { font-size: 12px; line-height: 1.75; margin: 10px 0 0; }\n.kbu-settings .kbc-set-plan { padding: 16px; border: 1px solid var(--kbw-line); background: var(--kbw-soft); border-radius: 8px; gap: 8px; margin-top: 16px; }\n.kbu-settings .kbc-parse-workspace { margin-top: 0; padding: 24px; max-width: none; border: 1px solid var(--kbw-line); border-radius: var(--kbu-radius); background: var(--kbw-surface); }\n.kbu-settings .kbc-workspace-heading h3 { font-size: 18px; }\n.kbu-settings .kbc-workspace-heading p, .kbu-settings .kbc-parse-meta { color: var(--kbw-muted); opacity: 1; }\n.kbu-settings .kbc-parse-row, .kbu-settings .kbc-parse-form { border-color: var(--kbw-line); border-radius: 8px; background: var(--kbw-soft); }\n.kbu-settings .kbc-parse-badge { background: var(--kbw-accent-soft); color: var(--kbw-accent); border: 0; opacity: 1; }\n.kbu-settings .kbc-kind-tabs { border-bottom-color: var(--kbw-line); gap: 6px; }\n.kbu-settings .kbc-kind-tab { padding: 10px 16px; opacity: 1; color: var(--kbw-muted); }\n.kbu-settings .kbc-kind-tab.selected { color: var(--kbw-accent); border-color: var(--kbw-accent); }\n.kbu-settings .kbc-pane-tab { opacity: 1; color: var(--kbw-muted); }\n.kbu-settings .kbc-pane-tab.selected { color: var(--kbw-accent); background: var(--kbw-accent-soft); }\n.kbu-settings .kbc-set-input option, .kbu-settings .kbc-parse-inline option { background: var(--kbw-surface); color: var(--kbw-fg); }\nbody .kbu-settings .kbc-btn.kbc-btn-ghost { color: var(--kbw-fg); background: var(--kbw-surface); border-color: var(--kbw-line); }\n.kbu-bind-row { display: flex; flex-direction: column; align-items: stretch; gap: 16px; }\n.kbu-bind-field { display: grid; gap: 6px; min-width: 0; font-size: 13px; }\n.kbu-bind-row .kbc-set-actions { margin: 0; align-self: flex-start; }\n.kbu-directory-field { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; margin-bottom: 20px; }\n.kbw .kbu-directory-field>.kbw-field { width: 100%; margin-bottom: 0; }\n.kbu-settings .kbw-global-settings { margin: 0!important; padding: 0; background: transparent; }\n.kbu-settings .kbw-global-settings>.kbw-panel { margin: 0; }\n.kbw .kbf-row, .kbw .kbf-form, .kbw .kbf-run, .kbw .kbc-parse-row { border-color: var(--kbw-line); background: var(--kbw-surface); border-radius: var(--kbu-radius); }\n.kbw .kbf-name { font-weight: 600; }\n.kbw .kbf-desc, .kbw .kbf-trig, .kbw .kbm-sub { color: var(--kbw-muted); opacity: 1; }\n.kbw .kbf-state { background: var(--kbw-soft); color: var(--kbw-muted); opacity: 1; }\n.kbw .kbf-state.on { background: var(--kbw-accent-soft); color: var(--kbw-accent); }\n.kbw .kbw-modal { border-color: var(--kbw-line); border-radius: 14px; background: var(--kbw-surface); }\n.kbw .kbw-modal>.kbw-actions:last-child { background: var(--kbw-surface); }\n@container(max-width:1000px) {\n  .kbw .kbw-app-header { gap: 16px; padding: 16px 20px; }\n  .kbw .kbw-brand .kbw-meta { display: none; }\n  .kbw .kbw-settings-layout { grid-template-columns: 176px minmax(0,1fr); gap: 16px; }\n  .kbw .kbw-inbox-controls .kbu-chip { margin-right: 0; }\n}\n/* Desktop host dialogs have a narrow content pane even on a wide display. */\n@container(max-width:850px) {\n  .kbw .kbw-settings-layout { grid-template-columns: minmax(0,1fr); gap: 20px; }\n  .kbw .kbw-settings-nav { flex-direction: row; flex-wrap: wrap; overflow: visible; min-width: 0; }\n  .kbw .kbw-settings-nav .kbw-button { flex: 1 1 150px; min-width: 0; justify-content: center; }\n  .kbw .kbu-field-grid { grid-template-columns: minmax(0,1fr); }\n  .kbu-settings .kbu-settings-card, .kbu-settings .kbc-parse-workspace { padding: 20px; }\n  .kbu-settings .kbc-set-row { gap: 12px; }\n  .kbu-settings .kbc-set-key { min-width: 80px; }\n}\n@media(prefers-reduced-motion:reduce) {\n  .kbw *, .kbu-settings * { transition: none!important; scroll-behavior: auto!important; }\n}\n"
     // Embedded into the existing client factory by tools/sync-workbench-client.py.
     // Uses the host's React and services; no second React runtime or remote scripts.
-    function createWorkbenchUI({ react: R, e, api: rawApi, ctx: getContext, Overview, Flows, Parsing, BuildBadge, version, projectRecordUrl, portal, ReferenceChip }) {
+    function createWorkbenchUI({ react: R, e, api: rawApi, ctx: getContext, Overview, Flows, Parsing, BuildBadge, version, projectRecordUrl, portal, ReferenceChip, organizeInbox, themeCss = '' }) {
       const api = async (body, signal) => {
         if (signal?.aborted) throw new Error('操作已取消')
         const out = await rawApi(body)
@@ -44,6 +49,24 @@ window.__ModuleLoader__.load({
         return { schedule, dispose() { disposed = true;clearTimeout(timer);clearInterval(fallback);window.removeEventListener('focus', wake);document.removeEventListener('visibilitychange', wake) } }
       }
       const btn = (label, action, disabled = false, extra = {}) => e('button', { type: 'button', className: 'kbw-button', onClick: action, disabled, ...extra }, label)
+      function UiIcon({ name, size = 18 }) {
+        const paths = {
+          book: ['M4 4h6a3 3 0 0 1 3 3v14a4 4 0 0 0-4-2H4z', 'M20 4h-4a3 3 0 0 0-3 3', 'M20 4v15h-3a4 4 0 0 0-4 2'],
+          upload: ['M12 16V4', 'm7 9 5-5 5 5', 'M4 16v4h16v-4'],
+          inbox: ['M4 4h16v16H4z', 'M4 13h5l2 3h2l2-3h5'],
+          settings: ['M9 4h6l1 3 3 1 2 5-2 4-3 1-1 3H9l-1-3-3-1-2-4 2-5 3-1z', 'M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0'],
+          shield: ['M12 3 4 6v6c0 5 8 9 8 9s8-4 8-9V6z', 'm9 12 2 2 4-4'],
+          folder: ['M3 7V5h7l2 3h9v12H3z'],
+          trash: ['M3 6h18', 'M9 3h6', 'M6 6l1 15h10l1-15', 'M10 10v7', 'M14 10v7'],
+        }
+        return e('svg', { className: 'kbu-icon', width: size, height: size, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.65, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true }, (paths[name] || paths.folder).map((d, i) => e('path', { key: i, d })))
+      }
+      function ToggleField({ label, ariaLabel = label, checked, disabled = false, onChange, description = '' }) {
+        return e('label', { className: 'kbu-switch', 'data-disabled': disabled },
+          e('span', { className: 'kbu-switch-copy' }, e('span', null, label), description ? e('small', null, description) : null),
+          e('input', { type: 'checkbox', role: 'switch', 'aria-label': ariaLabel, 'aria-checked': Boolean(checked), checked: Boolean(checked), disabled, onChange: ev => onChange(ev.target.checked) }),
+          e('span', { className: 'kbu-switch-track', 'aria-hidden': true }))
+      }
       const field = (label, value, change, props = {}) => e('label', { className: 'kbw-field' }, e('span', null, label), e('input', { value: value ?? '', onChange: ev => change(ev.target.value), ...props }))
       const check = (label, value, change, disabled = false) => e('label', { className: 'kbw-check' }, e('input', { type: 'checkbox', checked: Boolean(value), onChange: ev => change(ev.target.checked), disabled }), label)
       const select = (label, value, change, values) => e('label', { className: 'kbw-field' }, e('span', null, label), e('select', { 'aria-label': label, value, onChange: ev => change(ev.target.value) }, values.map(([v, l]) => e('option', { key: v, value: v }, l))))
@@ -74,6 +97,8 @@ window.__ModuleLoader__.load({
     .kbw .kbw-button,.kbc-set .kbc-btn,.kbc-parse-workspace .kbc-btn,.kbc-btn.kbc-btn-ghost,.kbf .kbf-btn{height:36px;min-height:36px;display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:0 13px;border:1px solid var(--kbw-line);border-radius:7px;background:var(--kbw-surface);color:var(--kbw-fg);font:500 13px/1.3 system-ui,sans-serif;white-space:nowrap;cursor:pointer;flex-shrink:0;text-decoration:none}
     .kbw .kbw-button:hover:enabled,.kbc-set .kbc-btn:hover:enabled{background:var(--kbw-soft);border-color:var(--kbw-muted)}
     .kbw .kbw-button[aria-current=true],.kbw .kbw-primary,.kbc-set .kbc-btn-primary,.kbc-parse-workspace .kbc-btn-primary,.kbc-btn.kbc-btn-primary{color:var(--kbw-accent-fg);background:var(--kbw-accent);border-color:var(--kbw-accent)}
+    .kbw .kbw-button.kbw-primary:hover:enabled{color:var(--kbw-accent-fg);background:var(--kbw-accent);border-color:var(--kbw-accent);filter:brightness(.95)}
+    .kbw .kbw-inbox-controls{align-items:flex-end;gap:8px;margin:16px 0}.kbw .kbw-inbox-controls>.kbw-field{margin:0;min-width:0;max-width:100%}.kbw .kbw-inbox-controls :is(select,.kbw-button){height:36px;min-height:36px;box-sizing:border-box}
     .kbw button:disabled,.kbc-btn:disabled{opacity:.48;cursor:not-allowed}.kbw :focus-visible{outline:2px solid var(--kbw-accent);outline-offset:3px}.kbw button{font:inherit}.kbw input,.kbw select,.kbw textarea{font:inherit;color:var(--kbw-fg)}
     .kbw input:not([type=checkbox]),.kbw select,.kbw textarea,.kbc-set .kbc-set-input,.kbc-parse-inline{height:36px;min-height:36px;background:var(--kbw-surface);border:1px solid var(--kbw-line);border-radius:7px;padding:6px 10px;min-width:0;max-width:100%;color:var(--kbw-fg)}
     .kbw textarea{height:auto;min-height:120px;resize:vertical}.kbw input[type=checkbox]{accent-color:var(--kbw-accent);width:16px;height:16px;flex-shrink:0}.kbw input[type=file]{height:auto;min-height:40px}.kbw select option{background:var(--kbw-surface);color:var(--kbw-fg)}
@@ -167,6 +192,7 @@ window.__ModuleLoader__.load({
           + '.kbw .kbw-relations[data-fullscreen="true"] .kbw-network-inspector{max-height:none;height:100%}\n'
           + '.kbw .kbw-relations[data-fullscreen="true"] .kbw-network-stage .kbw-graph{height:100%;min-height:0;flex:1}\n'
 
+        style.textContent += '\n' + themeCss
         document.head.appendChild(style)
       }
       let eventsStarted = false, eventSource = null
@@ -285,25 +311,41 @@ window.__ModuleLoader__.load({
           e('li', null, '希望稍后复习时，点击“加入回顾”。返回来源时会尝试定位；原文变化或定位失败会明确提示。')))
       }
 
-      function PreferencesFields({ prefs, setPrefs }) {
+      function DirectoryField({ label, value, onChange, disabled = false }) {
+        const [picking, setPicking] = R.useState(false), [error, setError] = R.useState('')
+        const choose = async () => {
+          setPicking(true); setError('')
+          try { const result = await api({ op: 'pick-dir' }); if (result.path) onChange(result.path) }
+          catch (err) { setError(err.message) } finally { setPicking(false) }
+        }
+        return e('div', { className: 'kbu-directory-field' }, field(label, value, onChange, { disabled: disabled || picking, placeholder: '选择文件夹或输入完整路径' }),
+          btn(picking ? '选择中…' : '选择文件夹', () => void choose(), disabled || picking, { 'aria-label': '选择' + label + '文件夹' }),
+          error ? e('p', { className: 'kbw-error', role: 'alert' }, error) : null)
+      }
+
+      function PreferencesFields({ prefs, setPrefs, scope = 'all' }) {
         const patch = part => setPrefs(old => ({ ...old, ...part }))
         const backup = part => setPrefs(old => ({ ...old, backup: { ...old.backup, ...part } }))
-        return e('div', null,
-          check('回答后显示知识库检索过程', prefs.showRetrievalProcess!==false, value => patch({ showRetrievalProcess: value })),
-          check('展示隐私内容', prefs.showPrivate, value => patch({ showPrivate: value, ...!value ? { allowPrivateQuestions: false } : {} })),
+        const toggle = (label, checked, onChange, disabled = false) => e(ToggleField, { label, checked, onChange, disabled })
+        return e('div', { className: 'kbu-preferences-fields' },
+          scope !== 'backup' ? e(R.Fragment, null,
+          toggle('回答后显示知识库检索过程', prefs.showRetrievalProcess!==false, value => patch({ showRetrievalProcess: value })),
+          toggle('展示隐私内容', prefs.showPrivate, value => patch({ showPrivate: value, ...!value ? { allowPrivateQuestions: false } : {} })),
           e('p', { className: 'kbw-meta' }, '按当前知识库保存，同一宿主 profile 的连接客户端共同生效。关闭后只显示隐私分区统计。'),
-          check('允许知识库提问使用隐私内容', prefs.allowPrivateQuestions, value => patch({ allowPrivateQuestions: value }), !prefs.showPrivate),
-          e('p', { className: 'kbw-meta' }, '启用后，相关私密片段可能发送给当前选择的模型。已生成的聊天记录不随开关删除。'),
-          check('自动完整备份', prefs.backup.enabled, value => backup({ enabled: value })),
+          toggle('允许知识库提问使用隐私内容', prefs.allowPrivateQuestions, value => patch({ allowPrivateQuestions: value }), !prefs.showPrivate),
+          e('p', { className: 'kbw-meta' }, '启用后，相关私密片段可能发送给当前选择的模型。已生成的聊天记录不随开关删除。')) : null,
+          scope !== 'preferences' ? e(R.Fragment, null,
+          toggle('自动完整备份', prefs.backup.enabled, value => backup({ enabled: value })),
           prefs.backup.enabled ? e('div', null,
-            field('库外备份目录', prefs.backup.directory, value => backup({ directory: value }), { placeholder: '选择一个库外备份目录' }),
+            e(DirectoryField, { label: '库外备份目录', value: prefs.backup.directory, onChange: value => backup({ directory: value }) }),
             select('备份频率', prefs.backup.frequency, value => backup({ frequency: value }), [['daily', '每天'], ['weekly', '每周']]),
             check('备份包含隐私资料', prefs.backup.includePrivate, value => backup({ includePrivate: value })),
-            e('p', { className: 'kbw-meta' }, '本地保存，保留最近 7 份每日、4 份每周备份；不包含宿主密钥。')) : e('p', { className: 'kbw-meta' }, '已关闭自动完整备份。仍可手动执行单次备份或导出。索引快照与写前保护副本另行维护。'),
-          check('采集后自动提交解析', prefs.autoParse, value => patch({ autoParse: value })),
-          check('开启回顾提醒', prefs.reviewReminders, value => patch({ reviewReminders: value })),
+            e('p', { className: 'kbw-meta' }, '本地保存，保留最近 7 份每日、4 份每周备份；不包含宿主密钥。')) : e('p', { className: 'kbw-meta' }, '已关闭自动完整备份。仍可手动执行单次备份或导出。索引快照与写前保护副本另行维护。')) : null,
+          scope !== 'backup' ? e(R.Fragment, null,
+          toggle('采集后自动提交解析', prefs.autoParse, value => patch({ autoParse: value })),
+          toggle('开启回顾提醒', prefs.reviewReminders, value => patch({ reviewReminders: value })),
           prefs.reviewReminders ? select('回顾频率', prefs.reviewFrequency, value => patch({ reviewFrequency: value }), [['daily', '每天'], ['weekly', '每周']]) : null,
-          select('默认进入页面', prefs.landing, value => patch({ landing: value }), [['map', '资料目录'], ['overview', '总览'], ['remember', '记住上次页面']]))
+          select('默认进入页面', prefs.landing, value => patch({ landing: value }), [['map', '资料目录'], ['overview', '总览'], ['remember', '记住上次页面']])) : null)
       }
 
       const relationLabel = type => ({ source: '来源', reference: '引用', manual: '手动关联', directory: '目录归属' }[type] || '关联')
@@ -579,6 +621,7 @@ window.__ModuleLoader__.load({
       }
 
       function Detail({ file, snapshot, onClose, onNavigate, onChanged, readMode = false, annotationId = '' }) {
+        const [policyBusy, setPolicyBusy] = R.useState(false)
         const [detail, setDetail] = R.useState(null), [error, setError] = R.useState(''), [media, setMedia] = R.useState(null), [quote, setQuote] = R.useState(''), [note, setNote] = R.useState(''), [page, setPage] = R.useState(1), [important, setImportant] = R.useState(false)
         const [target, setTarget] = R.useState(''), [matches, setMatches] = R.useState([]), [relations, setRelations] = R.useState(null), [readingState, setReadingState] = R.useState('reading'), [region, setRegion] = R.useState(null), [notice, setNotice] = R.useState('')
         const selection = R.useRef(null), sequence = R.useRef(0)
@@ -642,6 +685,12 @@ window.__ModuleLoader__.load({
             btn('系统打开', async () => { try { await api({ op: 'atlas.file-action', ...base, path: file, action: 'open' }) } catch(e) { setError(e.message) } }),
             btn('文件夹中显示', async () => { try { await api({ op: 'atlas.file-action', ...base, path: file, action: 'reveal' }) } catch(e) { setError(e.message) } })),
           e(DeleteFile, { file: detail.file, snapshot, onDeleted: onChanged }),
+          detail.file.canDelete ? e('div', { className: 'kbu-detail-policy' }, e(ToggleField, { label: '排除索引', checked: detail.file.excludedFromIndex, disabled: policyBusy, onChange: async excluded => {
+            if (policyBusy) return
+            setPolicyBusy(true); setError('')
+            try { const result = await api({ op: 'index.policy.set', expectedKbId: snapshot.kbId, paths: [file], excluded }); await onChanged({ revealPath: result.mapping[file] || file }) }
+            catch (err) { setError(err.message) } finally { setPolicyBusy(false) }
+          } }), e('p', { className: 'kbw-meta' }, policyBusy ? '正在更新索引、关系链条与归档位置…' : '开启后移入排除索引分区；关闭后恢复正常归档，并重建索引与关系链条。')) : null,
           notice ? e('p', { role: 'status', className: 'kbw-banner' }, notice) : null,
           e(ReadingHelp), e('h2', null, detail.file.title), e('div', { className: 'kbw-path' }, file),
           e('p', { className: 'kbw-meta' }, size(detail.file.bytes) + ' · ' + date(detail.file.mtimeMs) + (detail.file.private ? ' · 隐私内容' : '') + ' · ' + detail.file.tags.join('，')),
@@ -841,6 +890,21 @@ window.__ModuleLoader__.load({
 
 
       function Inbox({ snapshot, changed, navigate }) {
+        const [selectedFiles, setSelectedFiles] = R.useState([])
+        const [files, setFiles] = R.useState(null), [offset, setOffset] = R.useState(0), [message, setMessage] = R.useState(''), [dragging, setDragging] = R.useState(false)
+        const importing = R.useRef(false)
+        const [models, setModels] = R.useState([]), [modelKey, setModelKey] = R.useState(''), [modelError, setModelError] = R.useState('')
+        const modelStorageKey = 'kbw-inbox-model:' + snapshot.kbId
+        const loadModels = R.useCallback(async () => {
+          try {
+            const result = await api({ op: 'flows.models' })
+            setModels(result.groups.flatMap(p => p.models.map(m => ({ ...m, provider: p.id, providerName: p.name }))))
+            setModelError(result.failures?.length ? '部分模型未能读取，可刷新重试。' : '')
+          } catch (err) { setModelError(err.message) }
+        }, [])
+        R.useEffect(() => { setModelKey(''); try { setModelKey(localStorage.getItem(modelStorageKey) || '') } catch {}; void loadModels() }, [modelStorageKey, loadModels])
+        const chosenModel = models.find(m => JSON.stringify([m.provider, m.id]) === modelKey)
+        const supportsHigh = chosenModel?.reasoning?.efforts?.some(e => e.id === 'high') === true
         const [data, setData] = R.useState(null), [text, setText] = R.useState(''), [title, setTitle] = R.useState(''), [url, setUrl] = R.useState(''), [upload, setUpload] = R.useState(null), [status, setStatus] = R.useState(''), [error, setError] = R.useState(''), [busy, setBusy] = R.useState(false)
         const [selected, setSelected] = R.useState([]), [tags, setTags] = R.useState(''), [dir, setDir] = R.useState(''), [pair, setPair] = R.useState(null), [extensionOrigin, setExtensionOrigin] = R.useState(''), [connections, setConnections] = R.useState(null)
         const [captureMode, setCaptureMode] = R.useState('text'), [inspect, setInspect] = R.useState(null)
@@ -852,15 +916,61 @@ window.__ModuleLoader__.load({
         R.useEffect(() => { try { if (text) localStorage.setItem(draftKey, text); else localStorage.removeItem(draftKey) } catch {} }, [text, draftKey])
         const refresh = R.useCallback(async () => {
           try {
-            const next = await api({ op: 'capture.list', expectedKbId: snapshot.kbId, status: status || undefined })
+            const [next, inboxFiles] = await Promise.all([
+              api({ op: 'capture.list', expectedKbId: snapshot.kbId, status: status || undefined }),
+              api({ op: 'capture.inbox-files', expectedKbId: snapshot.kbId, offset, limit: 50 })])
+            setFiles(inboxFiles)
+            setSelectedFiles(old => old.filter(p => inboxFiles.items.some(f => f.path === p)))
+            if (offset && offset >= inboxFiles.total) setOffset(Math.max(0, Math.floor((inboxFiles.total - 1) / 50) * 50))
             setData(next); setError('')
             const ids = new Set(next.items.map(item => item.id))
             setSelected(old => old.filter(id => ids.has(id)))
             setInspect(old => old ? next.items.find(item => item.id === old.id) || null : null)
           } catch (err) { setError(err.message) }
-        }, [snapshot.kbId, snapshot.policyVersion, status])
+        }, [snapshot.kbId, snapshot.policyVersion, status, offset])
         R.useEffect(() => { void refresh() }, [refresh, snapshot.revision, snapshot.version])
+        R.useEffect(() => { const scheduler = refreshSchedule(refresh); return () => scheduler.dispose() }, [refresh])
         const base = { expectedKbId: snapshot.kbId, policyVersion: snapshot.policyVersion }
+        const setIndexPolicy = async (paths, excluded) => {
+          if (importing.current) return
+          importing.current = true; setBusy(true); setError(''); setMessage(excluded ? '正在移入排除索引分区并清理索引与关系链条…' : '正在重新归档并重建索引与关系链条…')
+          try {
+            await api({ op: 'index.policy.set', expectedKbId: snapshot.kbId, paths, excluded })
+            await refresh(); changed(); setSelectedFiles([])
+            setMessage(excluded ? '已移入排除索引分区，全文、向量和关系索引已清理；仍可点击一键整理。' : '已恢复正常归档和关系链条；已启用的向量索引将在后台补建。')
+          } catch (err) { setMessage(''); setError(err.message); await refresh() }
+          finally { importing.current = false; setBusy(false) }
+        }
+        const addFiles = async input => {
+          if (importing.current) return
+          const chosen = Array.from(input || [])
+          if (!chosen.length) return
+          importing.current = true; setBusy(true); setError(''); setMessage('正在添加文件…')
+          let saved = 0, skipped = 0
+          const failures = []
+          try {
+            for (const file of chosen) {
+              try {
+                if (file.size > 8 * 1024 * 1024) throw new Error('超过单文件 8 MiB 上限')
+                const current = await api({ op: 'capture.list', ...base })
+                const result = await api({ op: 'capture.create', ...base, expectedRevision: current.revision, filename: file.name, title: file.name, base64: await fileBase64(file) })
+                if (result.requiresConfirmation) skipped++; else saved++
+              } catch (err) { failures.push(file.name + '：' + err.message) }
+            }
+            await refresh(); changed()
+            setMessage('已添加 ' + saved + ' 个文件' + (skipped ? '，跳过 ' + skipped + ' 个重复文件' : '') + (failures.length ? '；' + failures.join('；') : '。可以点击“一键整理”归档。'))
+          } finally { importing.current = false; setBusy(false) }
+        }
+        const organize = async () => {
+          if (importing.current) return
+          importing.current = true; setBusy(true); setError(''); setMessage('正在创建知识库整理会话…')
+          try {
+            if (!supportsHigh) throw new Error('请选择支持 High 的可用模型后再整理')
+            await organizeInbox(snapshot.kbId, { provider: chosenModel.provider, model: chosenModel.id, reasoningEffort: 'high' }); setMessage('已在新知识库会话发送整理任务，可在会话中查看进度和停止执行。')
+          }
+          catch (err) { setError(err.message); setMessage('') }
+          finally { importing.current = false; setBusy(false) }
+        }
         const create = async allowDuplicate => {
           setBusy(true); setError('')
           try {
@@ -879,7 +989,38 @@ window.__ModuleLoader__.load({
           } catch (err) { setError(err.message); await refresh() } finally { setBusy(false) }
         }
         return e('section', { className: 'kbw-content' }, e('div', { className: 'kbw-form' },
-          e('h2', null, '收件箱'), e('div', { className: 'kbw-steps' }, ['1 保存到收件箱','2 按需识别／转写','3 预览结果','4 整理入库'].map(s => e('span', { key:s }, s))), e('div', { className: 'kbw-actions' }, [['text','记文字'],['web','存网页'],['file','上传文件']].map(([id,label]) => btn(label, () => { setCaptureMode(id); setUpload(null); setUrl('') }, false, { key:id, 'aria-current':captureMode===id }))), e('p', { className: 'kbw-meta' }, '文字、网页和文件保存到 90-收件箱/快速收集/，整理后保留原件。离线文字草稿保存在此浏览器，恢复连接后主动提交。'),
+          e('header', { className: 'kbu-page-head' }, e('div', null, e('h2', null, '收件箱'), e('p', null, '先收集，再整理。每一份资料，都由你决定如何使用。'))),
+          e('div', { className: 'kbw-panel kbu-dropzone', 'data-dragging': dragging,
+            onDragOver: ev => { ev.preventDefault(); if (!busy) setDragging(true) },
+            onDragLeave: ev => { if (!ev.currentTarget.contains(ev.relatedTarget)) setDragging(false) },
+            onDrop: ev => { ev.preventDefault(); setDragging(false); if (!busy) void addFiles(ev.dataTransfer.files) } },
+            e('span', { className: 'kbu-drop-icon' }, e(UiIcon, { name: 'upload', size: 24 })),
+            e('div', { className: 'kbu-drop-copy' }, e('strong', null, dragging ? '松开即可加入收件箱' : '拖入需要归档的资料'), e('p', { className: 'kbw-meta' }, '支持文档、图片与录音 · 可一次选择多个文件 · 单文件上限 8 MiB')),
+            e('label', { className: 'kbw-button kbu-file-picker', 'aria-disabled': busy }, e(UiIcon, { name: 'folder' }), e('span', null, '选择文件'), e('input', { type: 'file', multiple: true, disabled: busy, 'aria-label': '选择文件加入收件箱', onChange: ev => { const chosen = Array.from(ev.target.files || []); ev.target.value = ''; void addFiles(chosen) } }))),
+          e('div', { className: 'kbw-actions kbw-inbox-controls' }, e('label', { className: 'kbw-field' }, e('span', null, '整理使用的模型'), e('select', { 'aria-label': '整理使用的模型', value: modelKey, disabled: busy,
+            onChange: ev => { setModelKey(ev.target.value); try { localStorage.setItem(modelStorageKey, ev.target.value) } catch {} } },
+            e('option', { value: '' }, '请选择模型'),
+            modelKey && !chosenModel ? e('option', { value: modelKey }, '上次选择的模型不可用，请重新选择') : null,
+            models.map(m => e('option', { key: JSON.stringify([m.provider, m.id]), value: JSON.stringify([m.provider, m.id]), disabled: !m.reasoning?.efforts?.some(e => e.id === 'high') }, m.providerName + ' / ' + m.name + (!m.reasoning?.efforts?.some(e => e.id === 'high') ? '（不支持 High）' : ''))))),
+            e('span', { className: 'kbu-chip' }, 'High · 固定推理强度'), btn('刷新模型', () => void loadModels(), busy), btn(busy ? '处理中…' : '一键整理', () => void organize(), busy || !files?.total || !supportsHigh, { className: 'kbw-button kbw-primary' }), btn('刷新文件', () => void refresh(), busy)),
+          e('p', { className: 'kbw-meta kbu-inbox-guidance' }, '使用所选模型新开知识库 agent 会话，并记住该知识库上次的模型选择。流程页也可运行此内置流程。'),
+          modelError ? e('p', { className: 'kbw-error', role: 'alert' }, modelError) : null,
+          message ? e('p', { role: 'status', className: 'kbu-notice' }, message) : null,
+          error ? e('p', { className: 'kbw-error', role: 'alert' }, error) : null,
+          e('div', { className: 'kbu-inbox-list-head' }, e('h3', null, '待整理归档', files ? e('span', { className: 'kbu-chip' }, files.total + ' 份资料') : null), btn('查看排除索引分区', () => navigate('map', '排除索引分区', true))),
+          e('p', { className: 'kbw-meta' }, '仅显示收件箱内尚未归档的资料，不含“原件归档”目录。归档前不建全文、向量或关系索引；可逐份或批量开启排除索引，原件和解析文件归入独立分区，照常整理。'),
+          e('div', { className: 'kbw-actions kbu-batch-actions' }, btn('全选本页', () => setSelectedFiles(files?.items.map(f => f.path) || []), busy || !files?.total), btn('取消选择', () => setSelectedFiles([]), busy || !selectedFiles.length),
+            selectedFiles.length ? e('span', { className: 'kbw-meta' }, '已选 ' + selectedFiles.length + ' 份') : null,
+            e('span', { style: { flex: 1 } }), btn('排除所选索引', () => void setIndexPolicy(selectedFiles, true), busy || !selectedFiles.length), btn('取消所选排除', () => void setIndexPolicy(selectedFiles, false), busy || !selectedFiles.length)),
+          !files ? e('p', null, '正在读取文件…') : !files.total ? e('p', { className: 'kbw-empty' }, '没有待整理资料。已归档的资料可在资料目录中查看。') : files.items.map(file => e('article', { key: file.path, className: 'kbw-panel kbw-inbox-card' },
+            e('div', { className: 'kbu-inbox-file' }, e('input', { type: 'checkbox', 'aria-label': '选择 ' + file.title, checked: selectedFiles.includes(file.path), disabled: busy, onChange: ev => { const checked = ev.target.checked; setSelectedFiles(old => checked ? [...old, file.path] : old.filter(p => p !== file.path)) } }), e('span', { className: 'kbu-file-mark', 'aria-hidden': true }, file.path.includes('.') ? file.path.split('.').at(-1).slice(0, 4) : 'FILE'),
+              e('div', { className: 'kbu-inbox-file-copy' }, e('strong', null, file.title), e('div', { className: 'kbw-path' }, file.path), e('p', { className: 'kbw-meta' }, stateLabel(file.status) + (file.policyState === 'failed' ? ' · 上次处理失败，可重试' : '')))),
+            e('span', { className: 'kbu-chip', 'data-tone': file.excludedFromIndex ? 'warning' : 'normal' }, file.excludedFromIndex ? '已排除索引' : '归档后正常索引'),
+            e('div', { className: 'kbu-inbox-card-actions' }, e(ToggleField, { label: '排除索引', ariaLabel: '排除索引 · ' + file.title, checked: file.excludedFromIndex, disabled: busy, onChange: excluded => void setIndexPolicy([file.path], excluded) }), file.policyState === 'failed' ? btn('重试排除', () => void setIndexPolicy([file.path], true), busy) : null, btn('查看', () => navigate('map', file.path))))),
+          files?.total > 50 ? e('div', { className: 'kbw-actions' }, btn('上一页', () => setOffset(Math.max(0, offset - 50)), busy || offset === 0), e('span', null, (offset + 1) + '–' + Math.min(offset + 50, files.total) + ' / ' + files.total), btn('下一页', () => setOffset(offset + 50), busy || offset + 50 >= files.total)) : null,
+          files?.truncated ? e('p', { role: 'status' }, '本次扫描不完整，请刷新后核对文件。') : null,
+          e('details', null, e('summary', null, '记文字、保存网页与收集记录'),
+          e('div', { className: 'kbw-actions' }, [['text','记文字'],['web','存网页'],['file','上传文件']].map(([id,label]) => btn(label, () => { setCaptureMode(id); setUpload(null); setUrl('') }, false, { key:id, 'aria-current':captureMode===id }))), e('p', { className: 'kbw-meta' }, '文字、网页和文件保存到 90-收件箱/快速收集/，整理后保留原件。离线文字草稿保存在此浏览器，恢复连接后主动提交。'),
           
           field('标题（可留空）', title, setTitle), captureMode === 'web' ? field('网页地址', url, setUrl, { type: 'url', placeholder: 'https://…' }) : null,
           captureMode !== 'file' ? e('label', { className: 'kbw-field' }, captureMode === 'web' ? '网页正文或备注（可选）' : '记录内容', e('textarea', { value: text, onChange: ev => setText(ev.target.value), placeholder: captureMode === 'web' ? '可粘贴网页正文；仅保存网址时不会自动抓取全文。' : '例如：今天学到的方法、稍后想整理的灵感…' })) : null,
@@ -949,14 +1090,14 @@ window.__ModuleLoader__.load({
           e(SplitPanels, { id: 'inbox-detail', kbId: snapshot.kbId, className: 'kbw-master-detail' }, e('section', { className: 'kbw-panel' }, data?.items.map(c => e('div', { key: c.id, className: 'kbw-capture-row' }, check('选择条目', selected.includes(c.id), value => setSelected(old => value ? [...old, c.id] : old.filter(id => id !== c.id))), e('button', { className: 'kbw-row', 'aria-current': inspect?.id === c.id, onClick: () => setInspect(c) }, e('strong', null, c.title || '未命名收集'), e('span', { className: 'kbw-meta' }, stateLabel(c.status) + ' · ' + date(c.createdAt))),
             e('span', { className: 'kbw-meta' }, stateLabel(c.status) + ' · ' + date(c.createdAt)), btn('预览原件', () => navigate('map', c.path)), e(DeleteFile, { file: { path: c.path, canDelete: true }, snapshot, onDeleted: () => { void refresh(); changed() } }), ['pending','failed'].includes(c.status) ? btn(/\.(wav|mp3|m4a|mp4|flac|ogg)$/i.test(c.path) ? '开始音频转写' : /\.(pdf|png|jpe?g|docx)$/i.test(c.path) ? '开始识别文字' : '整理为知识笔记', async () => { setBusy(true); try { const current = await api({ op:'capture.list', ...base }); await api({ op:'capture.organize', ...base, id:c.id, expectedRevision:current.revision }); await refresh(); changed() } catch (e) { setError(e.message) } finally { setBusy(false) } }, busy) : null, c.error ? e('p', { className:'kbw-error' }, c.error) : null, c.entryPath ? btn('查看知识条目', () => navigate('map', c.entryPath)) : null))), e('aside', { className: 'kbw-panel' }, e('h3', null, inspect ? inspect.title : '选择收集条目'), inspect ? e(R.Fragment, null, e('p', { className: 'kbw-path' }, inspect.path), e('p', { className: 'kbw-meta' }, stateLabel(inspect.status)), btn('预览原件', () => navigate('map', inspect.path)), e(DeleteFile, { file: { path: inspect.path, canDelete: true }, snapshot, onDeleted: () => { setInspect(null); void refresh(); changed() } }), inspect.entryPath ? btn('查看知识条目', () => navigate('map', inspect.entryPath)) : null, e('p', null, '勾选条目可指定目标分区和标签，然后整理所选；原件会保留。')) : e('p', { className: 'kbw-meta' }, '点击标题查看资料信息；复选框仅用于批量整理。'))),
           e('details', null, e('summary', null, '手机收集帮助'), e('p', null, e('a', { href: '/kb-core/collect', target: '_blank', rel: 'noopener noreferrer' }, '打开快速收集页，可添加到手机主屏幕')), e('p', { className: 'kbw-meta' }, '手机可在快速收集页粘贴文字、分享网址或上传文件，确认后保存。浏览器扩展的安装与连接请查看上方独立使用指南。')),
-          error ? e('p', { className: 'kbw-error', role: 'alert' }, error) : null))
+          error ? e('p', { className: 'kbw-error', role: 'alert' }, error) : null)))
       }
 
       function Backups({ snapshot }) {
         const [directory, setDirectory] = R.useState(snapshot.preferences.backup.directory), [items, setItems] = R.useState([]), [message, setMessage] = R.useState(''), [busy, setBusy] = R.useState(false), [destination, setDestination] = R.useState(''), [restorePath, setRestorePath] = R.useState(''), [comparison, setComparison] = R.useState(null)
         const run = async body => { setBusy(true); try { const r = await api({ ...body, expectedKbId: snapshot.kbId, directory }); setMessage(r.valid === false ? '校验失败：' + JSON.stringify(r.errors) : r.manifest?.complete === false ? '备份不完整，请查看报告' : r.note || '操作完成'); if (r.items) setItems(r.items); if (r.manifest) setMessage('备份 ' + r.name + ' · ' + (r.manifest.complete ? '完整' : '不完整') + ' · ' + r.manifest.files.length + ' 个文件'); return r } catch (err) { setMessage(err.message) } finally { setBusy(false) } }
         return e('details', { open: true, className: 'kbw-service' }, e('summary', null, '完整备份、恢复与导出'), e('p', { className: 'kbw-meta' }, '自动备份：' + (snapshot.preferences.backup.enabled ? '开启' : '关闭') + '。手动备份不打开自动开关。'),
-          field('备份目录', directory, setDirectory), e('div', { className: 'kbw-actions' }, btn('手动备份一次', () => run({ op: 'backup.create' }), busy || !directory), btn('列出备份', () => run({ op: 'backup.list' }), busy || !directory),
+          e(DirectoryField, { label: '备份目录', value: directory, onChange: setDirectory, disabled: busy }), e('div', { className: 'kbw-actions' }, btn('手动备份一次', () => run({ op: 'backup.create' }), busy || !directory), btn('列出备份', () => run({ op: 'backup.list' }), busy || !directory),
             btn('导出可见原文与附件', () => run({ op: 'backup.export', format: 'files' }), busy || !directory),
             btn('导出目录 CSV', async () => { const r = await run({ op: 'backup.export', format: 'csv' }); if (r) download(r.filename, r.text) }, busy),
             btn('导出关系与摘录', async () => { const r = await run({ op: 'backup.export', format: 'json' }); if (r) download(r.filename, r.text, 'application/json') }, busy)),
@@ -1096,8 +1237,8 @@ window.__ModuleLoader__.load({
           e(RetrievalProcessPreference,{snapshot}),
           select('向量接口',config.embedding.provider,v=>setConfig(c=>({...c,embedding:v==='siliconflow'?{...c.embedding,provider:v,endpoint:'https://api.siliconflow.cn/v1/embeddings',model:'BAAI/bge-m3',queryTemplate:'',documentTemplate:''}:{...c.embedding,provider:v}})),[['siliconflow','硅基流动 BGE-M3'],['custom','通用 Embedding API（含 Qwen）']]),
           config.profiles?.length?select('已保存向量配置','',v=>{const p=config.profiles.find(x=>x.id===v);if(p)setConfig(c=>({...c,embedding:p.embedding}))},[['','选择已保存配置'],...config.profiles.map(p=>[p.id,p.embedding.model+' · '+p.embedding.endpoint])]):null,
-          field('完整 Embedding 接口地址',config.embedding.endpoint,v=>change('embedding','endpoint',v)),
-          field('向量模型名',config.embedding.model,v=>change('embedding','model',v)),
+          e('div',{className:'kbu-field-grid'},field('完整 Embedding 接口地址',config.embedding.endpoint,v=>change('embedding','endpoint',v)),
+            field('向量模型名',config.embedding.model,v=>change('embedding','model',v))),
           field('向量 API Key（留空保留已保存密钥）',embeddingKey,setEmbeddingKey,{type:'password',autoComplete:'new-password'}),
           e('p',{className:'kbw-meta'},data?.credentialStatus?.embedding?'向量密钥已加密保存，更新插件后继续使用；留空无需重填。':'尚未保存可用的向量密钥。'),
           check('允许私密资料发送到此向量服务',config.allowPrivateCloud,v=>setConfig(c=>({...c,allowPrivateCloud:v}))),
@@ -1110,16 +1251,16 @@ window.__ModuleLoader__.load({
             field('切片目标字节数',config.embedding.chunkTarget||2400,v=>change('embedding','chunkTarget',Number(v)),{type:'number',min:512,max:2400}),
             field('片段重叠字节数',config.embedding.chunkOverlap??240,v=>change('embedding','chunkOverlap',Number(v)),{type:'number',min:0,max:480})),
           e('hr'),e('h4',null,'通用重排序 API'),check('启用重排序',config.rerank.enabled,v=>change('rerank','enabled',v)),
-          field('完整 Rerank 接口地址',config.rerank.endpoint,v=>change('rerank','endpoint',v)),
-          field('重排序模型名',config.rerank.model,v=>change('rerank','model',v)),
+          e('div',{className:'kbu-field-grid'},field('完整 Rerank 接口地址',config.rerank.endpoint,v=>change('rerank','endpoint',v)),
+            field('重排序模型名',config.rerank.model,v=>change('rerank','model',v))),
           field('重排序 API Key（留空保留已保存密钥）',rerankKey,setRerankKey,{type:'password',autoComplete:'new-password'}),
           data?.credentialStatus?.rerank?e('p',{className:'kbw-meta'},'重排序密钥已加密保存，留空继续使用。'):null,
           e('p',{className:'kbw-meta'},'通用 query + documents 接口，返回 index 与 relevance_score。未配置或失败时使用融合结果。'),
-          e('div',{className:'kbw-actions','aria-label':'检索配置与索引操作'},btn('仅测试连接',()=>action('test'),busy),btn('保存并启用自动建库',()=>action('save',true),busy),btn('停用向量检索',()=>action('save',false),busy),
+          e('div',{className:'kbw-actions','aria-label':'检索配置与索引操作'},btn('仅测试连接',()=>action('test'),busy),btn('保存并启用自动建库',()=>action('save',true),busy,{className:'kbw-button kbw-primary'}),btn('停用向量检索',()=>action('save',false),busy),
             btn(taskLabel,()=>action(canPause?'pause':needsRetry?'retry':'resume'),busy||!config.enabled||progress?.state==='synced',{'aria-label':taskLabel+'索引构建'}),btn('重建向量索引',()=>action('rebuild'),busy),btn('清理旧版本',()=>action('clean'),busy)),
           e('details',{onToggle:ev=>{if(ev.currentTarget.open)api({op:'retrieval.trace',expectedKbId:snapshot.kbId}).then(r=>setTrace(r.traces||[])).catch(err=>setMessage(err.message))}},e('summary',null,'最近检索流程与计算缓存'),trace.map((t,i)=>e('p',{key:i,className:'kbw-meta'},t.steps.join(' → ')+'；分词计算复用 '+(t.cache?.lexicalHits||0)+' / '+(t.cache?.lexicalEntries||0)+'（不是整次结果缓存命中）'))),
           e('p',{role:'status'},message),
-          progress?e('p',null,'索引状态：'+progress.state+' · 本轮完成 '+(progress.completed||0)+' / '+(progress.total||0)+' · 复用 '+(progress.reused||0)+(progress.error?' · '+progress.error:'')):null,
+          progress?e('div',{className:'kbu-index-state'},e('p',null,'索引状态：'+progress.state+' · 本轮完成 '+(progress.completed||0)+' / '+(progress.total||0)+' · 复用 '+(progress.reused||0)+(progress.error?' · '+progress.error:'')),progress.total>0?e('progress',{'aria-label':'向量索引构建进度',value:progress.completed||0,max:progress.total}):null):null,
           estimate?e('div',null,e('p',{className:'kbw-meta'},'索引位置：'+(estimate.storagePath||'知识库/索引层')),e('p',null,'全文资料 '+estimate.documents+' 份 · 切片 '+estimate.chunks+' 个 · 已生成唯一向量 '+estimate.completedVectors+' · 待生成 '+estimate.pendingVectors),
             e('p',null,'文本 '+size(estimate.textBytes)+' · 预计向量 '+size(estimate.vectorBytes)+' · 预计章节与位置描述 '+size(estimate.metadataEstimateBytes)),
             e('p',null,'实际索引 '+size(estimate.actualBytes)+' · 废弃向量约 '+size(estimate.reclaimableVectorBytes)+' · 磁盘可用 '+(estimate.availableBytes==null?'未知':size(estimate.availableBytes))),
@@ -1174,15 +1315,51 @@ window.__ModuleLoader__.load({
       }
       function UpgradeSettingsEntry(){styles();return e('div',{className:'kbw kbw-global-settings',style:{height:'auto',display:'block',overflow:'visible'}},e(UpgradeSettings))}
 
+      function PreferencesSettings({ section = 'preferences' }) {
+        const [data, setData] = R.useState(null), [prefs, setPrefs] = R.useState(null), [busy, setBusy] = R.useState(false), [message, setMessage] = R.useState('')
+        const dirty = R.useRef(false), current = R.useRef(true), bound = R.useRef(null)
+        const load = async (force = false) => {
+          try {
+            const p = await api({ op: 'preferences.get' })
+            if (!current.current) return
+            if (force || !dirty.current || bound.current !== p.kbId) { setData(p); setPrefs(p.preferences); dirty.current = false; bound.current = p.kbId }
+          } catch (err) { if (current.current) setMessage(err.message) }
+        }
+        R.useEffect(() => { current.current = true; return () => { current.current = false } }, [])
+        R.useEffect(() => { if (['preferences', 'backup'].includes(section)) void load() }, [section])
+        if (!['preferences', 'backup'].includes(section)) return null
+        const save = async () => {
+          setBusy(true); setMessage('')
+          try {
+            await api({ op: 'preferences.save', expectedKbId: data.kbId, expectedRevision: data.revision, preferences: prefs })
+            dirty.current = false; await load(true); setMessage('设置已保存')
+            event('kbw-policy', { type: 'preferences', kbId: data.kbId })
+          } catch (err) { setMessage(err.message) } finally { setBusy(false) }
+        }
+        return e(R.Fragment, null, e('section', { className: 'kbw-panel' }, e('h3', null, section === 'backup' ? '自动备份' : '使用偏好与隐私'),
+          !data || !prefs ? e('p', null, message || '正在读取设置…') : !data.kbId ? e('p', { className: 'kbw-meta' }, '请先绑定知识库，再设置当前库的偏好与备份。') : e(R.Fragment, null,
+            e('p', { className: 'kbw-meta' }, '设置按当前知识库保存。修改后点击“保存设置”生效。'),
+            e('fieldset', { disabled: busy, className: 'kbu-fieldset' }, e(PreferencesFields, { prefs, scope: section, setPrefs: updater => { dirty.current = true; setPrefs(updater) } })),
+            e('div', { className: 'kbw-actions' }, btn(busy ? '保存中…' : '保存设置', () => void save(), busy, { className: 'kbw-button kbw-primary' }), btn('重新读取', () => void load(true), busy)),
+            message ? e('p', { role: 'status', className: 'kbu-notice' }, message) : null)),
+          section === 'backup' && data?.kbId ? e('div', { style: { marginTop: 20 } }, e(Backups, { key: data.kbId + ':' + data.revision, snapshot: { kbId: data.kbId, preferences: data.preferences } })) : null)
+      }
+
+      function CaptureSettings() {
+        return e('section', { className: 'kbw-panel' }, e('h3', null, '采集与连接'), e('p', null, '文件、文字和网页统一进入收件箱，整理后保留原件与来源。'),
+          e('p', { className: 'kbw-meta' }, '在知识库页签打开“收件箱”，可添加资料、选择整理模型、设置是否排除索引，以及配置浏览器扩展配对。'),
+          e('a', { className: 'kbw-button', href: '/kb-core/collect', target: '_blank', rel: 'noopener noreferrer' }, '打开快速收集页'))
+      }
+
       function SettingsHub({ snapshot, navigate }) {
         const [section, setSection] = R.useState('preferences')
         const sections = [['preferences', '使用偏好与隐私'], ['retrieval', '协同检索与向量 API'], ['parsing', '解析服务'], ['capture', '采集与连接'], ['backup', '备份与恢复'], ['version', '版本与诊断']]
         return e('section', { className: 'kbw-content' }, e('div', { className: 'kbw-home-head' }, e('div', null, e('h2', null, '知识库设置'), e('p', { className: 'kbw-meta' }, '管理当前知识库的使用方式、连接与数据保护。')), e('a', { className: 'kbw-button', href: projectRecordUrl, target: '_blank', rel: 'noopener noreferrer' }, '插件设计与演进记录 ↗')), e('div', { className: 'kbw-settings-layout' }, e('nav', { className: 'kbw-settings-nav', 'aria-label': '设置分类' }, sections.map(([id, label]) => btn(label, () => setSection(id), false, { key: id, 'aria-current': section === id }))), e('div', { className: 'kbw-settings-panel' },
-          section === 'preferences' ? e(R.Fragment, null, e('h3', null, '使用偏好与隐私'), e('p', null, '隐私展示：' + (snapshot.preferences.showPrivate ? '开启' : '关闭')), e('p', null, '私密资料用于问答：' + (snapshot.preferences.allowPrivateQuestions ? '允许' : '不允许')), e('p', null, '自动解析：' + (snapshot.preferences.autoParse ? '开启' : '关闭')), e('p', null, '回顾提醒：' + (snapshot.preferences.reviewReminders ? '开启' : '关闭')), btn('修改使用偏好', () => event('kbw-settings'))) : null,
+          section === 'preferences' ? e(PreferencesSettings) : null,
           section === 'parsing' ? e(R.Fragment, null, e('h3', null, '解析服务'), e(ParseSummary)) : null,
           section === 'retrieval' ? e(RetrievalSettings,{snapshot}) : null,
           section === 'capture' ? e(R.Fragment, null, e('h3', null, '采集与连接'), e('p', null, '网页剪藏、粘贴文本和文件上传统一进入收件箱。可在收件箱查看连接并整理资料。'), btn('打开收件箱与连接说明', () => navigate('inbox'))) : null,
-          section === 'backup' ? e(R.Fragment, null, e('h3', null, '备份与恢复'), e('p', null, '自动完整备份：' + (snapshot.preferences.backup.enabled ? '开启' : '关闭')), btn('打开备份与恢复', () => navigate('backups')), btn('设置自动备份', () => event('kbw-settings'))) : null,
+          section === 'backup' ? e(PreferencesSettings, { section: 'backup' }) : null,
           section === 'version' ? e(R.Fragment, null, e('h3', null, '版本与诊断'), e(BuildBadge, { passive: true }),e(UpgradeSettings,{snapshot}), e('details', { className: 'kbw-service' }, e('summary', null, '运行状态、索引与异常'), e(Overview)), btn('打开任务中心', () => navigate('tasks'))) : null)))
       }
 
@@ -1236,12 +1413,16 @@ window.__ModuleLoader__.load({
         const [view, setView] = R.useState('list'), [browse, setBrowse] = R.useState(false)
         const [list, setList] = R.useState(null), [offset, setOffset] = R.useState(0), [error, setError] = R.useState(''), [busy, setBusy] = R.useState(false), [deferred, setDeferred] = R.useState(false), [tasks, setTasks] = R.useState(null), [reminder, setReminder] = R.useState(null), [canGoBack, setCanGoBack] = R.useState(false), [routeRestore, setRouteRestore] = R.useState(null)
         const current = R.useRef(null), generation = R.useRef(0), first = R.useRef(true), request = R.useRef(0), routeHistory = R.useRef([]), routePushRef = R.useRef(null)
-        const refresh = R.useCallback(async () => {
+        const refresh = R.useCallback(async ({ revealPath } = {}) => {
           const gen = generation.current
           try {
             const next = await api({ op: 'atlas.snapshot' })
             if (gen !== generation.current) return
+            // A policy operation moves the open file. Restore its new location only
+            // in the same library with unchanged viewing permissions.
+            const reveal = revealPath && current.current?.kbId === next.kbId && JSON.stringify(current.current.preferences) === JSON.stringify(next.preferences)
                 if (current.current && (current.current.kbId !== next.kbId || current.current.policyVersion !== next.policyVersion)) { generation.current++; request.current++; setList(null); setSelected(''); setRelationFocus(''); setPrefix(''); setTasks(null); routeHistory.current = []; setCanGoBack(false) }
+            if (reveal) { setTab('map'); setBrowse(true); setQuery(''); setOffset(0); setSelected(revealPath); setPrefix(revealPath.includes('/') ? revealPath.slice(0, revealPath.lastIndexOf('/')) : '') }
             if (first.current) {
               first.current = false
               let chosen = next.preferences.landing
@@ -1315,7 +1496,7 @@ window.__ModuleLoader__.load({
         const searchSubmit = ev => { ev?.preventDefault(); setOffset(0); void loadList() }
         const tabs = [['overview', '总览'], ['map', '资料目录'], ['relations', '关系网络'], ['inbox', '收件箱'], ['reading', '阅读与摘录'], ['review', '回顾'], ['flows', '流程']]
         return e('div', { className: 'kbw', ref: workspaceRoot },
-          e('header', { className: 'kbw-app-header' }, e('div', null, e('strong', null, '知识库'), e('span', { className: 'kbw-meta' }, '资料、阅读与联系')), e('form', { className: 'kbw-global-search', onSubmit: ev => { ev.preventDefault(); pushRoute(); setTab('map'); setBrowse(true); setSelected(''); setPrefix(''); setOffset(0); void loadList() } }, e('input', { 'aria-label': '搜索资料标题或路径', placeholder: '搜索资料标题或路径', value: query, onChange: ev => setQuery(ev.target.value) }), e('button', { className: 'kbw-button', type: 'submit' }, '搜索')), e('div', { className: 'kbw-actions' }, btn('快速收集', () => navigate('inbox'), false, { className: 'kbw-button kbw-primary' }), btn('回收站', () => navigate('trash'), false, { 'aria-current': tab === 'trash' }), btn('设置', () => navigate('settings'), false, { 'aria-current': tab === 'settings' }))),
+          e('header', { className: 'kbw-app-header' }, e('div', { className: 'kbw-brand' }, e('span', { className: 'kbu-brand-mark' }, e(UiIcon, { name: 'book' })), e('div', null, e('strong', null, '个人知识库'), e('span', { className: 'kbw-meta' }, 'PERSONAL KNOWLEDGE'))), e('form', { className: 'kbw-global-search', onSubmit: ev => { ev.preventDefault(); pushRoute(); setTab('map'); setBrowse(true); setSelected(''); setPrefix(''); setOffset(0); void loadList() } }, e('input', { 'aria-label': '搜索资料标题或路径', placeholder: '搜索资料标题、路径或正文', value: query, onChange: ev => setQuery(ev.target.value) }), e('button', { className: 'kbw-button', type: 'submit' }, '搜索')), e('div', { className: 'kbw-actions' }, btn([e(UiIcon, { key: 'icon', name: 'upload' }), e('span', { key: 'label' }, '添加资料')], () => navigate('inbox'), false, { className: 'kbw-button kbw-primary' }), btn([e(UiIcon, { key: 'icon', name: 'trash' }), e('span', { key: 'label' }, '回收站')], () => navigate('trash'), false, { 'aria-current': tab === 'trash' }), btn([e(UiIcon, { key: 'icon', name: 'settings' }), e('span', { key: 'label' }, '设置')], () => navigate('settings'), false, { 'aria-current': tab === 'settings' }))),
           e('div', { className: 'kbw-update-bar' }, e(BuildBadge)),
           e('nav', { className: 'kbw-nav', 'aria-label': '知识库功能' }, tabs.map(([id, label]) => btn(label, () => { if (id !== tab || id === 'reading' && selected) { pushRoute(); setTab(id); if (id === 'reading') setSelected(''); if (id === 'relations') setRelationFocus(selected || '') } }, false, { key: id, 'aria-current': tab === id })),
             e('span', { style: { flex: 1 } }), btn('返回上一页', goBack, !canGoBack, { 'aria-label': '返回上一页' })),
@@ -1421,7 +1602,7 @@ window.__ModuleLoader__.load({
           },
         }), 'kb-workbench: native @ knowledge reference'))
       }
-      return { Workbench, Guide, knowledgeReferenceRule, KnowledgeReference, UpgradeSettings:UpgradeSettingsEntry, RetrievalSettings: RetrievalSettingsEntry, formatSize: size, api, event, registerReferences, dispose: () => { eventSource?.close(); eventSource = null; eventsStarted = false; styleElement?.remove(); stylesInstalled = false; guideInstance = null } }
+      return { Workbench, Guide, PreferencesSettings, CaptureSettings, knowledgeReferenceRule, KnowledgeReference, UpgradeSettings:UpgradeSettingsEntry, RetrievalSettings: RetrievalSettingsEntry, formatSize: size, api, event, registerReferences, dispose: () => { eventSource?.close(); eventSource = null; eventsStarted = false; styleElement?.remove(); stylesInstalled = false; guideInstance = null } }
     }
     // END GENERATED WORKBENCH UI
     let releaseNoticeClaimed = false
@@ -1808,7 +1989,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     //   ②「自动建库 / 识别」——选定后点一次，由服务端判断：空目录建库 / 本插件库接入 / 普通资料夹识别导入，
     //      元数据损坏或不兼容则明确提示且不覆盖。
     // 选择目录**只记录候选**；点主按钮才执行；验证可用后才切换当前库。
-    function Section() {
+    function Section({ view = 'library' } = {}) {
       const sharedIndexBusy = useIndexBusy()
       const [status, setStatus] = react.useState(null)
       const [dirs, setDirs] = react.useState(null)
@@ -2029,19 +2210,20 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       const jc = (job && job.counts) || {}
 
       return e('div', { className: 'kbc-set' },
-        e('div', { className: 'kbc-set-intro' }, '知识库由 kb-core 插件管理；设置页、顶栏页签与模型工具共用同一份配置与同一套后端流程。'),
-
         // ── 当前使用的知识库 ──
-        e('div', { className: 'kbc-set-h' }, '当前使用的知识库'),
+        e('section', { className: 'kbu-settings-card', hidden: view !== 'library' },
+        e('header', null, e('div', null, e('h3', null, '当前知识库'), e('p', null, '查看当前连接与索引状态。')), e('span', { className: 'kbu-chip', 'data-tone': currentKb && status?.healthy ? 'normal' : 'warning' }, currentKb ? status?.healthy ? '已连接' : '需要检查' : '尚未连接')),
         e('div', { className: 'kbc-set-info' },
           row('路径', currentKb || '(未绑定)'),
+          row('条目数（索引）', entryCount === null ? '-' : entryCount),
+          row('库结构', status ? (status.healthy ? '正常' : '异常（' + (status.healthReason || '未知') + '）') : '-'),
+          row('全文索引', status && status.index ? (status.index.fresh ? '已同步' : '需重建（' + (status.index.reason || '未知') + '）') : '-')),
+        e('details', { className: 'kbu-card-diagnostics' }, e('summary', null, '库身份与运行详情'),
+        e('div', { className: 'kbc-set-info' },
           row('库身份', status && status.kbId ? String(status.kbId).slice(0, 8) : '-'),
           row('配置', status && status.config ? (status.config.ok ? '正常（revision ' + (status.config.revision ?? '-') + '）' : '降级：' + (status.config.state || '未知')) : '-'),
-          row('库结构', status ? (status.healthy ? '正常' : '异常（' + (status.healthReason || '未知') + '）') : '-'),
-          row('索引', status && status.index ? (status.index.fresh ? '新鲜' : '需重建（' + (status.index.reason || '未知') + '）') : '-'),
-          row('条目数（索引）', entryCount === null ? '-' : entryCount),
           row('版本', build && build.version ? build.version : '-'),
-          row('状态目录', status ? (status.stateDir || '-') : '-')),
+          row('状态目录', status ? (status.stateDir || '-') : '-'))),
         e('div', { className: 'kbc-set-actions' },
           e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: () => refresh({ force: true }) }, '刷新状态'),
           e('button', {
@@ -2050,23 +2232,25 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
             onClick: doRebuild,
             title: '重新扫描并写入索引（等价于 kb_check(rebuild=true)）',
           }, rebuilding ? '重建中…' : (indexStale ? '重建索引（当前需重建）' : '重建索引'))),
-        rebuildNote ? e('div', { className: 'kbc-set-msg' }, rebuildNote) : null,
+        rebuildNote ? e('div', { className: 'kbc-set-msg' }, rebuildNote) : null),
 
         // ── 待处理文件夹 ──
-        e('div', { className: 'kbc-set-h' }, '待处理的文件夹'),
-        e('input', {
+        e('section', { className: 'kbu-settings-card', hidden: view !== 'library' },
+        e('header', null, e('div', null, e('h3', null, '绑定与导入'), e('p', null, '选择空目录、已有知识库或普通资料文件夹，执行前先识别目录。'))),
+        e('div', { className: 'kbu-bind-row' }, e('label', { className: 'kbu-bind-field' }, e('span', null, '知识库文件夹'), e('input', {
           className: 'kbc-set-input',
+          'aria-label': '知识库文件夹',
           value: candidate,
           placeholder: '选一个文件夹：可以是空目录、已有知识库，或普通资料文件夹',
           spellCheck: false,
           onChange: (ev) => { dirtyRef.current = true; setCandidate(ev.target.value); setProbe(null); setResult(null) },
-        }),
+        })),
         e('div', { className: 'kbc-set-actions' },
           e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: pickDir }, busy ? '处理中…' : '选择知识库文件夹'),
-          e('button', { className: 'kbc-btn kbc-btn-primary', disabled: !canSetup, onClick: doSetup }, busy ? '执行中…' : '自动建库 / 识别')),
+          e('button', { className: 'kbc-btn kbc-btn-primary', disabled: !canSetup, onClick: doSetup }, busy ? '执行中…' : '自动建库 / 识别'))),
         e('div', { className: 'kbc-set-hint' },
           pending
-            ? '这是**待处理**的候选文件夹：点「自动建库 / 识别」才会执行；执行前不会改动它，也不会切换当前库。'
+            ? '这是待处理的候选文件夹，点击“自动建库 / 识别”后执行；执行前不会改动它或切换当前库。'
             : '选目录只记录位置，不建库、不切换；点第二个按钮才执行一次判断。'),
         probe ? e('div', { className: 'kbc-set-plan' },
           e('div', { className: 'kbc-set-key' }, '识别结果：' + kindLabel(probe.kind)),
@@ -2092,14 +2276,14 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           unfinished.filter((m) => m.importId !== jobId).slice(0, 5).map((m) => e('div', { className: 'kbc-set-hint', key: m.importId },
             m.importId + ' · ' + m.stage + ' · 成功 ' + ((m.counts && m.counts.done) || 0) + ' / 源文件 ' + ((m.counts && m.counts.total) || 0) + ' · ',
             e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: () => resumeJob(m.importId) }, '继续/重试')))
-        ) : null,
+        ) : null),
 
         // ── 解析服务（OCR / ASR）──
         // 放在导入进度之后：导入把文件收进来，解析把它们变成可检索的文本。
-        e(IndexMaintenancePanel, { onUpdated: refresh }),
-        e(workbenchUI.UpgradeSettings),
-        e(workbenchUI.RetrievalSettings),
-        e(ParseSection, { initialImportId: jobId }),
+        e('section', { className: 'kbu-settings-card', hidden: view !== 'library' }, e(IndexMaintenancePanel, { onUpdated: refresh })),
+        e('div', { hidden: view !== 'version' }, e(workbenchUI.UpgradeSettings)),
+        e('div', { hidden: view !== 'retrieval' }, e(workbenchUI.RetrievalSettings)),
+        e('div', { hidden: view !== 'parsing' }, e(ParseSection, { initialImportId: jobId })),
         pickerNote ? e('div', { className: 'kbc-set-hint' }, pickerNote) : null)
     }
 
@@ -2472,6 +2656,13 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         const prepared = await callApi({ op: 'flows.prepare-conversation', id: flow.id, kbId, expectedRevision: flow.revision, params, execution })
         if (!prepared || !prepared.ok) throw new Error((prepared && (prepared.error || prepared.reason)) || '无法读取流程提示词')
         if (!prepared.workspaceId) throw new Error('未获得流程工作区，未创建会话；请确认宿主已加载最新插件')
+        if (prepared.requiredReasoningEffort) {
+          const directory = await callApi({ op: 'flows.models' })
+          const candidates = (directory?.groups || []).flatMap(p => p.models.map(m => ({ ...m, provider: p.id })))
+          const model = candidates.find(m => m.provider === prepared.execution?.provider && m.id === prepared.execution?.model && m.reasoning?.efforts?.some(e => e.id === prepared.requiredReasoningEffort))
+          if (!directory?.ok || !model) throw new Error('请先选择支持 High 的可用模型；当前所选模型不可用或不支持 High')
+          prepared.execution = { provider: model.provider, model: model.id, reasoningEffort: prepared.requiredReasoningEffort }
+        }
         sessionId = await sessions.create({ workspaceId: prepared.workspaceId, agentPreset: 'knowledge' })
         reference = sessions.retain(sessionId, { source: 'kb-flow-launch' })
         await reference.ready
@@ -2671,18 +2862,18 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       const addParam = () => setDraft((prev) => prev === null ? prev : Object.assign({}, prev, { params: prev.params.concat([{ name: '', default: '', required: false }]) }))
 
       const field = (label, node) => e('div', { className: 'kbf-field' }, e('label', null, label), node)
-      const executionFields = (value, change) => {
+      const executionFields = (value, change, fixedHigh = false) => {
         const key = route => route?.provider && route?.model ? JSON.stringify([route.provider, route.model]) : ''
-        const models = modelDirectory.groups.flatMap(p => p.models.map(m => ({ ...m, provider: p.id, providerName: p.name })))
+        const models = modelDirectory.groups.flatMap(p => p.models.map(m => ({ ...m, provider: p.id, providerName: p.name }))).filter(m => !fixedHigh || m.reasoning?.efforts?.some(e => e.id === 'high'))
         const selected = models.find(m => m.provider === value.provider && m.id === value.model)
         const efforts = selected?.reasoning?.efforts || []
         return e(react.Fragment, null,
           field('执行任务的模型', e('select', { className: 'kbc-set-input', 'aria-label': '执行任务的模型', disabled: busy, value: key(value),
             onChange: ev => { const v = ev.target.value; const [provider, model] = v ? JSON.parse(v) : []; change(v ? { provider, model } : {}) } },
-          e('option', { value: '' }, '使用宿主默认模型'),
+          e('option', { value: '' }, fixedHigh ? '请选择支持 High 的模型' : '使用宿主默认模型'),
           value.model && !selected ? e('option', { value: key(value) }, value.provider + ' / ' + value.model + '（目录中暂不可用）') : null,
           models.map(m => e('option', { key: key({ provider: m.provider, model: m.id }), value: key({ provider: m.provider, model: m.id }) }, m.providerName + ' / ' + m.name)))),
-          field('推理强度', e('select', { className: 'kbc-set-input', 'aria-label': '推理强度', value: value.reasoningEffort || '', disabled: busy || !efforts.length,
+          fixedHigh ? field('推理强度', e('span', null, 'High（固定）')) : field('推理强度', e('select', { className: 'kbc-set-input', 'aria-label': '推理强度', value: value.reasoningEffort || '', disabled: busy || !efforts.length,
             onChange: ev => { const next = { ...value }; delete next.reasoningEffort; if (ev.target.value) next.reasoningEffort = ev.target.value; change(next) } },
           e('option', { value: '' }, value.model ? (efforts.length ? '使用该模型默认强度' : '该模型未提供可选推理强度') : '请先选择模型'),
           value.reasoningEffort && !efforts.some(x => x.id === value.reasoningEffort) ? e('option', { value: value.reasoningEffort }, value.reasoningEffort + '（当前不可用，请重新选择模型）') : null,
@@ -2725,7 +2916,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       },
       e('div', { className: 'kbf-run-row' }, '运行参数 · ' + runRequest.flow.name),
       e('p', { className: 'kbc-set-hint' }, '选择本次运行的模型、推理强度和参数；不会修改流程的默认值。确认后才会新建会话。'),
-      executionFields(runRequest.execution, execution => setRunRequest(prev => prev && ({ ...prev, execution }))),
+      executionFields(runRequest.execution, execution => setRunRequest(prev => prev && ({ ...prev, execution })), runRequest.flow.builtin),
       (runRequest.flow.params || []).map((p, i) => e('div', { className: 'kbf-field', key: p.name },
         e('label', { htmlFor: 'kbf-run-param-' + i }, p.name + (p.required ? '（必填）' : '（可选）')),
         e('input', { id: 'kbf-run-param-' + i, className: 'kbc-set-input', required: p.required === true,
@@ -2800,11 +2991,11 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
             e('span', { className: 'kbf-state' + (f.enabled && !f.archived ? ' on' : '') }, f.archived ? '已归档' : f.enabled ? '启用' : '停用'),
             e('span', { className: 'kbf-state' }, f.lastRun ? ('后台：' + f.lastRun.status + ' · ' + String(f.lastRun.startedAt || '').slice(5, 16)) : '无后台记录'),
             e('span', { style: { display: 'flex', gap: 6, flexWrap: 'wrap' } },
-              e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: () => openEdit(f) }, '编辑'),
-              e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy || f.archived, onClick: () => toggle(f) }, f.enabled ? '停用' : '启用'),
+              f.builtin ? e('span', null, '内置 · High') : e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: () => openEdit(f) }, '编辑'),
+              f.builtin ? null : e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy || f.archived, onClick: () => toggle(f) }, f.enabled ? '停用' : '启用'),
               e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy || !f.enabled || f.archived, onClick: () => requestRun(f) }, '立即运行（新会话）'),
               e('button', { className: 'kbc-btn kbc-btn-ghost', onClick: () => loadRecords(f) }, '后台记录'),
-              f.archived
+              f.builtin ? null : f.archived
                 ? e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: () => archive(f, true) }, '恢复')
                 : e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: () => archive(f, false) }, '删除'))))
 
@@ -3138,6 +3329,12 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
 
     function KbView() {
       return e(react.Fragment, null, e(UpdatePrompt), e(workbenchUI.Guide), e(workbenchUI.Workbench))
+    }
+
+    // 会话目录列的行由宿主自己拥有按钮，插件只交图标：图标组件拿到 { size, active }。
+    // 宿主图标原语不可用，这里用与插件其它图标同一风格的描边图形（知识库＝叠起来的资料层）。
+    function KnowledgePanelIcon({ size }) {
+      return e('svg', { width: size, height: size, viewBox: '0 0 24 24', 'aria-hidden': true, focusable: 'false', fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round' }, e('path', { d: 'M12 3l8 3-8 3-8-3z' }), e('path', { d: 'M4 6v12l8 3 8-3V6' }), e('path', { d: 'M12 9v12' }))
     }
 
     // ── 解析服务（OCR / ASR）：提供方、任务、待解析项 ────────────────
@@ -3774,6 +3971,39 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       const parseOrigin = source => ({ agent: 'Agent', import: '导入', flow: '流程', ui: '设置页', test: '服务测试' })[source?.origin]
         || ({ tool: 'Agent', ui: '设置页', test: '服务测试' })[source?.via] || '未知入口'
       const parseTime = value => { if (!value) return ''; const parsed = new Date(value); return Number.isNaN(parsed.valueOf()) ? String(value) : parsed.toLocaleString('zh-CN') }
+      const requestRow = request => {
+        const deniedKnowledge = request.status === 'rejected' && request.reason === 'KNOWLEDGE_DELEGATION_REQUIRED'
+        const provenance = request.requestedBy || {}
+        const detailField = (label, value) => e('div', { key: label, className: 'kbc-set-row' }, e('dt', { className: 'kbc-set-key' }, label), e('dd', { className: 'kbc-set-val', style: { margin: 0, whiteSpace: 'pre-wrap' } }, value || '未记录'))
+        return e('article', { key: request.requestId, className: 'kbc-parse-row' },
+          e('strong', null, ({ accepted: '当次提交已接受', rejected: '当次提交被拒绝', reused: '当次复用已有结果', submitted: '当次已提交，尚未确认接受' })[request.status] || request.status),
+          e('div', null, request.source?.relPath || (request.status === 'rejected' ? '当次请求未读取来源文件' : '未记录来源文件')),
+          e('div', { className: 'kbc-parse-meta' }, parseTime(request.createdAt) + ' · ' + parseOrigin(request.requestedBy) + (request.requestedBy?.session ? ' · 会话 ' + request.requestedBy.session : '')),
+          e('p', { className: 'kbc-set-hint' }, deniedKnowledge
+            ? '当次请求未通过知识库解析授权检查，未启动解析。展开详情可查看发起会话和原始说明；升级修复后可重新发起整理。'
+            : '当次结果：' + (request.detail || request.reason || ({ accepted: '请求已接受', reused: '复用结果，未重新调用引擎', submitted: '等待确认' })[request.status] || '未记录原因')),
+          e('small', null, '请求 ' + request.requestId + (request.jobId ? ' · 任务 ' + request.jobId : '')),
+          e('details', { className: 'kbc-request-detail' }, e('summary', null, '查看详情'),
+            e('h4', null, '提交与任务详情'),
+            e('dl', { className: 'kbc-set-info' },
+              detailField('请求编号', request.requestId),
+              detailField('提交时间', parseTime(request.createdAt)),
+              detailField('解析类型', PARSE_KIND_TEXT[request.kind] || request.kind),
+              detailField('提交状态', ({ accepted: '已接受', rejected: '已拒绝', reused: '复用已有结果', submitted: '已提交，尚未确认接受' })[request.status] || request.status),
+              detailField('来源文件', request.source?.relPath || (deniedKnowledge ? '授权检查未通过，旧记录未保存文件路径' : '旧记录未保存文件路径')),
+              detailField('发起入口', parseOrigin(provenance)),
+              detailField('发起会话', provenance.session),
+              detailField('发起 Agent', provenance.agent),
+              detailField('Agent 预设', provenance.preset),
+              detailField('授权入口', provenance.gate),
+              detailField('知识库编号', request.kbId),
+              detailField('关联任务', request.jobId || (deniedKnowledge ? '授权检查时被拒绝，未生成执行任务' : '未记录执行任务编号')),
+              detailField('原因代码', request.reason),
+              detailField('原始说明', request.detail)),
+            request.jobId ? e('div', { className: 'kbc-parse-actions' },
+              e('button', { className: 'kbc-btn kbc-btn-ghost', onClick: () => refreshJob(request.jobId) }, '查看执行任务详情'),
+              e('button', { className: 'kbc-btn kbc-btn-ghost', onClick: () => previewJob(request.jobId) }, '预览解析结果')) : null))
+      }
       const jobRow = (j) => {
         const status = String(j.status || '')
         const landStatus = j.land && j.land.status ? String(j.land.status) : 'none'
@@ -3905,17 +4135,18 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           jobsError?e('p',{role:'alert',className:'kbc-error'},jobsError):null,
           jobs?.length?jobs.map(jobRow):!jobsLoading&&!jobsError?e('p',{className:'kbc-set-hint'},'当前类型和筛选条件下没有执行任务'):null,
           e('div',{className:'kbc-parse-actions'},e('span',null,'共 '+jobsTotal+' 条执行任务'),e('button',{className:'kbc-btn',disabled:jobsOffset===0||jobsLoading,onClick:()=>setJobsOffset(n=>Math.max(0,n-20))},'上一页'),e('button',{className:'kbc-btn',disabled:jobsOffset+20>=jobsTotal||jobsLoading,onClick:()=>setJobsOffset(n=>n+20)},'下一页')),
-          e('details',null,e('summary',null,'提交记录 · '+requestTotal),e('p',{className:'kbc-set-hint'},'提交被拒绝不代表已执行；复用结果不会重新调用引擎。'),(requests||[]).map(r=>e('article',{key:r.requestId,className:'kbc-parse-row'},e('strong',null,({accepted:'已接受',rejected:'提交被拒绝',reused:'复用已有结果',submitted:'已提交，尚未确认接受'})[r.status]||r.status),e('div',null,r.source?.relPath||'未读取来源文件'),e('div',{className:'kbc-parse-meta'},parseTime(r.createdAt)+' · '+parseOrigin(r.requestedBy)+(r.requestedBy?.session?' · 会话 '+r.requestedBy.session:'')),e('div',null,r.detail||r.reason||''),e('small',null,'请求 '+r.requestId+(r.jobId?' · 任务 '+r.jobId:'')))),e('div',{className:'kbc-parse-actions'},e('button',{className:'kbc-btn',disabled:requestOffset===0||jobsLoading,onClick:()=>setRequestOffset(n=>Math.max(0,n-20))},'上一页提交'),e('button',{className:'kbc-btn',disabled:requestOffset+20>=requestTotal||jobsLoading,onClick:()=>setRequestOffset(n=>n+20)},'下一页提交'))),
+          e('details',null,e('summary',null,'提交记录 · '+requestTotal),e('p',{className:'kbc-set-hint'},'这里显示每次提交当时的结果。历史拒绝原因不代表当前页面无法查看；被拒绝的提交不会创建执行任务，复用结果不会重新调用引擎。'),(requests||[]).map(requestRow),e('div',{className:'kbc-parse-actions'},e('button',{className:'kbc-btn',disabled:requestOffset===0||jobsLoading,onClick:()=>setRequestOffset(n=>Math.max(0,n-20))},'上一页提交'),e('button',{className:'kbc-btn',disabled:requestOffset+20>=requestTotal||jobsLoading,onClick:()=>setRequestOffset(n=>n+20)},'下一页提交'))),
           detailPanel,previewPanel,e('details',null,e('summary',null,'导入待处理项'),waitingPanel)):null,
         e('details',{className:'kbc-parse-policy'},e('summary',null,'数据与权限 · '+(policy==='local-only'?'仅本地处理':'允许已配置云端服务')),e('p',{className:'kbc-set-hint'},'本地不可用时不会自动上传云端。云端测试需主动点击，可能产生服务商费用。'),e('select',{className:'kbc-set-input',value:policy,disabled:busy,onChange:ev=>changePolicy(ev.target.value)},e('option',{value:'local-only'},'仅本地处理'),e('option',{value:'allow-configured'},'允许已配置云端服务'))),
         toast?e('div',{className:'kbm-toast'},toast):null)
     }
 
-    const RELEASE_VERSION = '2.2.1'
+    const RELEASE_VERSION = '2.3.0'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.
     const RELEASE_NOTICES = [
+      { version: '2.3.0', items: ['新增收件箱文件选择、拖入、模型选择与一键整理归档。', '资料可逐份或批量排除索引，排除和恢复同步处理全文、向量与关系链条。', '统一桌面工作台和设置界面，修正窄弹窗布局并增加备份目录选择。', '修正知识库 Agent 的 OCR / ASR 授权和流程来源路径判断，提交记录支持查看详情。'] },
       { version: '2.2.1', items: ['自定义流程可保存执行模型和推理强度，按模型支持的档位选择。', '运行前可临时更换模型和参数；新会话先选模再发送任务，选模失败时不启动。'] },
       { version: '1.1.1', items: ['新增产品介绍页、源码、发布包与使用说明入口。'] },
       { version: '1.1.3', items: ['加强解析调用授权与任务来源记录；加入校验后的一键更新。'] },
@@ -4063,10 +4294,16 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     const PROJECT_RECORD_URL = RELEASE_GITHUB_URL + '/blob/main/PROJECT-RECORD.md'
 
     function WorkbenchSettings() {
-      return e(react.Fragment, null, e(UpdatePrompt), e(workbenchUI.Guide),
-        e('div', { className: 'kbc-set-actions' },
+      const [section, setSection] = react.useState('library')
+      const sections = [['library', '知识库与导入'], ['preferences', '使用偏好与隐私'], ['retrieval', '全文与向量检索'], ['parsing', '解析服务'], ['capture', '采集与连接'], ['backup', '备份与恢复'], ['version', '版本与诊断']]
+      return e('div', { className: 'kbw kbw-global-settings kbu-settings', style: { height: 'auto', display: 'block', overflow: 'visible' } },
+        e('header', { className: 'kbu-page-head' }, e('div', null, e('h2', null, '知识库设置'), e('p', null, '管理知识库连接、隐私与索引，让每项设置清楚可控。')), e('span', { className: 'kbu-chip' }, RELEASE_VERSION)),
+        e(UpdatePrompt), e(workbenchUI.Guide),
+        e('div', { className: 'kbc-set-actions kbu-settings-links' },
           e('button', { className: 'kbc-btn kbc-btn-primary', onClick: () => workbenchUI.event('kbw-settings') }, '隐私、备份与工作台设置'),
-          e('a', { className: 'kbc-btn kbc-btn-ghost', href: PROJECT_RECORD_URL, target: '_blank', rel: 'noopener noreferrer' }, '插件设计与演进记录 ↗')), e(Section))
+          e('a', { className: 'kbc-btn kbc-btn-ghost', href: PROJECT_RECORD_URL, target: '_blank', rel: 'noopener noreferrer' }, '插件设计与演进记录 ↗')),
+        e('div', { className: 'kbw-settings-layout' }, e('nav', { className: 'kbw-settings-nav', 'aria-label': '知识库设置分类' }, sections.map(([id, label]) => e('button', { type: 'button', key: id, className: 'kbw-button', 'aria-current': section === id, onClick: () => setSection(id) }, label))),
+          e('div', { className: 'kbw-settings-panel' }, e(Section, { view: section }), e(workbenchUI.PreferencesSettings, { section }), section === 'capture' ? e(workbenchUI.CaptureSettings) : null)))
     }
 
     function ReleaseNotice() {
@@ -4140,8 +4377,9 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       rememberPreviousClientVersion(window.localStorage, document.documentElement.getAttribute('data-kb-client-version'))
       try { resetKnowledgeViewOnStartup(window.localStorage) } catch { /* storage unavailable */ }
       flowClientContext = ctx
-      workbenchUI = createWorkbenchUI({ react, e, ReferenceChip, api: callApi, ctx: () => flowClientContext,
-        Overview: () => e(Overview, { statusOnly: true }), Flows, Parsing: ParseSection, BuildBadge, version: RELEASE_VERSION, projectRecordUrl: PROJECT_RECORD_URL, portal: reactDom.createPortal })
+      workbenchUI = createWorkbenchUI({ react, e, ReferenceChip, api: callApi, ctx: () => flowClientContext, themeCss: KNOWLEDGE_UI_THEME,
+        Overview: () => e(Overview, { statusOnly: true }), Flows, Parsing: ParseSection, BuildBadge, version: RELEASE_VERSION, projectRecordUrl: PROJECT_RECORD_URL, portal: reactDom.createPortal,
+        organizeInbox: (kbId, execution) => launchFlowConversation({ id: 'builtin-inbox-organize', revision: 1 }, kbId, {}, execution) })
       const installedWorkbenchUI = workbenchUI
       ctx.effect(() => () => installedWorkbenchUI.dispose(), 'kb-workbench: client lifecycle')
       workbenchUI.registerReferences(ctx)
@@ -4185,6 +4423,14 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           order: 20,
           label: () => '知识库',
         }, KbView))
+      // 会话目录列的一行必须与主区面板成对登记，两处的面板 id 要一致（行上的 id 寻址的就是那个 main 面板）。
+      // 顶栏页签照旧保留：它是 conversation 面板里的一套登记，和这里的 global 登记互不影响。
+      // 行归宿主拥有：插件交图标与标签；主区面板组件不接收宿主属性，所以复用同一份 KbView。
+      // order 20：排在已发行的 插件(order 0) 与 定时任务(order 10) 之后。
+      ctx.slots.inject('main', () =>
+        ctx.slots.register({ name: 'main', key: 'kb-panel' }, KbView))
+      ctx.slots.inject('sidebar.panellist', () =>
+        ctx.slots.register({ name: 'sidebar.panellist', id: 'kb-panel', order: 20, label: () => '知识库' }, KnowledgePanelIcon))
       document.documentElement.setAttribute('data-kb-client-version', RELEASE_VERSION)
     }
 

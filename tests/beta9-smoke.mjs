@@ -51,7 +51,7 @@ const authority = createParseSourceAuthority({ getAgents: () => agents, getBindi
 const source = await authority.issue('image.png', { agent: a })
 assert((await authority.resolve(source.sourceRef, { agent: a })).external)
 await assert.rejects(authority.resolve(source.sourceRef, { agent: other }), { code: 'SOURCE_REFERENCE_EXPIRED' })
-await assert.rejects(authority.issue(path.join(root, '20-知识笔记/a.md'), { agent: a }), { code: 'SOURCE_DENIED' })
+await assert.rejects(authority.issue(path.join(root, '20-知识笔记/a.md'), { agent: a }), { code: 'KNOWLEDGE_DELEGATION_REQUIRED' })
 await authority.issue('image.png', { agent: other })
 const attachment = await authority.issueAttachment('owned-image', { agent: a }); assert.equal((await authority.resolve(attachment.sourceRef, { agent: a })).data.length, 3)
 

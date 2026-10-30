@@ -1,4 +1,7 @@
-# 2.3.0 in development: unified desktop UI (2026-10-30)
+# 2.3.0 stable: unified desktop UI (2026-10-30)
+
+
+Version 2.3.0 release: verified knowledge agents can submit OCR and ASR on standard desktop hosts without H1. Explicit isolation requirements remain enforced, and an installed but unavailable H1 backend never falls back. Knowledge flows in a separate workspace can resolve originals in the bound library. Submission records now expose persisted details and original failure reasons. Six focused authorization checks passed, including synthetic OCR and ASR HTTP execution; real model inference and production installation were not verified.
 
 [English](RELEASE.en.md) · [简体中文](RELEASE.md)
 
@@ -21,7 +24,7 @@
 
 Verification: all 9 targeted checks passed. Edge checks with a fictional library covered file selection/drag-and-drop, individual and batch exclusion, model selection and send order, saving host settings and switching categories, toggling exclusion for archived materials, and rendering light/dark desktop themes. Host services were test substitutes; the build was not installed in a production DSH host and no real model was called. Version 2.3.0 remains in development.
 
-# 2.3.0 in development: inbox entry and one-click organization (2026-10-29)
+# 2.3.0 stable: inbox entry and one-click organization (2026-10-29)
 
 - Added a material-exclusion policy. Pending cards support per-item or batch changes; archived materials can also be changed in details. Originals and registered derivatives move together into **Excluded from index**. Exclusion removes full-text, vector, and relationship entries. Removing exclusion restores the original classification and rebuilds full-text and relationship indexes; enabled vector services fill their index in the background.
 - Unarchived items are not included in full-text, vector, or relationship indexes. A knowledge-base Agent reads and organizes them directly through the pending-item list. Archived outputs inherit the source's exclusion state. Parsed text remains viewable within the excluded section. Completed items leave the pending list.
@@ -33,7 +36,7 @@ Verification: all 9 targeted checks passed. Edge checks with a fictional library
 
 Verification: targeted backend checks on a fictional library and Edge checks for file selection, drag-and-drop, file display, and session send order passed; desktop and narrow-screen checks showed no horizontal overflow. The host session service was a test substitute; no real DSH installation or model organization was run. Version 2.3.0 remains open to further changes and has not been publicly released.
 
-# 2.3.0 in development: session-directory sidebar entry (2026-10-28)
+# 2.3.0 stable: session-directory sidebar entry (2026-10-28)
 
 - Added a **Knowledge Base** row in the left session directory alongside plugins and scheduled tasks (order 20). Opening it shows the same workbench; the top **Knowledge Base** tab remains, and both entries use the same data.
 - The row and global panel are registered as a pair: row `id` and panel `key` both use `kb-panel`. The host renders the row; the plugin supplies its icon (`stroke` uses `currentColor` and follows the theme).

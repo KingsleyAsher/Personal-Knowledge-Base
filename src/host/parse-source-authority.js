@@ -29,14 +29,29 @@ export function createParseSourceAuthority({ getAgents, getBinding, getControlle
     const cwd = agent.session?.header?.cwd
     if (!cwd || !path.isAbsolute(cwd)) throw fail('SOURCE_AUTHORITY_UNAVAILABLE', '宿主未提供当前会话工作目录，无法核验文件权限')
     const root = await realpath(cwd), candidate = path.resolve(root, String(sourcePath || ''))
+    // Knowledge flows run in a separate workspace. Authorized KB originals
+    // remain valid sources even when they are outside that workspace.
+    const kbRoot = binding?.kbPath ? await realpath(binding.kbPath) : null
+    const kbConfigured = binding?.kbPath ? path.resolve(binding.kbPath) : null
+    const kbRelative = sourcePath && kbRoot && inside(kbRoot, candidate) ? path.relative(kbRoot, candidate)
+      : sourcePath && kbConfigured && inside(kbConfigured, candidate) ? path.relative(kbConfigured, candidate) : null
+    if (kbRelative !== null) {
+      const gate = knowledgeCaller(exec)
+      if (!gate.ok) throw fail(gate.reason || 'KNOWLEDGE_DELEGATION_REQUIRED', gate.detail || '该文件属于个人知识库，仍需要知识库访问授权')
+      const rel = kbRelative.replaceAll('\\', '/')
+      if (rel.split('/').some(part => part.startsWith('.') || part === 'node_modules')) throw fail('SOURCE_DENIED', '内部元数据和依赖目录不能作为解析原件')
+      const abs = await safePath(kbRoot, rel), st = await stat(abs)
+      if (!st.isFile()) throw fail('SOURCE_NOT_FILE', '请选择单个文件')
+      return { sourceRel: rel, scope: 'knowledge' }
+    }
     if (!sourcePath || !inside(root, candidate) || candidate === root) throw fail('SOURCE_DENIED', '仅允许解析当前会话工作目录内的文件')
     const rel = path.relative(root, candidate).replaceAll('\\', '/')
     if (rel.split('/').some(part => part.startsWith('.') || part === 'node_modules')) throw fail('SOURCE_DENIED', '内部元数据和依赖目录不能作为解析原件')
     const abs = await safePath(root, rel), st = await stat(abs)
     if (!st.isFile()) throw fail('SOURCE_NOT_FILE', '请选择单个文件')
-    const kbRoot = binding?.kbPath ? await realpath(binding.kbPath) : null
     if (kbRoot && inside(kbRoot, abs)) {
-      if (!knowledgeCaller(exec).ok) throw fail('KNOWLEDGE_DELEGATION_REQUIRED', '该文件属于个人知识库，仍需要知识库访问授权')
+      const gate = knowledgeCaller(exec)
+      if (!gate.ok) throw fail(gate.reason || 'KNOWLEDGE_DELEGATION_REQUIRED', gate.detail || '该文件属于个人知识库，仍需要知识库访问授权')
       // KB files retain normal path/privacy checks and are never disguised as external.
       return { sourceRel: path.relative(kbRoot, abs).replaceAll('\\', '/'), scope: 'knowledge' }
     }

@@ -1,4 +1,4 @@
-# Personal Knowledge Base for DSH 2.2.1
+# Personal Knowledge Base for DSH 2.3.0
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
@@ -17,15 +17,15 @@ English reference pages are authored for English readers and paired with their C
 
 ## Current release
 
-The currently recommended stable release is **2.2.1**. No preview build is currently offered. The repository also contains ongoing 2.3.0 development work; it is not a public release. Custom workflows can save a model and reasoning level as defaults or choose temporary overrides before a run. This requires no new dependency or migration of existing workflows.
+The currently recommended stable release is **2.3.0**. No preview build is currently offered. Version 2.3.0 adds inbox organization, index exclusion with relationship cleanup and restoration, unified desktop settings, and corrected knowledge-agent parsing authorization. Custom workflows can save a model and reasoning level as defaults or choose temporary overrides before a run. This requires no new dependency or migration of existing workflows.
 
 The workbench includes privacy controls, setup guidance, a directory and relationship map, quick capture, PDF reading and annotations, native `@` knowledge-base questions, and optional full backups. See the [workbench guide](WORKBENCH.en.md) for detailed capabilities and boundaries.
 
 ## Download
 
-- **Stable release 2.2.1:** [GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.2.1/local-dsh-knowledge-base-2.2.1.tgz) · [Gitee](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.2.1.tgz) · [GitCode](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.2.1.tgz?ref=main) · [GitHub direct link](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.2.1.tgz).
-- **Browser extension for Chrome and Edge:** [Gitee](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.2.1/knowledge-base-browser-extension.zip) · [GitHub direct link](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/knowledge-base-browser-extension.zip). Mirrors can lag behind. If a file is unavailable, try another source.
-- Historical packages are no longer offered from public download locations. Users of older versions should install 2.2.1 first, then use the in-plugin updater.
+- **Stable release 2.3.0:** [GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.3.0/local-dsh-knowledge-base-2.3.0.tgz) · [Gitee](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.3.0.tgz) · [GitCode](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.3.0.tgz?ref=main) · [GitHub direct link](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.3.0.tgz).
+- **Browser extension for Chrome and Edge:** [Gitee](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.3.0/knowledge-base-browser-extension.zip) · [GitHub direct link](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/knowledge-base-browser-extension.zip). Mirrors can lag behind. If a file is unavailable, try another source.
+- Historical packages are no longer offered from public download locations. Users of older versions should install 2.3.0 first, then use the in-plugin updater.
 
 The updater checks stable and preview channels. Stable updates within the same major version can install in the background; major-version changes and preview-channel changes require a manual choice. If the host cannot install from the client, update through the DSH plugin manager. See the [release notes](RELEASE.en.md) and [versioning policy](VERSIONING.en.md).
 
@@ -46,7 +46,7 @@ The showcase source is in [`website/`](website/) and is deployed with GitHub Pag
 For a first install or to move to the current updater, enter this package URL in the DSH plugin manager's installation source:
 
 ```text
-https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.2.1.tgz
+https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.3.0.tgz
 ```
 
 The client downloads and installs the package. You can also install a local package from `dist/`. Older versions may use the old download flow, so install this release before using the new updater.
@@ -57,7 +57,7 @@ Upgrading preserves bindings and runtime data. A separate legacy delegation gate
 
 ## Verification and limits
 
-The 2.2.1 workflow-model changes passed targeted checks for saved settings, one-run overrides, model selection before sending, and failure blocking. The package and digest were checked by the release script. Version 2.2.0 passed 34 targeted regression checks and an isolated backend smoke check in a Windows package. Full integration with the DSH React host, installation in a production desktop host, and real cloud API calls were not verified. Tests used synthetic materials and simulated services; the maintainer's personal knowledge base was not used.
+The 2.3.0 workflow-model changes passed targeted checks for saved settings, one-run overrides, model selection before sending, and failure blocking. The package and digest were checked by the release script. Version 2.2.0 passed 34 targeted regression checks and an isolated backend smoke check in a Windows package. Full integration with the DSH React host, installation in a production desktop host, and real cloud API calls were not verified. Tests used synthetic materials and simulated services; the maintainer's personal knowledge base was not used.
 
 Version 2.1.0 passed 25 targeted automated checks, per-file package and SHA-256 checks, the GitHub release workflow, and the product-page deployment. The user confirmed the 2.1-beta4 preview was usable. The stable package was not installed on the maintainer's machine, and no live cloud Embedding or Rerank API was called. Automated checks mainly used synthetic materials and simulated services.
 

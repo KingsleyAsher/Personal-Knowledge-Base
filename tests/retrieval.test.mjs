@@ -74,7 +74,7 @@ test('automatic API build, cross-language retrieval, one-round cooperation, reus
   assert.notEqual((await service.dispatch(b,{op:'retrieval.get'})).estimate.activeModel,previous)
 })
 
-test('workbench integration covers drafts and inbox, enforces privacy, and supplies verifiable question ranges',async t=>{
+test('workbench integration covers drafts, excludes pending inbox, enforces privacy, and supplies verifiable question ranges',async t=>{
   const base=await mkdtemp(path.join(os.tmpdir(),'retrieval-wb-')), root=path.join(base,'library'),stateDir=path.join(base,'state');await mkdir(root)
   const core=createCore({stateDir},()=>{});assert.equal((await core.bind(root,{confirmInit:true})).ok,true)
   await mkdir(path.join(root,'50-底稿'),{recursive:true});await mkdir(path.join(root,'90-收件箱'),{recursive:true})
@@ -83,7 +83,7 @@ test('workbench integration covers drafts and inbox, enforces privacy, and suppl
   await writeFile(path.join(root,'00-画像','secret.md'),'私密蓝鲸ZX-991。')
   const wb=createWorkbench({stateDir,getCore:()=>core});t.after(()=>wb.dispose())
   const result=await wb.dispatch({op:'search.list',mode:'hybrid',q:'ZX-991'})
-  assert(result.items.some(f=>f.path.startsWith('50-底稿')));assert(result.items.some(f=>f.path.startsWith('90-收件箱')));assert(!JSON.stringify(result).includes('secret.md'))
+  assert(result.items.some(f=>f.path.startsWith('50-底稿')));assert(!result.items.some(f=>f.path.startsWith('90-收件箱')));assert(!JSON.stringify(result).includes('secret.md'))
   const policy=await wb.dispatch({op:'preferences.get'}),q=await wb.dispatch({op:'question.create',sessionId:'session',policyVersion:policy.version},'session')
   const found=await wb.dispatch({op:'question.search',questionId:q.questionId,query:'ZX-991'},'session')
   assert(found.sources.some(s=>s.text.includes('前提为干燥环境')))

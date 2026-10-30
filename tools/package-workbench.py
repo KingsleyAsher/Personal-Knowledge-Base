@@ -29,6 +29,20 @@ manifest = {'package': '@local/dsh-knowledge-base', 'version': version, 'buildId
             'packageFileCount': len(files), 'buildFileCount': len(build),
             'files': [{'path': rel, 'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest()} for rel, data in sorted(files.items())],
             'validation': {'productionInstalled': False, 'formalRuntimeVerified': False, 'realModelAnswerVerified': False, 'realCloudApiTested': False}}
+# Local development keeps the semantic version, but package-manager caches key
+# local tarballs by their path. Give each payload an immutable installation path.
+install_archive = delivery / ('local-dsh-knowledge-base-' + version + '-build-' + manifest['buildId'] + '-' + manifest['sha256'][:12] + '.tgz')
+if install_archive.exists():
+    assert install_archive.read_bytes() == raw, 'Refusing to replace an immutable installation archive'
+else:
+    install_archive.write_bytes(raw)
+manifest['installationTgz'] = install_archive.name
+manifest['installationSpec'] = install_archive.resolve().as_posix()
+(delivery / '安装说明.txt').write_text(
+    '2.3.0 开发包请使用本次构建的独立安装路径，避免同版本、同路径旧包缓存。\n\n'
+    + manifest['installationSpec'] + '\n\n'
+    + '在 DSH 插件管理器中作为本地包安装源使用。若当前窗口保留旧插件，按宿主提示重新加载或完全退出（含托盘）后重开。\n'
+    + '验收以知识库设置中的构建号 ' + manifest['buildId'] + ' 为准，仅看到版本号相同不能证明已更新。\n', encoding='utf-8')
 validation = delivery / 'validation.json'
 if validation.is_file():
     report = json.loads(validation.read_text(encoding='utf-8'))
@@ -73,3 +87,4 @@ assert hashlib.sha256((delivery / '知识库快速收集-浏览器扩展.zip').r
 shutil.copyfile(delivery / '知识库快速收集-浏览器扩展.zip', repo / 'dist/knowledge-base-browser-extension.zip')
 print(json.dumps({k: manifest[k] for k in ['version','buildId','bytes','sha256','packageFileCount']}, ensure_ascii=False, indent=2))
 print(str(delivery))
+print('Installation source: ' + manifest['installationSpec'])
