@@ -1,8 +1,5 @@
 # 2.3.0 stable: unified desktop UI (2026-10-30)
 
-
-Version 2.3.0 release: verified knowledge agents can submit OCR and ASR on standard desktop hosts without H1. Explicit isolation requirements remain enforced, and an installed but unavailable H1 backend never falls back. Knowledge flows in a separate workspace can resolve originals in the bound library. Submission records now expose persisted details and original failure reasons. Six focused authorization checks passed, including synthetic OCR and ASR HTTP execution; real model inference and production installation were not verified.
-
 [English](RELEASE.en.md) · [简体中文](RELEASE.md)
 
 - Fixed OCR/ASR submissions being incorrectly rejected for a knowledge-base Agent in an ordinary desktop host. Without H1, submission now checks a live knowledge-base root session or current delegation authorization. Explicit `parse.allowWithoutIsolation:false` still requires H1, and an enabled but unready H1 does not fall back. An authorized knowledge-base session in a separate workflow workspace can parse originals in the currently bound library. The source-authorization entry now preserves the actual rejection code and reason, so isolation failures are not misreported as missing knowledge-base permission. Six targeted checks passed, including submission and result retrieval for fictional originals through simulated local OCR/ASR services. No real model was called.
@@ -34,7 +31,7 @@ Verification: all 9 targeted checks passed. Edge checks with a fictional library
 - **Organize now** has a model selector and remembers the last choice per library. It creates a knowledge-base Agent session with the selected model and High reasoning effort. The fixed organization/archive instruction is sent only after model selection succeeds. If the model is unavailable, does not support High, or selection fails, no task is sent. The built-in workflow can also select a model when run from the Workflow page.
 - The Workflow page permanently lists **Organize and archive inbox**, which also runs in a new session. The built-in workflow cannot be edited, disabled, or deleted. Existing text, web, and capture records are collapsed under an auxiliary entry.
 
-Verification: targeted backend checks on a fictional library and Edge checks for file selection, drag-and-drop, file display, and session send order passed; desktop and narrow-screen checks showed no horizontal overflow. The host session service was a test substitute; no real DSH installation or model organization was run. Version 2.3.0 remains open to further changes and has not been publicly released.
+Verification: targeted backend checks on a fictional library and Edge checks for file selection, drag-and-drop, file display, and session send order passed; desktop and narrow-screen checks showed no horizontal overflow. The host session service was a test substitute; no real DSH installation or model organization was run. Version 2.3.0 has been published as a stable release.
 
 # 2.3.0 stable: session-directory sidebar entry (2026-10-28)
 
@@ -132,7 +129,7 @@ This release promoted verified 2.1 preview features to stable and retained 2.0.3
 - The authoritative package byte count, SHA-256, and per-file digests are in [`release-manifest.json`](release-manifest.json).
 - Product showcase: [Personal Knowledge Base 2.1.0](https://kingsleyasher.github.io/Personal-Knowledge-Base/). Stable-release workflow and Pages deployment both passed.
 - Gitee mirror sync succeeded; the GitCode mirror workflow failed. Mirror results are recorded separately from GitHub Release status.
-- The user confirmed preview 2.1-beta4 was usable. The stable package was not installed on the maintainer's machine, and no real cloud Embedding/Rerank API was used.
+- The stable package was not installed on the maintainer's machine, and no real cloud Embedding/Rerank API was used.
 
 - Multilingual hybrid full-text and vector retrieval: parallel recall, one round of bidirectional local supplementation, RRF fusion, exact matching, and source deduplication.
 - Long text is chunked by structure and linked to sections and source positions; necessary context is restored for hits without narrowing the original evidence scope.
@@ -153,7 +150,7 @@ The patch is a separately applied, reversible code change for a specific `memory
 
 Users confirmed the preview build was usable on a real device. Before the stable release, version, manifest, package, and download entry were resynchronized. Release preparation ran targeted checks, source/archive consistency, and public-content checks. No large stress test or live cloud request was added.
 
-All 25 targeted automated checks passed, as did per-file package-digest checks, the stable-release workflow, and the showcase deployment. The user's real-device test was on preview 2.1-beta4. The release manifest explicitly says the stable package was not installed in production by the maintainer and no real cloud model was called.
+All 25 targeted automated checks passed, as did per-file package-digest checks, the stable-release workflow, and the showcase deployment. The release manifest explicitly says the stable package was not installed in production by the maintainer and no real cloud model was called.
 
 Upgrading does not automatically remove duplicate content accumulated in existing sessions. After a full restart, verify in a new session. Review pending differences in custom rules or presets in Knowledge Base Settings.
 

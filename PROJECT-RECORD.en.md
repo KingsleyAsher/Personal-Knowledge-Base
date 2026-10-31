@@ -1,35 +1,37 @@
 # Plugin Design and Development Record
 
 
-Version 2.3.0 release: verified knowledge agents can submit OCR and ASR on standard desktop hosts without H1. Explicit isolation requirements remain enforced, and an installed but unavailable H1 backend never falls back. Knowledge flows in a separate workspace can resolve originals in the bound library. Submission records now expose persisted details and original failure reasons. Six focused authorization checks passed, including synthetic OCR and ASR HTTP execution; real model inference and production installation were not verified.
-
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
 <!-- project-record-version: 2.3.0 -->
 
-**Implementation covered: 2.3.0 (stable) · Updated: 2026-10-30 · Maintenance: review this record alongside the source with every release.**
+**Implementation covered: 2.3.0 (stable) · Updated: 2026-10-31 · Maintenance: review this record alongside the source with every release.**
 
 This long-term record is for users, maintainers, and future contributors. It explains why the product is built this way, what it can currently do, how its features fit together, where data is stored, and what may come next. “Implemented” refers to source code in this repository. Roadmap items are future directions, not features already delivered. The installed version and build ID must be checked in the client and the corresponding release manifest.
 
 See the [workbench guide](WORKBENCH.en.md) for usage, [release notes](RELEASE.en.md) for changes in each release, and [versioning policy](VERSIONING.en.md) for version comparisons. This record explains the product as a whole; release notes are not an architecture document.
 
-## 2.3.0 stable: unified desktop UI (2026-10-30)
+## 2.3.0 stable: inbox, index privacy, and unified desktop workbench
+
+### Unified desktop UI (2026-10-30)
 
 The [Figma design](https://www.figma.com/design/9O89rqsKJ8ufkiPQGhqGTn) uses editable components and text, and covers the inbox, host settings, and dark theme. `src/client/knowledge-ui.css` is the source of shared styles. `sync-workbench-client.py` embeds it into `index.js`, while `sync-workbench-build.py` includes it in the build fingerprint. After editing the style source or `workbench-ui.js`, run the synchronization steps; do not change only generated fragments.
 
 Inbox cards and archived-item details share a keyboard-operable **Exclude from index** switch. Related actions remain disabled until the service confirms success; on failure, the backend state is retained. After an archived item is moved, the view refreshes at its new path and keeps the details open. A selected item is restored only when the library is the same and view permissions have not changed. Host settings reuse the existing service form through category navigation. Preference saves still validate `kbId` and `revision`, and switching retrieval categories does not discard unsaved fields. This work covers desktop design only; it adds no mobile adaptation.
 
-Interaction checks in Edge used a fictional library and host-service substitutes. No personal materials were accessed. A formal DSH installation and real model-based filing were not verified. The changes remain in a local 2.3.0 development package for further iteration.
+Interaction checks in Edge used a fictional library and host-service substitutes. No personal materials were accessed. A formal DSH installation and real model-based filing were not verified. This UI shipped in the stable 2.3.0 release; later changes should go into a new version rather than replace the existing release package.
 
-## 2.3.0 stable: one-click inbox organization (2026-10-29)
+### Inbox organization, index exclusion, and parsing records (2026-10-29)
 
 Added `index-policy.js` and `index-policy-service.js` to unify material ownership, exclusion policy, and file-move progress. They are connected to the core full-text index, hybrid retrieval, relationship index, map, parsing, and archive entry points. Exclusion and restoration both update relationship links. Excluded materials and their registered derivatives are stored in a separate **Excluded from index** section. The old vector manifest lacks complete source ownership, so changing state clears the old generation and then rebuilds vectors for allowed materials. `kb_inbox` supplies the organization queue without depending on search indexes. The source field on `kb_record` determines how archived items inherit rules; completion explicitly registers the archive result.
 
 Validation used fictional materials and simulated local Embedding and OCR responses. It covered clearing and restoring full-text/vector indexes and two-way relationships, source inheritance, parsed-file visibility, batch changes, refusing conflicting overwrites, and retry after failure. Browser checks covered individual and batch operations. No personal-library migration, production-host installation, or real model-based organization was performed.
 
+The same stable release also fixed OCR/ASR submissions being incorrectly rejected for knowledge-base Agents in standard desktop hosts. Without H1, authorization checks a live knowledge-base root session or current grant; explicit isolation requirements still require H1, and an enabled but unready H1 never falls back. A knowledge flow running in a separate workspace can parse originals in the currently bound library. Submission details preserve the actual rejection code and reason and link to related task details and result previews. Six targeted authorization checks passed, including submission and result retrieval for fictional materials through simulated OCR/ASR services; no real model or production DSH installation was used.
+
 The inbox now saves files immediately after multi-file selection or drag-and-drop, and independently scans inbox contents, including files added manually. Existing identity, permission, upload-size, and duplicate checks remain. The backend provides a permanent `builtin-inbox-organize` workflow that cannot be changed, disabled, or deleted. The inbox and workflow page reuse the new-session execution entry point. Users select a model; reasoning is fixed at High. The inbox saves the model choice locally in the browser per `kbId`. The model must still be available and support High, and model selection must succeed before the organization prompt is sent. This workflow uses session execution so a background route cannot bypass the High requirement. Backend and browser interaction checks used a fictional library; no model was called in a real host.
 
-## 2.3.0 stable: sidebar entry (2026-10-28)
+### Session-directory sidebar entry (2026-10-28)
 
 Added a **Knowledge Base** row in the left session directory, alongside plugins and scheduled tasks (order 20). Clicking it opens the same workbench. The top tab remains; both entries use the same UI, data, and settings, without registering a second copy.
 
@@ -37,13 +39,15 @@ The pairing rule comes from the host: `sidebar.panellist` row `id` must match th
 
 Targeted checks and a same-layer mirror probe verified row/panel pairing, label, order, and icon attributes. A browser tool was unavailable, so actual rendering inside the host was not observed. The probe could mirror only the rules read from the host; the definition of `resolveSlotLabel` is outside the host package and was modeled from the row semantics.
 
-## 2.2.1: execution model for custom workflows (2026-10-27)
+## 2.2.0–2.2.1: foundational stability and workflow model selection (2026-10-27)
+
+### Execution model for custom workflows
 
 Workflow definitions gained an optional `execution` field containing `provider`, `model`, and `reasoningEffort`. Older workflows leave it empty and continue to use the previous default route. The editor reads configured models and their exact reasoning levels from the host LLM service; changing the model clears the old reasoning level. **Run now** opens an options panel, and a one-run override does not change the saved definition. A new session is routed through the host's `modelDirectories` before the task is sent; on failure, the error is retained and nothing is sent. Background step-by-step delegation uses the complete saved route too, without mixing reasoning or output parameters from another model.
 
 Synthetic materials and session checks covered saving, reloading, a one-run override, routing order, and blocking after failure. The change was not installed in a production DSH host and no real model was called. The 2.2.1 stable package, manifest, and download entry were updated for the release.
 
-## 2.2.0: foundational stability and less repeated work (2026-10-27)
+### Less repeated work and foundational stability
 
 Retains 2.1.5 exact retrieval, chunking, Float32 shards, directory format, and question-answer protocol. The base JSON index uses a budgeted cache keyed by a high-precision file fingerprint. Repeated requests reuse parsing and integrity checks; external rewrites invalidate the cache. Original text and line positions are reused within a request, with chunked decoding and streaming summaries. Forensic text is not reused across requests.
 
@@ -51,7 +55,9 @@ Consumers share a watcher for the same root directory. Foreground queries and ba
 
 No runtime dependencies, settings, or manual index migrations were added. This does not introduce SQLite, ANN, a predictor, or a new model. Existing JSON parsing and exact vector scans still have scale limits. The package, update manifest, and download entry were synchronized to 2.2.0. See the [optimization record](EXISTING-FRAMEWORK-OPTIMIZATION.en.md) for benchmarks, validation, and limits.
 
-## 2.1.5: exact retrieval in the existing framework for large libraries (2026-10-26)
+## 2.1.1–2.1.5: workbench, updates, and retrieval improvements (2026-10-23–2026-10-26)
+
+### Exact retrieval in the existing framework for large libraries (2.1.5)
 
 - Reuses line positions for long documents and retains every candidate needed for the original exact ranking. Large vector working sets are scanned in windows, with full scoring and checksum validation.
 - Adds retention budgets for body, chunk, and manifest caches; reuses unchanged manifests; improves scope filtering, batch generation of index inputs, concurrency limits, and cancellation of active queries.
@@ -61,13 +67,13 @@ No runtime dependencies, settings, or manual index migrations were added. This d
 
 Synthetic comparison: for 20,000 1,024-dimensional vectors, warm-query median fell from about 553 ms to 180 ms, and peak RSS in separate processes fell from about 418 MB to 201 MB. Ranking and coverage were identical. All 71 related checks passed. Full vector reads remain 81.92 MB per query, and the question-answer context budget is unchanged. See the [optimization and validation record](EXISTING-FRAMEWORK-OPTIMIZATION.en.md).
 
-## 2.1.4: background updates and completion state (2026-10-26)
+### Background updates and completion state (2.1.4)
 
 Stable releases eligible for automatic installation within the same major version no longer appear in a pre-update choice dialog. Manual entry points remain for major-version changes, preview channels, and hosts without a client installation interface. After the host build and client version both match, shared version state is refreshed, old requests are invalidated, and a new check starts. This prevents a late result from restoring an outdated available-update notice. Stable patch releases do not show release notes; minor and major upgrades continue to combine unread content.
 
 All 26 targeted checks passed for installation recovery, silent notices, completion state, late checks, and read-state persistence. Version, package, release manifest, and website entry were synchronized to 2.1.4.
 
-## 2.1.3: responsiveness and retrieval performance (2026-10-26)
+### Responsiveness and retrieval performance (2.1.3)
 
 The workbench continues to use SSE, coalescing material-change refreshes over 200 ms. Visible pages refresh every 60 seconds as a fallback, pause while hidden, and refresh on return to visibility or focus. The file watcher can notify the workbench even when retrieval is disabled. The server invalidates snapshots before broadcasting, preventing an older concurrent scan from restoring stale data. Relationship indexing reports completion/failure events; progress is polled only while an update is active.
 
@@ -77,31 +83,31 @@ Each query checks shard file identity, size, and mtime/ctime, then continues per
 
 For 20,000 synthetic single-chunk materials, worker warm-query p50 fell from about 109 ms to 17 ms and p95 from about 129 ms to 40 ms; cold queries became slightly slower. This does not predict real libraries or whole-interface speed. Targeted regressions and a browser refresh spot check passed. Parallel scanning remained a later, measurement-driven option. Source, client version, release notes, guide, website entry, package, and release digest were synchronized to 2.1.3. See the [performance record](PERFORMANCE.en.md) for conditions and limits.
 
-## 2.1.2: full-screen relationship canvas (2026-10-26)
+### Full-screen relationship canvas (2.1.2)
 
 The graph gained **Full-screen canvas / Exit full screen**, filling the application window with the graph and relationship list. The canvas adjusts to its actual aspect ratio to reduce unused horizontal space. Zoom, drag, fit, and node details remain available. Esc exits full screen first; switching tabs or opening link checks closes it automatically. Full-screen state is not persisted.
 
 The source is `workbench-ui.js`, which the synchronization script embeds into `index.js`. `workbench-relations.js`, `workbench-features.js`, and `workbench-theme.css` are historical split copies, not current UI build inputs. New same-version builds in the delivery directory were unified as 2.1.2 for this stable release. Source, package documentation, website, package, and digest manifest were updated together. The source build passed a synthetic-host browser check; the repackaged build received targeted regressions and release-consistency checks. Full-screen positioning can still be affected by styles on host ancestor elements. Public commits exclude local runtime logs, screenshots, and knowledge-base materials.
 
-## 2.1.1: release entry maintenance
+### Inbox and release-entry maintenance (2.1.1)
 
 The current entry recommends stable 2.1.1. Preview packages superseded by stable and their download copies were removed. The preview manifest uses `active:false` to indicate that no preview is available. The updater accepts an empty preview channel and filters old mirror previews behind the stable version while retaining the ability to publish a new preview later. Website version, installation guide, and links were synchronized to 2.1.1. Historical release notes remain as development records.
 
-## 2.1.1: inbox and scrolling maintenance (2026-10-23)
+#### Inbox and scrolling maintenance (2026-10-23)
 
 The inbox reuses the existing DeleteFile and `trash.move` two-step confirmation flow; after the original is moved to Trash, the list refreshes and restore remains available. Workbench height is computed from remaining window space to avoid a blank view when the host mounts a parent at zero height. Ancestor scroll-position resets were removed, natural scroll chaining was retained, and space for the host composer is reserved at the bottom of details while observing composer mount and size changes. Fictional-library checks covered deleting a capture original after deleting its note, zero-height parents, desktop and narrow screens, and a short preview at the boundary. No real knowledge-base material, device screenshot, or runtime log was added to release artifacts.
 
-## 2.1.0: retrieval update (2026-10-22)
+## 2.1.0: hybrid retrieval and reliability maintenance (2026-10-22)
 
 User search and citation-based Q&A now use unified full-text/vector retrieval, with structural chunking, one round of bidirectional local supplementation, RRF, optional general-purpose reranking, and source-context expansion. Settings include SiliconFlow BGE-M3 and generic Embedding/Rerank APIs; saving and enabling starts incremental indexing. Space is estimated but no total quota is enforced. Vectors are stored in Float32 binary shards. Sections and chunks retain source locations without storing another copy of chunk text. Implementation entry points are `retrieval.js`, `retrieval-chunks.js`, `retrieval-api.js`, and `retrieval-worker.js`. See the [retrieval guide](RETRIEVAL.en.md). The rest of this record retains earlier core-index and compatibility-interface notes; current user-facing retrieval is described here and in the guide.
 
-## 2.1.0: reliability and upgrade maintenance
+### Reliability and upgrade maintenance
 
 The persistent retrieval worker, content-fingerprint tokenization cache, and merging of simultaneous in-flight vector queries do not cache final answers. Candidate sets, evidence ranges, permissions, and version checks remain. The new Q&A protocol does not resend a full answer by default; at turn end it checks citations and may request one targeted correction. `.kbmeta` records mechanism versions and fingerprints for managed files. Custom files are preserved and differences are exposed. Dynamic-memory reinjection fixes are provided as a separate `memory-evolve` patch and do not modify the host core.
 
-## 2.1.0 stable release record (2026-10-22)
+### Stable release record (2026-10-22)
 
-The stable release was first merged to `main` in [PR #25](https://github.com/KingsleyAsher/Personal-Knowledge-Base/pull/25) and published as a GitHub Release: [`v2.1.0`](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.1.0). Initial release commit: `bf41c52c088495596c619af30b38a4a4bc43a3e1`. [PR #26](https://github.com/KingsleyAsher/Personal-Knowledge-Base/pull/26) then synchronized release notes, package documentation, installer, website download copy, and digest manifest to `main`, merged as `5abc0bbfd37162e91343906aa761a37ea590639f`. The build ID stayed `37b7ff660806754d` because the synchronization changed no executable build files. The current package byte count, SHA-256, and per-file inventory are authoritative in [`release-manifest.json`](release-manifest.json). The user confirmed that preview 2.1-beta4 was usable. The maintainer did not install the stable package locally and no real cloud model API was called. Stable-release validation and the showcase deployment passed; the Gitee mirror succeeded and the GitCode mirror workflow failed. Mirror status is tracked separately from the GitHub Release.
+The stable release was first merged to `main` in [PR #25](https://github.com/KingsleyAsher/Personal-Knowledge-Base/pull/25) and published as a GitHub Release: [`v2.1.0`](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.1.0). Initial release commit: `bf41c52c088495596c619af30b38a4a4bc43a3e1`. [PR #26](https://github.com/KingsleyAsher/Personal-Knowledge-Base/pull/26) then synchronized release notes, package documentation, installer, website download copy, and digest manifest to `main`, merged as `5abc0bbfd37162e91343906aa761a37ea590639f`. The build ID stayed `37b7ff660806754d` because the synchronization changed no executable build files. The current package byte count, SHA-256, and per-file inventory are authoritative in [`release-manifest.json`](release-manifest.json). The maintainer did not install the stable package locally and no real cloud model API was called. Stable-release validation and the showcase deployment passed; the Gitee mirror succeeded and the GitCode mirror workflow failed. Mirror status is tracked separately from the GitHub Release.
 
 ## Contents
 
@@ -318,22 +324,10 @@ The main-branch record describes current source. Historical states can be retrie
 |---|---|
 | Early versions | Local binding, standard directories, item retrieval, and knowledge-base presets established a controlled knowledge entry point |
 | 1.1.x | Added parsing services, imports, index maintenance, settings; improved authorization, credentials, update downloads, and multi-source checks |
-| 2.0-beta1 through beta6 | Expanded material management into a workbench with reading/excerpts, relationships, capture, backups, and onboarding; iterated on map and parsing UI |
-| 2.0-beta7 | Unified page navigation and style; restored relationship dragging, zoom, selection, and section exploration |
-| 2.0-beta8 | Restored top update entry, resizable panes, system-material classification, reading guidance, and 30-day Trash |
-| 2.0-beta9 | Added incremental relationship indexing, direct deletion, unified parsing-task records, and channel-aware update notices |
-| 2.0.0 | Released the workbench; unified version formats, migration comparison, and pre-release fixes |
-| 2.0.1 | Changed update notes to a deduplicated combined list; established this record and README/Settings links; added documentation versions to release checks |
-| 2.0.2 | Removed device paths, personal directories, and local service addresses from public materials; added documentation privacy scans and maintenance rules |
-| 2.1-beta1 | Added multilingual full-text and dense-vector retrieval, long-document structure-aware chunking, and BGE-M3 API settings |
-| 2.1-beta2 | Added retrieval-computation caching, request isolation, evidence-gap follow-up, and mechanism-upgrade coordination; kept recall candidates and source ranges |
-| 2.1-beta3 | Corrected Q&A citation-check protocol while retaining verifiable sources and compatibility with old callers |
-| 2.1-beta4 | Added end-of-turn citation checks and one targeted correction; dynamic memory-state isolation shipped as a separate patch |
-| 2.1.0 | Released hybrid retrieval, automatic incremental indexing, user-file protection, and runtime-mechanism upgrade maintenance |
-| 2.1.1 | Inbox Trash, window-height and scroll fixes, and unified icons and release entry points |
-| 2.1.2 | Full-screen relationship canvas with region-aware layout and safe exit |
-| 2.1.3 | Coalesced event refreshes, incremental retrieval-directory reuse, shard caching, batch syncing, and phase timings |
-| 2.1.4 | Background stable updates, completion-state synchronization, and isolation from stale checks |
+| 2.0.0–2.0.3 | Released the material-management workbench and refined navigation, relationships, capture and Trash, parsing tasks, update behavior, and release-document privacy checks |
+| 2.1.0–2.1.5 | Released hybrid full-text/vector retrieval, incremental indexing, citation checks, and user-file protection; then refined the relationship canvas, background updates, refresh responsiveness, exact retrieval for large libraries, and cache budgets while preserving index and Q&A compatibility |
+| 2.2.0–2.2.1 | Improved repeated reads, relationship scans, background scheduling, and safe writes; added saved and per-run execution model and reasoning choices for custom workflows |
+| 2.3.0 | Added a knowledge-base sidebar entry, inbox drop/select and High-effort one-click organization, index-exclusion storage with full-text/vector/relationship cleanup and restoration, unified desktop UI, and fixes for knowledge-agent parsing authorization and task details |
 
 The central trade-off is to preserve portable files, make deterministic local flows reliable first, and then add AI assistance. Relationship caches support existing file relationships; AI suggestions are distinguished from confirmed relationships. Parsing-task registration is separate from final import, and update checking is separate from installation. This gives every automated step an explainable target and result.
 
@@ -358,7 +352,7 @@ The long-term aim is to keep materials findable, preserve understanding, verify 
 
 This plugin depends on DSH tools, sessions, UI, and installation capabilities. Host version and deployment affect availability. Local models, Python environments, FFmpeg, and third-party cloud services must be prepared according to their adapters. Discovering a model does not prove it can start; a parse result does not prove that every character was recognized correctly.
 
-Static checks, synthetic-material tests, desktop-host acceptance, and real model execution are tracked separately. Before 2.1.0 release, 25 targeted automated checks passed, as did the GitHub release workflow and Pages deployment. The user confirmed preview 2.1-beta4 was usable. Version 2.1.0 was not installed on the maintainer's machine, and no real cloud Embedding/Rerank API was called. The release manifest records only checks that actually ran; simulated services are not treated as evidence for real models, complete long-document recognition, multi-device sync, or all host versions.
+Static checks, synthetic-material tests, desktop-host acceptance, and real model execution are tracked separately. Before 2.1.0 release, 25 targeted automated checks passed, as did the GitHub release workflow and Pages deployment. Version 2.1.0 was not installed on the maintainer's machine, and no real cloud Embedding/Rerank API was called. The 2.3.0 authorization and interaction checks used fictional materials and local service substitutes; a production DSH installation and real model filing were not verified. The release manifest records only checks that actually ran; simulated services are not treated as evidence for real models, complete long-document recognition, multi-device sync, or all host versions.
 
 **Maintenance record:** the first complete record was created on 2026-10-22; the 2.1.0 release and retrieval implementation were added that day. Continue updating it with later commits as specified in Section 8.
 
@@ -373,12 +367,12 @@ Supplement, 2026-10-22: indexes are stored directly under the library's `索引�
 
 Citation-display fix, 2026-10-22: sending `@基于知识库回答` now uses a short-form knowledge reference (`dsh-kb:` plus this question's identity); retrieval and citation-validation guidance is in the tool definition. The host's `uiConversation.userText` and `conversation.user.text.node` render a native blue reference tag. A complete matching legacy prompt also appears as a tag; raw chat history is not rewritten. The tag preserves the distinction between including and excluding private material. Server-side session, version, and permission checks are unchanged.
 
-### 2026-10-22 / 2.1-beta2
+### 2026-10-22 / retrieval and Q&A mechanism decisions
 
-Compared with `03bcde504978f416`, deferred optimization drafts were archived rather than shipped. Lossy truncation, automatic evidence omission, and hard timeouts for a shared worker were removed. Delivered computation caching and request isolation while retaining previous recall and source ranges. Q&A protocol 2 remains compatible with the older protocol and supports structured evidence review. Upgrade coordination reuses data by format/algorithm, and protects managed files using actual application fingerprints. User `AGENTS`, manual navigation, and custom presets are treated conservatively. Independent state shows checks, failures, index building/pausing, and changes that take effect in a new session. This stage was later confirmed by users through beta3 and beta4 and included in stable 2.1.0.
+Compared with `03bcde504978f416`, deferred optimization drafts were archived rather than shipped. Lossy truncation, automatic evidence omission, and hard timeouts for a shared worker were removed. Delivered computation caching and request isolation while retaining previous recall and source ranges. Q&A protocol 2 remains compatible with the older protocol and supports structured evidence review. Upgrade coordination reuses data by format/algorithm, and protects managed files using actual application fingerprints. User `AGENTS`, manual navigation, and custom presets are treated conservatively. Independent state shows checks, failures, index building/pausing, and changes that take effect in a new session. These mechanisms were included in stable 2.1.0.
 
 ### 2026-10-22 / 2.1.0 stable release
 
-Version 2.1.0 first released through PR #25. PR #26 synchronized the release record, bundled documentation, package, website download copy, and digest manifest. The package identity is in `release-manifest.json`; the build ID remains `37b7ff660806754d` because PR #26 changed documentation and release metadata only, not executable build files. The user confirmed the preview was usable. All 25 targeted automated checks passed; the initial stable-release and Pages workflows passed. Gitee mirroring succeeded; the GitCode mirror workflow failed. Any later correction to release history must be synchronized across the source record, bundled copy, manifest, and relevant downloadable attachment; the manifest digest is authoritative.
+Version 2.1.0 first released through PR #25. PR #26 synchronized the release record, bundled documentation, package, website download copy, and digest manifest. The package identity is in `release-manifest.json`; the build ID remains `37b7ff660806754d` because PR #26 changed documentation and release metadata only, not executable build files. All 25 targeted automated checks passed; the initial stable-release and Pages workflows passed. Gitee mirroring succeeded; the GitCode mirror workflow failed. Any later correction to release history must be synchronized across the source record, bundled copy, manifest, and relevant downloadable attachment; the manifest digest is authoritative.
 
 In-client download entry: **Knowledge Base → Inbox → Browser Extension Guide → First Use: Install and Connect**, then click **Download browser extension**. It selects among Gitee, GitCode, and GitHub, validates the downloaded file, and switches sources after failure. If every source fails, it shows the reasons and fallback links.

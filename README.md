@@ -13,7 +13,7 @@ Keep files, ideas, and experience connected as a personal knowledge base you can
 - [Versioning policy](VERSIONING.en.md): version formats, update ordering, and update notices.
 - [Retrieval guide](RETRIEVAL.en.md), [parsing and index maintenance](PARSING-PREVIEW.en.md), and [performance records](PERFORMANCE.en.md).
 
-English reference pages are authored for English readers and paired with their Chinese counterparts. They preserve the same project facts, scope, and evidence boundaries. Older beta notes remain historical records.
+English reference pages are authored for English readers and paired with their Chinese counterparts. They preserve the same project facts, scope, and evidence boundaries. The development record focuses on stable releases; detailed release notes remain available separately.
 
 ## Current release
 
@@ -59,12 +59,12 @@ Upgrading preserves bindings and runtime data. A separate legacy delegation gate
 
 The 2.3.0 workflow-model changes passed targeted checks for saved settings, one-run overrides, model selection before sending, and failure blocking. The package and digest were checked by the release script. Version 2.2.0 passed 34 targeted regression checks and an isolated backend smoke check in a Windows package. Full integration with the DSH React host, installation in a production desktop host, and real cloud API calls were not verified. Tests used synthetic materials and simulated services; the maintainer's personal knowledge base was not used.
 
-Version 2.1.0 passed 25 targeted automated checks, per-file package and SHA-256 checks, the GitHub release workflow, and the product-page deployment. The user confirmed the 2.1-beta4 preview was usable. The stable package was not installed on the maintainer's machine, and no live cloud Embedding or Rerank API was called. Automated checks mainly used synthetic materials and simulated services.
+Version 2.1.0 passed 25 targeted automated checks, per-file package and SHA-256 checks, the GitHub release workflow, and the product-page deployment. The stable package was not installed on the maintainer's machine, and no live cloud Embedding or Rerank API was called. Automated checks mainly used synthetic materials and simulated services.
 
 Index maintenance changes indexes and maintenance state; it does not modify knowledge text, source files, chats, or other memory. Managed agents, imports, and workflows use the unified parsing channel by default. Standalone scripts and other plugins are outside this plugin's routing control.
 
 ## Regional update mirrors
 
-Stable 2.1.0 and preview 2.1-beta4 included Gitee, GitCode, and GitHub as update sources. The updater checks stable and preview manifests concurrently and selects the newest version available from a working source. A digest mismatch for the same version blocks installation. It prefers regional mirrors and switches sources after a download or package-verification failure. GitCode uses its official file API; Gitee uses a retrievable raw-file URL rather than a temporary signed URL. At the time of the 2.1.0 release, the Gitee mirror workflow succeeded and the GitCode mirror workflow failed. Mirror availability must be checked against the platform's current status. If all sources fail, the updater reports an error instead of claiming the package is up to date. Older versions must first install an updater that supports these sources.
+The updater includes Gitee, GitCode, and GitHub as update sources. It checks stable and preview manifests concurrently and selects the newest version available from a working source. A digest mismatch for the same version blocks installation. It prefers regional mirrors and switches sources after a download or package-verification failure. GitCode uses its official file API; Gitee uses a retrievable raw-file URL rather than a temporary signed URL. At the time of the 2.1.0 release, the Gitee mirror workflow succeeded and the GitCode mirror workflow failed. Mirror availability must be checked against the platform's current status. If all sources fail, the updater reports an error instead of claiming the package is up to date. Older versions must first install an updater that supports these sources.
 
 In the client, open **Knowledge Base → Inbox → Browser Extension Guide → First Use: Install and Connect**, then choose **Download browser extension**. The updater selects and verifies a file from Gitee, GitCode, or GitHub, then tries another source if needed. If every source fails, it shows the errors and fallback links.

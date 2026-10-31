@@ -94,7 +94,7 @@
     '怎样找回曾经整理过的内容？': 'How do I find materials I organized earlier?',
     '支持标题、标签、类型与正文全文检索，并沿来源定位原始资料。当前能力不是向量语义搜索。索引缺失或损坏时，可回退磁盘扫描；日常变动由后台增量维护，必要时可以手动重建。索引维护不修改正文或原件。': 'Search titles, tags, types, and full text, then follow source links back to original materials. The current capability is not vector semantic search. If an index is missing or damaged, the plugin can fall back to a disk scan. Routine changes are maintained incrementally in the background; rebuild manually when needed. Index maintenance does not modify source text or originals.',
     '让每一次积累，都有下一次回响。': 'Let what you build today help with what comes next.',
-    '个人知识库 2.3.0 正式版：自定义流程可选择执行模型和推理强度，保存默认值，运行前随时调整。': 'Personal Knowledge Base 2.3.0 stable: custom workflows can save an execution model and reasoning level as defaults, with an option to adjust them before each run.',
+    '个人知识库 2.3.0 正式版：收件箱一键整理、索引排除与关系清理、统一桌面设置，并修复知识库 Agent 的解析授权。': 'Personal Knowledge Base 2.3.0 stable: one-click inbox organization, index exclusion with relationship cleanup, unified desktop settings, and a fix for knowledge-agent parsing authorization.',
     '个人知识库 2.3.0': 'Personal Knowledge Base 2.3.0',
     '下载正式版 2.3.0': 'Download stable 2.3.0',
     'GitHub 仓库': 'GitHub repository',
