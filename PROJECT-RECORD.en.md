@@ -13,6 +13,14 @@ See the [workbench guide](WORKBENCH.en.md) for usage, [release notes](RELEASE.en
 
 ## 2.3.0 stable: inbox, index privacy, and unified desktop workbench
 
+### Local Inbox moves and organization-session repair (2026-10-31)
+
+Inbox membership comes from actual files in `90-收件箱/`. Selection and drag-and-drop move external originals there without the quick-capture Base64 transport, size cap, or duplicate records. `workbench-inbox.js` uses a link followed by source removal on the same volume, without overwriting an existing destination. Other volumes use a verified copy before source removal. Collisions receive numbered names, failures preserve the source, and this entry point rejects existing knowledge entries and plugin state files.
+
+Workflow launch now has a dedicated injection scope for sessions, UI services, model directories, and `remote.session`. A thrown or returned model-selection failure prevents submission. One-click organization sends only “整理并归档收件箱内的文件。”; the knowledge Agent and plugin supply the remaining rules. Eight targeted tests used synthetic files and service substitutes. Production installation, desktop drag-and-drop, and real model organization remain unverified.
+
+This maintenance change retains version 2.3.0 and refreshes the repository installer and checksum manifest. The existing `v2.3.0` tag and Release attachments are retained. Use build IDs to distinguish the repository build from previously published attachments.
+
 ### Unified desktop UI (2026-10-30)
 
 The [Figma design](https://www.figma.com/design/9O89rqsKJ8ufkiPQGhqGTn) uses editable components and text, and covers the inbox, host settings, and dark theme. `src/client/knowledge-ui.css` is the source of shared styles. `sync-workbench-client.py` embeds it into `index.js`, while `sync-workbench-build.py` includes it in the build fingerprint. After editing the style source or `workbench-ui.js`, run the synchronization steps; do not change only generated fragments.

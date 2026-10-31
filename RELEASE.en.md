@@ -1,3 +1,13 @@
+# 2.3.0 maintenance: inbox moves and one-click organization (2026-10-31)
+
+[English](RELEASE.en.md) · [简体中文](RELEASE.md)
+
+- The desktop Inbox reads files directly from the current library's `90-收件箱/` directory. Selecting or dropping a file moves the original into that directory without Base64 upload or a separate capture record. The desktop move has no 8 MiB application limit. Name collisions receive a numbered suffix; transfers across volumes are copied and verified before the source is removed. Failed moves preserve the source. The mobile capture page retains its upload limit.
+- Fixed the missing `remote.session` dependency when one-click organization selects a model. Failed model selections stop submission. Errors now distinguish a task that was never sent from a send whose outcome is uncertain; neither is automatically retried.
+- The organization request contains only “整理并归档收件箱内的文件。” The knowledge Agent and plugin supply the operating rules. The selected model and High reasoning effort still apply.
+
+The version remains 2.3.0. This maintenance change updates repository source and its bundled installer; it does not move the existing `v2.3.0` tag or replace Release attachments. Eight targeted tests and workflow probes passed using synthetic materials and host-service substitutes. Production DSH installation and real model execution remain unverified.
+
 # 2.3.0 stable: unified desktop UI (2026-10-30)
 
 [English](RELEASE.en.md) · [简体中文](RELEASE.md)

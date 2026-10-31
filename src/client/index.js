@@ -205,13 +205,6 @@ window.__ModuleLoader__.load({
         source.onerror = () => event('kbw-policy', { type: 'connection-lost' })
         window.addEventListener('pagehide', () => source.close(), { once: true })
       }
-      async function fileBase64(file) {
-        if (file.size > 8 * 1024 * 1024) throw new Error('单个文件最多 8.39 MB')
-        const bytes = new Uint8Array(await file.arrayBuffer()); let binary = ''
-        for (let i = 0; i < bytes.length; i += 8192) binary += String.fromCharCode(...bytes.subarray(i, i + 8192))
-        return btoa(binary)
-      }
-
       function SplitPanels({ id, kbId, className = '', children, directory = false, sizeKey }) {
         const panels = R.Children.toArray(children), count = panels.length, root = R.useRef(null), dragging = R.useRef(null)
         const key = 'kbw-panels-v1:' + kbId + ':' + id
@@ -945,20 +938,21 @@ window.__ModuleLoader__.load({
           if (importing.current) return
           const chosen = Array.from(input || [])
           if (!chosen.length) return
-          importing.current = true; setBusy(true); setError(''); setMessage('正在添加文件…')
+          importing.current = true; setBusy(true); setError(''); setMessage('正在将文件迁移到收件箱…')
           let saved = 0, skipped = 0
           const failures = []
           try {
             for (const file of chosen) {
               try {
-                if (file.size > 8 * 1024 * 1024) throw new Error('超过单文件 8 MiB 上限')
+                const sourcePath = window.__DSH_HOST_PATHS__?.pathFor(file)
+                if (!sourcePath) throw new Error('无法取得本机文件路径，请在 DSH 桌面端选择或拖入文件；原文件未移动')
                 const current = await api({ op: 'capture.list', ...base })
-                const result = await api({ op: 'capture.create', ...base, expectedRevision: current.revision, filename: file.name, title: file.name, base64: await fileBase64(file) })
-                if (result.requiresConfirmation) skipped++; else saved++
+                const result = await api({ op: 'capture.move-file', ...base, expectedRevision: current.revision, sourcePath })
+                if (result.alreadyInInbox) skipped++; else saved++
               } catch (err) { failures.push(file.name + '：' + err.message) }
             }
             await refresh(); changed()
-            setMessage('已添加 ' + saved + ' 个文件' + (skipped ? '，跳过 ' + skipped + ' 个重复文件' : '') + (failures.length ? '；' + failures.join('；') : '。可以点击“一键整理”归档。'))
+            setMessage('已迁移 ' + saved + ' 个文件到收件箱' + (skipped ? '，' + skipped + ' 个文件已在收件箱内' : '') + (failures.length ? '；' + failures.join('；') : '。可以点击“一键整理”归档。'))
           } finally { importing.current = false; setBusy(false) }
         }
         const organize = async () => {
@@ -972,9 +966,10 @@ window.__ModuleLoader__.load({
           finally { importing.current = false; setBusy(false) }
         }
         const create = async allowDuplicate => {
+          if (upload) { await addFiles([upload]); setUpload(null); return }
           setBusy(true); setError('')
           try {
-            const r = await api({ op: 'capture.create', ...base, expectedRevision: data.revision, title, text, url, base64: upload ? await fileBase64(upload) : undefined, filename: upload?.name, allowDuplicate })
+            const r = await api({ op: 'capture.create', ...base, expectedRevision: data.revision, title, text, url, allowDuplicate })
             if (r.requiresConfirmation) { if (window.confirm('已有相同内容，仍然保存另一份？')) return await create(true); return }
             setText(''); setTitle(''); setUrl(''); setUpload(null); changed(); await refresh()
           } catch (err) { setError(err.message) } finally { setBusy(false) }
@@ -991,11 +986,11 @@ window.__ModuleLoader__.load({
         return e('section', { className: 'kbw-content' }, e('div', { className: 'kbw-form' },
           e('header', { className: 'kbu-page-head' }, e('div', null, e('h2', null, '收件箱'), e('p', null, '先收集，再整理。每一份资料，都由你决定如何使用。'))),
           e('div', { className: 'kbw-panel kbu-dropzone', 'data-dragging': dragging,
-            onDragOver: ev => { ev.preventDefault(); if (!busy) setDragging(true) },
+            onDragOver: ev => { ev.preventDefault(); ev.stopPropagation(); ev.dataTransfer.dropEffect = 'move'; if (!busy) setDragging(true) },
             onDragLeave: ev => { if (!ev.currentTarget.contains(ev.relatedTarget)) setDragging(false) },
-            onDrop: ev => { ev.preventDefault(); setDragging(false); if (!busy) void addFiles(ev.dataTransfer.files) } },
+            onDrop: ev => { ev.preventDefault(); ev.stopPropagation(); setDragging(false); if (!busy) void addFiles(ev.dataTransfer.files) } },
             e('span', { className: 'kbu-drop-icon' }, e(UiIcon, { name: 'upload', size: 24 })),
-            e('div', { className: 'kbu-drop-copy' }, e('strong', null, dragging ? '松开即可加入收件箱' : '拖入需要归档的资料'), e('p', { className: 'kbw-meta' }, '支持文档、图片与录音 · 可一次选择多个文件 · 单文件上限 8 MiB')),
+            e('div', { className: 'kbu-drop-copy' }, e('strong', null, dragging ? '松开即可移入收件箱' : '拖入需要归档的资料'), e('p', { className: 'kbw-meta' }, '支持文档、图片与录音 · 可多选 · 原文件将移入知识库收件箱，不设文件大小上限')),
             e('label', { className: 'kbw-button kbu-file-picker', 'aria-disabled': busy }, e(UiIcon, { name: 'folder' }), e('span', null, '选择文件'), e('input', { type: 'file', multiple: true, disabled: busy, 'aria-label': '选择文件加入收件箱', onChange: ev => { const chosen = Array.from(ev.target.files || []); ev.target.value = ''; void addFiles(chosen) } }))),
           e('div', { className: 'kbw-actions kbw-inbox-controls' }, e('label', { className: 'kbw-field' }, e('span', null, '整理使用的模型'), e('select', { 'aria-label': '整理使用的模型', value: modelKey, disabled: busy,
             onChange: ev => { setModelKey(ev.target.value); try { localStorage.setItem(modelStorageKey, ev.target.value) } catch {} } },
@@ -1020,12 +1015,12 @@ window.__ModuleLoader__.load({
           files?.total > 50 ? e('div', { className: 'kbw-actions' }, btn('上一页', () => setOffset(Math.max(0, offset - 50)), busy || offset === 0), e('span', null, (offset + 1) + '–' + Math.min(offset + 50, files.total) + ' / ' + files.total), btn('下一页', () => setOffset(offset + 50), busy || offset + 50 >= files.total)) : null,
           files?.truncated ? e('p', { role: 'status' }, '本次扫描不完整，请刷新后核对文件。') : null,
           e('details', null, e('summary', null, '记文字、保存网页与收集记录'),
-          e('div', { className: 'kbw-actions' }, [['text','记文字'],['web','存网页'],['file','上传文件']].map(([id,label]) => btn(label, () => { setCaptureMode(id); setUpload(null); setUrl('') }, false, { key:id, 'aria-current':captureMode===id }))), e('p', { className: 'kbw-meta' }, '文字、网页和文件保存到 90-收件箱/快速收集/，整理后保留原件。离线文字草稿保存在此浏览器，恢复连接后主动提交。'),
+          e('div', { className: 'kbw-actions' }, [['text','记文字'],['web','存网页'],['file','移入文件']].map(([id,label]) => btn(label, () => { setCaptureMode(id); setUpload(null); setUrl('') }, false, { key:id, 'aria-current':captureMode===id }))), e('p', { className: 'kbw-meta' }, '文件迁移到 90-收件箱/；文字和网页保存到 90-收件箱/快速收集/。整理后保留库内原件。离线文字草稿保存在此浏览器，恢复连接后主动提交。'),
           
-          field('标题（可留空）', title, setTitle), captureMode === 'web' ? field('网页地址', url, setUrl, { type: 'url', placeholder: 'https://…' }) : null,
+          captureMode !== 'file' ? field('标题（可留空）', title, setTitle) : null, captureMode === 'web' ? field('网页地址', url, setUrl, { type: 'url', placeholder: 'https://…' }) : null,
           captureMode !== 'file' ? e('label', { className: 'kbw-field' }, captureMode === 'web' ? '网页正文或备注（可选）' : '记录内容', e('textarea', { value: text, onChange: ev => setText(ev.target.value), placeholder: captureMode === 'web' ? '可粘贴网页正文；仅保存网址时不会自动抓取全文。' : '例如：今天学到的方法、稍后想整理的灵感…' })) : null,
-          captureMode === 'file' ? e('div', null, e('p', { className: 'kbw-meta' }, '选择图片、文档或录音。保存后可识别文字或转写音频，原件会保留。'), e('input', { type: 'file', 'aria-label': '上传资料', onChange: ev => setUpload(ev.target.files?.[0] || null) })) : null,
-          btn(busy ? '处理中…' : '保存到快速收集', () => create(false), busy || !data || !(upload || text.trim() || url.trim())),
+          captureMode === 'file' ? e('div', null, e('p', { className: 'kbw-meta' }, '原文件将迁移到知识库收件箱，原位置不再保留。迁移后可按需识别文字或转写音频。'), e('input', { type: 'file', disabled: busy, 'aria-label': '选择资料移入收件箱', onChange: ev => setUpload(ev.target.files?.[0] || null) })) : null,
+          btn(busy ? '处理中…' : captureMode === 'file' ? '移入收件箱' : '保存到快速收集', () => create(false), busy || !data || (captureMode === 'file' ? !upload : !(text.trim() || url.trim()))),
           e('details', { className: 'kbw-clipper-help', 'aria-label': '浏览器扩展使用指南' },
             e('summary', null, '浏览器扩展：安装、连接与使用说明'),
             e('p', null, '浏览网页时，把选中的一段文字或页面正文一键送到当前知识库的收件箱，同时保留标题和原网址，稍后整理成知识笔记。'),
@@ -1070,7 +1065,7 @@ window.__ModuleLoader__.load({
                 e('li', null, e('strong', null, '只存一段：'), '先在网页中选中文字，再右键选择“保存到个人知识库”，或点扩展“保存当前页”。保存选中文字、网页标题和来源网址。'),
                 e('li', null, e('strong', null, '保存正文：'), '不选择文字，在网页内容区或标签页上右键选择“保存到个人知识库”，或点扩展“保存当前页”。扩展尝试提取网页正文；提取不到时只保存标题和网址，并明确提示。浏览器设置页、扩展商店等受保护页面无法读取。'),
                 e('li', null, e('strong', null, '查看与整理：'), '内容先进入本页收件箱，原件位于 90-收件箱/快速收集/。点击“预览原件”核对，再点击“整理为知识笔记”；勾选条目后，也可以选择分区、填写标签并“整理所选”。整理后原件保留。'),
-                e('li', null, e('strong', null, '图片、PDF、附件：'), '扩展不会下载这些文件，也不会自动抓取整个网站。请下载文件后，在本页选择“上传文件”，按需识别文字或转写音频。')),
+                e('li', null, e('strong', null, '图片、PDF、附件：'), '扩展不会下载这些文件，也不会自动抓取整个网站。请下载文件后，在本页选择文件移入收件箱，按需识别文字或转写音频。')),
               e('p', { className: 'kbw-meta' }, '扩展只在你主动保存时读取当前页，不会后台收集浏览记录；配对授权只允许提交内容，不提供读取或切换知识库的能力。')),
             e('details', null, e('summary', null, '常见问题与已连接扩展管理'),
               e('dl', null,
@@ -2641,18 +2636,32 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     })
 
     let flowClientContext = null
+    let flowLaunchContext = null
     let flowLaunchPending = false
+
+    function bindFlowLaunchContext(ctx) {
+      // Cordis service methods inherit the consumer's context. ModelDirectory
+      // resolves remote.session internally, so its transitive dependency must
+      // be injected here as well. Keep this optional for older hosts.
+      return ctx.inject(['sessions', 'uiWorkspace', 'uiConversation', 'modelDirectories', 'remote', 'remote.session'], scope => {
+        flowLaunchContext = scope
+        return () => { if (flowLaunchContext === scope) flowLaunchContext = null }
+      })
+    }
 
     async function launchFlowConversation(flow, kbId, params, execution = flow.execution || {}) {
       if (flowLaunchPending) throw new Error('正在创建流程会话，请勿重复点击')
       flowLaunchPending = true
       let reference = null
       let sessionId = ''
+      let sendAttempted = false
       try {
-        const sessions = flowClientContext && flowClientContext.get('sessions')
-        const workspace = flowClientContext && flowClientContext.get('uiWorkspace')
-        const views = flowClientContext && flowClientContext.get('uiConversation')
-        if (!sessions || !workspace || !views) throw new Error('宿主会话服务尚未就绪，请稍后重试')
+        const context = flowLaunchContext
+        const sessions = context && context.get('sessions')
+        const workspace = context && context.get('uiWorkspace')
+        const views = context && context.get('uiConversation')
+        const directories = context && context.get('modelDirectories')
+        if (!sessions || !workspace || !views || !directories?.directoryFor) throw new Error('宿主会话或模型选择服务尚未就绪，请稍后重试')
         const prepared = await callApi({ op: 'flows.prepare-conversation', id: flow.id, kbId, expectedRevision: flow.revision, params, execution })
         if (!prepared || !prepared.ok) throw new Error((prepared && (prepared.error || prepared.reason)) || '无法读取流程提示词')
         if (!prepared.workspaceId) throw new Error('未获得流程工作区，未创建会话；请确认宿主已加载最新插件')
@@ -2670,17 +2679,17 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         const conversation = scope && scope.get('conversation')
         if (!conversation || typeof conversation.send !== 'function') throw new Error('新会话未就绪，未发送提示词')
         if (prepared.execution?.provider && prepared.execution?.model) {
-          const directories = flowClientContext.get('modelDirectories')
-          if (!directories?.directoryFor) throw new Error('宿主模型选择服务尚未就绪，未发送任务')
-          await directories.directoryFor(sessionId).select(prepared.execution)
+          const selected = await directories.directoryFor(sessionId).select(prepared.execution)
+          if (selected?.ok === false) throw new Error(selected.error?.message || selected.error?.code || '模型选择失败，未发送任务')
         }
         workspace.openSession(sessionId)
         views.binding(sessionId).activate('chat')
         // 原样发送完整步骤，普通会话负责流式回复、工具事件与停止操作。
+        sendAttempted = true
         await conversation.send(prepared.prompt)
         return sessionId
       } catch (err) {
-        throw new Error((sessionId ? '会话 ' + sessionId + ' 已创建，自动发送未确认成功；请查看该会话后再决定是否重试。' : '') + String((err && err.message) || err))
+        throw new Error((sessionId ? '会话 ' + sessionId + (sendAttempted ? ' 已创建，自动发送未确认成功；请查看该会话后再决定是否重试。' : ' 已创建，但任务尚未发送。') : '') + String((err && err.message) || err))
       } finally {
         if (reference) reference.release()
         flowLaunchPending = false
@@ -4377,6 +4386,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       rememberPreviousClientVersion(window.localStorage, document.documentElement.getAttribute('data-kb-client-version'))
       try { resetKnowledgeViewOnStartup(window.localStorage) } catch { /* storage unavailable */ }
       flowClientContext = ctx
+      bindFlowLaunchContext(ctx)
       workbenchUI = createWorkbenchUI({ react, e, ReferenceChip, api: callApi, ctx: () => flowClientContext, themeCss: KNOWLEDGE_UI_THEME,
         Overview: () => e(Overview, { statusOnly: true }), Flows, Parsing: ParseSection, BuildBadge, version: RELEASE_VERSION, projectRecordUrl: PROJECT_RECORD_URL, portal: reactDom.createPortal,
         organizeInbox: (kbId, execution) => launchFlowConversation({ id: 'builtin-inbox-organize', revision: 1 }, kbId, {}, execution) })

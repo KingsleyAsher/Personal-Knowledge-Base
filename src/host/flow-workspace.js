@@ -52,7 +52,7 @@ export async function prepareFlowConversation(engine, workspaceManager, input) {
   if (!prepared.ok) return prepared
   const kbPath = prepared.kbPath || prepared.cwd
   const workspace = await workspaceManager.ensure(kbPath)
-  const prompt = [prepared.prompt, '', '【执行目录】',
+  const prompt = prepared.flowId === 'builtin-inbox-organize' ? prepared.prompt : [prepared.prompt, '', '【执行目录】',
     '本会话工作区：' + workspace.workspacePath,
     '知识库绝对路径：' + kbPath,
     '草稿、下载和临时文件保存在流程工作区。知识库操作使用知识库工具或上述绝对路径，不要将当前工作区误当成知识库。',

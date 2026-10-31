@@ -1,13 +1,13 @@
 {
   "package": "@local/dsh-knowledge-base",
   "version": "2.3.0",
-  "buildId": "092a33ea6a8b0ba7",
+  "buildId": "ce0477b9618d8a23",
   "tgz": "local-dsh-knowledge-base-2.3.0.tgz",
-  "bytes": 2956926,
-  "sha256": "fa48c3e85f83ac1a1fdaf511062ad7b2afd9bda5680d83e07e5c260bc6f4b772",
-  "integrity": "sha512-jcU8TuU43P+k8XkWT7BaFI0JgKQsxsRSWFu8dm4tYfJYVBR7R3w9BXMnhiIFqTWnH+1k1meSb/bVzIOTea8cXA==",
-  "packageFileCount": 287,
-  "buildFileCount": 275,
+  "bytes": 2960330,
+  "sha256": "b4c3541863d9c4c0a8cfc6e0f9921f822845d51ad42f6d5401a24e5bc9a6edab",
+  "integrity": "sha512-c2u/iWOjHy/DBcAW9ZYb8YPR4yzL9289KKsEuKSr99SlBZbgh706hotuJwVKatjMky5zJOiLSrZwx4vgu2ccsQ==",
+  "packageFileCount": 288,
+  "buildFileCount": 276,
   "files": [
     {
       "path": "BETA4.md",
@@ -51,23 +51,23 @@
     },
     {
       "path": "PROJECT-RECORD.md",
-      "bytes": 42695,
-      "sha256": "4908c6b2d4ee452c7b791d66c9a56cd591ee32af04b733fbe881741600882f99"
+      "bytes": 43536,
+      "sha256": "a13395df805db95d4deee52b28eb7f5781a28ff4a25d021bf1b90e3c6fec9819"
     },
     {
       "path": "README.md",
-      "bytes": 8950,
-      "sha256": "735e6867c3181d759340e1d37e81eca7c8cd7aab2849a3ed0985bd62a5ac1ca3"
+      "bytes": 8924,
+      "sha256": "de80717f20145123ba3b3c2d5dcc85f1de189ad7940dcfac688769b2bb9b4338"
     },
     {
       "path": "README.zh-CN.md",
-      "bytes": 8876,
-      "sha256": "a5a30413020e468770fb70b75fde8c59458ef620399c66d4335d8069da2d1c8a"
+      "bytes": 9116,
+      "sha256": "5d07c2e5f6d0cd00121a7b2eea52875abd6baf92b0441ff0cb7afd48cf73804d"
     },
     {
       "path": "RELEASE.md",
-      "bytes": 24283,
-      "sha256": "0500f78802c39d09e789ce2105854895cf1d2c6905f439ae8f896913f5cf288b"
+      "bytes": 25449,
+      "sha256": "6ab0ba30a43c34cf5f04f4cce0374f7e3a3f73632b4bae2a74d7fa5f6e94e728"
     },
     {
       "path": "RETRIEVAL.md",
@@ -81,8 +81,8 @@
     },
     {
       "path": "WORKBENCH.md",
-      "bytes": 19112,
-      "sha256": "a70857cc9f741c2bb667cd262aa0ee43a80b0bcdb008de9545a5831d97314003"
+      "bytes": 19787,
+      "sha256": "6d8d149bb447172c77d8e94575bac3c92af832000b646e3bca5f9ab29a88a1bb"
     },
     {
       "path": "browser-extension/background.js",
@@ -201,8 +201,8 @@
     },
     {
       "path": "src/client/index.js",
-      "bytes": 449636,
-      "sha256": "a59eb954493f9415b2af197d0ba89d31149d5137ac5d307def4acf76a6468878"
+      "bytes": 450457,
+      "sha256": "260e57861dad18ad65e19230b04dd7f9caba85fb814a7f2f5e58d68199681720"
     },
     {
       "path": "src/client/knowledge-ui.css",
@@ -1216,8 +1216,8 @@
     },
     {
       "path": "src/client/workbench-ui.js",
-      "bytes": 222979,
-      "sha256": "3909557c27db2f323169438eea2fee3ac190a7b1114c12013eeba11e3378897f"
+      "bytes": 223018,
+      "sha256": "72c42daa860db48225c2e4ba48ddb8d6e164c8c90fde6ab18dfa1f5579edf6a7"
     },
     {
       "path": "src/host/capture-surface.js",
@@ -1231,13 +1231,13 @@
     },
     {
       "path": "src/host/flow-workspace.js",
-      "bytes": 3728,
-      "sha256": "64ec4b96dff9c2caf9294e84052541e52ad977c13129f77624bf1d8ce13ad8fd"
+      "bytes": 3793,
+      "sha256": "451abce7a6e2edadde672cebbe782442e26be6c3cbdee1e6f0e8d8dff6c73e37"
     },
     {
       "path": "src/host/flows.js",
-      "bytes": 57931,
-      "sha256": "ded756cc07d61aca5cba4b0f2dfdf709e466bc48bd2bef9cf0553a22cd60da1e"
+      "bytes": 57281,
+      "sha256": "7187847ea73de1acee156e7c4efa144f5dcaf53b03a03c9be64efd5c45711f3d"
     },
     {
       "path": "src/host/fsindex.js",
@@ -1276,8 +1276,8 @@
     },
     {
       "path": "src/host/index.js",
-      "bytes": 156629,
-      "sha256": "8ad419918ecfb987311e5c83be2987d0e92153fe9983a5382f00805d30d45394"
+      "bytes": 156660,
+      "sha256": "5178f25d0a2d1164cfc2adb04dd5ef88a0f1a2da063b20aba0afdd3e2f9a50e7"
     },
     {
       "path": "src/host/kbcore.js",
@@ -1405,6 +1405,11 @@
       "sha256": "c750bb8b17a7512c3b423816e1e59da6c0788147a05053bd08328093de5f4ebe"
     },
     {
+      "path": "src/host/workbench-inbox.js",
+      "bytes": 3161,
+      "sha256": "759c8fe19437b0cca0b93d2b403208973a3fa994e57bbaaa17dcd22fa3889c5c"
+    },
+    {
       "path": "src/host/workbench-links.js",
       "bytes": 21724,
       "sha256": "9e3ffc246483f61e98b76b750d2342b6540b676d019c0fbf472c014412467d47"
@@ -1431,8 +1436,8 @@
     },
     {
       "path": "src/host/workbench.js",
-      "bytes": 76825,
-      "sha256": "c5050e4818660a38fd5753ac2a452d4db7adffcb5c36f02fed8d1256f8f06636"
+      "bytes": 78132,
+      "sha256": "667d1eba8906317493ff4b73408582d5b8a5135c1f79e3b20d207495c9eaba05"
     },
     {
       "path": "tools/kb-local-model.py",
@@ -1449,6 +1454,9 @@
     "productionInstalled": false,
     "formalRuntimeVerified": false,
     "realModelAnswerVerified": false,
-    "realCloudApiTested": false
+    "realCloudApiTested": false,
+    "focusedTests": 8,
+    "flowConversationProbePassed": true,
+    "flowWorkspaceProbePassed": true
   }
 }

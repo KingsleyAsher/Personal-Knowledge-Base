@@ -13,6 +13,7 @@ extra.extend(['src/host/retrieval-cache.js','src/host/relation-name-lookup.js','
 extra.extend(['src/host/runtime-resources.js','src/host/storage-io.js'])
 extra.extend(['src/host/index-policy.js','src/host/index-policy-service.js'])
 extra.append('src/client/knowledge-ui.css')
+extra.append('src/host/workbench-inbox.js')
 extra.extend('src/client/' + name for name in ['capture.html','capture.js','capture.css','capture-sw.js','capture.webmanifest','capture-icon.svg','capture-icon-192.png','capture-icon-512.png'])
 for folder in ['src/client/pdfjs', 'browser-extension']:
     extra.extend(str(p.relative_to(repo)).replace('\\', '/') for p in sorted((repo / folder).rglob('*')) if p.is_file())
