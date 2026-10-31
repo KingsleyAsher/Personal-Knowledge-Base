@@ -21,6 +21,7 @@ import { createSystemUpgrades } from './system-upgrades.js'
 import { VERSION, TEMPLATES } from './kbcore.js'
 import { readIndexPolicy, policyExcluded, policyExcludes, groupFor, resolveAssetPath, EXCLUDED_PARTITION, referenceExcluded, policyFile, savePolicy } from './index-policy.js'
 import { createIndexPolicyService } from './index-policy-service.js'
+import { inboxSource, moveInboxFile } from './workbench-inbox.js'
 
 export const GUIDE_ID = 'knowledge-workbench-v1'
 const INITIAL = { format: 1, revision: 0, defaults: DEFAULT_PREFERENCES, libraries: {}, onboarding: {}, pairs: {} }
@@ -591,6 +592,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       return { ok: true, valid, invalid, missingCitations: cited.length === 0 }
     }
     if (args.op.startsWith('backup.')) return { ok: true, ...await backups.dispatch(b, args) }
+    if (args.op === 'capture.move-file' && caller) throw fail('ADMIN_ONLY', '迁移本机文件只能由用户在收件箱界面发起')
     if (args.op.startsWith('capture.')) return { ok: true, ...await capture(b, args) }
     if (args.op.startsWith('reading.') || args.op.startsWith('review.')) return { ok: true, ...await reading(b, args) }
     if (args.op === 'tasks.list') {
@@ -692,6 +694,24 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       return { capture: item }
     })
     if (args.op === 'capture.list') { await reconcileCaptures(b); const data = await userData(b); return { ...slicePage(data.captures.filter(c => visible(b, c.path) && (!args.status || c.status === args.status)).sort((a, z) => z.createdAt.localeCompare(a.createdAt)), args), revision: data.revision } }
+    if (args.op === 'capture.move-file') return mutate(b, args, async () => {
+      const origin = await inboxSource(b.root, stateDir, args.sourcePath)
+      if (origin.alreadyInInbox) return { alreadyInInbox: true, path: origin.path }
+      const name = path.basename(origin.source), ext = path.extname(name), stem = name.slice(0, name.length - ext.length)
+      const inbox = await safePath(b.root, '90-收件箱', { missing: true })
+      await mkdir(inbox, { recursive: true })
+      let rel
+      for (let suffix = 0; ; suffix++) {
+        rel = '90-收件箱/' + (suffix ? stem + ' (' + suffix + ')' + ext : name)
+        const destination = await safePath(b.root, rel, { missing: true })
+        await binding(b.st.kbId)
+        try { await moveInboxFile(origin.source, destination); break }
+        catch (error) { if (error.code !== 'EEXIST') throw error }
+      }
+      // Inbox membership comes from the directory itself, including files moved
+      // manually. A local move does not create a separate quick-capture record.
+      return { path: rel, moved: true, bytes: origin.bytes }
+    })
     if (args.op === 'capture.create') return mutate(b, args, async data => {
       const url = args.url ? safeUrl(args.url) : null
       if (args.url && !url) throw fail('BAD_URL', '只接受 HTTP 或 HTTPS 网页地址')

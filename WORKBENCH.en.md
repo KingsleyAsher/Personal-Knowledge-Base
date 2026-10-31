@@ -68,7 +68,11 @@ Opening a file and locating a folder use the host's verified file mapping throug
 
 ## Inbox, web capture, and mobile
 
-Text, URLs, and files up to 8 MiB can be saved quickly. Web pages are checked for duplicates using both URL and body/excerpt; identical file content also triggers a duplicate notice. Captures can be organized into existing knowledge, project, person, material, or profile types while keeping the original. Binary materials use the configured OCR/ASR service. Failures can be cancelled or retried in the task center. Automatic parsing is off by default and runs only after first-run setup is complete.
+Text and URLs can be saved as quick captures. Web pages are checked for duplicates using both URL and body/excerpt. In the DSH desktop Inbox, selecting or dropping files moves the originals into `90-收件箱/`; the Inbox reads that directory directly, without separate capture records or the 8 MiB upload cap. A successful move removes the file from its old location. Name collisions receive a numbered suffix. Cross-volume copies are verified before removing the source, and failures preserve the original. Available disk space, filesystem limits, and permissions still apply. An ordinary browser that cannot provide a local file path reports this without moving the file. The mobile quick-capture page retains its 8 MiB upload limit.
+
+Choose a model that supports High, then use one-click organization to open a knowledge Agent session. The request is simply “整理并归档收件箱内的文件。” The Agent and plugin provide the operating rules. If model selection fails, the task is not sent. An uncertain send is reported without automatic retry.
+
+Captures can be organized into existing knowledge, project, person, material, or profile types while keeping the library original. Binary materials use the configured OCR/ASR service. Failures can be cancelled or retried in the task center. Automatic parsing is off by default and runs only after first-run setup is complete.
 
 In-app shortcut: Ctrl/Cmd + Shift + K while a knowledge-base page is open. The plugin does not register a global operating-system shortcut.
 

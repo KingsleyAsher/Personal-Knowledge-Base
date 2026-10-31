@@ -1,12 +1,69 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises'
+import { mkdtemp, mkdir, writeFile, readFile, rm, stat } from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
 import vm from 'node:vm'
 import { createCore } from '../src/host/kbcore.js'
 import { createWorkbench } from '../src/host/workbench.js'
 import { createFlowEngine } from '../src/host/flows.js'
+import { prepareFlowConversation } from '../src/host/flow-workspace.js'
+import { moveInboxFile } from '../src/host/workbench-inbox.js'
+
+test('local inbox moves files above 8 MiB, scans the directory, and preserves collisions and rejected sources', async () => {
+  const base = await mkdtemp(path.join(os.tmpdir(), 'kb-inbox-move-'))
+  // On Windows this also exercises a real cross-volume transfer when the repo
+  // and system temp are on different drives. All files are synthetic fixtures.
+  const external = await mkdtemp(path.join(process.cwd(), 'inbox-move-fixture-'))
+  let wb
+  try {
+    const root = path.join(base, 'library'), stateDir = path.join(base, 'state')
+    await mkdir(root)
+    const core = createCore({ stateDir }, () => {})
+    assert.equal((await core.bind(root, { confirmInit: true })).ok, true)
+    const kbId = (await core.status()).kbId
+    wb = createWorkbench({ stateDir, getCore: () => core })
+    const call = args => wb.dispatch({ expectedKbId: kbId, ...args })
+    const move = async sourcePath => call({ op: 'capture.move-file', sourcePath, expectedRevision: (await call({ op: 'capture.list' })).revision })
+    const payload = Buffer.alloc(9 * 1024 * 1024, 0x5a), source = path.join(external, '大文件.bin')
+    await writeFile(source, payload)
+    const result = await move(source)
+    assert.equal(result.moved, true)
+    assert.equal(result.path, '90-收件箱/大文件.bin')
+    await assert.rejects(stat(source), { code: 'ENOENT' })
+    assert.deepEqual(await readFile(path.join(root, result.path)), payload)
+    assert.equal((await call({ op: 'capture.list' })).total, 0, 'inbox files do not depend on quick-capture records')
+    assert.ok((await call({ op: 'inbox.list' })).items.some(f => f.path === result.path && f.bytes === payload.length))
+    assert.equal((await move(path.join(root, result.path))).alreadyInInbox, true)
+
+    const local = path.join(base, '大文件.bin')
+    await writeFile(local, 'another original')
+    const collision = await move(local)
+    assert.equal(collision.path, '90-收件箱/大文件 (1).bin')
+    assert.equal(await readFile(path.join(root, collision.path), 'utf8'), 'another original')
+    await assert.rejects(stat(local), { code: 'ENOENT' })
+    assert.deepEqual(await readFile(path.join(root, result.path)), payload)
+
+    const retained = path.join(external, '保留.txt'), occupied = path.join(root, collision.path)
+    await writeFile(retained, 'retain me')
+    await assert.rejects(moveInboxFile(retained, occupied), { code: 'EEXIST' })
+    assert.equal(await readFile(retained, 'utf8'), 'retain me')
+    assert.equal(await readFile(occupied, 'utf8'), 'another original')
+    const revision = (await call({ op: 'capture.list' })).revision
+    await assert.rejects(call({ op: 'capture.move-file', sourcePath: retained, expectedRevision: revision - 1 }), { code: 'CONFLICT' })
+    await assert.rejects(wb.dispatch({ op: 'capture.move-file', sourcePath: retained, expectedKbId: kbId, expectedRevision: revision }, { agent: {} }), { code: 'ADMIN_ONLY' })
+    await assert.rejects(move(external), { code: 'INBOX_NOT_FILE' })
+    assert.equal(await readFile(retained, 'utf8'), 'retain me')
+    const protectedFile = path.join(root, '20-知识笔记', 'existing.md')
+    await mkdir(path.dirname(protectedFile), { recursive: true }); await writeFile(protectedFile, 'existing knowledge')
+    await assert.rejects(move(protectedFile), { code: 'INBOX_LIBRARY_FILE' })
+    assert.equal(await readFile(protectedFile, 'utf8'), 'existing knowledge')
+    const other = path.join(base, 'other-library'); await mkdir(other)
+    assert.equal((await core.bind(other, { confirmInit: true })).ok, true)
+    await assert.rejects(move(retained))
+    assert.equal(await readFile(retained, 'utf8'), 'retain me')
+  } finally { wb?.dispose(); await rm(base, { recursive: true, force: true }); await rm(external, { recursive: true, force: true }) }
+})
 
 test('inbox shows uploaded and manually added files, paginates, and rejects a stale library', async () => {
   const base = await mkdtemp(path.join(os.tmpdir(), 'kb-inbox-'))
@@ -73,7 +130,9 @@ test('builtin flow survives reload, cannot be changed, and forces High conversat
     assert.equal(prepared.ok, true)
     assert.equal(prepared.requiredReasoningEffort, 'high')
     assert.deepEqual(prepared.execution, { provider: 'wrong', model: 'wrong', reasoningEffort: 'high' })
-    assert.match(prepared.prompt, /90-收件箱/)
+    assert.equal(prepared.prompt, '整理并归档收件箱内的文件。')
+    const conversation = await prepareFlowConversation(engine, { ensure: async () => ({ workspaceId: 'workspace', workspacePath: base }) }, { id, kbId: 'fixture', expectedRevision: 1 })
+    assert.equal(conversation.prompt, '整理并归档收件箱内的文件。')
   } finally { await rm(base, { recursive: true, force: true }) }
 })
 
@@ -87,7 +146,7 @@ test('High is selected before sending; lack of a High model never creates or sen
       uiWorkspace: { openSession() {} }, uiConversation: { binding: () => ({ activate() {} }) },
       modelDirectories: { directoryFor: () => ({ select: async route => { assert.equal(route.reasoningEffort, 'high'); calls.push('select-high') } }) },
     }
-    const launch = vm.runInNewContext(code + '\nflowClientContext = context; launchFlowConversation', {
+    const launch = vm.runInNewContext(code + '\nflowLaunchContext = context; launchFlowConversation', {
       context: { get: name => services[name] },
       callApi: async args => args.op === 'flows.models' ? { ok: true, groups: [{ id: 'provider', models: [{ id: 'model', reasoning: { efforts: supported ? [{ id: 'high' }] : [] } }] }] } : { ok: true, workspaceId: 'workspace', execution: args.execution, requiredReasoningEffort: 'high', prompt: 'organize-inbox' },
     })

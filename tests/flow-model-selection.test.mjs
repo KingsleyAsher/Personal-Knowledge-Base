@@ -35,18 +35,23 @@ test('saved model survives editor, disk reload and run override without changing
   } finally { await rm(root, { recursive: true, force: true }) }
 })
 
-function launcher(selectionError = false, execution = route) {
+function launcher(selectionError = false, execution = route, sendError = false) {
   const calls = []
-  const context = { get(name) { return {
-    sessions: { create: async () => { calls.push('create'); return 'session-fixture' }, retain: () => ({ ready: Promise.resolve(), release() { calls.push('release') } }), scope: () => ({ get: () => ({ send: async () => calls.push('send') }) }) },
+  let injected = []
+  const context = { inject(names, callback) { injected = names; return callback(this) }, get(name) { return {
+    sessions: { create: async () => { calls.push('create'); return 'session-fixture' }, retain: () => ({ ready: Promise.resolve(), release() { calls.push('release') } }), scope: () => ({ get: () => ({ send: async () => { calls.push('send'); if (sendError) throw Error('send disconnected') } }) }) },
     uiWorkspace: { openSession() { calls.push('open') } }, uiConversation: { binding: () => ({ activate() {} }) },
-    modelDirectories: { directoryFor: () => ({ select: async value => { calls.push(['select', plain(value)]); if (selectionError) throw Error('unsupported model') } }) },
+    modelDirectories: { directoryFor: () => {
+      if (!injected.includes('remote.session')) throw Error('cannot get property "remote.session" without inject')
+      return { select: async value => { calls.push(['select', plain(value)]); if (selectionError === 'result') return { ok: false, error: { code: 'unsupported-model', message: 'model selection rejected' } }; if (selectionError) throw Error('unsupported model'); return { ok: true } } }
+    } },
   }[name] } }
   const code = client.slice(client.indexOf('    let flowClientContext'), client.indexOf('    function Flows()'))
-  const launch = vm.runInNewContext(code + '\nflowClientContext = context; launchFlowConversation', {
+  const functions = vm.runInNewContext(code + '\n({ bindFlowLaunchContext, launchFlowConversation })', {
     context, callApi: async () => ({ ok: true, workspaceId: 'workspace-fixture', prompt: 'fixture task', execution }),
   })
-  return { calls, launch: () => launch({ id: 'fixture', revision: 1 }, 'fixture', {}) }
+  const dispose = functions.bindFlowLaunchContext(context)
+  return { calls, dispose, launch: () => functions.launchFlowConversation({ id: 'fixture', revision: 1 }, 'fixture', {}) }
 }
 
 test('new session selects model before sending and blocks task on selection failure', async () => {
@@ -54,12 +59,28 @@ test('new session selects model before sending and blocks task on selection fail
   await success.launch()
   assert.deepEqual(success.calls, ['create', ['select', route], 'open', 'send', 'release'])
   const failure = launcher(true)
-  await assert.rejects(failure.launch(), /unsupported model/)
+  await assert.rejects(failure.launch(), /任务尚未发送.*unsupported model/)
   assert.equal(failure.calls.includes('send'), false)
   assert.equal(failure.calls.at(-1), 'release')
   const defaults = launcher(false, {})
   await defaults.launch()
   assert.deepEqual(defaults.calls, ['create', 'open', 'send', 'release'])
+})
+
+test('model result rejection prevents sending; disposed services prevent creation; ambiguous sends are never retried', async () => {
+  const rejected = launcher('result')
+  await assert.rejects(rejected.launch(), /任务尚未发送.*model selection rejected/)
+  assert.equal(rejected.calls.includes('send'), false)
+  assert.equal(rejected.calls.at(-1), 'release')
+  const disposed = launcher()
+  disposed.dispose()
+  await assert.rejects(disposed.launch(), /尚未就绪/)
+  assert.deepEqual(disposed.calls, [])
+  const interrupted = launcher(false, route, true)
+  await assert.rejects(interrupted.launch(), /自动发送未确认成功.*send disconnected/)
+  assert.equal(interrupted.calls.filter(c => c === 'create').length, 1)
+  assert.equal(interrupted.calls.filter(c => c === 'send').length, 1)
+  assert.equal(interrupted.calls.at(-1), 'release')
 })
 
 test('background delegation replaces inherited route and clears unrelated controls', async () => {

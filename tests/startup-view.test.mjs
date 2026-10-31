@@ -6,6 +6,7 @@ import vm from 'node:vm'
 const source = readFileSync(new URL('../src/client/index.js', import.meta.url), 'utf8')
 const start = source.indexOf('    function resetKnowledgeViewOnStartup(')
 const reset = vm.runInNewContext(source.slice(start, source.indexOf('    function apply(ctx)', start)) + '\nresetKnowledgeViewOnStartup')
+const flowContextSource = source.slice(source.indexOf('    let flowClientContext'), source.indexOf('    async function launchFlowConversation'))
 
 function storage(initial = {}) {
   const data = new Map(Object.entries(initial))
@@ -67,7 +68,7 @@ test('actual plugin apply resets saved selection before registering the knowledg
     reactDom: {}, KNOWLEDGE_UI_THEME: '', RELEASE_VERSION: 'test', PROJECT_RECORD_URL: 'https://example.invalid/project-record', rememberPreviousClientVersion() {}, ensureStyle() {}, WorkbenchSettings() {}, KbView() {}, KnowledgePanelIcon() {},
     patchBuildBadge() {}, refreshBuildVersion() {}, checkBuildUpdates() {}, buildVersionRequest: { current: 0 }, buildUpdateRequest: { current: 0 },
   }
-  const apply = vm.runInNewContext('let flowClientContext, workbenchUI;\n' + source.slice(start, source.indexOf('    function apply(ctx)', start)) + applySource + '\napply', context)
+  const apply = vm.runInNewContext('let workbenchUI;\n' + flowContextSource + source.slice(start, source.indexOf('    function apply(ctx)', start)) + applySource + '\napply', context)
   apply({
     effect() {}, inject() {},
     slots: {
@@ -98,7 +99,7 @@ test('the top tab stays and the session-list row is registered as a pair with th
     patchBuildBadge() {}, refreshBuildVersion() {}, checkBuildUpdates() {}, buildVersionRequest: { current: 0 }, buildUpdateRequest: { current: 0 },
     KnowledgePanelIcon: icon,
   }
-  const apply = vm.runInNewContext('let flowClientContext, workbenchUI;\n' + source.slice(start, source.indexOf('    function apply(ctx)', start)) + source.slice(source.indexOf('    function apply(ctx)'), source.indexOf("    exports.name = 'kb-core'")) + '\napply', context)
+  const apply = vm.runInNewContext('let workbenchUI;\n' + flowContextSource + source.slice(start, source.indexOf('    function apply(ctx)', start)) + source.slice(source.indexOf('    function apply(ctx)'), source.indexOf("    exports.name = 'kb-core'")) + '\napply', context)
   apply({
     effect() {}, inject() {},
     slots: { inject: (_name, callback) => callback(), register: (options, component) => { registered.push({ options, component }) } },
