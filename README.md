@@ -1,4 +1,6 @@
-# Personal Knowledge Base for DSH 2.3.0
+# Personal Knowledge Base for DSH 2.3.1
+
+2.3.1 is a maintenance release. Inbox organization sends only the requested sentence, OCR/ASR task lists refresh without shifting the page, and knowledge-base command calls tolerate a missing display label. Conversation plans receive a bounded end-of-turn reconciliation; stopped sessions leave unfinished steps unconfirmed instead of showing an endless spinner.
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
@@ -17,15 +19,15 @@ English reference pages are authored for English readers and paired with their C
 
 ## Current release
 
-The currently recommended stable release is **2.3.0**. No preview build is currently offered. Version 2.3.0 adds inbox organization, index exclusion with relationship cleanup and restoration, unified desktop settings, and corrected knowledge-agent parsing authorization. Custom workflows can save a model and reasoning level as defaults or choose temporary overrides before a run. This requires no new dependency or migration of existing workflows.
+The currently recommended stable release is **2.3.1**. No preview build is currently offered. Version 2.3.0 adds inbox organization, index exclusion with relationship cleanup and restoration, unified desktop settings, and corrected knowledge-agent parsing authorization. Custom workflows can save a model and reasoning level as defaults or choose temporary overrides before a run. This requires no new dependency or migration of existing workflows.
 
 The workbench includes privacy controls, setup guidance, a directory and relationship map, quick capture, PDF reading and annotations, native `@` knowledge-base questions, and optional full backups. See the [workbench guide](WORKBENCH.en.md) for detailed capabilities and boundaries.
 
 ## Download
 
-- **Stable release 2.3.0:** [GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.3.0/local-dsh-knowledge-base-2.3.0.tgz) · [Gitee](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.3.0.tgz) · [GitCode](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.3.0.tgz?ref=main) · [GitHub direct link](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.3.0.tgz).
-- **Browser extension for Chrome and Edge:** [Gitee](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.3.0/knowledge-base-browser-extension.zip) · [GitHub direct link](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/knowledge-base-browser-extension.zip). Mirrors can lag behind. If a file is unavailable, try another source.
-- Historical packages are no longer offered from public download locations. Users of older versions should install 2.3.0 first, then use the in-plugin updater.
+- **Stable release 2.3.1:** [GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.3.1/local-dsh-knowledge-base-2.3.1.tgz) · [Gitee](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.3.1.tgz) · [GitCode](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.3.1.tgz?ref=main) · [GitHub direct link](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.3.1.tgz).
+- **Browser extension for Chrome and Edge:** [Gitee](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.3.1/knowledge-base-browser-extension.zip) · [GitHub direct link](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/knowledge-base-browser-extension.zip). Mirrors can lag behind. If a file is unavailable, try another source.
+- Historical packages are no longer offered from public download locations. Users of older versions should install 2.3.1 first, then use the in-plugin updater.
 
 The updater checks stable and preview channels. Stable updates within the same major version can install in the background; major-version changes and preview-channel changes require a manual choice. If the host cannot install from the client, update through the DSH plugin manager. See the [release notes](RELEASE.en.md) and [versioning policy](VERSIONING.en.md).
 
@@ -46,7 +48,7 @@ The showcase source is in [`website/`](website/) and is deployed with GitHub Pag
 For a first install or to move to the current updater, enter this package URL in the DSH plugin manager's installation source:
 
 ```text
-https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.3.0.tgz
+https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.3.1.tgz
 ```
 
 The client downloads and installs the package. You can also install a local package from `dist/`. Older versions may use the old download flow, so install this release before using the new updater.

@@ -23,7 +23,7 @@ export const FLOWS_SCHEMA_VERSION = 1
 function withBuiltinFlows(flows) {
   const flow = normalizeFlow({ id: 'builtin-inbox-organize', name: '整理并归档收件箱',
     triggers: ['整理并归档收件箱'], description: '内置流程：新开知识库 agent 会话，以 High 推理强度整理收件箱。',
-    steps: [{ title: '整理并归档收件箱内的文件', instruction: '整理并归档收件箱内的文件。' }],
+    steps: [{ title: '整理并归档收件箱内的文件', instruction: '帮我整理并归档收件箱内文件' }],
     outputRules: { land: false }, enabled: true, revision: 1 })
   return [{ ...flow, builtin: true }, ...flows.filter(f => f.id !== flow.id)]
 }

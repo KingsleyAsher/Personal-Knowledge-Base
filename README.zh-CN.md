@@ -1,4 +1,6 @@
-# 个人知识库 2.3.0
+# 个人知识库 2.3.1
+
+2.3.1 为维护修复版：收件箱整理仅发送指定的一句话，OCR/ASR 任务记录静默刷新，命令工具漏传显示说明时自动补全，会话待办在结束前核对真实进度，停止后不再持续转圈。未确认完成的步骤不会自动记为成功。
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
@@ -18,19 +20,26 @@
 
 ## 当前下载版本
 
-当前仅推荐正式版 **2.3.0**。预览通道暂无可用版本。
+当前仅推荐正式版 **2.3.1**。预览通道暂无可用版本。
 
-## 2.3.0 正式版更新
+## 2.3.1 维护更新
+
+- 收件箱只发送“帮我整理并归档收件箱内文件”。
+- OCR/ASR 任务记录静默刷新，保留列表位置和展开详情。
+- 知识库命令工具漏传显示说明时补全，权限与参数校验继续生效。
+- 会话待办结束前核对一次，停止后不再转圈；未完成项不自动记为成功。
+
+## 2.3.0 已有能力
 
 收件箱支持拖入或选择资料，并以知识库 Agent 和 High 推理强度一键整理归档；排除索引的资料进入独立分区，清理全文、向量与关系索引，取消排除后重建。知识库页签与桌面设置采用统一样式，并修复知识库 Agent 的 OCR / ASR 授权和任务详情。自定义流程可保存执行模型与推理强度，也可在运行前临时调整；选模成功后才发送任务。此前的检索与稳定性优化继续保留，见 [优化记录](EXISTING-FRAMEWORK-OPTIMIZATION.md)。
 
 ## 选择下载版本
 
-- **正式版 2.3.0**：[GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.3.0/local-dsh-knowledge-base-2.3.0.tgz) · [Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.3.0.tgz) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.3.0.tgz?ref=main) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.3.0.tgz)。
-- **浏览器扩展（Chrome／Edge）**：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub Release 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.3.0/knowledge-base-browser-extension.zip) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/knowledge-base-browser-extension.zip)。镜像可能存在同步延迟；文件暂不可用时可切换其他下载源。
-- 历史安装包已从公开下载处撤下；旧版用户请先安装 2.3.0，再使用插件内更新器。
+- **正式版 2.3.1**：[GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.3.1/local-dsh-knowledge-base-2.3.1.tgz) · [Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.3.1.tgz) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.3.1.tgz?ref=main) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.3.1.tgz)。
+- **浏览器扩展（Chrome／Edge）**：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub Release 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.3.1/knowledge-base-browser-extension.zip) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/knowledge-base-browser-extension.zip)。镜像可能存在同步延迟；文件暂不可用时可切换其他下载源。
+- 历史安装包已从公开下载处撤下；旧版用户请先安装 2.3.1，再使用插件内更新器。
 
-新版更新器同时检查正式版和预览版；同一大版本内可自动安装的正式版在后台更新，不弹更新前提醒。跨大版本与预览版保留手动选择；正式版用户的可选预览版仅在更新入口显示红点。宿主不支持客户端安装时通过宿主插件管理器更新。当前正式版为 `2.3.0`，暂无预览版；旧预览版已退出当前下载入口。
+新版更新器同时检查正式版和预览版；同一大版本内可自动安装的正式版在后台更新，不弹更新前提醒。跨大版本与预览版保留手动选择；正式版用户的可选预览版仅在更新入口显示红点。宿主不支持客户端安装时通过宿主插件管理器更新。当前正式版为 `2.3.1`，暂无预览版；旧预览版已退出当前下载入口。
 
 以下能力沿袭自 1.1.x 并持续迭代至 2.1.0；逐项发布记录见 [正式版说明](RELEASE.md)。
 
@@ -57,7 +66,7 @@ DSH 个人知识库插件：目录绑定、条目管理与检索、资料导入�
 
 ## 安装
 
-首次安装或从旧版接入新更新器：在 DSH 插件管理器的安装源中填写 `https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.3.0.tgz`，由客户端下载和安装；也可安装仓库 `dist/` 下的本地包。旧版自身的下载按钮仍采用旧流程，需先安装本版才能获得新更新器。
+首次安装或从旧版接入新更新器：在 DSH 插件管理器的安装源中填写 `https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.3.1.tgz`，由客户端下载和安装；也可安装仓库 `dist/` 下的本地包。旧版自身的下载按钮仍采用旧流程，需先安装本版才能获得新更新器。
 
 安装本版后，插件内「检查版本更新 → 安装新版本 / 安装预览版」自动完成下载、SHA-256 与包身份校验、安装及加载核对。普通宿主支持时热加载，宿主返回需要重启时再完全退出（含托盘）并重开。核对版本及构建号，摘要见 [发布清单](release-manifest.json)。宿主未提供安装接口时，按钮会说明需使用宿主插件管理器。
 

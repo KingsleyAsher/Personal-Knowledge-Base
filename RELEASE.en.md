@@ -1,3 +1,12 @@
+# 2.3.1: inbox requests and task-state fixes (2026-11-03)
+
+- Inbox organization sends exactly “帮我整理并归档收件箱内文件”, without the generic workflow or directory wrapper. Model selection and High reasoning effort remain in effect.
+- OCR/ASR history refreshes in the background without inserting a loading row. Concurrent progress events share an in-flight request, preserving the list position and expanded details.
+- Knowledge-base shell calls can supply a missing display-only description. Execution arguments, tool visibility, and permission decisions continue through the original tool.
+- Conversation plans receive step-update guidance and at most one reconciliation request before a turn stops. The dock uses live host status: an unfinished step in a stopped session is shown as unconfirmed, while completion counts still come from recorded todo updates. Waiting for user confirmation is shown separately.
+
+Validation used targeted checks, synthetic dispatch through the installed DSH tool runtime, and Edge scenarios for task refresh and todo lifecycle. Policy denial and tool restrictions remained effective. Production desktop installation, real model completion quality, and real cloud OCR/ASR are unverified.
+
 # 2.3.0 maintenance: inbox moves and one-click organization (2026-10-31)
 
 [English](RELEASE.en.md) · [简体中文](RELEASE.md)

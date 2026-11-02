@@ -2,7 +2,11 @@
 
 [English](WORKBENCH.en.md) · [简体中文](WORKBENCH.md)
 
-The current stable release for the historical sections below is **2.2.0**. For current downloads and capabilities, see the [README](README.md) and [release notes](RELEASE.en.md).
+The current stable release for the historical sections below is **2.3.1**. For current downloads and capabilities, see the [README](README.md) and [release notes](RELEASE.en.md).
+
+## 2.3.1 maintenance fixes
+
+Inbox organization sends a single task sentence. OCR/ASR history updates quietly while retaining the reading position and expanded details. Conversation todos use recorded completion counts and live host execution state; stopped, unconfirmed steps no longer spin. A turn can request one final reconciliation, without marking unperformed work as complete.
 
 ## 2.3.0 development: desktop inbox and settings
 

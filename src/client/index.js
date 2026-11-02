@@ -3479,6 +3479,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       const [jobs, setJobs] = react.useState(null)
       const [jobsError, setJobsError] = react.useState(''), [jobsLoading, setJobsLoading] = react.useState(false), [jobsTotal, setJobsTotal] = react.useState(0), [jobsOffset, setJobsOffset] = react.useState(0), [jobsStatus, setJobsStatus] = react.useState(''), [requests, setRequests] = react.useState(null), [requestOffset, setRequestOffset] = react.useState(0), [requestTotal, setRequestTotal] = react.useState(0)
       const jobsSequence = react.useRef(0)
+      const jobsInFlight = react.useRef(null)
       const [jobDetail, setJobDetail] = react.useState(null)
       const [jobPreview, setJobPreview] = react.useState(null)
       const [waitImportId, setWaitImportId] = react.useState(initialImportId)
@@ -3496,22 +3497,24 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         }
       }, [])
 
-      const loadJobs = react.useCallback(async () => {
-        const seq = ++jobsSequence.current; setJobsLoading(true)
+      const loadJobs = react.useCallback(async ({ background = false } = {}) => {
+        if (background && jobsInFlight.current !== null) return
+        const seq = ++jobsSequence.current; jobsInFlight.current = seq
+        if (!background) setJobsLoading(true)
         try {
           const [d, r] = await Promise.all([callApi({ op: 'parse.jobs', kind: selectedKind, status: jobsStatus || undefined, offset: jobsOffset, limit: 20 }), callApi({ op: 'parse.requests', kind: selectedKind, offset: requestOffset, limit: 20 })])
           if (seq !== jobsSequence.current) return
           if (!d?.ok || !r?.ok) throw Error(d?.error || d?.reason || r?.error || r?.reason || '读取任务记录失败')
           setJobs(d.jobs || []); setJobsTotal(d.total || 0); setRequests(r.requests || []); setRequestTotal(r.total || 0); setJobsError(d.warning || r.warning || '')
         } catch (err) { if (seq === jobsSequence.current) setJobsError('读取解析任务失败：' + String(err.message || err)) }
-        finally { if (seq === jobsSequence.current) setJobsLoading(false) }
+        finally { if (seq === jobsSequence.current) { jobsInFlight.current = null; setJobsLoading(false) } }
       }, [selectedKind, jobsOffset, jobsStatus, requestOffset])
 
       react.useEffect(() => {
         ensureStyle()
         load()
       }, [load])
-      react.useEffect(() => { if (parsePane === 'tasks') { setJobs(null); setRequests(null); void loadJobs() } return () => { jobsSequence.current++ } }, [parsePane, loadJobs])
+      react.useEffect(() => { if (parsePane === 'tasks') { setJobs(null); setRequests(null); void loadJobs() } return () => { jobsSequence.current++; jobsInFlight.current = null } }, [parsePane, loadJobs])
 
       react.useEffect(() => {
         if (initialImportId === '') return
@@ -3532,11 +3535,10 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       const localities = info && Array.isArray(info.locality) && info.locality.length > 0 ? info.locality : ['local', 'lan', 'cloud']
       const providersOf = (kind) => providers.filter((p) => p.kind === kind)
 
-      // 只要有任务在排队/运行就每 5 秒刷新一次；全部终态后立刻清掉 interval
-      const activeCount = (jobs || []).filter((j) => j.status === 'queued' || j.status === 'running').length
+      // Refresh progress silently; event bursts share the request already in flight.
       react.useEffect(() => {
         if (parsePane !== 'tasks') return undefined
-        const refresh = () => { if (!document.hidden) void loadJobs() }
+        const refresh = () => { if (!document.hidden) void loadJobs({ background: true }) }
         const onEvent = ev => { if (ev.detail?.type === 'parse-jobs-changed') refresh() }
         const timer = setInterval(refresh, 5000)
         window.addEventListener('kbw-policy', onEvent)
@@ -4140,7 +4142,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
             e('details',null,e('summary',null,'扫描范围与详情'),e('div',{className:'kbc-parse-meta'},scan.roots.join('；')),scan.issues.map((it,i)=>e('div',{key:i,className:'kbc-set-hint'},it.path+'：'+it.reason)))):null):null,
         parsePane==='tasks'?e('div',{className:'kbc-pane-content'},
           e('div',{className:'kbc-parse-actions'},e('button',{className:'kbc-btn kbc-btn-ghost',onClick:()=>loadJobs(),disabled:jobsLoading},'刷新任务'),e('select',{'aria-label':'任务状态',value:jobsStatus,onChange:ev=>{setJobsStatus(ev.target.value);setJobsOffset(0)}},[['','全部状态'],['queued','排队'],['running','执行中'],['succeeded','成功'],['partial','部分成功'],['failed','失败'],['canceled','取消']].map(([value,label])=>e('option',{key:value,value},label)))),
-          jobsLoading?e('p',{role:'status'},'正在读取任务记录…'):null,
+          jobsLoading&&jobs===null?e('p',{role:'status'},'正在读取任务记录…'):null,
           jobsError?e('p',{role:'alert',className:'kbc-error'},jobsError):null,
           jobs?.length?jobs.map(jobRow):!jobsLoading&&!jobsError?e('p',{className:'kbc-set-hint'},'当前类型和筛选条件下没有执行任务'):null,
           e('div',{className:'kbc-parse-actions'},e('span',null,'共 '+jobsTotal+' 条执行任务'),e('button',{className:'kbc-btn',disabled:jobsOffset===0||jobsLoading,onClick:()=>setJobsOffset(n=>Math.max(0,n-20))},'上一页'),e('button',{className:'kbc-btn',disabled:jobsOffset+20>=jobsTotal||jobsLoading,onClick:()=>setJobsOffset(n=>n+20)},'下一页')),
@@ -4150,11 +4152,68 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         toast?e('div',{className:'kbm-toast'},toast):null)
     }
 
-    const RELEASE_VERSION = '2.3.0'
+    // BEGIN GENERATED TODO LIFECYCLE UI
+    function createTodoLifecycleUI(React) {
+      const h = React.createElement
+      const NS = 'localTodoLifecycle'
+      const zh = { title: '任务计划', completed: '已完成', active: '执行中', pending: '待处理', waiting: '等待确认', unconfirmed: '未确认完成', syncing: '状态同步中', stopped: '会话已停止，剩余步骤未确认完成', progress: '{done}/{total} 已完成' }
+      const en = { title: 'Task plan', completed: 'Completed', active: 'In progress', pending: 'Pending', waiting: 'Waiting for confirmation', unconfirmed: 'Completion unconfirmed', syncing: 'Syncing status', stopped: 'Session stopped; remaining steps are not confirmed complete', progress: '{done}/{total} completed' }
+      const css = `body:has([data-todo-lifecycle-panel]) section[data-testid="todo-panel"]{display:none}
+        [data-todo-lifecycle-panel]{margin:0 0 8px;border:.5px solid var(--dsw-alias-border-l1,#d1d5db);border-radius:12px;color:var(--dsw-alias-label-primary,inherit);font-size:13px;overflow:hidden}
+        [data-todo-lifecycle-panel] .tl-head{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;color:inherit;font:inherit;padding:10px 14px;text-align:left;cursor:pointer}
+        [data-todo-lifecycle-panel] .tl-count{margin-left:auto;color:var(--dsw-alias-label-secondary,#888);font-size:12px}
+        [data-todo-lifecycle-panel] ul{list-style:none;margin:0;padding:0 14px 12px;max-height:240px;overflow:auto}
+        [data-todo-lifecycle-panel] li{display:flex;align-items:flex-start;gap:9px;padding:5px 0;overflow-wrap:anywhere}
+        [data-todo-lifecycle-panel] .tl-dot{flex:none;box-sizing:border-box;width:13px;height:13px;border:1.5px solid currentColor;border-radius:50%;margin-top:3px;opacity:.5}
+        [data-todo-lifecycle-panel] [data-status=completed] .tl-dot{border:0;opacity:1;color:var(--dsw-alias-state-success-primary,#22a06b)}
+        [data-todo-lifecycle-panel] [data-status=completed] .tl-dot:before{content:'✓';font-size:14px;line-height:13px}
+        [data-todo-lifecycle-panel] [data-status=active] .tl-dot{opacity:1;border-color:var(--dsw-alias-state-business-primary,#6d5ee9);border-right-color:transparent;animation:tl-spin .8s linear infinite}
+        [data-todo-lifecycle-panel] [data-status=completed] .tl-content{opacity:.65}
+        [data-todo-lifecycle-panel] .tl-note{margin:0;padding:0 14px 10px;color:var(--dsw-alias-label-tertiary,#888);font-size:12px}
+        @keyframes tl-spin{to{transform:rotate(360deg)}}
+        @media(prefers-reduced-motion:reduce){[data-todo-lifecycle-panel] .tl-dot{animation:none!important}}`
+
+      function viewOf(todos, running, waiting = false) {
+        return (todos || []).map(item => ({ ...item, displayStatus: item.status === 'completed' ? 'completed'
+          : item.status === 'in_progress' ? waiting ? 'waiting' : running === true ? 'active' : running === false ? 'unconfirmed' : 'syncing' : 'pending' }))
+      }
+
+      function TodoDock(props) {
+        const todos = props.useProjection('todos') || []
+        const row = props.useTodoLifecycleSessions(snapshot => snapshot.byId[props.sessionId])
+        const live = typeof props.useSessionStatus === 'function'
+          ? props.useSessionStatus(snapshot => snapshot.get(props.sessionId)) : undefined
+        const [collapsed, setCollapsed] = React.useState(true)
+        const running = live?.running ?? row?.running
+        const waiting = live?.pendingInteraction === true
+        const items = viewOf(todos, running, waiting), done = items.filter(item => item.status === 'completed').length
+        if (!items.length) return null
+        const stopped = running === false && !waiting && done < items.length
+        const t = props.t
+        return h('section', { 'data-todo-lifecycle-panel': '', 'data-testid': 'todo-lifecycle-panel', 'aria-label': t('title') },
+          h('button', { className: 'tl-head', type: 'button', 'aria-expanded': !collapsed, onClick: () => setCollapsed(value => !value) },
+            h('span', null, '☷'), h('span', null, t('title')), h('span', { className: 'tl-count' }, t('progress', { done, total: items.length })), h('span', { 'aria-hidden': true }, collapsed ? '⌃' : '⌄')),
+          !collapsed && h('ul', null, items.map(item => h('li', { key: item.content, 'data-status': item.displayStatus, title: t(item.displayStatus) },
+            h('span', { className: 'tl-dot', role: 'img', 'aria-label': t(item.displayStatus) }), h('span', { className: 'tl-content' }, item.content)))),
+          stopped && h('p', { className: 'tl-note' }, t('stopped')))
+      }
+
+      function install(ctx) {
+        ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'todo lifecycle: locale')
+        ctx.effect(() => { const style = document.createElement('style'); style.dataset.todoLifecycleFix = ''; style.textContent = css; document.head.appendChild(style); return () => style.remove() }, 'todo lifecycle: styles')
+        ctx.slots.inject('conversation.input.dock', () => ctx.slots.register({ name: 'conversation.input.dock', id: 'todo-lifecycle', order: 0, locale: NS,
+          inject: () => ({ hooks: { todoLifecycleSessions: ctx.sessions.list } }) }, TodoDock))
+      }
+      return { apply: install, viewOf }
+    }
+    // END GENERATED TODO LIFECYCLE UI
+
+    const RELEASE_VERSION = '2.3.1'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.
     const RELEASE_NOTICES = [
+      { version: '2.3.1', items: ['收件箱整理只发送一句指定任务，不再拼接流程说明。', 'OCR / ASR 任务记录改为静默刷新，保持列表位置和展开状态。', '修复知识库命令工具漏传显示说明时的参数错误。', '任务计划增加逐步更新与结束前核对；会话停止后未确认步骤不再持续转圈。'] },
       { version: '2.3.0', items: ['新增收件箱文件选择、拖入、模型选择与一键整理归档。', '资料可逐份或批量排除索引，排除和恢复同步处理全文、向量与关系链条。', '统一桌面工作台和设置界面，修正窄弹窗布局并增加备份目录选择。', '修正知识库 Agent 的 OCR / ASR 授权和流程来源路径判断，提交记录支持查看详情。'] },
       { version: '2.2.1', items: ['自定义流程可保存执行模型和推理强度，按模型支持的档位选择。', '运行前可临时更换模型和参数；新会话先选模再发送任务，选模失败时不启动。'] },
       { version: '1.1.1', items: ['新增产品介绍页、源码、发布包与使用说明入口。'] },
@@ -4382,11 +4441,13 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       } catch { /* Storage may be unavailable; keep the plugin usable. */ }
     }
 
+
     function apply(ctx) {
       rememberPreviousClientVersion(window.localStorage, document.documentElement.getAttribute('data-kb-client-version'))
       try { resetKnowledgeViewOnStartup(window.localStorage) } catch { /* storage unavailable */ }
       flowClientContext = ctx
       bindFlowLaunchContext(ctx)
+      ctx.inject(['locale', 'sessions'], scope => createTodoLifecycleUI(react).apply(scope))
       workbenchUI = createWorkbenchUI({ react, e, ReferenceChip, api: callApi, ctx: () => flowClientContext, themeCss: KNOWLEDGE_UI_THEME,
         Overview: () => e(Overview, { statusOnly: true }), Flows, Parsing: ParseSection, BuildBadge, version: RELEASE_VERSION, projectRecordUrl: PROJECT_RECORD_URL, portal: reactDom.createPortal,
         organizeInbox: (kbId, execution) => launchFlowConversation({ id: 'builtin-inbox-organize', revision: 1 }, kbId, {}, execution) })
