@@ -18,4 +18,12 @@ else:
     assert text.count(anchor) == 1
     text = text.replace(anchor, anchor + generated)
 target.write_text(text, encoding='utf-8', newline='')
+todo_begin = '    // BEGIN GENERATED TODO LIFECYCLE UI\n'
+todo_end = '    // END GENERATED TODO LIFECYCLE UI\n'
+todo = (root / 'src/client/todo-lifecycle-ui.js').read_text(encoding='utf-8').replace('export function ', 'function ', 1)
+assert text.count(todo_begin) == text.count(todo_end) == 1
+start = text.index(todo_begin)
+stop = text.index(todo_end, start) + len(todo_end)
+text = text[:start] + todo_begin + '\n'.join('    ' + line if line else '' for line in todo.splitlines()) + '\n' + todo_end + text[stop:]
+target.write_text(text, encoding='utf-8', newline='')
 print('Embedded workbench UI: UTF-8 source synchronized')

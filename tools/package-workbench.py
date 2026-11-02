@@ -39,7 +39,7 @@ else:
 manifest['installationTgz'] = install_archive.name
 manifest['installationSpec'] = install_archive.resolve().as_posix()
 (delivery / '安装说明.txt').write_text(
-    '2.3.0 开发包请使用本次构建的独立安装路径，避免同版本、同路径旧包缓存。\n\n'
+    version + ' 本地安装包请使用本次构建的独立安装路径，避免同版本、同路径旧包缓存。\n\n'
     + manifest['installationSpec'] + '\n\n'
     + '在 DSH 插件管理器中作为本地包安装源使用。若当前窗口保留旧插件，按宿主提示重新加载或完全退出（含托盘）后重开。\n'
     + '验收以知识库设置中的构建号 ' + manifest['buildId'] + ' 为准，仅看到版本号相同不能证明已更新。\n', encoding='utf-8')

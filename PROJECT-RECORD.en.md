@@ -3,13 +3,19 @@
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 2.3.0 -->
+<!-- project-record-version: 2.3.1 -->
 
-**Implementation covered: 2.3.0 (stable) · Updated: 2026-10-31 · Maintenance: review this record alongside the source with every release.**
+**Implementation covered: 2.3.1 (stable) · Updated: 2026-11-03 · Maintenance: review this record alongside the source with every release.**
 
 This long-term record is for users, maintainers, and future contributors. It explains why the product is built this way, what it can currently do, how its features fit together, where data is stored, and what may come next. “Implemented” refers to source code in this repository. Roadmap items are future directions, not features already delivered. The installed version and build ID must be checked in the client and the corresponding release manifest.
 
 See the [workbench guide](WORKBENCH.en.md) for usage, [release notes](RELEASE.en.md) for changes in each release, and [versioning policy](VERSIONING.en.md) for version comparisons. This record explains the product as a whole; release notes are not an architecture document.
+
+## 2.3.1: inbox requests and honest task progress
+
+This patch keeps the inbox request to one sentence, refreshes OCR/ASR records without moving the page, and supplies a missing display label on authorized knowledge-base shell calls. The original command validator and permission policy remain in charge.
+
+Conversation todo handling now pairs recorded progress with the host's live execution status. A bounded final reconciliation asks the model to update the list from actual results. Stopping a session does not imply completion: unfinished steps lose their running animation and remain unconfirmed. Synthetic browser checks cover step changes, stopping, and completion; they do not establish that a real model will finish every task correctly.
 
 ## 2.3.0 stable: inbox, index privacy, and unified desktop workbench
 
@@ -335,6 +341,7 @@ The main-branch record describes current source. Historical states can be retrie
 | 2.0.0–2.0.3 | Released the material-management workbench and refined navigation, relationships, capture and Trash, parsing tasks, update behavior, and release-document privacy checks |
 | 2.1.0–2.1.5 | Released hybrid full-text/vector retrieval, incremental indexing, citation checks, and user-file protection; then refined the relationship canvas, background updates, refresh responsiveness, exact retrieval for large libraries, and cache budgets while preserving index and Q&A compatibility |
 | 2.2.0–2.2.1 | Improved repeated reads, relationship scans, background scheduling, and safe writes; added saved and per-run execution model and reasoning choices for custom workflows |
+| 2.3.1 | Single-sentence inbox requests, quiet OCR/ASR refresh, shell display-label fallback, and conversation todo reconciliation with stopped-session status |
 | 2.3.0 | Added a knowledge-base sidebar entry, inbox drop/select and High-effort one-click organization, index-exclusion storage with full-text/vector/relationship cleanup and restoration, unified desktop UI, and fixes for knowledge-agent parsing authorization and task details |
 
 The central trade-off is to preserve portable files, make deterministic local flows reliable first, and then add AI assistance. Relationship caches support existing file relationships; AI suggestions are distinguished from confirmed relationships. Parsing-task registration is separate from final import, and update checking is separate from installation. This gives every automated step an explainable target and result.
