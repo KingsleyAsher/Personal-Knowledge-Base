@@ -17,13 +17,17 @@ else:
     anchor = '    const e = react.createElement\n'
     assert text.count(anchor) == 1
     text = text.replace(anchor, anchor + generated)
-target.write_text(text, encoding='utf-8', newline='')
-todo_begin = '    // BEGIN GENERATED TODO LIFECYCLE UI\n'
-todo_end = '    // END GENERATED TODO LIFECYCLE UI\n'
-todo = (root / 'src/client/todo-lifecycle-ui.js').read_text(encoding='utf-8').replace('export function ', 'function ', 1)
-assert text.count(todo_begin) == text.count(todo_end) == 1
-start = text.index(todo_begin)
-stop = text.index(todo_end, start) + len(todo_end)
-text = text[:start] + todo_begin + '\n'.join('    ' + line if line else '' for line in todo.splitlines()) + '\n' + todo_end + text[stop:]
+bridge_begin = '    // BEGIN GENERATED INBOX BRIDGE\n'
+bridge_end = '    // END GENERATED INBOX BRIDGE\n'
+bridge_source = (root / 'src/client/inbox-organize-bridge.js').read_text(encoding='utf-8')
+bridge = bridge_begin + '\n'.join('    ' + line if line else '' for line in bridge_source.splitlines()) + '\n' + bridge_end
+if bridge_begin in text:
+    start = text.index(bridge_begin)
+    stop = text.index(bridge_end, start) + len(bridge_end)
+    text = text[:start] + bridge + text[stop:]
+else:
+    anchor = '    let flowClientContext = null\n'
+    assert text.count(anchor) == 1
+    text = text.replace(anchor, bridge + anchor)
 target.write_text(text, encoding='utf-8', newline='')
 print('Embedded workbench UI: UTF-8 source synchronized')

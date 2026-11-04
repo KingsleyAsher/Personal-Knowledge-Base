@@ -1,0 +1,932 @@
+[
+  {
+    "name": "kb_inbox",
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "list",
+            "complete"
+          ]
+        },
+        "path": {
+          "type": "string"
+        },
+        "entryPath": {
+          "type": "string"
+        },
+        "offset": {
+          "type": "integer"
+        },
+        "limit": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ok"
+      ]
+    }
+  },
+  {
+    "name": "kb_question_search",
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "questionId": {
+          "type": "string"
+        },
+        "query": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "questionId",
+        "query"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ok"
+      ]
+    }
+  },
+  {
+    "name": "kb_question_read",
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "questionId": {
+          "type": "string"
+        },
+        "sourceId": {
+          "type": "string"
+        },
+        "line": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "questionId",
+        "sourceId"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ok"
+      ]
+    }
+  },
+  {
+    "name": "kb_relation_review",
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "requestId": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "action": {
+          "type": "string",
+          "enum": [
+            "inspect",
+            "read",
+            "propose"
+          ]
+        },
+        "proposals": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "target": {
+                "type": "string"
+              },
+              "reason": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "target",
+              "reason"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "requestId",
+        "action"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ok"
+      ]
+    }
+  },
+  {
+    "name": "kb_deliverable",
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "prepare",
+            "register"
+          ]
+        },
+        "task": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "private": {
+          "type": "boolean"
+        },
+        "sources": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "action",
+        "task"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ok"
+      ]
+    }
+  },
+  {
+    "name": "kb_validate_citations",
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "questionId",
+        "answer"
+      ],
+      "properties": {
+        "questionId": {
+          "type": "string"
+        },
+        "answer": {
+          "type": "string"
+        },
+        "returnAnswer": {
+          "type": "boolean"
+        },
+        "review": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "coverage",
+            "gaps",
+            "conflicts"
+          ],
+          "properties": {
+            "coverage": {
+              "type": "string",
+              "enum": [
+                "sufficient",
+                "insufficient",
+                "uncertain"
+              ]
+            },
+            "gaps": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "conflicts": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ok"
+      ]
+    }
+  },
+  {
+    "name": "kb_status",
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {}
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "kbPath": {
+          "type": "string"
+        },
+        "healthy": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "kbPath",
+        "healthy"
+      ]
+    }
+  },
+  {
+    "name": "kb_bind",
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "知识库根目录的绝对路径"
+        },
+        "confirmInit": {
+          "type": "boolean",
+          "description": "true = 确认在全新目录里执行初始化；缺省只返回预览"
+        }
+      },
+      "required": [
+        "path"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "needsConfirm": {
+          "type": "boolean"
+        },
+        "kbPath": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ok",
+        "kbPath"
+      ]
+    }
+  },
+  {
+    "name": "kb_init",
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {}
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "installState": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ok",
+        "installState"
+      ]
+    }
+  },
+  {
+    "name": "kb_record",
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "type": "string",
+          "description": "create 或 update"
+        },
+        "kind": {
+          "type": "string",
+          "description": "知识 / 项目 / 人物 / 素材 / 画像（create 必填）"
+        },
+        "title": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string",
+          "description": "正文（Markdown）"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "source": {
+          "type": "string",
+          "description": "派生自哪份原件（库内相对路径）"
+        },
+        "entryId": {
+          "type": "string",
+          "description": "update 必填"
+        },
+        "expectedRevision": {
+          "type": "string",
+          "description": "update 必填，非空"
+        },
+        "patch": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "update 的字段级修改"
+        },
+        "requestId": {
+          "type": "string",
+          "description": "幂等请求标识（可选）：网络/中断后重试请传同一个值，重试不会重复建条目；用户主动再建请换新值"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "entryId": {
+          "type": "string"
+        },
+        "revision": {
+          "type": "string"
+        },
+        "conflict": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ok"
+      ]
+    }
+  },
+  {
+    "name": "kb_search",
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "query": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "number",
+          "description": "默认 5，最大 20"
+        },
+        "retrievalMode": {
+          "type": "string",
+          "enum": [
+            "exact",
+            "fulltext",
+            "semantic",
+            "hybrid"
+          ]
+        }
+      },
+      "required": [
+        "query"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "hits": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "coverageNote": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "hits",
+        "coverageNote"
+      ]
+    }
+  },
+  {
+    "name": "kb_check",
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "rebuild": {
+          "type": "boolean"
+        },
+        "recover": {
+          "type": "boolean"
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "execution": {
+          "type": "string"
+        },
+        "quality": {
+          "type": "string"
+        },
+        "defects": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": [
+        "execution",
+        "quality"
+      ]
+    }
+  },
+  {
+    "name": "kb_import",
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action"
+      ],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "plan",
+            "run",
+            "status",
+            "cancel",
+            "waiting",
+            "parse"
+          ]
+        },
+        "source": {
+          "type": "string",
+          "description": "源文件夹绝对路径（plan 必填）"
+        },
+        "mode": {
+          "type": "string",
+          "enum": [
+            "attach",
+            "copy"
+          ],
+          "description": "默认 attach"
+        },
+        "importId": {
+          "type": "string",
+          "description": "run/status/cancel/waiting/parse 必填（plan 会返回）"
+        },
+        "rel": {
+          "type": "string",
+          "description": "parse：导入清单里的相对路径"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "ocr",
+            "asr"
+          ],
+          "description": "parse：解析类型（不填按扩展名推断）"
+        },
+        "providerId": {
+          "type": "string",
+          "description": "兼容旧请求保留；会话导入解析始终使用设置中的默认服务，忽略此字段"
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "importId": {
+          "type": "string"
+        },
+        "mode": {
+          "type": "string"
+        },
+        "stage": {
+          "type": "string"
+        },
+        "counts": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "error": {
+          "type": "string"
+        }
+      }
+    }
+  },
+  {
+    "name": "kb_flow",
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "action"
+      ],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "list",
+            "get",
+            "save",
+            "set-enabled",
+            "run",
+            "runs",
+            "cancel",
+            "archive"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "description": "流程 id（get / save 更新 / set-enabled / run / archive 用）"
+        },
+        "text": {
+          "type": "string",
+          "description": "用户原话：run 时可用它替代 id（按触发语解析命中哪条流程）"
+        },
+        "flow": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "save 的完整定义（省略 id = 新建）：name/triggers/description/params/steps/capabilities/outputRules/enabled"
+        },
+        "expectedRevision": {
+          "type": "number",
+          "description": "更新必填：先 list 或 get 取当前 revision"
+        },
+        "enabled": {
+          "type": "boolean",
+          "description": "set-enabled 的目标状态"
+        },
+        "restored": {
+          "type": "boolean",
+          "description": "archive 传 true = 取消归档（恢复）"
+        },
+        "includeArchived": {
+          "type": "boolean",
+          "description": "list 是否包含已归档（默认不含）"
+        },
+        "params": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "run 的参数值（缺省用定义里的 default）"
+        },
+        "runId": {
+          "type": "string",
+          "description": "run 的幂等键：重试请复用同一个值（同一 runId 直接返回既有记录）"
+        },
+        "limit": {
+          "type": "number",
+          "description": "runs 返回条数（默认 20）"
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "action": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "error": {
+          "type": "string"
+        },
+        "kbId": {
+          "type": "string"
+        },
+        "flow": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "flows": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "run": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "runId": {
+          "type": "string"
+        },
+        "runs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "deduplicated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "ok",
+        "action"
+      ]
+    }
+  },
+  {
+    "name": "kb_flow_resolve",
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text"
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "description": "用户原话（整句，不要只截触发语）"
+        }
+      }
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "status": {
+          "type": "string"
+        },
+        "matched": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": true
+          }
+        },
+        "guarded": {
+          "type": "boolean"
+        },
+        "guardReasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "coverage": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "ok",
+        "status"
+      ]
+    }
+  },
+  {
+    "name": "kb_parse",
+    "parameters": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": [
+            "source",
+            "requests",
+            "providers",
+            "test-connection",
+            "test-parse",
+            "submit",
+            "jobs",
+            "job",
+            "result",
+            "cancel",
+            "retry",
+            "land"
+          ],
+          "description": "要执行的动作（管理面动作不在模型侧提供）"
+        },
+        "provider": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "（管理面，模型侧会被拒）提供方定义"
+        },
+        "providerId": {
+          "type": "string",
+          "description": "连接测试使用；会话 submit/test-parse 始终跟随设置中的默认服务，此字段不能覆盖默认值。单次选择请由用户在设置页操作。"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "ocr",
+            "asr"
+          ]
+        },
+        "externalPolicy": {
+          "type": "string",
+          "enum": [
+            "local-only",
+            "allow-configured"
+          ],
+          "description": "（管理面，模型侧会被拒）"
+        },
+        "sourceRel": {
+          "type": "string",
+          "description": "库内相对路径（不能是绝对路径或含 ..）"
+        },
+        "sourcePath": {
+          "type": "string",
+          "description": "当前会话工作目录内的文件路径，由宿主校验；不能借此访问个人知识库"
+        },
+        "sourceRef": {
+          "type": "string",
+          "description": "action=source 返回的当前会话文件引用"
+        },
+        "attachmentId": {
+          "type": "string",
+          "description": "当前会话的宿主图片附件编号，不能指定其他会话"
+        },
+        "purpose": {
+          "type": "string"
+        },
+        "jobId": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "number"
+        },
+        "offset": {
+          "type": "number"
+        },
+        "pages": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "result：只要这些页（OCR）"
+        },
+        "segments": {
+          "type": "array",
+          "items": {
+            "type": "number"
+          },
+          "description": "result：只要这些段（ASR）"
+        },
+        "status": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "entryId": {
+          "type": "string",
+          "description": "land：更新已有条目时给出（必须同时给 expectedRevision）"
+        },
+        "expectedRevision": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "action"
+      ]
+    },
+    "outputSchema": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "ok": {
+          "type": "boolean"
+        },
+        "action": {
+          "type": "string"
+        },
+        "reason": {
+          "type": "string"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "jobId": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      }
+    }
+  }
+]

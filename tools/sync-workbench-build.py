@@ -14,12 +14,14 @@ extra.extend(['src/host/runtime-resources.js','src/host/storage-io.js'])
 extra.extend(['src/host/index-policy.js','src/host/index-policy-service.js'])
 extra.append('src/client/knowledge-ui.css')
 extra.append('src/host/workbench-inbox.js')
-extra.append('src/host/command-description.js')
-extra.extend(['src/host/todo-lifecycle.js', 'src/client/todo-lifecycle-ui.js'])
 extra.extend('src/client/' + name for name in ['capture.html','capture.js','capture.css','capture-sw.js','capture.webmanifest','capture-icon.svg','capture-icon-192.png','capture-icon-512.png'])
 for folder in ['src/client/pdfjs', 'browser-extension']:
     extra.extend(str(p.relative_to(repo)).replace('\\', '/') for p in sorted((repo / folder).rglob('*')) if p.is_file())
 files = list(dict.fromkeys(files + extra + ['src/host/versioning.js']))
+for folder in ['packages/kb-core', 'packages/kb-contracts', 'packages/kb-service']:
+    if (repo / folder).is_dir():
+        files.extend(str(p.relative_to(repo)).replace('\\', '/') for p in sorted((repo / folder).rglob('*')) if p.is_file())
+files = list(dict.fromkeys(files))
 assert all((repo / name).is_file() for name in files)
 literal = '[' + ', '.join("'" + name + "'" for name in files) + ']'
 text = text[:match.start(1)] + literal + text[match.end(1):]

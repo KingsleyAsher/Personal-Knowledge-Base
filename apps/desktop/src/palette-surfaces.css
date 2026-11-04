@@ -1,0 +1,23 @@
+/* Surface roles follow the approved images; original document pixels are never filtered. */
+html[data-palette] .inspector{background:var(--inspector);--surface:var(--inspector-control);--soft:var(--inspector-soft)}
+html[data-palette] .inspector-tabs{background:var(--inspector)}
+html[data-palette] .tab-strip{background:var(--tabbar)}
+html[data-palette] .document-tab.active{background:var(--active-tab);color:var(--text)}
+html[data-palette] .tab-list>.motion-selection{background:var(--active-tab)}
+html[data-palette] :is(.path-row,.edit-control-row,.editor-tools){background:var(--toolbar)}
+html[data-palette] .workspace-popover{background:var(--popover-surface);--surface:var(--popover-surface);--soft:var(--popover-soft)}
+html[data-palette] .file-tree>.motion-selection{background:var(--selection)}
+html[data-palette] .tree-row.selected{color:var(--on-selection)}
+html[data-palette] .file-tree:not(.has-motion-selection) .tree-row.selected,
+html[data-palette] .file-tree:has(.tree-branch[data-animating]) .tree-row.selected{background:var(--selection)!important}
+html[data-palette] .tree-row.selected :is(.file-icon,.tree-tag,svg){color:var(--on-selection)}
+html[data-palette] .primary{color:var(--on-accent)!important}
+html[data-palette] .palette-check{color:var(--preview-on-accent)}
+html[data-palette] .palette-preview-chat{background:var(--preview-inspector)}
+html[data-palette] .palette-preview-sidebar b:nth-child(2){background:var(--preview-selection)}
+html[data-palette] .file-icon.md{color:var(--note)}
+html[data-palette] .markdown a,html[data-palette] .chat-markdown a{color:var(--link)}
+html[data-palette] .preview-source-path{color:var(--link)}
+html[data-palette] .chat-message.user{background:var(--accent-soft)}
+:root[data-palette]{--kbw-bg:var(--surface);--kbw-surface:var(--soft);--kbw-fg:var(--text);--kbw-muted:var(--muted);--kbw-line:var(--line);--kbw-soft:var(--soft);--kbw-accent:var(--accent-solid);--kbw-accent-fg:var(--on-accent);--kbw-danger:var(--red)}
+[data-relation-library]{display:flex;flex:1;min-height:0;min-width:0;flex-direction:column;height:100%}

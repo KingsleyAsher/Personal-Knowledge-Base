@@ -1,0 +1,57 @@
+/* Installation presentation: screenshot-first layout. */
+header{max-width:1040px;margin:24px auto 16px}main{max-width:1040px;display:block}main>nav{width:100%;display:flex;flex-wrap:wrap;gap:4px;margin-bottom:16px}nav button{width:auto;padding:8px 12px;font-size:12px;margin:0}footer{max-width:1040px}
+#view{width:1040px;max-width:100%;background:#faf8f2}
+#view>svg{width:100%;height:auto}
+#view{height:780px}
+#view>svg{height:780px;animation:none}
+.install-window{height:780px;display:flex;flex-direction:column;background:linear-gradient(145deg,#fffdf7,#f6f5ec);padding:0 34px;border:1px solid #fffdf8;border-radius:16px;box-sizing:border-box}
+.install-header{height:90px;min-height:90px;width:100%;margin:0;display:flex;align-items:center;justify-content:space-between}
+.brand-lockup{display:flex;gap:16px;align-items:center}.brand-lockup strong{font-size:17px;display:block}.brand-lockup span{display:block;font-size:12px;color:#7c8678;margin-top:5px}
+.install-window .icon-book{position:relative;left:auto;top:auto;width:48px;height:48px;background:linear-gradient(145deg,#698773,#355440);border:1px solid #809786;box-shadow:inset 0 1px 0 #b1c2ad,inset 0 -3px 0 #263e32,0 5px 9px #324c3026;border-radius:15px;flex-shrink:0}
+.install-close{background:none;border:0;padding:4px;cursor:pointer}
+.depth-icon{width:42px;height:42px;display:inline-flex;flex-shrink:0;align-items:center;justify-content:center;border-radius:13px;color:#416451;background:linear-gradient(145deg,#fffef9,#dbe4d4);border:1px solid #c7d3bf;box-shadow:inset 0 1px 0 #fff,inset 0 -2px 0 #c0cfb7,0 4px 7px #354b3020}
+.depth-icon svg{width:24px;height:24px;filter:drop-shadow(0 1px 0 #fff);animation:none!important}.depth-icon.small{width:32px;height:32px;border-radius:10px}.depth-icon.small svg{width:17px;height:17px}
+.install-window .feature-deck{position:relative;left:auto;top:auto;width:100%;height:542px;flex:none;background:transparent;container-type:normal}
+.install-window .feature-viewport{height:516px}.install-window .feature-track{height:100%}.install-window .feature-slide{background:transparent;padding:0 4px}
+.feature-heading{display:flex;gap:14px;align-items:center;height:64px;padding-left:12px}.install-window .feature-kicker{font-size:11px;letter-spacing:1px}.install-window .feature-slide h2{font-size:24px;margin:4px 0 0;line-height:1.4}
+.install-window .screenshot-mask{height:400px;width:100%;margin-top:4px;mask-image:linear-gradient(to right,transparent,#000 3%,#000 97%,transparent),linear-gradient(to bottom,transparent,#000 4%,#000 96%,transparent);-webkit-mask-image:linear-gradient(to right,transparent,#000 3%,#000 97%,transparent),linear-gradient(to bottom,transparent,#000 4%,#000 96%,transparent)}
+.install-window .screenshot-mask img{object-fit:contain;object-position:center;background:#ecefe6}
+.install-window .feature-slide p{font-size:13px;margin:10px 0 0;text-align:center}.install-window .feature-dots{justify-content:center;height:26px;gap:9px}.install-window .feature-dots button{width:26px}
+.feature-mosaic{height:400px;display:grid;grid-template-columns:minmax(0,1.65fr) minmax(0,1fr);grid-template-rows:1fr 1fr;gap:14px;padding:10px 9px 8px;margin-top:4px;background:radial-gradient(ellipse at 55% 50%,#dfe7d6aa,transparent 72%)}
+.showcase-card{margin:0;min-width:0;min-height:0;overflow:hidden;border-radius:13px;background:#fbfcf7;border:1px solid #ced9c5;box-shadow:0 7px 15px #344a2b12,inset 0 1px 0 white;display:flex;flex-direction:column}
+.showcase-card.card-0{grid-row:1/3;transform:rotate(-.65deg)}
+.showcase-card.card-1{transform:rotate(.8deg)}
+.showcase-card.card-2{transform:rotate(-.35deg)}
+.showcase-card figcaption{height:32px;min-height:32px;padding:0 12px;display:flex;gap:8px;align-items:center;font-size:11px;color:#52654a;background:linear-gradient(#fffef9,#edf2e6);border-bottom:1px solid #dce4d4}
+.card-led{width:6px;height:6px;border-radius:50%;background:#6e8b60;box-shadow:0 1px 0 #fff,inset 0 1px 1px #37512b55}.card-index{margin-left:auto;color:#92a086;font-size:10px}
+.card-image{flex:1;min-height:0;overflow:hidden;mask-image:linear-gradient(to right,transparent,#000 2%,#000 98%,transparent),linear-gradient(to bottom,#000 94%,transparent);mask-composite:intersect;-webkit-mask-image:linear-gradient(to right,transparent,#000 2%,#000 98%,transparent),linear-gradient(to bottom,#000 94%,transparent);-webkit-mask-composite:source-in}
+.card-image img{width:100%;height:100%;object-fit:cover;display:block}
+.card-1 .card-image img,.card-2 .card-image img{height:auto;min-height:100%;object-fit:cover}
+.feature-mosaic.two-cards{grid-template-columns:1fr 1fr;grid-template-rows:1fr}
+.feature-mosaic.single-card{grid-template-columns:1fr;grid-template-rows:1fr}
+.feature-mosaic .showcase-card{grid-row:auto;transform:none}
+.feature-mosaic .card-image{cursor:zoom-in;background:#f5f6f8}
+.feature-mosaic .card-image{display:flex;align-items:flex-start;justify-content:center}
+.feature-mosaic .card-image img{width:auto;height:auto;max-width:100%;max-height:100%;min-height:0;object-fit:contain}
+.feature-slide:last-child .feature-mosaic.two-cards{grid-template-columns:minmax(0,1fr) 320px}
+.feature-mosaic.single-card .card-image img{width:auto;max-width:100%;height:100%;min-height:0;object-fit:contain;margin:auto}
+.screenshot-lightbox{border:1px solid #c7d3bf;border-radius:14px;padding:18px;background:#faf8f2;max-width:95vw;max-height:95vh;box-shadow:0 20px 80px #20302055}.screenshot-lightbox::backdrop{background:#21332299}.screenshot-lightbox button{display:block;margin:0 0 12px auto;border:0;border-radius:8px;background:#416451;color:white;padding:8px 16px}.screenshot-lightbox img{display:block;max-width:88vw;max-height:80vh;object-fit:contain}
+/* Full-bleed feature stage: no thumbnail frames or contain gutters. */
+.install-window{padding:0 24px}
+.install-window .feature-deck{height:542px}
+.install-window .feature-heading{height:56px;padding-left:2px}
+.install-window .feature-slide{padding:0}
+.immersive-screen{height:416px;width:100%;margin:4px 0 0;overflow:hidden;border-radius:10px;background:#fff;border:1px solid #d8dfd0;box-shadow:0 4px 10px #32452b10;mask-image:linear-gradient(to right,transparent,#000 1%,#000 99%,transparent);-webkit-mask-image:linear-gradient(to right,transparent,#000 1%,#000 99%,transparent)}
+.screen-full{height:100%;width:100%;cursor:zoom-in}.screen-full img{display:block;width:100%;height:100%;object-fit:cover}
+.immersive-screen.split{display:grid;grid-template-columns:1fr 1fr;gap:12px;background:#e8ede2}
+.screen-slice{position:relative;height:100%;overflow:hidden;background:white;cursor:zoom-in}
+.screen-slice img{position:absolute;display:block;left:0;top:0;width:100%;height:200%;object-fit:cover;max-width:none;max-height:none}
+.screen-slice.slice-bottom img{top:-100%}
+.install-window .feature-slide p{margin:8px 0 0;font-size:12px}
+.wizard-step-scene{display:block;width:100%!important;height:542px!important;animation:none!important;overflow:hidden}
+.install-window:not([data-step=install]) .installation-status,.install-window:not([data-step=install]) .rounded-progress,.install-window:not([data-step=install]) .cancel-button{visibility:hidden}
+.install-window:not([data-step=install]) .book-leaf{animation-play-state:paused}
+.installation-footer{width:100%;margin:14px 0 0;padding:16px 0 0;border-top:1px solid #dce2d5;font-size:12px;color:#747e73}.installation-status{display:flex;justify-content:space-between;font-size:13px;color:#416451}.installation-status .progress-number{font-size:14px;font-weight:600}
+.install-window .rounded-progress{position:relative;left:auto;top:auto;width:100%;height:10px;margin-top:10px;box-shadow:inset 0 1px 2px #3d54351c}.rounded-progress .progress-fill{background:linear-gradient(#66856d,#416451);box-shadow:inset 0 1px 0 #91a58a}
+.installation-bottom{display:flex;justify-content:space-between;align-items:center;margin-top:10px}.cancel-button{display:flex;align-items:center;gap:8px;background:none;border:0;font-size:12px;color:#65725d;padding:0}
+@media(max-width:1080px){main,header,footer{max-width:calc(100% - 32px)}main{padding:0}.install-window{padding:0 20px}.install-window .feature-slide h2{font-size:21px}}

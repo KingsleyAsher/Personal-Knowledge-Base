@@ -85,6 +85,12 @@ async function sourceBytes(fetchFn, source, rel, limit, timeoutMs) {
 
 export function createUpdateChecker({ currentVersion, fetch: fetchFn = globalThis.fetch, now = Date.now, timeoutMs = 6000,
   previewManifestUrl = UPDATE_PREVIEW_MANIFEST_URL, sourceIds = UPDATE_SOURCES.map(s => s.id) } = {}) {
+  // This local shared-service build is not a published stable release. Never
+  // compare it with the public release feed or automatically replace it with
+  // an embedded-only package while a real library is managed by the service.
+  if (/^\d+\.\d+\.\d+\+desktop\.\d+$/.test(currentVersion)) return {
+    async check() { return { ok: true, currentVersion, latestVersion: currentVersion, currentChannel: 'local', channel: 'local', updateAvailable: false, autoInstallEligible: false, checkedAt: new Date(now()).toISOString(), sourceStatus: [], message: '本机共库试用版使用配套交付包更新。' } },
+  }
   const sources = selectedSources(sourceIds)
   let cached = null, expiresAt = 0, inflight = null
   async function channel(preview) {
@@ -130,7 +136,7 @@ export function createUpdateChecker({ currentVersion, fetch: fetchFn = globalThi
   return { check({ force = false } = {}) {
     if (inflight) return inflight
     if (!force && cached && now() < expiresAt) return Promise.resolve({ ...cached, cached: true })
-    inflight = latest().then(result => { cached = result; expiresAt = now() + (result.ok ? UPDATE_INTERVAL_MS : 5 * 60 * 1000); return result }).finally(() => { inflight = null })
+    inflight = latest().catch(() => ({ ok: false, currentVersion, updateAvailable: false, autoInstallEligible: false, error: '更新检查暂不可用，已保留当前插件。' })).then(result => { cached = result; expiresAt = now() + (result.ok ? UPDATE_INTERVAL_MS : 5 * 60 * 1000); return result }).finally(() => { inflight = null })
     return inflight
   } }
 }

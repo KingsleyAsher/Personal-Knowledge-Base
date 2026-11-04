@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-knowledge-base",
-  "version": "2.3.1",
+  "version": "2.4.0",
   "description": "个人知识工作台：可控隐私、首次设置、目录地图、快速收集、阅读摘录、引用问答与按需备份。",
   "icon": "./src/client/capture-icon.svg",
   "type": "module",
@@ -8,7 +8,10 @@
   "exports": {
     ".": "./src/host/index.js",
     "./package.json": "./package.json",
-    "./client": "./src/client/index.js"
+    "./client": "./src/client/index.js",
+    "./core": "./packages/kb-core/index.js",
+    "./contracts": "./packages/kb-contracts/index.js",
+    "./service": "./packages/kb-service/index.js"
   },
   "files": [
     "src",
@@ -34,7 +37,11 @@
     "PROJECT-RECORD.en.md",
     "WORKBENCH.en.md",
     "VERSIONING.en.md",
-    "EXISTING-FRAMEWORK-OPTIMIZATION.md"
+    "EXISTING-FRAMEWORK-OPTIMIZATION.md",
+    "packages/kb-core",
+    "packages/kb-contracts",
+    "packages/kb-service",
+    "runtime/python"
   ],
   "dsh": {
     "bundle": {

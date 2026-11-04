@@ -1,0 +1,8 @@
+import {lazy,Suspense} from 'react';import Markdown from './Markdown';import {api,fileName} from './types';import type {Doc} from './types';
+import PreviewZoom,{useFileZoom} from './PreviewZoom';import ImagePreview from './ImagePreview';
+const Pdf=lazy(()=>import('./Pdf')),Office=lazy(()=>import('./Office')),CSV=lazy(()=>import('./Office').then(m=>({default:m.CSV})));const noExport=()=>()=>{};
+function PlainText({text}:{text:string}){const {scale}=useFileZoom();return <pre data-preview-content="text" style={{zoom:scale}}>{text}</pre>;}
+export default function ReadOnlyPreview({doc,onOpen=()=>{}}:{doc:Doc;onOpen?:(path:string)=>void}){
+ const p=doc.preview;
+ return <PreviewZoom documentKey={doc.path} native={p.kind==='pdf'} disabled={['audio','video','unsupported'].includes(p.kind)}><Suspense fallback={<p>正在加载预览…</p>}>{p.kind==='markdown'?<article className="document-scroll" data-preview-content="document"><Markdown doc={doc} onOpen={onOpen} onExternal={url=>void api('openExternal',{url})}/></article>:p.kind==='text'?<article className="document-scroll" data-preview-content="document"><PlainText text={doc.text}/></article>:p.kind==='pdf'?<Pdf url={p.resourceUrl!}/>:p.kind==='image'?<ImagePreview src={p.resourceUrl!} alt={fileName(doc.path)}/>:p.kind==='audio'?<audio controls src={p.resourceUrl}/>:p.kind==='video'?<video controls src={p.resourceUrl}/>:p.kind==='docx'||p.kind==='xlsx'?<Office path={doc.path} kind={p.kind} url={p.resourceUrl!} sourceKey={p.originalKey??p.file.revision} editable={false} value="{}" onChange={()=>{}} register={noExport}/>:p.kind==='csv'?<CSV value={doc.text} editable={false} onChange={()=>{}}/>:<p>{p.readOnlyReason??'此格式暂不支持内置预览。'}</p>}</Suspense></PreviewZoom>;
+}

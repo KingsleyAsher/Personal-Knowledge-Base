@@ -1,3 +1,5 @@
+> 2026-11-04: client source is now maintained in this repository, sharing packages with plugin adapters. Source versions: client 1.0.0 / plugin 2.4.0. Existing public artifacts remain governed by their release manifest. See [repository migration](MONOREPO.md) and [client evolution](docs/client/PROJECT-RECORD.en.md).
+
 # Plugin Design and Development Record
 
 

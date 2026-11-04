@@ -1,0 +1,24 @@
+/* PDF.js TextLayer layout rules, scoped to our viewer (Apache-2.0, Mozilla
+ * Foundation). The canvas and text layer share CSS viewport coordinates. */
+/* PDF.js appends font-measurement canvases to body; these are never UI. */
+canvas.hiddenCanvasElement,#hiddenCopyElement{position:absolute;left:0;top:0;width:0;height:0;display:none}
+.pdf-page{position:relative;box-sizing:content-box;margin:0 auto;border:1px solid var(--line);border-radius:12px;background:#fff;overflow:hidden;isolation:isolate}
+.pdf-scroll .pdf-page>canvas{display:block;box-sizing:content-box;border:0;border-radius:0;margin:0;background:#fff;user-select:none}
+.pdf-text-host{position:absolute;inset:0;z-index:1;pointer-events:none}
+.pdf-text-layer{--min-font-size:1;--text-scale-factor:calc(var(--total-scale-factor) * var(--min-font-size));--min-font-size-inv:calc(1 / var(--min-font-size));position:absolute;inset:0;overflow:clip;opacity:1;line-height:1;text-align:initial;direction:ltr;text-size-adjust:none;forced-color-adjust:none;transform-origin:0 0;caret-color:CanvasText;color-scheme:only light;pointer-events:auto;user-select:text}
+.pdf-text-layer :is(span,br){color:transparent;position:absolute;white-space:pre;cursor:text;transform-origin:0% 0%;margin:0;padding:0;border:0}
+.pdf-text-layer>:not(.markedContent),.pdf-text-layer .markedContent span:not(.markedContent){z-index:1;--font-height:0;font-size:calc(var(--text-scale-factor) * var(--font-height));--scale-x:1;--rotate:0deg;transform:rotate(var(--rotate)) scaleX(var(--scale-x)) scale(var(--min-font-size-inv))}
+.pdf-text-layer .markedContent{display:contents}
+.pdf-text-layer span[role=img]{user-select:none;cursor:default}
+.pdf-text-layer ::selection{background:rgba(105,86,213,.32);color:transparent}
+.pdf-text-layer br::selection{background:transparent}
+.pdf-text-layer[data-main-rotation="90"]{transform:rotate(90deg) translateY(-100%)}
+.pdf-text-layer[data-main-rotation="180"]{transform:rotate(180deg) translate(-100%,-100%)}
+.pdf-text-layer[data-main-rotation="270"]{transform:rotate(270deg) translateX(-100%)}
+.pdf-scroll .pdf-text-info{font-size:11px;color:var(--muted);text-align:center;margin:10px 0}
+.pdf-continuous .pdf-scroll{position:relative;display:block;padding:12px;overflow:auto;scroll-behavior:auto}
+.pdf-pages{display:flex;flex-direction:column;align-items:flex-start;gap:16px;min-width:100%;width:max-content}
+.pdf-pages>.pdf-page{flex:none;margin:0 auto}
+.pdf-page-loading{position:absolute;top:16px;left:16px;color:#666;font-size:12px}
+.pdf-page-info{position:absolute;bottom:8px;left:8px;color:#666;font-size:11px;pointer-events:none}
+.pdf-page-controls input[aria-label="跳转到 PDF 页"]{width:42px;min-width:0;padding:2px 3px;border-radius:4px;text-align:center;font-size:12px}

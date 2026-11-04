@@ -23,3 +23,21 @@ Thumbs.db
 # 备份
 *.bak
 *.orig
+
+# Desktop development and packaging
+apps/**/dist/
+apps/**/out/
+apps/**/.build-cache/
+apps/**/.runtime/
+apps/**/.test-runs/
+development/
+runtime/python/
+installer-design-b/release/
+installer-design-b/installer/stage*/
+installer-design-b/installer/ui/
+installer-design-b/installer/*.exe
+installer-design-b/installer/*.zip
+installer-design-b/installer/*.asar
+installer-design-b/installer/*.ico
+.env*
+*.dpapi.json

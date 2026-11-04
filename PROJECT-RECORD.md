@@ -1,3 +1,5 @@
+> 2026-11-04：客户端源码已合入主仓库，共享内核统一在 packages。客户端 1.0.0 与插件 2.4.0 独立版本；既有公开发布包仍以发布清单为准。[合仓说明](MONOREPO.md) · [客户端演进](docs/client/PROJECT-RECORD.md)。
+
 # 插件设计与演进记录
 
 [简体中文](PROJECT-RECORD.md) · [English](PROJECT-RECORD.en.md)

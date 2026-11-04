@@ -1,0 +1,25 @@
+name: Client source checks
+on:
+  push:
+    branches: [main]
+    paths: ['apps/**', 'packages/**', 'src/**', 'installer-design-b/**', 'tools/**', '.github/workflows/client-source.yml']
+  pull_request:
+    paths: ['apps/**', 'packages/**', 'src/**', 'installer-design-b/**', 'tools/**', '.github/workflows/client-source.yml']
+permissions:
+  contents: read
+jobs:
+  client:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm.cmd ci --ignore-scripts --prefix apps/desktop
+      - run: npm.cmd ci --ignore-scripts --prefix apps/desktop/vendor/chat
+      - run: npm.cmd run build --prefix apps/desktop
+      - run: node --test apps/desktop/tests/storage-path.test.mjs apps/desktop/tests/library-scope.test.mjs
+      - run: python -X utf8 tools/check-public-source.py

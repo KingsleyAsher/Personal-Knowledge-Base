@@ -1,0 +1,59 @@
+:root{--ease-out:cubic-bezier(.22,.68,.26,1);--ease-in-out:cubic-bezier(.65,0,.35,1);--ease-drawer:cubic-bezier(.22,.68,.26,1);--motion-press:120ms;--motion-fast:220ms;--motion-menu:220ms;--motion-popover:300ms;--motion-panel:380ms;--motion-float:520ms;--motion-float-exit:220ms;--motion-layout:420ms;--motion-theme:520ms}
+/* Native snapshots are inert bitmaps; the live app remains interactive. */
+::view-transition,::view-transition-group(*),::view-transition-image-pair(*),::view-transition-old(*),::view-transition-new(*){pointer-events:none}
+::view-transition-group(*){animation:none}
+::view-transition-image-pair(*){isolation:isolate}
+::view-transition-old(*),::view-transition-new(*){mix-blend-mode:normal;animation:none;transform-origin:0 0}
+::view-transition-old(root){animation:none;opacity:0}
+::view-transition-new(root){animation:none;opacity:1}
+::view-transition-old(kb-workspace){animation:none;opacity:0}
+::view-transition-new(kb-workspace){animation:none;opacity:1}
+::view-transition-old(kb-inspector),::view-transition-old(kb-explorer){animation:none;opacity:0}
+::view-transition-new(kb-inspector),::view-transition-new(kb-explorer){animation:none;opacity:1}
+::view-transition-new(kb-modal-shade){animation:motion-fade-in 380ms var(--ease-out) both}
+::view-transition-old(kb-modal-shade){animation:motion-fade-out 380ms var(--ease-out) both}
+/* A full-size old bitmap preserves readable proportions during the shared path. */
+@keyframes motion-fade-in{from{opacity:0}to{opacity:1}}
+@keyframes motion-fade-out{from{opacity:1}to{opacity:0}}
+@keyframes motion-page-in{from{opacity:0;transform:translate3d(calc(18px * var(--motion-direction,1)),0,0)}to{opacity:1;transform:translate3d(0,0,0)}}
+@keyframes motion-page-out{from{opacity:1;transform:translate3d(0,0,0)}to{opacity:0;transform:translate3d(calc(-10px * var(--motion-direction,1)),0,0)}}
+.file-tree,.tab-list,.inspector-tabs{position:relative;isolation:isolate}.motion-selection{position:absolute;pointer-events:none;z-index:-1;transform-origin:0 0;background:var(--accent-soft);border-radius:18px}.tab-list>.motion-selection{background:var(--surface);border-radius:9px 9px 4px 4px;border-top:1px solid var(--accent)}.inspector-tabs>.motion-selection{background:var(--accent-soft);border-radius:10px 10px 4px 4px}.inspector-tabs>.motion-selection:after{content:"";position:absolute;left:10px;right:10px;bottom:0;height:2px;background:var(--accent);border-radius:2px}.has-motion-selection .tree-row.selected{background:transparent!important}.has-motion-selection .document-tab.active{background:transparent;border-top-color:transparent}.inspector-tabs.has-motion-selection button[role=tab][aria-selected=true]{border-bottom-color:transparent;background:transparent}
+/* Press feedback is limited to small controls, never documents or resizing. */
+.icon-button,.dsh-submit,.dsh-global,.theme-icon,.save-button,.primary,.edit-slide-switch{transition:transform var(--motion-press) var(--ease-out)}
+.icon-button:active:not(:disabled),.dsh-submit:active:not(:disabled),.dsh-global:active:not(:disabled),.theme-icon:active:not(:disabled),.save-button:active:not(:disabled),.primary:active:not(:disabled){transform:scale(.97)}
+.edit-switch-thumb{transition:transform 200ms var(--ease-out)}
+@media(hover:hover) and (pointer:fine){.rail>.icon-button:hover:not(:disabled)>svg,.dsh-global:hover>svg{transform:translateY(-1px)}.rail>.icon-button>svg,.dsh-global>svg{transition:transform 200ms var(--ease-out)}}
+/* Local menus use a small trigger-origin entrance, independent of route snapshots. */
+.context-menu,.application-dropdown{transform-origin:var(--transform-origin,top left);animation:motion-surface-enter 220ms var(--ease-out) backwards}.workspace-popover{transform-origin:var(--transform-origin,top left)}.modal{transform-origin:center}
+@keyframes motion-surface-enter{from{opacity:0;transform:translate3d(0,9px,0) scale(.94)}to{opacity:1;transform:translate3d(0,0,0) scale(1)}}
+/* Menus invoked from a keyboard stay instantaneous, including Alt+F search. */
+:root[data-motion-input=keyboard] .workspace-popover,:root[data-motion-input=keyboard] .context-menu,:root[data-motion-input=keyboard] .application-dropdown,:root[data-motion-input=keyboard] .modal,:root[data-motion-input=keyboard] .modal-shade{animation:none}
+.floating-window.is-pointer-dragging{user-select:none}.floating-window.is-pointer-dragging *{cursor:grabbing!important}
+@media(prefers-reduced-motion:reduce){::view-transition-old(*),::view-transition-new(*){transform:none!important;animation-duration:80ms!important}.context-menu,.application-dropdown{animation:motion-fade-in 80ms var(--ease-out)}.icon-button,.dsh-submit,.dsh-global,.theme-icon,.save-button,.primary,.edit-slide-switch,.edit-switch-thumb,.rail>.icon-button>svg{transition-duration:0ms}.icon-button:active,.dsh-submit:active,.dsh-global:active,.theme-icon:active,.save-button:active,.primary:active,.rail>.icon-button:hover>svg{transform:none!important}}
+
+:root[data-motion-kind=page]::view-transition-old(kb-workspace){animation:motion-page-out 200ms var(--ease-out) both}
+:root[data-motion-kind=page]::view-transition-new(kb-workspace){animation:motion-page-in 280ms var(--ease-out) both}
+:root[data-motion-kind=theme] [data-motion-surface],:root[data-motion-kind=theme] .modal-shade{view-transition-name:none!important}
+:root[data-motion-kind=theme]::view-transition-old(root){animation:none;opacity:1;z-index:1}
+:root[data-motion-kind=theme]::view-transition-new(root){animation:none;opacity:1;z-index:2}
+.modal.motion-instant{animation:none!important}.modal-shade:has(>.motion-instant){animation:none!important}
+.motion-reference-chip{position:fixed;z-index:320;pointer-events:none;max-width:190px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:7px 12px;background:var(--accent-soft);color:var(--accent);border:1px solid var(--line);border-radius:12px;font-size:11px;box-shadow:0 5px 16px #0002;transform-origin:0 0}
+.toast,.dsh-context-card{animation:motion-fade-in 220ms var(--ease-out) backwards}
+:root[data-motion-input=keyboard] .toast,:root[data-motion-input=keyboard] .dsh-context-card{animation:none}
+:root[data-motion-input=keyboard] .icon-button,:root[data-motion-input=keyboard] .dsh-submit,:root[data-motion-input=keyboard] .dsh-global,:root[data-motion-input=keyboard] .theme-icon,:root[data-motion-input=keyboard] .save-button,:root[data-motion-input=keyboard] .primary,:root[data-motion-input=keyboard] .edit-switch-thumb{transition-duration:0ms}
+:root[data-motion-input=keyboard] .icon-button:active,:root[data-motion-input=keyboard] .dsh-submit:active,:root[data-motion-input=keyboard] .dsh-global:active,:root[data-motion-input=keyboard] .theme-icon:active,:root[data-motion-input=keyboard] .save-button:active,:root[data-motion-input=keyboard] .primary:active{transform:none}
+@media(prefers-reduced-motion:reduce){.motion-reference-chip{display:none}.toast,.dsh-context-card{animation-duration:80ms}}
+
+.inspector-body{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+
+/* Keep the departing tab inside its own original bounds. No vertical travel,
+   animated width, or full-workspace snapshot is involved in closing one tab. */
+.motion-tab-exit{position:absolute;overflow:hidden;pointer-events:none;z-index:2}
+
+/* Docked surfaces and the workspace move as one horizontal layout scene. */
+:root[data-motion-kind=layout]::view-transition-old(kb-workspace),:root[data-motion-kind=layout]::view-transition-new(kb-workspace),:root[data-motion-kind=layout]::view-transition-old(kb-explorer),:root[data-motion-kind=layout]::view-transition-new(kb-explorer),:root[data-motion-kind=layout]::view-transition-old(kb-inspector),:root[data-motion-kind=layout]::view-transition-new(kb-inspector){animation:none;opacity:1}
+
+/* A dock transition is one complete workspace bitmap, not separately clipped
+   old/new pane bitmaps inside a moving parent viewport. */
+:root[data-motion-kind=layout][data-motion-docked=true] [data-motion-layout]{view-transition-name:none!important}
+:root[data-motion-kind=layout][data-motion-docked=true]::view-transition-old(kb-workspace){opacity:0}

@@ -1,9 +1,10 @@
 // Embedded into the existing client factory by tools/sync-workbench-client.py.
 // Uses the host's React and services; no second React runtime or remote scripts.
-function createWorkbenchUI({ react: R, e, api: rawApi, ctx: getContext, Overview, Flows, Parsing, BuildBadge, version, projectRecordUrl, portal, ReferenceChip, organizeInbox, themeCss = '' }) {
+function createWorkbenchUI({ react: R, e, api: rawApi, ctx: getContext, Overview, Flows, Parsing, BuildBadge, version, projectRecordUrl, portal, ReferenceChip, organizeInbox, themeCss = '', eventSubscribe }) {
   const api = async (body, signal) => {
     if (signal?.aborted) throw new Error('操作已取消')
-    const out = await rawApi(body)
+    let out = await rawApi(body)
+    if(body.op?.startsWith('memory.')&&out?.pending){const taskId=out.taskId,until=Date.now()+25000;while(out.pending){if(Date.now()>until)throw new Error('记忆操作结果未确认，请刷新查看；操作不会自动重发');await new Promise(resolve=>setTimeout(resolve,180));if(signal?.aborted)throw new Error('操作已取消');out=await rawApi({op:'memory.result',taskId});if(out?.ok===false)break}}
     if (signal?.aborted) throw new Error('操作已取消')
     if (!out || out.ok === false) throw Object.assign(new Error(out?.error || out?.reason || '操作失败'), { code: out?.code })
     return out
@@ -175,6 +176,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
   function connectEvents() {
     if (eventsStarted) return
     eventsStarted = true
+    if(eventSubscribe){const off=eventSubscribe(data=>event('kbw-policy',data));eventSource={close:off};return}
     const source = new EventSource('/kb-core/workbench-events')
     eventSource = source
     source.onmessage = ev => { try { const data = JSON.parse(ev.data); event('kbw-policy', data) } catch {} }
@@ -365,7 +367,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
     R.useEffect(() => { void refresh() }, [])
     return e('div', null, e('p', { className: 'kbw-meta' }, '已保存的服务会在导入和流程中复用。环境检查与样本测试均为可选操作。'),
       ['ocr','asr'].map(kind => { const id = kind === 'ocr' ? info?.defaultOcr : info?.defaultAsr, p = info?.providers.find(p => p.id === id) || info?.providers.find(p => p.kind === kind)
-        return e('div', { key: kind, className: 'kbw-service' }, e('strong', null, kind === 'ocr' ? '图片与文档 OCR' : '音频转写 ASR'), p ? e(R.Fragment, null, e('p', null, p.label?.replace(/（待补齐）|待验证/g, '') || p.model || '本地解析服务'), e('p', { className: 'kbw-meta' }, (p.locale || ({local:'本机',lan:'内网',cloud:'云端'}[p.locality])) + ' · ' + p.model + (id === p.id ? ' · 默认服务' : '')), p.lastError ? e('p', { role: 'alert', className: 'kbw-error' }, p.lastError) : null) : e('p', { className: 'kbw-meta' }, info ? '尚未添加服务，可稍后在设置中添加。' : '读取服务…')) }),
+        return e('div', { key: kind, className: 'kbw-service' }, e('strong', null, kind === 'ocr' ? '图片与文档 OCR' : '音频转写 ASR'), p ? e(R.Fragment, null, e('p', null, p.label?.replace(/（待补齐）|待验证/g, '') || p.model || '本地解析服务'), e('p', { className: 'kbw-meta' }, (p.locale || ({local:'本机',lan:'内网',cloud:'云端'}[p.locality])) + ' · ' + p.model + (id === p.id ? ' · 默认服务' : '')), p.activeJob ? e('p', { className: 'kbw-meta' }, p.activeJob.status === 'running' ? '另有任务执行中' : '另有任务排队中') : null) : e('p', { className: 'kbw-meta' }, info ? '尚未添加服务，可稍后在设置中添加。' : '读取服务…')) }),
       e('details', { open: edit, onToggle: ev => { setEdit(ev.currentTarget.open); if (!ev.currentTarget.open) void refresh() } }, e('summary', null, '管理服务与可选测试'), edit ? e(Parsing) : null), error ? e('p', { role: 'alert' }, error) : null)
   }
   async function launchRepairChat(snapshot, ids, focus) {
@@ -1398,7 +1400,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
           first.current = false
           let chosen = next.preferences.landing
           if (chosen === 'remember') { try { chosen = localStorage.getItem('kbw-tab:' + next.kbId) || 'map' } catch { chosen = 'map' } }
-          setTab(chosen === 'overview' ? 'overview' : ['map', 'relations', 'inbox', 'reading', 'review', 'flows'].includes(chosen) ? chosen : 'map')
+          setTab(chosen === 'overview' ? 'overview' : ['map', 'relations', 'inbox', 'reading', 'review', 'flows', 'memory'].includes(chosen) ? chosen : 'map')
         }
         current.current = next; setSnapshot(next); setError('')
         if (next.guideComplete) setDeferred(false)
@@ -1407,6 +1409,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
     R.useEffect(() => {
       connectEvents(); const updates=refreshSchedule(refresh);updates.schedule(0)
       const policy = ev => {
+        if(ev.detail?.event==='memory.changed'||ev.detail?.type==='memory-changed')return
         if (['parse-jobs-changed', 'relations-progress', 'retrieval'].includes(ev.detail?.type)) return
         if (['links-changed', 'files-changed','snapshot-dirty'].includes(ev.detail?.type)) { if (ev.detail.kbId&&ev.detail.kbId!==current.current?.kbId)return; if (ev.detail.type === 'files-changed' && ev.detail.operation !== 'trash.restore') setSelected(old => old === ev.detail.path ? '' : old); updates.schedule(); return }
         if (ev.detail?.type === 'review-due') { if (ev.detail.kbId === current.current?.kbId) setReminder(ev.detail.count); return }
@@ -1465,7 +1468,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
     const openFile = file => { if (selected !== file) pushRoute(); setSelected(file) }
     const closeDetail = () => canGoBack ? goBack() : setSelected('')
     const searchSubmit = ev => { ev?.preventDefault(); setOffset(0); void loadList() }
-    const tabs = [['overview', '总览'], ['map', '资料目录'], ['relations', '关系网络'], ['inbox', '收件箱'], ['reading', '阅读与摘录'], ['review', '回顾'], ['flows', '流程']]
+    const tabs = [['overview', '总览'], ['map', '资料目录'], ['relations', '关系网络'], ['inbox', '收件箱'], ['memory', '记忆'], ['reading', '阅读与摘录'], ['review', '回顾'], ['flows', '流程']]
     return e('div', { className: 'kbw', ref: workspaceRoot },
       e('header', { className: 'kbw-app-header' }, e('div', { className: 'kbw-brand' }, e('span', { className: 'kbu-brand-mark' }, e(UiIcon, { name: 'book' })), e('div', null, e('strong', null, '个人知识库'), e('span', { className: 'kbw-meta' }, 'PERSONAL KNOWLEDGE'))), e('form', { className: 'kbw-global-search', onSubmit: ev => { ev.preventDefault(); pushRoute(); setTab('map'); setBrowse(true); setSelected(''); setPrefix(''); setOffset(0); void loadList() } }, e('input', { 'aria-label': '搜索资料标题或路径', placeholder: '搜索资料标题、路径或正文', value: query, onChange: ev => setQuery(ev.target.value) }), e('button', { className: 'kbw-button', type: 'submit' }, '搜索')), e('div', { className: 'kbw-actions' }, btn([e(UiIcon, { key: 'icon', name: 'upload' }), e('span', { key: 'label' }, '添加资料')], () => navigate('inbox'), false, { className: 'kbw-button kbw-primary' }), btn([e(UiIcon, { key: 'icon', name: 'trash' }), e('span', { key: 'label' }, '回收站')], () => navigate('trash'), false, { 'aria-current': tab === 'trash' }), btn([e(UiIcon, { key: 'icon', name: 'settings' }), e('span', { key: 'label' }, '设置')], () => navigate('settings'), false, { 'aria-current': tab === 'settings' }))),
       e('div', { className: 'kbw-update-bar' }, e(BuildBadge)),
@@ -1480,6 +1483,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
       snapshot ? e(R.Fragment, null,
         e('div', { className: 'kbw-status' }, '隐私展示：' + (snapshot.preferences.showPrivate ? '开启' : '关闭') + ' · 知识 ' + snapshot.totals.knowledge + ' 条 · 可展示文件 ' + snapshot.totals.visible + ' / 全部文件 ' + snapshot.totals.files, btn('调整', () => event('kbw-settings'))),
         snapshot.coverage.errors || snapshot.coverage.truncated ? e('div', { className: 'kbw-banner', role: 'status' }, '扫描结果不完整：' + snapshot.coverage.errors + ' 处错误' + (snapshot.coverage.truncated ? '，已达到扫描上限' : '') + '。当前统计仅覆盖已读取的内容。') : null,
+        tab === 'memory' ? e('section',{className:'kbw-content'},e(MemoryPanel,{key:snapshot.kbId,navigate})) : null,
         tab === 'overview' ? e(Dashboard, { snapshot, navigate, openScope }) : null,
         tab === 'map' || tab === 'reading' && selected ? e(R.Fragment, null,
           e('form', { className: 'kbw-toolbar', onSubmit: searchSubmit }, e('input', { 'aria-label': '搜索知识库', placeholder: '搜索资料标题、文件或正文', value: query, onChange: ev => { setQuery(ev.target.value); setBrowse(Boolean(ev.target.value)) } }),
@@ -1572,6 +1576,20 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
         },
       },
     }), 'kb-workbench: native @ knowledge reference'))
+  }
+  // This factory is embedded into the shared workbench UI at build time.
+  function MemoryPanel({navigate}) {
+    const [data,setData]=R.useState(null),[error,setError]=R.useState(''),[busy,setBusy]=R.useState(false),[title,setTitle]=R.useState(''),[text,setText]=R.useState(''),[removeId,setRemoveId]=R.useState('');
+    const live=R.useRef(true),sequence=R.useRef(0);
+    const refresh=R.useCallback(async()=>{const id=++sequence.current;try{const value=await api({op:'memory.list'});if(live.current&&id===sequence.current){setData(value);setError('')}}catch(err){if(live.current&&id===sequence.current){setData(null);setError(err.message)}}},[]);
+    R.useEffect(()=>{live.current=true;connectEvents();const updates=refreshSchedule(refresh,15000);updates.schedule(0);const changed=()=>updates.schedule();window.addEventListener('kbw-policy',changed);return()=>{live.current=false;sequence.current++;updates.dispose();window.removeEventListener('kbw-policy',changed)}},[refresh]);
+    async function mutate(body){if(busy)return;setBusy(true);setError('');try{await api({...body,requestId:crypto.randomUUID()});if(body.op==='memory.add'){setText('');setTitle('')}setRemoveId('');await refresh()}catch(err){setError(err.message)}finally{if(live.current)setBusy(false)}}
+    return e('section',{'data-memory-panel':true},e('h2',null,data?.memory?.mode==='independent'?'知识库记忆':'全局记忆'),e('p',{className:'kbw-meta'},data?.memory?.mode==='independent'?'独立知识库模式：显示本库已有的记忆文档，可打开原文维护。':'与记忆插件共享全局记录。知识库记忆保留原文来源，修改原文后自动更新。'),
+      e('div',{className:'kbw-actions'},btn('刷新',refresh,busy),e('span',{role:'status',className:'kbw-meta'},data?(data.memory?.globalAvailable?'共享模式':'独立知识库模式')+' · '+data.entries.length+' 条':error?'暂不可用':'正在读取记忆…')),
+      error?e('p',{className:'kbw-error',role:'alert'},error):null,
+      data?.memory?.globalAvailable?e('form',{className:'kbw-form',onSubmit:ev=>{ev.preventDefault();void mutate({op:'memory.add',title,text})}},field('记忆标题',title,setTitle,{maxLength:80}),e('label',{className:'kbw-field'},e('span',null,'记忆内容'),e('textarea',{'aria-label':'记忆内容',value:text,onChange:ev=>setText(ev.target.value),maxLength:4000,rows:3,required:true})),e('button',{className:'kbw-button kbw-primary',disabled:busy||!text.trim(),type:'submit'},busy?'正在保存…':'保存为全局记忆')):null,
+      data?.entries.length===0?e('p',{className:'kbw-meta'},'还没有记忆。'):null,
+      (data?.entries??[]).map(item=>e('article',{key:item.id,className:'kbw-service','data-memory-id':item.id},e('strong',null,item.title),e('p',{style:{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}},item.text),e('div',{className:'kbw-actions'},e('span',{className:'kbw-meta'},item.origin==='knowledge'?'知识库原文 · '+item.metadata.path:'记忆插件 · 全局'),item.origin==='knowledge'?btn('打开原文',()=>navigate?.('reading',item.metadata.path)):removeId===item.id?e(R.Fragment,null,e('span',null,'删除这条记忆？'),btn('确认删除',()=>void mutate({op:'memory.remove',entry_id:item.id}),busy),btn('取消',()=>setRemoveId(''),busy)):btn('删除',()=>setRemoveId(item.id),busy)))));
   }
   return { Workbench, Guide, PreferencesSettings, CaptureSettings, knowledgeReferenceRule, KnowledgeReference, UpgradeSettings:UpgradeSettingsEntry, RetrievalSettings: RetrievalSettingsEntry, formatSize: size, api, event, registerReferences, dispose: () => { eventSource?.close(); eventSource = null; eventsStarted = false; styleElement?.remove(); stylesInstalled = false; guideInstance = null } }
 }

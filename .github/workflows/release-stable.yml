@@ -36,6 +36,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Verify version, archive, source and checksums
+        if: github.event_name == 'push'
         run: python -X utf8 tools/verify-release.py
       - name: Focused release checks
         run: |

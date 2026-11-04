@@ -1,0 +1,29 @@
+import {useEffect,useRef,useState} from 'react';
+import {Archive,RefreshCw,Upload} from 'lucide-react';
+import './inbox.css';
+import {api,bytes} from './types';import type {FileInfo} from './types';import {FileIcon,NoticeEmpty} from './components';
+type InboxFile=FileInfo&{indexAllowed:boolean;indexPolicyState?:string};
+type OrganizeStatus={ready:boolean;execution?:{provider:string;model:string};task?:{id:string;state:string;message:string;sessionId?:string}};
+export default function InboxView({onOpen,onArchive,onImport,onIndex}:{onOpen:(path:string)=>void;onArchive:(file:FileInfo)=>void;onImport:()=>void;onIndex:(paths:string[],excluded:boolean)=>Promise<void>}){
+ const [rows,setRows]=useState<InboxFile[]>([]),[next,setNext]=useState<number|undefined>(),[loading,setLoading]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[refresh,setRefresh]=useState(0),[selected,setSelected]=useState(new Set<string>()),[status,setStatus]=useState<OrganizeStatus>({ready:false});
+ const generation=useRef(0);
+ useEffect(()=>{const token=++generation.current;setLoading(true);setError('');void api('inbox',{limit:50}).then(r=>{if(token!==generation.current)return;setRows(r.items);setNext(r.nextOffset);setSelected(s=>new Set([...s].filter(p=>r.items.some((f:InboxFile)=>f.path===p))));}).catch(e=>{if(token===generation.current)setError(e.message);}).finally(()=>{if(token===generation.current)setLoading(false);});return()=>{generation.current++;};},[refresh]);
+ useEffect(()=>window.kbDesktop.onEvent(e=>{if(e.type==='snapshot.required')setRefresh(n=>n+1);}),[]);
+ useEffect(()=>{let active=true;const poll=()=>void api<OrganizeStatus>('inboxStatus').then(r=>{if(active)setStatus(r);}).catch(()=>{if(active)setStatus({ready:false});});poll();const t=setInterval(poll,2500);return()=>{active=false;clearInterval(t);};},[]);
+ async function more(){const token=generation.current;setLoading(true);try{const r=await api('inbox',{limit:50,offset:next});if(token===generation.current){setRows(v=>[...v,...r.items]);setNext(r.nextOffset);}}catch(e:any){if(token===generation.current)setError(e.message);}finally{if(token===generation.current)setLoading(false);}}
+ async function index(paths:string[],excluded:boolean){if(paths.length>500){setError('单次最多调整 500 份资料，请分批选择。');return;}setBusy(true);setError('');try{await onIndex(paths,excluded);setSelected(new Set());setRefresh(n=>n+1);}catch(e:any){setError(e.message);}finally{setBusy(false);}}
+ async function organize(){setBusy(true);setError('');try{const task=await api('organizeInbox');setStatus(s=>({...s,task}));}catch(e:any){setError(e.message);}finally{setBusy(false);}}
+ const pending=!!status.task&&['pending','launching'].includes(status.task.state),all=rows.length>0&&rows.every(f=>selected.has(f.path));
+ return <div className="inbox-view"><p className="subtitle">与知识库插件共用待整理清单，包含排除索引分区中的待整理原件。</p>
+  <div className="row-actions"><button className="primary" disabled={busy||loading||!rows.length||!status.ready||pending||status.task?.state==='unknown'} onClick={()=>void organize()} title={status.ready?'通过 DSH 知识库会话整理，使用 High 推理强度':'连接使用同一共库服务的 DSH 插件并打开插件界面后可整理'}><Archive size={15}/>{pending?'正在发起整理…':'一键整理并归档'}</button><button disabled={busy} onClick={onImport}><Upload size={15}/>导入资料</button><button disabled={loading||busy} onClick={()=>setRefresh(n=>n+1)}><RefreshCw size={15}/>刷新</button></div>
+  <p className="inbox-index-note">待整理原件暂不参与索引；下方设置决定归档后是否允许索引。排除与恢复会同步关联产物及插件状态。</p>
+  <p className="inbox-runner-status" role="status">{status.ready?'DSH 整理入口已就绪 · High · '+status.execution?.model:'DSH 整理入口未连接，仍可管理文件和索引设置。'}</p>
+  {status.task?<p className="inbox-task-status" role="status">{status.task.message}{status.task.sessionId?<small>DSH 会话：{status.task.sessionId}</small>:null}</p>:null}
+  <div className="inbox-selection"><label><input type="checkbox" aria-label="全选已加载文件" checked={all} disabled={busy||!rows.length} onChange={()=>setSelected(all?new Set():new Set(rows.map(f=>f.path)))}/>全选已加载 · 已选 {selected.size}</label><button disabled={busy||!selected.size} onClick={()=>void index([...selected],false)}>允许索引（选中）</button><button disabled={busy||!selected.size} onClick={()=>void index([...selected],true)}>排除索引（选中）</button></div>
+  {error?<p role="alert">{error}</p>:null}{loading&&!rows.length?<p>正在读取收件箱…</p>:!rows.length?<NoticeEmpty title="收件箱为空"/>:rows.map(file=><div className="inbox-item" key={file.path} data-inbox-path={file.path}>
+   <input type="checkbox" aria-label={'选择 '+file.name} checked={selected.has(file.path)} disabled={busy} onChange={()=>setSelected(s=>{const n=new Set(s);n.has(file.path)?n.delete(file.path):n.add(file.path);return n;})}/>
+   <button className="inbox-item-file" onClick={()=>onOpen(file.path)}><FileIcon file={file}/><span><strong>{file.name}</strong><small>{file.path}</small><small>{bytes(file.size)} · 待归档 · {file.indexAllowed?'允许索引':'已排除索引'}{file.indexPolicyState==='failed'?' · 上次操作未完成，可重试':''}</small></span></button>
+   <div className="inbox-item-actions"><button disabled={busy} aria-label={(file.indexAllowed?'排除索引 ':'允许索引 ')+file.name} aria-pressed={file.indexAllowed} onClick={()=>void index([file.path],file.indexAllowed)}>{file.indexAllowed?'允许索引':'已排除索引'}</button><button disabled={busy||!file.access.canMove} onClick={()=>onArchive(file)}>归档到目录</button></div>
+  </div>)}{next!==undefined?<button disabled={loading||busy} onClick={()=>void more()}>加载更多</button>:null}
+ </div>;
+}

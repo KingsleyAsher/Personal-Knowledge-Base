@@ -1,4 +1,4 @@
-# dsh-knowledge-base bundle patch（2.3.1）
+# dsh-knowledge-base bundle patch（2.4.0）
 #
 # 这一行只在 **加载本插件的那个 profile** 里生效。
 # 0.1.0-p7 起：默认值不再写死开发者机器上的绝对路径（审查意见 §四 第 5 条）：
@@ -16,6 +16,9 @@
     - id: kb-core
       name: '@local/dsh-knowledge-base'
       config:
+        # Auto joins an already shared library; unmanaged existing libraries keep
+        # their complete embedded mode until an explicit migration is approved.
+        runtimeMode: auto
         # 知识库根目录。留空 = 未绑定，由设置页的两个主动作决定（不会自动迁库）。
         kbPath: ''
         # 插件状态目录。留空 = 按 profile 自动隔离（<profile>/kb-state）。

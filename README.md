@@ -1,3 +1,5 @@
+> **Unified source repository:** client 1.0.0 and plugin 2.4.0 source now live here. The last published plugin release remains defined by the existing release manifest. [Client documentation](docs/client/README.md) · [中文客户端文档](docs/client/README.zh-CN.md) · [Repository structure](MONOREPO.md).
+
 # Personal Knowledge Base for DSH 2.3.1
 
 2.3.1 is a maintenance release. Inbox organization sends only the requested sentence, OCR/ASR task lists refresh without shifting the page, and knowledge-base command calls tolerate a missing display label. Conversation plans receive a bounded end-of-turn reconciliation; stopped sessions leave unfinished steps unconfirmed instead of showing an endless spinner.
