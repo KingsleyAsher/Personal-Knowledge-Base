@@ -130,9 +130,9 @@ test('builtin flow survives reload, cannot be changed, and forces High conversat
     assert.equal(prepared.ok, true)
     assert.equal(prepared.requiredReasoningEffort, 'high')
     assert.deepEqual(prepared.execution, { provider: 'wrong', model: 'wrong', reasoningEffort: 'high' })
-    assert.equal(prepared.prompt, '帮我整理并归档收件箱内文件')
+    assert.equal(prepared.prompt, '整理并归档收件箱内的文件。')
     const conversation = await prepareFlowConversation(engine, { ensure: async () => ({ workspaceId: 'workspace', workspacePath: base }) }, { id, kbId: 'fixture', expectedRevision: 1 })
-    assert.equal(conversation.prompt, '帮我整理并归档收件箱内文件')
+    assert.equal(conversation.prompt, '整理并归档收件箱内的文件。')
   } finally { await rm(base, { recursive: true, force: true }) }
 })
 
