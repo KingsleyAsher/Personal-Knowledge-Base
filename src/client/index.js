@@ -1433,6 +1433,8 @@ window.__ModuleLoader__.load({
         R.useEffect(() => {
           connectEvents(); const updates=refreshSchedule(refresh);updates.schedule(0)
           const policy = ev => {
+            // Transport retries refresh in place; keep the snapshot and pending reads.
+            if (['connection-lost', 'connection-restored'].includes(ev.detail?.type) || ['connection.changed', 'snapshot.required'].includes(ev.detail?.event)) { updates.schedule(); return }
             if(ev.detail?.event==='memory.changed'||ev.detail?.type==='memory-changed')return
             if (['parse-jobs-changed', 'relations-progress', 'retrieval'].includes(ev.detail?.type)) return
             if (['links-changed', 'files-changed','snapshot-dirty'].includes(ev.detail?.type)) { if (ev.detail.kbId&&ev.detail.kbId!==current.current?.kbId)return; if (ev.detail.type === 'files-changed' && ev.detail.operation !== 'trash.restore') setSelected(old => old === ev.detail.path ? '' : old); updates.schedule(); return }
@@ -3263,6 +3265,17 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         }
       }
     }
+    function pluginUpdateLabel(checking, update) {
+      if (checking) return '正在检查更新…'
+      if (!update) return ''
+      if (!update.ok) return update.error || '检查更新失败，请稍后重试'
+      if (update.channel === 'local' || update.status === 'candidate' || update.checkSkipped) return update.message || '本机试用版尚未进行在线更新检查'
+      if (update.migrationRequired) return update.updateAvailable ? '发现正式版 ' + update.latestVersion + '；本机试用版需手动迁移' : '本机试用版；正式发布版本 ' + update.latestVersion
+      if (!update.onlineChecked && !update.sourceStatus?.some(source => source.ok)) return update.message || '尚未完成在线更新检查'
+      if (update.updateAvailable) return '发现新版本 ' + update.latestVersion
+      if (update.ahead) return '当前版本高于更新源；最新发布版本 ' + update.latestVersion
+      return update.currentChannel === 'preview' ? '已是最新预览版' : '已是最新正式版'
+    }
     function BuildBadge({ passive = false } = {}) {
       const { version, update, checking } = react.useSyncExternalStore(subscribeBuildBadge, getBuildBadge, getBuildBadge)
       const [updating, setUpdating] = react.useState(updateViewState)
@@ -3275,10 +3288,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         capability()
         return () => { window.removeEventListener('kb-plugin-update', changed); window.removeEventListener('kb-update-capability', capability) }
       }, [])
-      const label = checking ? '正在检查更新…' : !update ? ''
-        : !update.ok ? update.error || '检查更新失败，请稍后重试'
-          : update.updateAvailable ? '发现新版本 ' + update.latestVersion
-            : update.ahead ? '当前使用预览版；最新正式版 ' + update.latestVersion : '已是最新正式版'
+      const label = pluginUpdateLabel(checking, update)
       const allCheckSourcesFailed = update?.sourceStatus?.length > 0 && ![...(update.sourceStatus || []), ...(update.preview?.sourceStatus || update.previewSourceStatus || [])].some(s => s.ok)
       const showSourceFailures = !checking && (allCheckSourcesFailed || updating.allSourcesFailed)
       const hasUpdate = availableUpdates({ version, update }).length > 0 || update?.preview?.updateAvailable === true
@@ -4256,7 +4266,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     // END GENERATED TODO LIFECYCLE UI
 
-    const RELEASE_VERSION = '2.4.1'
+    const RELEASE_VERSION = '2.4.2'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.

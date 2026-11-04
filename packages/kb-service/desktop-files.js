@@ -1,6 +1,6 @@
 
 import path from 'node:path';
-import {readFile,readdir,lstat,stat,realpath,mkdir,open,unlink,link,rename,rmdir,access} from 'node:fs/promises';
+import {readFile,readdir,lstat,stat,realpath,mkdir,open,unlink,link,rename,rmdir,access,cp} from 'node:fs/promises';
 import {constants} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {TextDecoder} from 'node:util';
@@ -26,6 +26,15 @@ export async function createDesktopFiles({root,privateDir,desktopRoot,core,withL
  const storage=path.join(privateDir,'desktop');
  await mkdir(storage,{recursive:true});
  const plans=new Map(),resources=new Map(),stages=new Map();
+  const localTrash=await safePath(base,'.kbmeta/desktop-trash',{missing:true});
+  async function trashDir(id,{create=false}={}){
+   if(!uuid.test(id??''))throw error('BAD_REQUEST','回收项目标识无效');
+   const local=await safePath(base,'.kbmeta/desktop-trash/'+id,{missing:true});
+   if(create){await mkdir(local,{recursive:true});return safePath(base,'.kbmeta/desktop-trash/'+id);}
+   if(await lstat(local).catch(e=>e.code==='ENOENT'?null:Promise.reject(e)))return local;
+   return safePath(privateDir,'desktop/trash/'+id,{missing:true});
+  }
+
  const privatePath=p=>getPrivateDirs().some(v=>{const a=p.toLowerCase(),b=v.replaceAll('\\','/').toLowerCase();return a===b||a.startsWith(b+'/');});
  async function checked(p,{missing=false,write=false}={}){
   p=relativePath(p);
@@ -99,7 +108,7 @@ export async function createDesktopFiles({root,privateDir,desktopRoot,core,withL
  }
  async function trashObject(id,relative=''){
   if(!uuid.test(id??''))throw error('BAD_REQUEST','回收项目标识无效');
-  const dir=await safePath(privateDir,'desktop/trash/'+id),item=await readJson(await safePath(dir,'manifest.json'),null);
+  const dir=await trashDir(id),item=await readJson(await safePath(dir,'manifest.json'),null);
   if(item?.state!=='trashed')throw error('NOT_FOUND','回收项目已恢复或删除');
   if(relative)relative=relativePath(relative);
   if(relative&&item.type!=='directory')throw error('BAD_REQUEST');
@@ -206,7 +215,7 @@ export async function createDesktopFiles({root,privateDir,desktopRoot,core,withL
    }
   }else if(['restore','purge'].includes(operation)){
    if(!uuid.test(a.path??''))throw error('BAD_REQUEST');
-   p.item=await readJson(path.join(storage,'trash',a.path,'manifest.json'),null);
+   p.item=await readJson(path.join(await trashDir(a.path),'manifest.json'),null);
    if(!p.item||p.item.state!=='trashed')throw error('NOT_FOUND');
    p.trashId=a.path;
    if(operation==='restore'){p.destination=relativePath(a.destination||p.item.path);await checked(p.destination,{missing:true,write:true});if(await lstat(path.join(base,p.destination)).catch(e=>e.code==='ENOENT'?null:Promise.reject(e)))throw error('CONFLICT','恢复目标已存在，请选择新名称');}
@@ -217,8 +226,8 @@ export async function createDesktopFiles({root,privateDir,desktopRoot,core,withL
  async function publishNew(file,data){
   const h=await open(file,'wx');try{await h.writeFile(data);await h.sync();}finally{await h.close();}
  }
- async function validateTrashedDirectory(dir,item){
-  const folder=await safePath(dir,'original-folder'),found=[];
+ async function validateTrashedDirectory(dir,item,relative='original-folder'){
+  const folder=await safePath(dir,relative),found=[];
   async function visit(relative='',depth=0){
    if(depth>20||found.length>5000)throw error('RECOVERY_REQUIRED','回收目录超过校验预算');
    const current=relative?await safePath(folder,relative):folder;
@@ -231,7 +240,7 @@ export async function createDesktopFiles({root,privateDir,desktopRoot,core,withL
   await visit();if(found.length!==item.entries.length)throw error('RECOVERY_REQUIRED','回收目录内容不完整');return folder;
  }
  async function finishDirectoryTrash(operationId,item){
-  const dir=await safePath(privateDir,'desktop/trash/'+operationId);await validateTrashedDirectory(dir,item);
+  const dir=await trashDir(operationId);await validateTrashedDirectory(dir,item);
   await atomic(path.join(dir,'manifest.json'),{...item,state:'trashed'});
   const result={committed:true,path:item.path,operation:'trash',unresolvedLinks:[],requestState:'committed'};
   await atomic(path.join(storage,'operations',operationId,'committed.json'),result);return result;
@@ -272,7 +281,7 @@ export async function createDesktopFiles({root,privateDir,desktopRoot,core,withL
     }
    }else if(p.operation==='trash'){
     const src=await checked(p.source,{write:true});if((await info(p.source)).revision!==p.revision)throw error('CONFLICT');
-    const dir=path.join(storage,'trash',operationId);await mkdir(dir,{recursive:true});
+    const dir=await trashDir(operationId,{create:true});
     if(p.isDirectory){
      const now=await moveInventory(p.source);if(hash(now.map(f=>[f.path,f.revision]))!==hash(p.descendants.map(f=>[f.path,f.revision])))throw error('CONFLICT','目录内资料已改变');
      const entries=[];let size=0;
@@ -293,7 +302,17 @@ export async function createDesktopFiles({root,privateDir,desktopRoot,core,withL
     if(item.type==='directory'){
      const original=await validateTrashedDirectory(dir,item);
      for(const e of item.entries)if(e.excluded)await retainExclusion(item.path+'/'+e.path,p.destination+'/'+e.path,true);
-     await rename(original,dst);
+     try{await rename(original,dst);}catch(e){
+      if(e.code!=='EXDEV')throw e;
+      // Legacy archives can live on another volume. Copy into a private stage
+      // beside the library, verify every entry, then publish on that volume.
+      // Retain the legacy original, as for restored single-file archives.
+      const staging=await trashDir(operationId,{create:true}),name='restore-copy';
+      await cp(original,path.join(staging,name),{recursive:true,force:false,errorOnExist:true,preserveTimestamps:true});
+      await validateTrashedDirectory(staging,item,name);
+      if(await lstat(dst).catch(e=>e.code==='ENOENT'?null:Promise.reject(e)))throw error('CONFLICT','恢复目标已存在');
+      await rename(path.join(staging,name),dst);
+     }
     }else{const data=await readFile(await safePath(dir,'original'));if(hash(data)!==item.sha256)throw error('RECOVERY_REQUIRED','回收原件校验失败');await publishNew(dst,data);}
     await atomic(path.join(dir,'manifest.json'),{...item,state:'restored',restoredTo:p.destination});
    }else if(p.operation==='purge'){
@@ -310,11 +329,11 @@ export async function createDesktopFiles({root,privateDir,desktopRoot,core,withL
   });
  }
  async function manifests(kind){
-  const dir=path.join(storage,kind),rows=[];
-  for(const item of await readdir(dir).catch(e=>e.code==='ENOENT'?[]:Promise.reject(e))){
-   if(!uuid.test(item))continue;
+  const rows=[],seen=new Set(),dirs=kind==='trash'?[localTrash,path.join(storage,kind)]:[path.join(storage,kind)];
+  for(const dir of dirs)for(const item of await readdir(dir).catch(e=>e.code==='ENOENT'?[]:Promise.reject(e))){
+   if(!uuid.test(item)||seen.has(item))continue;seen.add(item);
    if((await lstat(path.join(dir,item))).isSymbolicLink())continue;
-   const entry=await safePath(privateDir,'desktop/'+kind+'/'+item);
+   const entry=kind==='trash'?await trashDir(item):await safePath(privateDir,'desktop/'+kind+'/'+item);
    let m=await readJson(await safePath(entry,'manifest.json',{missing:true}),null);
    if(kind==='trash'&&m?.state==='prepared'&&m.type==='directory'&&await lstat(path.join(entry,'original-folder')).catch(()=>null)){await finishDirectoryTrash(item,m);m={...m,state:'trashed'};}
    if(m)rows.push(kind==='backups'?{...m,id:item,digest:hash(m)}:m);
@@ -408,7 +427,13 @@ export async function createDesktopFiles({root,privateDir,desktopRoot,core,withL
  }
  return {
   async sourceFromStage(id,caller){const s=stages.get(id);if(!s||s.caller!==caller||!s.final)throw error('FORBIDDEN');const data=await readFile(s.file);if(hash(data)!==s.hash)throw error('CONFLICT','暂存原件已变化');return {data,name:s.name,bytes:data.length,external:true};},
-  async recoverReceipt(operationId){const intent=await readJson(path.join(storage,'operations',operationId,'intent.json'),null);if(intent?.operation==='backupDelete')return finishBackupDelete(operationId,intent);const receipt=await readJson(path.join(storage,'operations',operationId,'committed.json'),null);if(receipt)return receipt;if(intent?.operation==='trash'){const item=await readJson(path.join(storage,'trash',operationId,'manifest.json'),null);if(item?.type==='directory'&&item.state==='prepared'&&await lstat(path.join(storage,'trash',operationId,'original-folder')).catch(()=>null))return finishDirectoryTrash(operationId,item);}return null;},
+  async recoverReceipt(operationId){const intent=await readJson(path.join(storage,'operations',operationId,'intent.json'),null);if(intent?.operation==='backupDelete')return finishBackupDelete(operationId,intent);const receipt=await readJson(path.join(storage,'operations',operationId,'committed.json'),null);if(receipt)return receipt;if(intent?.operation==='trash'){
+   const dir=await trashDir(operationId),item=await readJson(path.join(dir,'manifest.json'),null);
+   if(item?.type==='directory'&&item.state==='prepared'){
+    if(await lstat(path.join(dir,'original-folder')).catch(e=>e.code==='ENOENT'?null:Promise.reject(e)))return finishDirectoryTrash(operationId,item);
+    try{const current=await info(intent.source),entries=await moveInventory(intent.source);if(current.revision===intent.revision&&hash(entries.map(f=>[f.path,f.revision]))===hash(intent.descendants.map(f=>[f.path,f.revision])))return {failed:true,error:{code:'CONFLICT',message:'上次回收未移动原目录，操作已确认失败。请重新预览后提交。'}};}catch{}
+   }
+  }return null;},
   async call(method,a,caller,operationId){
    if(method==='desktop.list')return list(a.parent??'',a.offset??0,a.limit??500);
    if(method==='desktop.listSorted')return list(a.parent??'',a.offset??0,a.limit??500,a.sort??'name-asc');

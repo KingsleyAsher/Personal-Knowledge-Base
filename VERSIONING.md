@@ -2,11 +2,11 @@
 
 [English](VERSIONING.en.md) · 简体中文
 
-插件与客户端共用本规则，独立版本：插件当前源码 2.4.1，客户端当前源码 1.0.2。共享实现位于 packages/kb-contracts/version-policy.js；插件 src/host/versioning.js 保留兼容入口。
+插件与客户端共用本规则，独立版本：插件当前源码 2.4.2，客户端当前源码 1.0.3。共享实现位于 packages/kb-contracts/version-policy.js；插件 src/host/versioning.js 保留兼容入口。
 
 ## 版本格式与顺序
 
-正式版使用 x.y.z（例如 1.0.2、2.4.1）；预览版使用 x.y-betaN（例如 1.1-beta1），N 为正整数，各段不允许前导零。拒绝新发布 rc1、x.y.z-betaN 或 beta0。旧 x.y.z-betaN 仅作为已安装版本和历史预览清单迁移输入接受。
+正式版使用 x.y.z（例如 1.0.3、2.4.2）；预览版使用 x.y-betaN（例如 1.1-beta1），N 为正整数，各段不允许前导零。拒绝新发布 rc1、x.y.z-betaN 或 beta0。旧 x.y.z-betaN 仅作为已安装版本和历史预览清单迁移输入接受。
 
 先比较大版本和小版本，同一迭代中 beta 按数字比较，正式版高于所有预览版，正式版按补丁号比较。例如 1.1-beta2 < 1.1-beta10 < 1.1.0 < 1.1.1 < 1.2-beta1。规范预览号高于同序号的旧格式迁移输入。相同版本与降级不自动安装。
 

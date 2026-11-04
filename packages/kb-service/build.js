@@ -7,7 +7,7 @@ export async function readCandidateBuild(root) {
   const files=[...literal.matchAll(/'([^']+)'/g)].map(x=>x[1]),rows=[]
   for(const file of files)rows.push({path:file,sha256:hash(await readFile(path.join(root,file)))})
   const pkg=JSON.parse(await readFile(path.join(root,'package.json'),'utf8'))
-  return {version:pkg.version,buildId:hash(rows.map(x=>x.path+'\0'+x.sha256+'\n').join('')).slice(0,16),channel:'desktop-parity-candidate',files:rows}
+  return {version:pkg.version,buildId:hash(rows.map(x=>x.path+'\0'+x.sha256+'\n').join('')).slice(0,16),channel:/^\d+\.\d+\.\d+$/.test(pkg.version)?'stable':'local',files:rows}
 }
 
 export async function runtimeBuild() {

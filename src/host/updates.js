@@ -85,18 +85,15 @@ async function sourceBytes(fetchFn, source, rel, limit, timeoutMs) {
 
 export function createUpdateChecker({ currentVersion, fetch: fetchFn = globalThis.fetch, now = Date.now, timeoutMs = 6000,
   previewManifestUrl = UPDATE_PREVIEW_MANIFEST_URL, sourceIds = UPDATE_SOURCES.map(s => s.id) } = {}) {
-  // This local shared-service build is not a published stable release. Never
-  // compare it with the public release feed or automatically replace it with
-  // an embedded-only package while a real library is managed by the service.
-  if (/^\d+\.\d+\.\d+\+desktop\.\d+$/.test(currentVersion)) return {
-    async check() { return { ok: true, currentVersion, latestVersion: currentVersion, currentChannel: 'local', channel: 'local', updateAvailable: false, autoInstallEligible: false, checkedAt: new Date(now()).toISOString(), sourceStatus: [], message: '本机共库试用版使用配套交付包更新。' } },
-  }
+  // Legacy shared-service installs can see the stable feed, but migration stays manual.
+  const localBase = /^(\d+\.\d+\.\d+)\+desktop\.\d+$/.exec(currentVersion)?.[1]
+  const comparisonVersion = localBase || currentVersion
   const sources = selectedSources(sourceIds)
   let cached = null, expiresAt = 0, inflight = null
   async function channel(preview) {
     const results = await Promise.all(sources.map(async source => {
       try {
-        const raw = await sourceBytes(fetchFn, source, preview ? 'preview-manifest.json' : 'release-manifest.json', 65536, timeoutMs)
+        const raw = await sourceBytes(fetchFn, source, preview ? 'preview-manifest.json' : 'release-manifest.json', 1024 * 1024, timeoutMs)
         const m = JSON.parse(raw.toString('utf8'))
         if (preview && m.package === '@local/dsh-knowledge-base' && m.channel === 'preview' && m.active === false) return { source, ok: true, inactive: true }
         const parsedVersion = parseKnowledgeVersion(m.version, { allowLegacyPreview: preview })
@@ -114,10 +111,10 @@ export function createUpdateChecker({ currentVersion, fetch: fetchFn = globalThi
     if (good.some(x => x.manifest.version === m.version && (x.manifest.sha256 !== m.sha256 || x.manifest.bytes !== m.bytes || x.manifest.buildId !== m.buildId))) {
       return { ok: false, sourceStatus, error: '检查更新失败：相同版本的更新源摘要不一致，请稍后重试' }
     }
-    const comparison = compareReleaseVersions(m.version,currentVersion)
-    const autoInstallEligible = updateDecision(currentVersion, m.version).automatic
+    const comparison = compareReleaseVersions(m.version,comparisonVersion)
+    const autoInstallEligible = !localBase && updateDecision(comparisonVersion, m.version).automatic
     return { ok: true, currentVersion, latestVersion: m.version, channel: preview ? 'preview' : 'stable', updateAvailable: comparison > 0, autoInstallEligible, ahead: comparison < 0,
-      checkedAt: new Date(now()).toISOString(), source: chosen.source.repository, sourceId: chosen.source.id, sourceName: chosen.source.name,
+      onlineChecked: true, migrationRequired: Boolean(localBase), checkedAt: new Date(now()).toISOString(), source: chosen.source.repository, sourceId: chosen.source.id, sourceName: chosen.source.name,
       sourceIds: sources.map(s => s.id), sourceStatus,
       downloadUrl: chosen.source.file('dist/' + encodeURIComponent(m.tgz)),
       downloadSources: sources.map(s => ({ id: s.id, name: s.name, url: s.file('dist/' + encodeURIComponent(m.tgz)) })),
@@ -126,7 +123,7 @@ export function createUpdateChecker({ currentVersion, fetch: fetchFn = globalThi
   }
   async function latest() {
     const [stable, preview] = await Promise.all([channel(false), previewManifestUrl ? channel(true) : null])
-    const result = { ...stable, currentVersion, currentChannel: parseKnowledgeVersion(currentVersion, { allowLegacyPreview: true })?.channel || 'unknown', checkedAt: new Date(now()).toISOString() }
+    const result = { ...stable, currentVersion, currentChannel: localBase ? 'local' : parseKnowledgeVersion(currentVersion, { allowLegacyPreview: true })?.channel || 'unknown', checkedAt: new Date(now()).toISOString() }
     if (preview?.ok) result.preview = preview.available === false || stable.ok && compareReleaseVersions(preview.latestVersion, stable.latestVersion) <= 0 ? { ok: true, available: false, updateAvailable: false, sourceStatus: preview.sourceStatus } : preview
     else if (preview) { result.previewError = '预览版信息暂不可用，可稍后重新检查'; result.previewSourceStatus = preview.sourceStatus }
     return result

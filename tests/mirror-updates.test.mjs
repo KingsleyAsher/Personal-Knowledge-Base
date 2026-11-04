@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto'
 import { createUpdateChecker, createUpdateDownloader } from '../src/host/updates.js'
 
 const stable = { package: '@local/dsh-knowledge-base', version: '1.1.4', tgz: 'local-dsh-knowledge-base-1.1.4.tgz', sha256: 'a'.repeat(64), bytes: 100, buildId: 'b'.repeat(16) }
-const preview = { ...stable, version: '2.0.1-beta2', tgz: 'local-dsh-knowledge-base-2.0.1-beta2.tgz' }
+const preview = { ...stable, version: '2.0-beta2', tgz: 'local-dsh-knowledge-base-2.0-beta2.tgz' }
 async function publishedFixture() {
   const manifest=JSON.parse(await readFile(new URL('../release-manifest.json',import.meta.url),'utf8'))
   const raw=await readFile(new URL('../dist/'+manifest.tgz,import.meta.url))
@@ -41,7 +41,7 @@ test('reject login HTML, unsafe redirects, oversized and missing manifests; prev
     if (url.includes('preview')) return Response.json(preview)
     if (url.includes('gitee.com')) return new Response(null, { status: 302, headers: { location: 'http://127.0.0.1/private' } })
     if (url.includes('gitcode')) return new Response('<html>Login</html>', { headers: { 'content-type': 'text/html' } })
-    return new Response(' '.repeat(65537))
+    return new Response(' '.repeat(1024 * 1024 + 1))
   } })
   const result = await c.check()
   assert.equal(result.ok, false); assert(result.preview.ok)

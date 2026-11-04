@@ -1,0 +1,9 @@
+{
+  "name": "knowledge-workbench-feedback",
+  "main": "worker.mjs",
+  "compatibility_date": "2026-11-04",
+  "workers_dev": true,
+  "observability": { "enabled": false },
+  "triggers": { "crons": ["0 3 * * *"] },
+  "d1_databases": [{ "binding": "DB", "database_name": "knowledge-workbench-feedback", "database_id": "REPLACE_WITH_CREATED_D1_ID" }]
+}

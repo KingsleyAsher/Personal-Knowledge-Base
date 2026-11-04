@@ -320,7 +320,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
         else row.state='unknown'
       } else if (row.method.startsWith('desktop.') && desktopFiles) {
         const result = await desktopFiles.recoverReceipt(row.operationId)
-        if (result) { row.state = 'committed'; row.result = result } else row.state = 'unknown'
+        if (result?.failed) { row.state = 'failed'; row.error = result.error } else if (result) { row.state = 'committed'; row.result = result } else row.state = 'unknown'
       } else row.state = 'unknown'
       await atomic(file, row)
     }

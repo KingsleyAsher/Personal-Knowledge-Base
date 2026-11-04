@@ -11,7 +11,7 @@ Choose the client for a standalone file workspace, or the plugin for tools and m
 | Develop or package either product | [Development](DEVELOPMENT.en.md) |
 | Understand library sharing and offline limits | [Architecture](ARCHITECTURE.en.md) |
 
-Source versions are client 1.0.2 and plugin 2.4.1. Public plugin downloads follow release-manifest.json; the current publication is 2.4.1. Client online updates/in-place upgrades are unfinished. Removing a library registration does not delete its original files; application uninstall and document deletion are different operations.
+Source versions are client 1.0.3 and plugin 2.4.2. Public plugin downloads follow release-manifest.json; the current publication is 2.4.2. Client online updates/in-place upgrades are unfinished. Removing a library registration does not delete its original files; application uninstall and document deletion are different operations.
 
 ## Plugin usage and historical instructions
 
