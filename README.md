@@ -4,10 +4,10 @@
 
 **Personal-Knowledge-Base is the single maintained repository for the DSH knowledge-base plugin and standalone desktop client.** They share a core, contracts and library service while retaining independent installations and versions.
 
-| Product | Source version | Runtime |
-|---|---|---|
-| Desktop client | **1.0.1** | Windows x64 file workspace with multiple preview/editing panes |
-| DSH plugin | **2.4.1** | DeepSeek Harness tools, knowledge workbench and model tasks |
+| Product | Published version | Direct download | Release notes |
+|---|---|---|---|
+| **Desktop client · Windows x64** | **1.0.1** | **[⬇ Download client installer (EXE)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.1/KnowledgeWorkbench-1.0.1-Setup.exe)** | [Client Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.1) |
+| **DSH knowledge-base plugin** | **2.4.1** | **[⬇ Download plugin (TGZ)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.1/local-dsh-knowledge-base-2.4.1.tgz)** | [Plugin Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.1) |
 
 Release entries: [client 1.0.1](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.1) · [plugin 2.4.1](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.1). Choose the correct installer/TGZ and verify its product-specific manifest and digest.
 
@@ -20,6 +20,18 @@ Release entries: [client 1.0.1](https://github.com/KingsleyAsher/Personal-Knowle
 - **Independent operation:** local client file/library functions remain available independently. The plugin retains its DSH entry points. Chat, model organization and host-provided global-memory writes require their services to be online.
 
 ## Download and installation
+
+### Desktop client 1.0.1 · Windows x64
+
+**[Download KnowledgeWorkbench-1.0.1-Setup.exe](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.1/KnowledgeWorkbench-1.0.1-Setup.exe)** · [Release notes and assets](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.1) · [SHA-256 checksums](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.1/client-SHA256SUMS)
+
+Run the EXE to install. The approximately 186 MiB package includes its runtime. This is the standalone client installer, not a DSH plugin bundle.
+
+### DSH plugin 2.4.1
+
+**[Download local-dsh-knowledge-base-2.4.1.tgz](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.1/local-dsh-knowledge-base-2.4.1.tgz)** · [Release notes and assets](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.1)
+
+Install the TGZ through DSH plugin management. GitHub highlights only one Latest release, but both products have independent releases. Use the product links above or browse [all Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases).
 
 Source, issues and future releases are maintained here. In [Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases), choose the correct product: Windows Setup.exe for the client, TGZ for the plugin.
 

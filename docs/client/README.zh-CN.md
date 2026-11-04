@@ -1,3 +1,6 @@
+
+**[下载 Windows 客户端 1.0.1 安装包（EXE）](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.1/KnowledgeWorkbench-1.0.1-Setup.exe)** · [版本说明](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.1)
+
 > 本文是统一仓库内的客户端专题。主入口见 [统一 README](../../README.zh-CN.md)，两端版本与发布规则见 [统一版本规则](../../VERSIONING.md)。
 
 # 个人知识库客户端
@@ -26,7 +29,7 @@
 
 ## 获取与安装
 
-公开安装包发布后会列在 [Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases)。本次源码上传本身不等于二进制 Release 已发布。
+公开安装包发布后会列在 [Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases)。客户端 1.0.1 已发布，安装包见上方直接下载入口。
 
 使用维护者提供的安装包，选择独立的应用目录。现有安装器保留纸页绿界面和动画，要求目标目录为空；尚未实现覆盖升级。卸载保留个人资料与设置。客户端在线检查、下载及自动安装更新尚未接入。
 

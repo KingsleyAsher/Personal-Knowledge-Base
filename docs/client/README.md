@@ -1,3 +1,6 @@
+
+**[Download Windows client 1.0.1 (EXE)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.1/KnowledgeWorkbench-1.0.1-Setup.exe)** · [Release notes](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.1)
+
 > Client-specific guide in the unified repository. See the [main README](../../README.md) and [shared release policy](../../VERSIONING.en.md).
 
 # Personal Knowledge Base Client
@@ -32,7 +35,7 @@ A local-first Windows knowledge workspace for reading, editing and connecting yo
 
 ## Installation
 
-Install a maintainer-provided Windows installer and launch the application from its shortcut. Public downloads, when published, are listed in [Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases). This source publication does not itself publish a binary Release. Keep the application directory separate from your document libraries.
+Install a maintainer-provided Windows installer and launch the application from its shortcut. Public downloads, when published, are listed in [Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases). Client 1.0.1 is published with the installer linked above. Keep the application directory separate from your document libraries.
 
 The current installer keeps the existing paper-green interface and animations. It requires an empty target directory; in-place automatic upgrades are not implemented. Uninstall preserves user data. Online client update checking/download/install is not connected yet.
 

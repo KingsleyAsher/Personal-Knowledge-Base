@@ -4,10 +4,10 @@
 
 **Personal-Knowledge-Base 是知识库插件与独立桌面客户端的唯一维护仓库。** 两个产品共用业务内核、接口与共库服务，分别安装、独立版本，也可以连接同一知识库协同使用。
 
-| 产品 | 当前源码版本 | 入口与运行方式 |
-|---|---|---|
-| 知识库客户端 | **1.0.1** | Windows x64 独立应用，多栏阅读编辑与文件管理 |
-| DSH 知识库插件 | **2.4.1** | 在 DeepSeek Harness 中使用工具、知识工作台与模型任务 |
+| 产品 | 已发布版本 | 直接下载 | 发布说明 |
+|---|---|---|---|
+| **知识库客户端 · Windows x64** | **1.0.1** | **[⬇ 下载客户端安装包（EXE）](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.1/KnowledgeWorkbench-1.0.1-Setup.exe)** | [客户端 Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.1) |
+| **DSH 知识库插件** | **2.4.1** | **[⬇ 下载插件包（TGZ）](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.1/local-dsh-knowledge-base-2.4.1.tgz)** | [插件 Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.1) |
 
 当前发布入口：[客户端 1.0.1](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.1) · [插件 2.4.1](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.1)。请按产品选择 Windows 安装包或 TGZ，摘要与构建号以各自清单为准。
 
@@ -20,6 +20,18 @@
 - **独立使用**：客户端本地文件与知识库功能可以独立运行；插件在 DSH 中保留完整入口。聊天、模型整理和宿主提供的全局记忆写入需要相应宿主与服务在线。
 
 ## 下载与安装
+
+### 客户端 1.0.1 · Windows x64
+
+**[下载 KnowledgeWorkbench-1.0.1-Setup.exe](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.1/KnowledgeWorkbench-1.0.1-Setup.exe)** · [版本说明与全部附件](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.1) · [SHA-256 校验文件](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.1/client-SHA256SUMS)
+
+下载后运行 EXE 安装。客户端安装包约 186 MiB，运行环境随包提供。该文件是独立客户端安装器，不是 DSH 插件。
+
+### 插件 2.4.1 · DSH
+
+**[下载 local-dsh-knowledge-base-2.4.1.tgz](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.1/local-dsh-knowledge-base-2.4.1.tgz)** · [版本说明与全部附件](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.1)
+
+通过 DSH 插件管理器安装 TGZ。GitHub 首页只突出显示一个 Latest，但两个产品都有独立 Release；请使用上面的对应入口或查看 [全部 Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases)。
 
 所有后续源码、问题反馈和发布统一放在本仓库。访问 [Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases)，按产品名称选择文件：客户端使用 Windows Setup.exe，插件使用 TGZ。不要将插件包当作客户端安装程序。
 
