@@ -400,3 +400,7 @@ Compared with `03bcde504978f416`, deferred optimization drafts were archived rat
 Version 2.1.0 first released through PR #25. PR #26 synchronized the release record, bundled documentation, package, website download copy, and digest manifest. The package identity is in `release-manifest.json`; the build ID remains `37b7ff660806754d` because PR #26 changed documentation and release metadata only, not executable build files. All 25 targeted automated checks passed; the initial stable-release and Pages workflows passed. Gitee mirroring succeeded; the GitCode mirror workflow failed. Any later correction to release history must be synchronized across the source record, bundled copy, manifest, and relevant downloadable attachment; the manifest digest is authoritative.
 
 In-client download entry: **Knowledge Base → Inbox → Browser Extension Guide → First Use: Install and Connect**, then click **Download browser extension**. It selects among Gitee, GitCode, and GitHub, validates the downloaded file, and switches sources after failure. If every source fails, it shows the reasons and fallback links.
+
+## 2026-11-04: shared versions and fully automatic update policy
+
+Shared naming, ordering and packaging validation. Plugin major/preview candidates are automatically eligible, retaining channel preference, payload checks and busy/uncertain-operation guards. No update-confirmation modal; post-install notes retain their existing rules. The client online executor remains unfinished. Source policy change only; no new binary publication.

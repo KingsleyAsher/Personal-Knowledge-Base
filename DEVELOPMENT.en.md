@@ -11,3 +11,5 @@ Plugin publishing uses tools/package-workbench.py and tools/verify-release.py. P
 Client packaging is independent. Installer design/animation sources are in installer-design-b. client-source.yml checks source builds but does not publish binaries. Keep update channels separate; see [versioning](VERSIONING.en.md).
 
 Use synthetic libraries and focused checks; never default to personal data or paid models. See [contribution guidance](CONTRIBUTING.md).
+
+Update policy: every eligible version in the selected channel updates automatically, including majors and previews. The client online executor remains unfinished; see [version policy](VERSIONING.en.md).

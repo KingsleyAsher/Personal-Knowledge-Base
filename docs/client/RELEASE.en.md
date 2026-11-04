@@ -11,3 +11,7 @@ Packages the existing file workspace, four-pane preview/editing, relationship an
 The local delivery passed production build, version/payload checks and installer-UI smoke verification. Renaming the release did not add live-model or full regression evidence. Source publication and binary Release publication are separate operations.
 
 Client online updates and in-place installation are not implemented. Office fidelity, cloud availability and DSH-version compatibility have limits documented in the user guide.
+
+## 2026-11-04: shared versions and fully automatic update policy
+
+Shared naming, ordering and packaging validation. Plugin major/preview candidates are automatically eligible, retaining channel preference, payload checks and busy/uncertain-operation guards. No update-confirmation modal; post-install notes retain their existing rules. The client online executor remains unfinished. Source policy change only; no new binary publication.

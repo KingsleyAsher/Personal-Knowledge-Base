@@ -1,57 +1,7 @@
-import test from 'node:test'
-import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
-import vm from 'node:vm'
-
-const source = readFileSync(new URL('../src/client/index.js', import.meta.url), 'utf8')
-const start = source.indexOf('    const updateDismissKey = release =>')
-const end = source.indexOf('    async function refreshBuildVersion()', start)
-assert.ok(start > 0 && end > start)
-
-function rules(version, data = new Map()) {
-  let state = { version, update: null, dismissedRevision: 0 }
-  const context = { window: { localStorage: { getItem: key => data.get(key) ?? null, setItem: (key, value) => data.set(key, value) } },
-    patchBuildBadge: part => { state = { ...state, ...part } } }
-  Object.defineProperty(context, 'buildBadgeState', { get: () => state })
-  const api = vm.runInNewContext(source.slice(start, end) + '\n({ availableUpdates, pendingUpdatePrompts, dismissUpdatePrompts })', context)
-  return { api, data, setUpdate: update => { state = { ...state, update } }, get state() { return state } }
-}
-
-const update = {
-  ok: true, channel: 'stable', latestVersion: '2.0.3', updateAvailable: true,
-  preview: { ok: true, channel: 'preview', latestVersion: '2.0.4-beta1', updateAvailable: true },
-}
-
-test('stable installation prompts only for stable releases; preview still has a badge candidate', () => {
-  const r = rules('2.0.2'); r.setUpdate(update)
-  assert.deepEqual(Array.from(r.api.availableUpdates(), x => x.channel), ['stable'])
-  assert.deepEqual(Array.from(r.api.pendingUpdatePrompts(), x => x.channel), ['stable'])
-  r.setUpdate({ ...update, updateAvailable: false })
-  assert.equal(r.api.pendingUpdatePrompts().length, 0)
-  assert.equal(r.state.update.preview.updateAvailable, true)
-})
-
-test('preview installation offers both channels and closing remembers exact release versions', () => {
-  const r = rules('2.0.2-beta9'); r.setUpdate(update)
-  assert.deepEqual(Array.from(r.api.pendingUpdatePrompts(), x => x.channel), ['stable', 'preview'])
-  r.api.dismissUpdatePrompts(r.api.pendingUpdatePrompts())
-  assert.equal(r.api.pendingUpdatePrompts().length, 0)
-  assert.equal(r.data.get('dsh-kb-update-dismissed:stable:2.0.3'), '1')
-  assert.equal(r.data.get('dsh-kb-update-dismissed:preview:2.0.4-beta1'), '1')
-  r.setUpdate({ ...update, preview: { ...update.preview, latestVersion: '2.0.4-beta2' } })
-  assert.deepEqual(Array.from(r.api.pendingUpdatePrompts(), x => x.latestVersion), ['2.0.4-beta2'])
-})
-
-test('automatic stable updates stay silent before installation; manual channels still prompt', () => {
-  const r = rules('2.0.2')
-  const automatic = { ...update, autoInstallEligible: true, buildId: 'a'.repeat(16) }
-  r.setUpdate(automatic)
-  assert.equal(r.api.pendingUpdatePrompts().length, 0)
-  assert.equal(r.api.availableUpdates().length, 1)
-  r.setUpdate({ ...automatic, installSupported: false })
-  assert.equal(r.api.pendingUpdatePrompts().length, 1)
-  r.setUpdate({ ...automatic, autoInstallEligible: false, latestVersion: '3.0.0' })
-  assert.equal(r.api.pendingUpdatePrompts().length, 1)
-  const preview = rules('2.0-beta9'); preview.setUpdate({ ...automatic, autoInstallEligible: false })
-  assert.deepEqual(Array.from(preview.api.pendingUpdatePrompts(), x => x.channel), ['stable', 'preview'])
-})
+import test from 'node:test';import assert from 'node:assert/strict';import {readFileSync} from 'node:fs';import vm from 'node:vm';import {compareKnowledgeVersions} from '../packages/kb-contracts/version-policy.js';
+const source=readFileSync(new URL('../src/client/index.js',import.meta.url),'utf8');const start=source.indexOf('    const updateDismissKey = release =>'),end=source.indexOf('    async function refreshBuildVersion()',start);
+function rules(version,update){const calls=[];const context={buildBadgeState:{version,update},updateManager:{installBundle(){},waitForInstall(){}},updateViewState:{},automaticUpdateAttempts:new Set(),updateFlow:{install:v=>calls.push(v)},compareReleaseVersions:compareKnowledgeVersions};const api=vm.runInNewContext(source.slice(start,end)+'\n({availableUpdates,pendingUpdatePrompts,maybeAutoInstallUpdate})',context);return {api,calls,context};}
+const stable={ok:true,channel:'stable',latestVersion:'3.0.0',buildId:'a'.repeat(16),updateAvailable:true,autoInstallEligible:true,currentChannel:'stable'};
+test('cross-major stable installs automatically and no available-version modal is required',()=>{const r=rules('2.0.0',stable);r.api.maybeAutoInstallUpdate();assert.deepEqual(r.calls,['3.0.0']);assert.equal(r.api.pendingUpdatePrompts().length,0);r.api.maybeAutoInstallUpdate();assert.equal(r.calls.length,1);});
+test('stable users stay on stable while preview users automatically receive the newest eligible preview',()=>{const update={...stable,preview:{...stable,channel:'preview',latestVersion:'3.1-beta1',buildId:'b'.repeat(16)}};const a=rules('2.0.0',update);a.api.maybeAutoInstallUpdate();assert.deepEqual(a.calls,['3.0.0']);const b=rules('2.1-beta9',{...update,currentChannel:'preview'});b.api.maybeAutoInstallUpdate();assert.deepEqual(b.calls,['3.1-beta1']);assert.equal(b.api.pendingUpdatePrompts().length,0);});
+test('unsupported installation and uncertain/busy state never silently execute a write',()=>{const a=rules('2.0.0',{...stable,installSupported:false});a.api.maybeAutoInstallUpdate();assert.equal(a.calls.length,0);assert.equal(a.api.pendingUpdatePrompts().length,0);for(const key of ['busy','uncertain','restartRequired','refreshRequired']){const r=rules('2.0.0',stable);r.context.updateViewState[key]=true;r.api.maybeAutoInstallUpdate();assert.equal(r.calls.length,0);}});

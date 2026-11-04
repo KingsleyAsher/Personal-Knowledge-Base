@@ -1,7 +1,10 @@
+import {parseKnowledgeVersion,packageVersion} from '../../../packages/kb-contracts/version-policy.js';
 import {packager} from '@electron/packager';import extract from 'extract-zip';
 import path from 'node:path';import {fileURLToPath} from 'node:url';import {mkdir,readFile,writeFile,cp,copyFile,readdir,lstat} from 'node:fs/promises';import {createHash} from 'node:crypto';import {execFileSync} from 'node:child_process';
 const appDir=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),repo=path.resolve(appDir,'../..'),out=path.join(appDir,'out');
 const releaseVersion=JSON.parse(await readFile(path.join(appDir,'package.json'),'utf8')).version;
+const parsedRelease=parseKnowledgeVersion(releaseVersion);if(!parsedRelease)throw Error('发布版本必须为 x.y.z 或 x.y-betaN');
+const electronVersion=packageVersion(releaseVersion);
 const sha=b=>createHash('sha256').update(b).digest('hex');
 const pythonName='python-3.14.10-embed-amd64.zip',pythonSha='90905e64a840557d8c1bc4f5b74db3d7ee85e3ffb217611cac1c7813acea4159';
 const cache=path.join(appDir,'.build-cache'),electronName='electron-v45.2.1-win32-x64.zip';
@@ -20,9 +23,9 @@ await inventory(path.join(repo,'browser-extension'),'browser-extension');for(con
 rows.push({path:'app/package.json',sha256:sha(await readFile(path.join(appDir,'package.json')))});
 const buildId=sha(JSON.stringify(rows)).slice(0,16),stage=path.join(out,'stage-'+buildId);await mkdir(stage,{recursive:true});
 for(const part of ['main','dist','fixture-assets'])await cp(path.join(appDir,part),path.join(stage,part),{recursive:true,filter:p=>!p.includes('__pycache__')&&!p.endsWith('.pyc')});
-await writeFile(path.join(stage,'package.json'),JSON.stringify({name:'kb-desktop-candidate',productName:'知识工作台候选版',version:releaseVersion,type:'module',main:'main/index.js',author:'Local candidate',license:'MIT'},null,2));
+await writeFile(path.join(stage,'package.json'),JSON.stringify({name:'kb-desktop-candidate',productName:'知识工作台候选版',version:electronVersion,type:'module',main:'main/index.js',author:'Local candidate',license:'MIT'},null,2));
 let target=path.join(out,buildId,'KnowledgeWorkbench-Candidate-win32-x64');
-if(!await lstat(target).catch(()=>null)) [target]=await packager({dir:stage,out:path.join(out,buildId),name:'KnowledgeWorkbench-Candidate',executableName:'KnowledgeWorkbench-Candidate',platform:'win32',arch:'x64',electronVersion:'45.2.1',electronZipDir:cache,asar:true,overwrite:false,prune:true,appBundleId:'local.kb.desktop.parity.candidate'});
+if(!await lstat(target).catch(()=>null)) [target]=await packager({dir:stage,out:path.join(out,buildId),name:'KnowledgeWorkbench-Candidate',executableName:'KnowledgeWorkbench-Candidate',platform:'win32',arch:'x64',appVersion:electronVersion,buildVersion:`${parsedRelease.major}.${parsedRelease.minor}.${parsedRelease.patch??0}`,electronVersion:'45.2.1',electronZipDir:cache,asar:true,overwrite:false,prune:true,appBundleId:'local.kb.desktop.parity.candidate'});
 const resources=path.join(target,'resources');
 await cp(path.join(appDir,'main/real-backend'),path.join(resources,'native-backend'),{recursive:true,filter:p=>!p.includes('__pycache__')&&!p.endsWith('.pyc')});
 await cp(path.join(appDir,'main/real-library'),path.join(resources,'real-library'),{recursive:true,filter:p=>!p.includes('__pycache__')&&!p.endsWith('.pyc')});
@@ -34,7 +37,7 @@ await mkdir(path.join(resources,'kb-runtime/tools'),{recursive:true});for(const 
 // launchers/docs must not overwrite Python modules loaded by a shared service.
 if(!await lstat(path.join(resources,'python','python.exe')).catch(()=>null))await extract(path.join(cache,pythonName),{dir:path.join(resources,'python')});
 await cp(path.join(appDir,'node_modules/@fontsource-variable/noto-sans-sc/LICENSE'),path.join(target,'LICENSE-Noto-Sans-SC.txt'));
-const manifest={version:releaseVersion,buildId,channel:releaseVersion.includes('-')?'release-candidate':'stable',createdAt:new Date().toISOString(),platform:'win32-x64',syntheticOnly:false,realLibraryAccess:'explicit installed-build check, stopped-writer handoff, identity-bound grant',electron:{version:'45.2.1',sha256:checksums[electronName]},python:{version:'3.14.10',sha256:pythonSha,source:'https://www.python.org/downloads/release/python-31410/'},files:rows};
+const manifest={version:releaseVersion,buildId,channel:parsedRelease.channel,createdAt:new Date().toISOString(),platform:'win32-x64',syntheticOnly:false,realLibraryAccess:'explicit installed-build check, stopped-writer handoff, identity-bound grant',electron:{version:'45.2.1',sha256:checksums[electronName]},python:{version:'3.14.10',sha256:pythonSha,source:'https://www.python.org/downloads/release/python-31410/'},files:rows};
 await writeFile(path.join(target,'BUILD-MANIFEST.json'),JSON.stringify(manifest,null,2));
 const zip=process.env.KB_DESKTOP_ZIP==='1'?path.join(out,'KnowledgeWorkbench-'+releaseVersion+'-'+buildId+'-win-x64.zip'):null;
 if(zip)execFileSync('python',['-X','utf8',path.join(appDir,'tools/zip-delivery.py'),target,zip],{stdio:'inherit',windowsHide:true});

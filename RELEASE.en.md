@@ -277,3 +277,7 @@ Showcase URL: `https://kingsleyasher.github.io/Personal-Knowledge-Base/`. After 
 Regression tests cover rejection of unauthorized or forged callers, missing or unready H1, revoked authorization, recording the authorization source, and persistence of the read state after Esc. No 1.1.3 DSH-device launch acceptance or real paid cloud API verification was performed.
 
 One-click update validation used an isolated temporary directory and simulated native-service results. The native DSH 0.2.1-rc.2 source contracts for `installBundle`, `waitForInstall`, and HMR were inspected. As requested, the desktop installation remained on 1.1.2; its upgrade and hot loading were not actually run.
+
+## 2026-11-04: shared versions and fully automatic update policy
+
+Shared naming, ordering and packaging validation. Plugin major/preview candidates are automatically eligible, retaining channel preference, payload checks and busy/uncertain-operation guards. No update-confirmation modal; post-install notes retain their existing rules. The client online executor remains unfinished. Source policy change only; no new binary publication.

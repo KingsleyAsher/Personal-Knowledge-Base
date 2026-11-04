@@ -3209,7 +3209,9 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         /^[a-f0-9]{16}$/.test(update.buildId || '') && Boolean(update.latestVersion)
     }
     function maybeAutoInstallUpdate(update = buildBadgeState.update) {
-      if (!isAutomaticUpdate(update)) return
+      const candidates = availableUpdates({ ...buildBadgeState, update }).map(release => ({ ...release, installSupported: update?.installSupported })).filter(isAutomaticUpdate).sort((a,b) => compareReleaseVersions(b.latestVersion,a.latestVersion))
+      update = candidates[0]
+      if (!update) return
       const manager = updateManager
       if (typeof manager?.installBundle !== 'function' || typeof manager?.waitForInstall !== 'function') return
       if (updateViewState.busy || updateViewState.uncertain || updateViewState.restartRequired || updateViewState.refreshRequired) return
@@ -3219,13 +3221,9 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       automaticUpdateAttempts.add(attempt)
       void updateFlow.install(update.latestVersion)
     }
-    function pendingUpdatePrompts(state = buildBadgeState) {
-      return availableUpdates(state).filter(release => {
-        if (isAutomaticUpdate(release)) return false
-        const key = updateDismissKey(release)
-        if (dismissedThisSession.has(key)) return false
-        try { return window.localStorage.getItem(key) !== '1' } catch { return true }
-      })
+    function pendingUpdatePrompts() {
+      // Updates run automatically; errors and unsupported hosts stay in status.
+      return []
     }
     function dismissUpdatePrompts(releases) {
       for (const release of releases) {

@@ -13,6 +13,7 @@ import os from 'node:os';import {desktopDataPath} from './storage-path.js';
 
 const appDir=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const backendRoot=app.isPackaged?path.join(process.resourcesPath,'kb-runtime'):path.resolve(appDir,'../..');
+const {UPDATE_POLICY}=await import(pathToFileURL(path.join(backendRoot,'packages/kb-contracts/version-policy.js')).href);
 const dataDir=desktopDataPath({override:process.env.KB_DESKTOP_DATA,packaged:app.isPackaged,home:os.homedir(),appDir});
 app.setName('知识工作台候选版');app.setPath('userData',path.join(dataDir,'client'));app.setAppUserModelId('local.kb.desktop.parity.candidate');
 protocol.registerSchemesAsPrivileged([{scheme:'kb-media',privileges:{secure:true,standard:true,supportFetchAPI:true,stream:true,corsEnabled:true}}]);
@@ -43,7 +44,7 @@ function register(name,fn){
 const clientKey=()=>manager.status().library?.instanceId??'none';
 async function appInfo(){
  const manifest=app.isPackaged?await readJson(path.join(path.dirname(process.execPath),'BUILD-MANIFEST.json'),{}):{};
- return {version:app.getVersion(),buildId:manifest.buildId??'development',channel:manifest.channel??'desktop-candidate',electron:process.versions.electron,updates:{configured:false,message:'此候选版尚未配置在线更新源，暂时无法检查在线更新。请使用已交付的新候选包。'}};
+ return {version:manifest.version??app.getVersion(),buildId:manifest.buildId??'development',channel:manifest.channel??'desktop-candidate',electron:process.versions.electron,updates:{configured:false,policy:UPDATE_POLICY,message:'更新规则：所选通道内所有新版本自动更新。当前在线下载与安装尚未接入，请使用已交付安装包。'}};
 }
 async function initialize(){
  const preferences=await localRead('preferences',{theme:'system'});nativeTheme.themeSource=['light','dark','system'].includes(preferences.theme)?preferences.theme:'system';appearancePalette=normalizePalette(preferences.palette);

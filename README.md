@@ -53,3 +53,5 @@ No personal libraries, conversations, credentials, index databases, runtime conf
 The merged client passed a production build and focused checks. See the project record for historical evidence and limits. Static checks and synthetic services do not establish live-model performance, cloud availability, full Office fidelity or every DSH-version compatibility.
 
 [MIT licensed](LICENSE). Third-party components retain their licenses; see [notices](THIRD-PARTY-NOTICES.md).
+
+Update policy: every eligible version in the selected channel updates automatically, including majors and previews. The client online executor remains unfinished; see [version policy](VERSIONING.en.md).

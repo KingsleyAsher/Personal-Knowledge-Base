@@ -45,3 +45,5 @@ See [build instructions](DEVELOPMENT.en.md). The repository includes the Electro
 The 1.0.0 local delivery passed a production build, version/payload checks and an installer-UI smoke check. Theme work was checked with synthetic libraries across seven palettes in both modes. These checks do not establish full regression coverage, model quality, cloud availability or compatibility with every DSH release. Tests must not use personal libraries or paid model calls by default.
 
 MIT licensed; bundled third-party components retain their own licenses. See [third-party notices](THIRD-PARTY-NOTICES.md).
+
+Update policy: every eligible version in the selected channel updates automatically, including majors and previews. The client online executor remains unfinished; see [version policy](../../VERSIONING.en.md).
