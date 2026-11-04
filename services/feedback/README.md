@@ -1,6 +1,6 @@
 # 匿名反馈服务
 
-客户端通过 HTTPS POST `/feedback` 向固定仓库 `KingsleyAsher/Personal-Knowledge-Base` 创建公开 Issue。用户不需要 GitHub 账号；Issue 作者是服务端令牌所属账号。反馈后端已部署到 `https://knowledge-workbench-feedback.knowledge-workbench-kingsleyasher.workers.dev/feedback`。2026-11-05 已完成真实后端及桌面客户端验证，见 [测试 Issue #46](https://github.com/KingsleyAsher/Personal-Knowledge-Base/issues/46) 与 [#47](https://github.com/KingsleyAsher/Personal-Knowledge-Base/issues/47)，重复提交均返回原 Issue。客户端 1.0.3 为本地交付，公开 Release 尚未更新。
+客户端通过 HTTPS POST `/feedback` 向固定仓库 `KingsleyAsher/Personal-Knowledge-Base` 创建公开 Issue。用户不需要 GitHub 账号；Issue 作者是服务端令牌所属账号。反馈后端已部署到 `https://knowledge-workbench-feedback.knowledge-workbench-kingsleyasher.workers.dev/feedback`。2026-11-05 已完成真实后端及桌面客户端验证，见 [测试 Issue #46](https://github.com/KingsleyAsher/Personal-Knowledge-Base/issues/46) 与 [#47](https://github.com/KingsleyAsher/Personal-Knowledge-Base/issues/47)，重复提交均返回原 Issue。客户端 1.0.3 的公开安装包连接此端点，发布入口见仓库首页。
 
 ## 部署准备
 

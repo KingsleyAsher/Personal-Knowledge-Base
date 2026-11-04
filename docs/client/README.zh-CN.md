@@ -1,5 +1,5 @@
 
-**[下载 Windows 客户端 1.0.2 安装包（EXE）](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.2/KnowledgeWorkbench-1.0.2-Setup.exe)** · [版本说明](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.2)
+**[下载 Windows 客户端 1.0.3 安装包（EXE）](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.3/KnowledgeWorkbench-1.0.3-Setup.exe)** · [版本说明](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.3)
 
 > 本文是统一仓库内的客户端专题。主入口见 [统一 README](../../README.zh-CN.md)，两端版本与发布规则见 [统一版本规则](../../VERSIONING.md)。
 
@@ -9,7 +9,7 @@
 
 围绕本地文件构建的 Windows 知识工作台：浏览资料、并排阅读、编辑笔记和探索关联。客户端可以独立使用，也可以与 [DSH 知识库插件](https://github.com/KingsleyAsher/Personal-Knowledge-Base) 共库联动。
 
-**客户端 1.0.2 · 配套知识库插件 2.4.1 · Windows x64**
+**客户端 1.0.3 · 配套知识库插件 2.4.2 · Windows x64**
 
 ## 主要能力
 
@@ -29,13 +29,13 @@
 
 ## 获取与安装
 
-公开安装包发布后会列在 [Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases)。客户端 1.0.2 已发布，安装包见上方直接下载入口。
+公开安装包发布后会列在 [Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases)。客户端 1.0.3 已发布，安装包见上方直接下载入口。
 
-使用维护者提供的安装包，选择独立的应用目录。现有安装器保留纸页绿界面和动画，要求目标目录为空；尚未实现覆盖升级。卸载保留个人资料与设置。客户端在线检查、下载及自动安装更新尚未接入。
+使用维护者提供的安装包，选择独立的应用目录。现有安装器保留纸页绿界面和动画，要求目标目录为空；尚未实现覆盖升级。卸载保留个人资料与设置。客户端在线检查与校验下载可用，自动覆盖安装和激活尚未完成。
 
 ## 验证范围
 
-本地 1.0.2 交付通过生产构建、版本与包文件校验、安装界面启动简查；主题使用虚构库检查了七个主题的深浅组合。这些结果不代表完整回归、模型质量或云服务可用性验证。公开源码不包含个人知识库、凭据、聊天记录及本机测试输出。
+本地 1.0.3 交付通过生产构建、版本与包文件校验、安装界面启动简查；主题使用虚构库检查了七个主题的深浅组合。这些结果不代表完整回归、模型质量或云服务可用性验证。公开源码不包含个人知识库、凭据、聊天记录及本机测试输出。
 
 采用 MIT 许可证；第三方依赖保留各自许可，见 [第三方说明](THIRD-PARTY-NOTICES.md)。
 

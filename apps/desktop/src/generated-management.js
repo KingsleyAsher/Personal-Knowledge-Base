@@ -1410,6 +1410,8 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
     R.useEffect(() => {
       connectEvents(); const updates=refreshSchedule(refresh);updates.schedule(0)
       const policy = ev => {
+        // Transport retries refresh in place; keep the snapshot and pending reads.
+        if (['connection-lost', 'connection-restored'].includes(ev.detail?.type) || ['connection.changed', 'snapshot.required'].includes(ev.detail?.event)) { updates.schedule(); return }
         if(ev.detail?.event==='memory.changed'||ev.detail?.type==='memory-changed')return
         if (['parse-jobs-changed', 'relations-progress', 'retrieval'].includes(ev.detail?.type)) return
         if (['links-changed', 'files-changed','snapshot-dirty'].includes(ev.detail?.type)) { if (ev.detail.kbId&&ev.detail.kbId!==current.current?.kbId)return; if (ev.detail.type === 'files-changed' && ev.detail.operation !== 'trash.restore') setSelected(old => old === ev.detail.path ? '' : old); updates.schedule(); return }

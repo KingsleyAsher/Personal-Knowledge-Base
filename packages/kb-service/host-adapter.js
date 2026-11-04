@@ -1,3 +1,4 @@
+import {createHostUpdates} from './host-updates.js';
 import {publishKnowledgeMemory} from './memory-sync.js';
 import {atomic,readJson,serialQueue} from './io.js';
 import os from 'node:os';
@@ -95,6 +96,7 @@ export async function mountServiceHost(ctx, config, { isLiveKnowledgeGrant, gate
   }
   const send=(res,status,value)=>{res.statusCode=status;res.setHeader('content-type','application/json; charset=utf-8');res.end(JSON.stringify(value))}
   const sameOrigin=req=>req.headers['sec-fetch-site']!=='cross-site' && (!req.headers.origin || (()=>{try{return new URL(req.headers.origin).host===req.headers.host}catch{return false}})())
+  const updates=createHostUpdates({ctx,build,profileDir});
   const server=ctx.get('webServer')
   if(server?.register) {
     await registerHostAssets({ctx,server,root:path.resolve(import.meta.dirname,'../..'),client,send,sameOrigin})
@@ -107,8 +109,8 @@ export async function mountServiceHost(ctx, config, { isLiveKnowledgeGrant, gate
         for await (const chunk of req){size+=chunk.length;if(size>900000) return send(res,413,{ok:false,code:'BAD_REQUEST'});chunks.push(chunk)}
         const body=JSON.parse(Buffer.concat(chunks).toString('utf8'))
         const aliases={'import-plan':'import.plan','import-run':'import.run','import-status':'import.status','import-cancel':'import.cancel','import-waiting':'import.waiting','import-parse':'import.parse'};body.op=aliases[body.op]??body.op
-        if(body.op==='updates.check')return send(res,200,{ok:true,updateAvailable:false,status:'candidate',installed:build,message:'阶段四隔离候选不使用正式版更新源。'})
-        if(body.op==='updates.prepare')return send(res,200,{ok:false,code:'CAPABILITY_UNSUPPORTED',error:'候选版未开放正式包替换，请使用构建身份明确的候选交付包。'})
+        if(body.op==='updates.check')return send(res,200,await updates.check(body))
+        if(body.op==='updates.prepare')return send(res,200,await updates.prepare(body))
         if(body.op==='pick-dir'){const cap=ctx.get('directoryPicker')?.capability();if(cap?.kind!=='native'||!cap.pick)return send(res,200,{ok:false,reason:'no-directory-picker'});const path=await cap.pick(AbortSignal.timeout(300000));return send(res,200,{ok:true,path,canceled:!path});}
         if(body.op==='atlas.file-action'){const f=await client.call('desktop.stat',{path:body.path}),s=await sharedStatus(),c=controllerScope?.get('sessionController');if(!c?.openWorkspacePath)throw Error('DSH 本机文件操作未连接');return send(res,200,{ok:true,...await c.openWorkspacePath({path:path.join(s.kbPath,f.path),action:body.action},AbortSignal.timeout(15000))});}
         if(body.op==='status') return send(res,200,{ok:true,status:await sharedStatus()})
