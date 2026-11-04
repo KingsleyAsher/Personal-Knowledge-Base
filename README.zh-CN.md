@@ -6,10 +6,10 @@
 
 | 产品 | 当前源码版本 | 入口与运行方式 |
 |---|---|---|
-| 知识库客户端 | **1.0.0** | Windows x64 独立应用，多栏阅读编辑与文件管理 |
-| DSH 知识库插件 | **2.4.0** | 在 DeepSeek Harness 中使用工具、知识工作台与模型任务 |
+| 知识库客户端 | **1.0.1** | Windows x64 独立应用，多栏阅读编辑与文件管理 |
+| DSH 知识库插件 | **2.4.1** | 在 DeepSeek Harness 中使用工具、知识工作台与模型任务 |
 
-源码版本不代表对应安装包已经公开发布。**当前已公开的插件安装包仍以 [发布清单](release-manifest.json) 为准（2.3.1）；客户端 1.0.0 与插件 2.4.0 已有本地交付包，尚未随本次文档更新发布到 GitHub Releases。**
+当前发布入口：[客户端 1.0.1](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.1) · [插件 2.4.1](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.1)。请按产品选择 Windows 安装包或 TGZ，摘要与构建号以各自清单为准。
 
 ## 一个知识库，两个入口
 
@@ -23,9 +23,9 @@
 
 所有后续源码、问题反馈和发布统一放在本仓库。访问 [Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases)，按产品名称选择文件：客户端使用 Windows Setup.exe，插件使用 TGZ。不要将插件包当作客户端安装程序。
 
-已发布插件 2.3.1：[GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.3.1) · [直接安装包](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.3.1/local-dsh-knowledge-base-2.3.1.tgz)。浏览器扩展及地区镜像见 [插件使用说明](WORKBENCH.md) 和 [镜像说明](MIRROR-RELEASES.md)。镜像可能延迟，以实际校验结果为准。
+已发布插件 2.4.1：[GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.1) · [直接安装包](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.1/local-dsh-knowledge-base-2.4.1.tgz)。浏览器扩展及地区镜像见 [插件使用说明](WORKBENCH.md) 和 [镜像说明](MIRROR-RELEASES.md)。镜像可能延迟，以实际校验结果为准。
 
-客户端现有安装器保留纸页绿界面与动画，要求空的应用安装目录；卸载保留个人资料与设置。客户端在线更新、自动发布及覆盖升级尚未完成。插件继续使用既有插件更新清单与安装流程。
+客户端现有安装器保留纸页绿界面与动画，要求空的应用安装目录；卸载保留个人资料与设置。客户端已接入在线检查与校验下载；自动覆盖安装和自动激活尚未完成。插件继续使用既有插件更新清单与安装流程。
 
 ## 文档导航
 

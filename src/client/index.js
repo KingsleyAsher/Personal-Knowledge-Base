@@ -4256,11 +4256,12 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     // END GENERATED TODO LIFECYCLE UI
 
-    const RELEASE_VERSION = '2.4.0'
+    const RELEASE_VERSION = '2.4.1'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.
     const RELEASE_NOTICES = [
+      { version: '2.4.1', items: ['同步两端版本规则；所选通道内跨大版本与预览版均自动更新，保留包校验与安装状态保护。', '客户端国内更新源与两端独立 Release 交付。'] },
       { version: '2.4.0', items: ['整合知识库插件与独立客户端的共享服务、统一写入和实时连接。', '加入可选的记忆插件联动与记忆管理入口；未连接时保留独立知识库功能。', '保留收件箱整理、双层索引、关系网络与现有插件入口。'] },
       { version: '2.3.1', items: ['收件箱整理只发送一句指定任务，不再拼接流程说明。', 'OCR / ASR 任务记录改为静默刷新，保持列表位置和展开状态。', '修复知识库命令工具漏传显示说明时的参数错误。', '任务计划增加逐步更新与结束前核对；会话停止后未确认步骤不再持续转圈。'] },
       { version: '2.3.0', items: ['新增收件箱文件选择、拖入、模型选择与一键整理归档。', '资料可逐份或批量排除索引，排除和恢复同步处理全文、向量与关系链条。', '统一桌面工作台和设置界面，修正窄弹窗布局并增加备份目录选择。', '修正知识库 Agent 的 OCR / ASR 授权和流程来源路径判断，提交记录支持查看详情。'] },

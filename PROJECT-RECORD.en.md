@@ -3,9 +3,9 @@
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 2.4.0 -->
+<!-- project-record-version: 2.4.1 -->
 
-**Source covered: plugin 2.4.0 / client 1.0.0 · Updated: 2026-11-04 · Maintenance: review this record alongside the source with every release.**
+**Source covered: plugin 2.4.1 / client 1.0.1 · Updated: 2026-11-04 · Maintenance: review this record alongside the source with every release.**
 
 This long-term record is for users, maintainers, and future contributors. It explains why the product is built this way, what it can currently do, how its features fit together, where data is stored, and what may come next. “Implemented” refers to source code in this repository. Roadmap items are future directions, not features already delivered. The installed version and build ID must be checked in the client and the corresponding release manifest.
 
@@ -404,3 +404,5 @@ In-client download entry: **Knowledge Base → Inbox → Browser Extension Guide
 ## 2026-11-04: shared versions and fully automatic update policy
 
 Shared naming, ordering and packaging validation. Plugin major/preview candidates are automatically eligible, retaining channel preference, payload checks and busy/uncertain-operation guards. No update-confirmation modal; post-install notes retain their existing rules. The client online executor remains unfinished. Source policy change only; no new binary publication.
+
+2026-11-04 正式发布版本调整 / Publication versions: 插件 plugin 2.4.1，客户端 client 1.0.1。

@@ -1,6 +1,6 @@
 {
   "name": "@local/dsh-knowledge-base",
-  "version": "2.4.0",
+  "version": "2.4.1",
   "description": "个人知识工作台：可控隐私、首次设置、目录地图、快速收集、阅读摘录、引用问答与按需备份。",
   "icon": "./src/client/capture-icon.svg",
   "type": "module",
@@ -41,7 +41,17 @@
     "packages/kb-core",
     "packages/kb-contracts",
     "packages/kb-service",
-    "runtime/python"
+    "runtime/python",
+    "docs",
+    "ARCHITECTURE.md",
+    "ARCHITECTURE.en.md",
+    "DEVELOPMENT.md",
+    "DEVELOPMENT.en.md",
+    "MONOREPO.md",
+    "PRIVACY.md",
+    "SECURITY.md",
+    "THIRD-PARTY-NOTICES.md",
+    "CONTRIBUTING.md"
   ],
   "dsh": {
     "bundle": {

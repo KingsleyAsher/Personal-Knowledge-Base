@@ -6,10 +6,10 @@
 
 | Product | Source version | Runtime |
 |---|---|---|
-| Desktop client | **1.0.0** | Windows x64 file workspace with multiple preview/editing panes |
-| DSH plugin | **2.4.0** | DeepSeek Harness tools, knowledge workbench and model tasks |
+| Desktop client | **1.0.1** | Windows x64 file workspace with multiple preview/editing panes |
+| DSH plugin | **2.4.1** | DeepSeek Harness tools, knowledge workbench and model tasks |
 
-Source versions are distinct from published artifacts. The [public plugin manifest](release-manifest.json) still describes **2.3.1**. Client 1.0.0 and plugin 2.4.0 have local delivery packages; this documentation update does not publish them as GitHub Release assets.
+Release entries: [client 1.0.1](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.1) · [plugin 2.4.1](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.1). Choose the correct installer/TGZ and verify its product-specific manifest and digest.
 
 ## One library, two entry points
 
@@ -23,9 +23,9 @@ Source versions are distinct from published artifacts. The [public plugin manife
 
 Source, issues and future releases are maintained here. In [Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases), choose the correct product: Windows Setup.exe for the client, TGZ for the plugin.
 
-Published plugin 2.3.1: [Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.3.1) · [TGZ](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.3.1/local-dsh-knowledge-base-2.3.1.tgz). See [plugin usage](WORKBENCH.en.md) and [mirror information](MIRROR-RELEASES.md) for extensions and regional sources. Mirror availability can vary.
+Published plugin 2.4.1: [Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.1) · [TGZ](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.1/local-dsh-knowledge-base-2.4.1.tgz). See [plugin usage](WORKBENCH.en.md) and [mirror information](MIRROR-RELEASES.md) for extensions and regional sources. Mirror availability can vary.
 
-The existing client installer retains its paper-green interface and animations, requires an empty application directory and preserves personal data on uninstall. Client online updates, automated publishing and in-place upgrades are unfinished. The plugin keeps its existing update manifests and installation flow.
+The existing client installer retains its paper-green interface and animations, requires an empty application directory and preserves personal data on uninstall. Client online checks and verified downloads are implemented; automatic in-place installation and activation remain unfinished. The plugin keeps its existing update manifests and installation flow.
 
 ## Documentation
 

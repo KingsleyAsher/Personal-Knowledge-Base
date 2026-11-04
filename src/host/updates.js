@@ -142,7 +142,7 @@ export function createUpdateChecker({ currentVersion, fetch: fetchFn = globalThi
 /** Preflight the archive before handing it to the host package manager. */
 export function verifyUpdateArchive(raw, release) {
   if (raw.length !== release.bytes || createHash('sha256').update(raw).digest('hex') !== release.sha256) throw Error('安装包摘要或大小不符，请重新检查更新')
-  const tar = gunzipSync(raw, { maxOutputLength: 32 * 1024 * 1024 })
+  const tar = gunzipSync(raw, { maxOutputLength: 128 * 1024 * 1024 })
   let info = null
   const paths = new Set()
   for (let offset = 0; offset + 512 <= tar.length;) {

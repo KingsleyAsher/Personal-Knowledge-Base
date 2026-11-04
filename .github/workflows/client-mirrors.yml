@@ -1,0 +1,37 @@
+name: Publish client mirrors
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Client release tag
+        required: true
+        default: client-v1.0.1
+permissions:
+  contents: read
+jobs:
+  mirror:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'client-v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        platform: [gitee, gitcode]
+    env:
+      GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+      GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
+      GH_TOKEN: ${{ github.token }}
+      RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Download the exact published client release
+        run: |
+          case "$RELEASE_TAG" in client-v*) ;; *) exit 1 ;; esac
+          gh release download "$RELEASE_TAG" --dir .release-work/client --pattern '*Setup.exe' --pattern 'client-update.json' --pattern 'client-SHA256SUMS'
+      - name: Publish and verify native mirror attachments
+        run: python tools/publish-client-mirrors.py "${{ matrix.platform }}" .release-work/client

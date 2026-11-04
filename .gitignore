@@ -41,3 +41,5 @@ installer-design-b/installer/*.asar
 installer-design-b/installer/*.ico
 .env*
 *.dpapi.json
+
+.release-work/

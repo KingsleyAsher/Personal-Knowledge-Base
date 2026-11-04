@@ -6,7 +6,7 @@
 
 A local-first Windows knowledge workspace for reading, editing and connecting your files. Use it independently, or connect it to DeepSeek Harness (DSH) and the [Personal Knowledge Base plugin](https://github.com/KingsleyAsher/Personal-Knowledge-Base).
 
-**Client 1.0.0 · Paired plugin 2.4.0 · Windows x64**
+**Client 1.0.1 · Paired plugin 2.4.1 · Windows x64**
 
 ## Your files, in one workspace
 
@@ -42,7 +42,7 @@ See [build instructions](DEVELOPMENT.en.md). The repository includes the Electro
 
 ## Verification boundaries
 
-The 1.0.0 local delivery passed a production build, version/payload checks and an installer-UI smoke check. Theme work was checked with synthetic libraries across seven palettes in both modes. These checks do not establish full regression coverage, model quality, cloud availability or compatibility with every DSH release. Tests must not use personal libraries or paid model calls by default.
+The 1.0.1 local delivery passed a production build, version/payload checks and an installer-UI smoke check. Theme work was checked with synthetic libraries across seven palettes in both modes. These checks do not establish full regression coverage, model quality, cloud availability or compatibility with every DSH release. Tests must not use personal libraries or paid model calls by default.
 
 MIT licensed; bundled third-party components retain their own licenses. See [third-party notices](THIRD-PARTY-NOTICES.md).
 
