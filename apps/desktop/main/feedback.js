@@ -15,7 +15,7 @@ export function createFeedbackClient({endpoint,version,buildId,fetchFn=fetch}){
   const payload=feedbackPayload(input,version,buildId),key=JSON.stringify(payload),prior=flights.get(input.requestId);
   if(prior){if(prior.key!==key)throw Error('同一提交编号不能改变内容');return prior.promise;}
   const promise=(async()=>{
-   let res;try{res=await fetchFn(url,{method:'POST',redirect:'error',signal:AbortSignal.timeout(25000),headers:{'content-type':'application/json',accept:'application/json'},body:JSON.stringify(payload)});}catch{throw Object.assign(Error('网络中断，提交结果尚未确认。请保留当前内容，点击重试以查询同一提交。'),{code:'RESULT_UNKNOWN'});}
+   let res;try{res=await fetchFn(url,{method:'POST',redirect:'error',signal:AbortSignal.timeout(25000),headers:{'content-type':'application/json',accept:'application/json','user-agent':'KnowledgeWorkbench-Feedback/'+version},body:JSON.stringify(payload)});}catch{throw Object.assign(Error('网络中断，提交结果尚未确认。请保留当前内容，点击重试以查询同一提交。'),{code:'RESULT_UNKNOWN'});}
    if(res.status===202)throw Object.assign(Error('提交结果正在确认，请稍后重试查询；不会重复创建 Issue。'),{code:'RESULT_UNKNOWN'});
    if(!res.ok)throw Object.assign(Error(res.status===429?'反馈提交过于频繁，请稍后再试。':res.status===400?'反馈内容无效，请检查标题、正文和公开确认。':res.status>=500?'服务暂时异常，提交结果尚未确认。请保留内容，重试查询同一提交。':'反馈未能提交，请保留内容稍后重试。'),{code:res.status>=500?'RESULT_UNKNOWN':'FEEDBACK_UNAVAILABLE'});
    try{return issueResult(await res.json());}catch{throw Object.assign(Error('提交返回结果异常，请保留内容并重试确认。'),{code:'RESULT_UNKNOWN'});}

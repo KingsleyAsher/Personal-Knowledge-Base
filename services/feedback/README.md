@@ -1,6 +1,6 @@
-# 匿名反馈服务（待部署）
+# 匿名反馈服务
 
-客户端通过 HTTPS POST `/feedback` 向固定仓库 `KingsleyAsher/Personal-Knowledge-Base` 创建公开 Issue。用户不需要 GitHub 账号；Issue 作者是服务端令牌所属账号。源码完成不代表服务已部署或公网可用。
+客户端通过 HTTPS POST `/feedback` 向固定仓库 `KingsleyAsher/Personal-Knowledge-Base` 创建公开 Issue。用户不需要 GitHub 账号；Issue 作者是服务端令牌所属账号。反馈后端已部署到 `https://knowledge-workbench-feedback.knowledge-workbench-kingsleyasher.workers.dev/feedback`。2026-11-05 已完成真实后端及桌面客户端验证，见 [测试 Issue #46](https://github.com/KingsleyAsher/Personal-Knowledge-Base/issues/46) 与 [#47](https://github.com/KingsleyAsher/Personal-Knowledge-Base/issues/47)，重复提交均返回原 Issue。客户端 1.0.3 为本地交付，公开 Release 尚未更新。
 
 ## 部署准备
 
@@ -43,3 +43,7 @@ npx wrangler deploy
 接口测试使用 SQLite 适配 D1，并模拟 GitHub 响应。它们不证明 Cloudflare 线上绑定、凭据权限、真实 GitHub 创建或国内网络可用性。
 
 参考：[GitHub 创建 Issue](https://docs.github.com/en/rest/issues/issues#create-an-issue)、[D1 prepared statements](https://developers.cloudflare.com/d1/worker-api/prepared-statements/)、[Workers 定价](https://developers.cloudflare.com/workers/platform/pricing/)、[D1 定价](https://developers.cloudflare.com/d1/platform/pricing/)。
+
+## 运行时约束
+
+Workers 出站请求使用 `redirect: manual`，不自动跟随跳转，也不使用该运行时不支持的 `redirect: error`。认证头不会被转发到其他站点。客户端使用明确的产品 User-Agent；服务端凭据为 Secret 类型。线上成功验证不代表所有地区和网络都可达。
