@@ -20,8 +20,19 @@ export function Modal({title,children,onClose,wide=false,suspended=false,instant
 }
 export function Field({label,value,onChange,placeholder}:{label:string;value:string;onChange:(v:string)=>void;placeholder?:string}){return <label className="field"><span>{label}</span><input value={value} onChange={e=>onChange(e.target.value)} placeholder={placeholder}/></label>;}
 export function Banner({children,error=false}:{children:ReactNode;error?:boolean}){return <div role={error?'alert':'status'} className={'banner '+(error?'error':'')}>{children}</div>;}
-export function Resizer({label,value,onChange,min,max,direction=1,scale=1}:{label:string;value:number;onChange:(n:number)=>void;min:number;max:number;direction?:number;scale?:number}){
- return <div className="resizer" role="separator" title={label} aria-label={label} aria-valuenow={value} aria-valuemin={min} aria-valuemax={max} tabIndex={0} aria-orientation="vertical" onKeyDown={e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();onChange(Math.max(min,Math.min(max,value+(e.key==='ArrowRight'?10:-10)*direction*scale)));}}} onPointerDown={e=>{const x=e.clientX,start=value;e.currentTarget.setPointerCapture(e.pointerId);const el=e.currentTarget;const move=(ev:PointerEvent)=>onChange(Math.max(min,Math.min(max,start+(ev.clientX-x)*direction*scale)));const up=()=>{el.removeEventListener('pointermove',move);el.removeEventListener('pointerup',up);el.removeEventListener('pointercancel',up);};el.addEventListener('pointermove',move);el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);}}/>;
+export function Resizer({label,value,onChange,onPreview,min,max,direction=1,scale=1}:{label:string;value:number;onChange:(n:number)=>void;onPreview:(n:number,element:HTMLElement)=>void;min:number;max:number;direction?:number;scale?:number}){
+ const cleanup=useRef<(()=>void)|undefined>(undefined);
+ useEffect(()=>()=>cleanup.current?.(),[]);
+ return <div className="resizer" role="separator" title={label} aria-label={label} aria-valuenow={value} aria-valuemin={min} aria-valuemax={max} tabIndex={0} aria-orientation="vertical" onKeyDown={e=>{if(e.key==='ArrowLeft'||e.key==='ArrowRight'){e.preventDefault();onChange(Math.max(min,Math.min(max,value+(e.key==='ArrowRight'?10:-10)*direction*scale)));}}} onPointerDown={e=>{
+  if(e.button!==0||cleanup.current)return;e.preventDefault();
+  const x=e.clientX,start=value,el=e.currentTarget,id=e.pointerId;let next=start,frame=0,finished=false;
+  const paint=()=>{frame=0;if(el.isConnected)onPreview(next,el);el.setAttribute('aria-valuenow',String(next));};
+  const move=(ev:PointerEvent)=>{if(ev.pointerId!==id)return;next=Math.max(min,Math.min(max,start+(ev.clientX-x)*direction*scale));if(!frame)frame=requestAnimationFrame(paint);};
+  const finish=(commit:boolean)=>{if(finished)return;finished=true;cancelAnimationFrame(frame);el.removeEventListener('pointermove',move);el.removeEventListener('pointerup',up);el.removeEventListener('pointercancel',cancel);el.removeEventListener('lostpointercapture',lost);window.removeEventListener('blur',cancel);cleanup.current=undefined;if(el.hasPointerCapture(id))el.releasePointerCapture(id);if(!commit)next=start;paint();delete document.documentElement.dataset.resizing;if(commit&&next!==start)onChange(next);window.dispatchEvent(new Event('kb-resize-end'));};
+  const up=(ev:PointerEvent)=>{if(ev.pointerId===id){move(ev);finish(true);}},cancel=()=>finish(false),lost=()=>finish(true);
+  el.setPointerCapture(id);document.documentElement.dataset.resizing='true';cleanup.current=cancel;
+  el.addEventListener('pointermove',move);el.addEventListener('pointerup',up);el.addEventListener('pointercancel',cancel);el.addEventListener('lostpointercapture',lost);window.addEventListener('blur',cancel);
+ }}/>;
 }
 export function NoticeEmpty({title,description,children}:{title:string;description?:string;children?:ReactNode}){return <div className="empty"><FileText size={34}/><h2>{title}</h2>{description?<p>{description}</p>:null}{children}</div>;}
 

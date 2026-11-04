@@ -19,7 +19,10 @@ const dataDir=desktopDataPath({override:process.env.KB_DESKTOP_DATA,packaged:app
 app.setName('知识工作台候选版');app.setPath('userData',path.join(dataDir,'client'));app.setAppUserModelId('local.kb.desktop.parity.candidate');
 protocol.registerSchemesAsPrivileged([{scheme:'kb-media',privileges:{secure:true,standard:true,supportFetchAPI:true,stream:true,corsEnabled:true}}]);
 let atomic,readJson,hash,safePath,ipcQueue,ledgerQueue;
-let window,manager,allowClose=false,heartbeat,bootError;
+let window,manager,allowClose=false,heartbeat,bootError,backendReady=Promise.resolve();
+const primaryInstance=app.requestSingleInstanceLock();
+if(!primaryInstance)app.quit();
+app.on('second-instance',()=>{if(window&&!window.isDestroyed()){if(window.isMinimized())window.restore();window.show();window.focus();}});
 const resources=new Map();
 const send=event=>{if(window&&!window.isDestroyed())window.webContents.send('kb:event',event);};
 const appUrl=pathToFileURL(path.join(appDir,'dist/index.html')).href;
@@ -39,7 +42,7 @@ async function writeCall(method,args,requestId=randomUUID()){
 function register(name,fn){
  ipcMain.handle('kb:'+name,async(event,args={})=>{
   if(event.sender!==window?.webContents||event.senderFrame!==window.webContents.mainFrame||!event.senderFrame.url.startsWith(appUrl))return {ok:false,error:{code:'FORBIDDEN',message:'拒绝非应用主页面请求'}};
-  try{checkInput(args);return {ok:true,value:await (['search','knowledge','providers','dsh','health','appInfo','clientUpdates'].includes(name)?fn(args):ipcQueue(()=>fn(args)))};}catch(e){return {ok:false,error:{code:e.code??'BAD_REQUEST',message:String(e.message).slice(0,600),requestId:e.requestId}};}
+  try{checkInput(args);if(!['window','pointer','preferences','appInfo','clientUpdates','copyFeedback'].includes(name))await backendReady;return {ok:true,value:await (['search','knowledge','providers','dsh','health','appInfo','clientUpdates','window','pointer'].includes(name)?fn(args):ipcQueue(()=>fn(args)))};}catch(e){return {ok:false,error:{code:e.code??'BAD_REQUEST',message:String(e.message).slice(0,600),requestId:e.requestId}};}
  });
 }
 const clientKey=()=>manager.status().library?.instanceId??'none';
@@ -52,12 +55,8 @@ async function initialize(){
  const appManifest=app.isPackaged?await readJson(path.join(path.dirname(process.execPath),'BUILD-MANIFEST.json'),{}):{};clientUpdater=createClientUpdater({version:appManifest.version??app.getVersion(),directory:path.join(dataDir,'client-updates')});
  const preferences=await localRead('preferences',{theme:'system'});nativeTheme.themeSource=['light','dark','system'].includes(preferences.theme)?preferences.theme:'system';appearancePalette=normalizePalette(preferences.palette);
  manager=await createManager({dataDir,backendRoot,assetDir:path.join(appDir,'fixture-assets'),python,node:process.execPath,send:event=>{if(event.type==='connection.changed'&&event.state!=='ready')for(const r of resources.values())r.refreshAt=0;send(event);}});
- try{await manager.initialize();}catch(e){bootError={code:e.code??'HOST_UNAVAILABLE',message:e.message};}
 }
 function wire(){
- // A reload must receive the current theme, including a choice made since the
- // BrowserWindow was created. This synchronous reply reads memory only.
- ipcMain.on('kb:startup-theme',event=>{event.returnValue=event.sender===window?.webContents&&event.senderFrame===window.webContents.mainFrame&&event.senderFrame.url.startsWith(appUrl)?{theme:nativeTheme.shouldUseDarkColors?'dark':'light',preference:nativeTheme.themeSource,palette:appearancePalette}:null;});
  function resourcePreview(p){if(p.resourceHandle){const token=randomUUID();resources.set(token,{handle:p.resourceHandle,size:p.file.size,mime:p.file.mime,path:p.file.path,revision:p.file.revision,originalKey:p.originalKey,trashId:p.trashId,trashPath:p.trashPath,library:clientKey(),refreshAt:Date.now()+14*60000});p.resourceUrl='kb-media://asset/'+token;}return p;}
  register('clientUpdates',async a=>a.action==='download'?clientUpdater.download():clientUpdater.check({force:true}));
  register('init',async()=>({connection:manager.status(),error:bootError,preferences:await localRead('preferences',{theme:'system',restoreTabs:true,keepDrafts:true}),workspace:(await localRead('workspaces',{}))[clientKey()],drafts:(await localRead('drafts',{}))[clientKey()]??{},pending:await localRead('pending',{})}));
@@ -175,13 +174,16 @@ protocol.handle('kb-media',async request=>{
   return new Response(stream,{status:m?206:200,headers:{'Content-Type':r.mime,'Content-Length':String(end-begin+1),'Accept-Ranges':'bytes',...(m?{'Content-Range':'bytes '+begin+'-'+end+'/'+r.size}:{}),'Access-Control-Allow-Origin':'*','Cache-Control':'no-store'}});
  }catch{return new Response('Unavailable',{status:403});}
 });
-window=new BrowserWindow({width:1440,height:1024,minWidth:1000,minHeight:680,show:false,frame:false,title:'知识工作台 · 候选版',backgroundColor:windowBackground(),webPreferences:{preload:path.join(appDir,'main/preload.cjs'),additionalArguments:['--kb-startup-theme='+(nativeTheme.shouldUseDarkColors?'dark':'light'),'--kb-startup-preference='+nativeTheme.themeSource],nodeIntegration:false,contextIsolation:true,sandbox:true,spellcheck:false}});
+window=new BrowserWindow({width:1440,height:1024,minWidth:1000,minHeight:680,show:false,frame:false,title:'知识工作台 · 候选版',backgroundColor:windowBackground(),webPreferences:{preload:path.join(appDir,'main/preload.cjs'),additionalArguments:['--kb-startup-theme='+(nativeTheme.shouldUseDarkColors?'dark':'light'),'--kb-startup-preference='+nativeTheme.themeSource,'--kb-startup-palette='+appearancePalette],nodeIntegration:false,contextIsolation:true,sandbox:true,spellcheck:false}});
 // Do not expose an unpainted renderer. The first document already carries the
 // saved theme and a small startup shell before the application bundle runs.
 window.once('ready-to-show',()=>{if(process.env.KB_DESKTOP_HIDDEN!=='1'&&!window.isDestroyed())window.show();});
 nativeTheme.on('updated',()=>{if(window&&!window.isDestroyed())window.setBackgroundColor(windowBackground());});
 window.setMenu(null);
 wire();
+ // Render the shell while the first library/service is prepared. Window controls
+ // remain independent of both the startup promise and the service IPC queue.
+ backendReady=manager.initialize().catch(e=>{bootError={code:e.code??'HOST_UNAVAILABLE',message:e.message};});
 if(app.isPackaged&&process.env.KB_DESKTOP_DISABLE_UPDATES!=='1'){const check=()=>void clientUpdater.check().then(s=>s.ok&&s.updateAvailable?clientUpdater.download():null).catch(()=>{});setTimeout(check,15000).unref();setInterval(check,6*60*60*1000).unref();}
 window.webContents.setWindowOpenHandler(()=>({action:'deny'}));
 window.webContents.on('will-navigate',(event,url)=>{if(!url.startsWith(appUrl))event.preventDefault();});
@@ -191,5 +193,5 @@ await window.loadURL(appUrl);
 heartbeat=setInterval(()=>{if(manager.status().state==='ready')manager.call('service.health').catch(()=>{});},5000);
 app.on('window-all-closed',()=>{clearInterval(heartbeat);void manager.close();app.quit();});
 }
-app.whenReady().then(launch).catch(error=>{console.error(error);dialog.showErrorBox('候选客户端启动失败',String(error.message));app.exit(1);});
+if(primaryInstance)app.whenReady().then(launch).catch(error=>{console.error(error);dialog.showErrorBox('候选客户端启动失败',String(error.message));app.exit(1);});
 

@@ -145,6 +145,20 @@ The stable installer, browser-extension package, showcase, and release digest no
 
 This release promoted verified 2.1 preview features to stable and retained 2.0.3's automatic stable updates within the same major version.
 
+
+## Client 1.0.2 · 2026-11-04
+
+Isolate the installer launch environment, remove synchronous first-paint IPC, prepare the library service in the background, focus the existing window on repeated launches, and recover retries after an initial connection failure.
+
+Splitters preview widths once per frame and commit on release. PDF, image and floating-window size observers settle before expensive rendering. Cancellation, blur and splitter unmount release drag state.
+
+Feedback copies entered text plus version/build information to the system clipboard. No feedback server, upload endpoint or automatic Issue creation is connected; submit copied feedback manually to repository Issues.
+
+Validation used isolated sample libraries: production build, 22 focused tests, nine UI checks, install-to-first-launch, failed-connection recovery and final installed-build startup/unmount checks. The old intermittent white screen was not consistently reproduced; these checks do not establish a unique root cause or real-library performance. No private data or live-model evaluation is included.
+
+Update checks and verified downloads are available; automatic in-place installation and activation remain unfinished. Plugin version stays 2.4.1.
+
+
 ## Stable release record
 
 - GitHub Release: [`v2.1.0`](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.1.0), published. The original release was merged into `main` by PR [#25](https://github.com/KingsleyAsher/Personal-Knowledge-Base/pull/25), commit `bf41c52c088495596c619af30b38a4a4bc43a3e1`.
