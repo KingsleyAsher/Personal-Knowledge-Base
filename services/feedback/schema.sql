@@ -1,0 +1,9 @@
+CREATE TABLE IF NOT EXISTS submissions (
+ id TEXT PRIMARY KEY,
+ fingerprint TEXT NOT NULL,
+ state TEXT NOT NULL,
+ created INTEGER NOT NULL,
+ issue_number INTEGER,
+ issue_url TEXT
+);
+CREATE TABLE IF NOT EXISTS quotas (key TEXT PRIMARY KEY, count INTEGER NOT NULL, expires INTEGER NOT NULL);
