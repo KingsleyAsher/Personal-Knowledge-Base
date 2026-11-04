@@ -1,0 +1,42 @@
+import {packager} from '@electron/packager';import extract from 'extract-zip';
+import path from 'node:path';import {fileURLToPath} from 'node:url';import {mkdir,readFile,writeFile,cp,copyFile,readdir,lstat} from 'node:fs/promises';import {createHash} from 'node:crypto';import {execFileSync} from 'node:child_process';
+const appDir=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),repo=path.resolve(appDir,'../..'),out=path.join(appDir,'out');
+const releaseVersion=JSON.parse(await readFile(path.join(appDir,'package.json'),'utf8')).version;
+const sha=b=>createHash('sha256').update(b).digest('hex');
+const pythonName='python-3.14.10-embed-amd64.zip',pythonSha='90905e64a840557d8c1bc4f5b74db3d7ee85e3ffb217611cac1c7813acea4159';
+const cache=path.join(appDir,'.build-cache'),electronName='electron-v45.2.1-win32-x64.zip';
+await mkdir(cache,{recursive:true});
+const checksums=JSON.parse(await readFile(path.join(appDir,'node_modules/electron/checksums.json'),'utf8'));
+if(sha(await readFile(path.join(cache,'electron.zip')))!==checksums[electronName])throw Error('Electron archive checksum mismatch');
+if(sha(await readFile(path.join(cache,pythonName)))!==pythonSha)throw Error('Python archive checksum mismatch against python.org release');
+await copyFile(path.join(cache,'electron.zip'),path.join(cache,electronName));
+const rows=[];async function inventory(dir,prefix){for(const e of (await readdir(dir,{withFileTypes:true})).sort((a,b)=>a.name.localeCompare(b.name))){if(['node_modules','.runtime','.test-runs','out','__pycache__'].includes(e.name))continue;const p=path.join(dir,e.name),key=prefix+'/'+e.name;if(e.isDirectory())await inventory(p,key);else if(e.isFile())rows.push({path:key,sha256:sha(await readFile(p))});}}
+for(const part of ['main','dist','fixture-assets'])await inventory(path.join(appDir,part),'app/'+part);
+for(const name of ['kb-core','kb-contracts','kb-service'])await inventory(path.join(repo,'packages',name),'packages/'+name);
+const nativePlugin=JSON.parse(await readFile(path.join(repo,'development/desktop-parity/artifacts/plugin/latest-plugin.json'),'utf8'));
+if(sha(await readFile(nativePlugin.path))!==nativePlugin.sha256)throw Error('Paired native backend plugin checksum mismatch');
+rows.push({path:'native-backend/plugin.tgz',sha256:nativePlugin.sha256});
+await inventory(path.join(repo,'browser-extension'),'browser-extension');for(const name of ['kb-pdf-pages.py','kb-local-model.py'])rows.push({path:'tools/'+name,sha256:sha(await readFile(path.join(repo,'tools',name)))});
+rows.push({path:'app/package.json',sha256:sha(await readFile(path.join(appDir,'package.json')))});
+const buildId=sha(JSON.stringify(rows)).slice(0,16),stage=path.join(out,'stage-'+buildId);await mkdir(stage,{recursive:true});
+for(const part of ['main','dist','fixture-assets'])await cp(path.join(appDir,part),path.join(stage,part),{recursive:true,filter:p=>!p.includes('__pycache__')&&!p.endsWith('.pyc')});
+await writeFile(path.join(stage,'package.json'),JSON.stringify({name:'kb-desktop-candidate',productName:'知识工作台候选版',version:releaseVersion,type:'module',main:'main/index.js',author:'Local candidate',license:'MIT'},null,2));
+let target=path.join(out,buildId,'KnowledgeWorkbench-Candidate-win32-x64');
+if(!await lstat(target).catch(()=>null)) [target]=await packager({dir:stage,out:path.join(out,buildId),name:'KnowledgeWorkbench-Candidate',executableName:'KnowledgeWorkbench-Candidate',platform:'win32',arch:'x64',electronVersion:'45.2.1',electronZipDir:cache,asar:true,overwrite:false,prune:true,appBundleId:'local.kb.desktop.parity.candidate'});
+const resources=path.join(target,'resources');
+await cp(path.join(appDir,'main/real-backend'),path.join(resources,'native-backend'),{recursive:true,filter:p=>!p.includes('__pycache__')&&!p.endsWith('.pyc')});
+await cp(path.join(appDir,'main/real-library'),path.join(resources,'real-library'),{recursive:true,filter:p=>!p.includes('__pycache__')&&!p.endsWith('.pyc')});
+await copyFile(nativePlugin.path,path.join(resources,'native-backend/plugin.tgz'));
+await writeFile(path.join(resources,'native-backend/plugin-manifest.json'),JSON.stringify({sha256:nativePlugin.sha256,channel:nativePlugin.channel},null,2));
+for(const name of ['kb-core','kb-contracts','kb-service'])await cp(path.join(repo,'packages',name),path.join(resources,'kb-runtime/packages',name),{recursive:true,filter:p=>!p.includes('__pycache__')&&!p.endsWith('.pyc')});
+await mkdir(path.join(resources,'kb-runtime/tools'),{recursive:true});for(const name of ['kb-pdf-pages.py','kb-local-model.py'])await copyFile(path.join(repo,'tools',name),path.join(resources,'kb-runtime/tools',name));await cp(path.join(repo,'browser-extension'),path.join(resources,'kb-runtime/browser-extension'),{recursive:true});
+// Content-addressed targets already contain this pinned runtime. Repacking
+// launchers/docs must not overwrite Python modules loaded by a shared service.
+if(!await lstat(path.join(resources,'python','python.exe')).catch(()=>null))await extract(path.join(cache,pythonName),{dir:path.join(resources,'python')});
+await cp(path.join(appDir,'node_modules/@fontsource-variable/noto-sans-sc/LICENSE'),path.join(target,'LICENSE-Noto-Sans-SC.txt'));
+const manifest={version:releaseVersion,buildId,channel:releaseVersion.includes('-')?'release-candidate':'stable',createdAt:new Date().toISOString(),platform:'win32-x64',syntheticOnly:false,realLibraryAccess:'explicit installed-build check, stopped-writer handoff, identity-bound grant',electron:{version:'45.2.1',sha256:checksums[electronName]},python:{version:'3.14.10',sha256:pythonSha,source:'https://www.python.org/downloads/release/python-31410/'},files:rows};
+await writeFile(path.join(target,'BUILD-MANIFEST.json'),JSON.stringify(manifest,null,2));
+const zip=process.env.KB_DESKTOP_ZIP==='1'?path.join(out,'KnowledgeWorkbench-'+releaseVersion+'-'+buildId+'-win-x64.zip'):null;
+if(zip)execFileSync('python',['-X','utf8',path.join(appDir,'tools/zip-delivery.py'),target,zip],{stdio:'inherit',windowsHide:true});
+await writeFile(path.join(out,'latest-package.json'),JSON.stringify({version:releaseVersion,buildId,target,executable:path.join(target,'KnowledgeWorkbench-Candidate.exe'),distribution:'portable-folder',...(zip?{zip,zipSha256:sha(await readFile(zip))}:{})},null,2));
+console.log(JSON.stringify({buildId,target,zip}));

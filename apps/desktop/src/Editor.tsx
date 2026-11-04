@@ -1,0 +1,23 @@
+
+import {useEffect,useLayoutEffect,useRef} from 'react';
+import {EditorView} from '@codemirror/view';
+import {Compartment,EditorState} from '@codemirror/state';
+import {basicSetup} from 'codemirror';
+import {HighlightStyle,syntaxHighlighting} from '@codemirror/language';
+import {tags} from '@lezer/highlight';
+const paletteHighlight=syntaxHighlighting(HighlightStyle.define([{tag:tags.keyword,color:'var(--code-keyword)'},{tag:[tags.string,tags.attributeValue],color:'var(--code-string)'},{tag:[tags.number,tags.bool,tags.null],color:'var(--code-number)'},{tag:tags.comment,color:'var(--code-comment)'},{tag:tags.function(tags.variableName),color:'var(--code-function)'},{tag:tags.heading,color:'var(--text)',fontWeight:'bold'},{tag:tags.link,color:'var(--link)'}]));
+import {markdown} from '@codemirror/lang-markdown';
+import {javascript} from '@codemirror/lang-javascript';import {python} from '@codemirror/lang-python';import {json} from '@codemirror/lang-json';import {css} from '@codemirror/lang-css';import {html} from '@codemirror/lang-html';import {xml} from '@codemirror/lang-xml';import {yaml} from '@codemirror/lang-yaml';
+import {useFileZoom} from './PreviewZoom';
+import {openSearchPanel} from '@codemirror/search';
+export default function Editor({value,onChange,path,editable=true}:{value:string;onChange:(v:string)=>void;path:string;editable?:boolean}){
+ const host=useRef<HTMLDivElement>(null),view=useRef<EditorView>(null),callback=useRef(onChange);callback.current=onChange;
+ const editing=useRef(new Compartment()),sizing=useRef(new Compartment()),{scale}=useFileZoom();
+ useLayoutEffect(()=>{if(!host.current)return;const ext=path.split('.').at(-1)?.toLowerCase()??'',lang=['md','markdown','mdx'].includes(ext)?markdown():['js','jsx','mjs','cjs','ts','tsx'].includes(ext)?javascript({typescript:['ts','tsx'].includes(ext),jsx:['jsx','tsx'].includes(ext)}):ext==='py'?python():ext==='json'?json():['css','scss','sass'].includes(ext)?css():['html','htm','vue','svelte'].includes(ext)?html():ext==='xml'?xml():['yaml','yml'].includes(ext)?yaml():[];
+ const ending=value.includes('\r\n')?'\r\n':'\n';const v=new EditorView({parent:host.current,state:EditorState.create({doc:value,extensions:[basicSetup,lang,paletteHighlight,sizing.current.of([]),EditorView.domEventHandlers({contextmenu:(event,view)=>{const selection=view.state.selection.main;if(selection.empty)return false;event.preventDefault();event.stopPropagation();window.dispatchEvent(new CustomEvent('kb-context-selection',{detail:{path,text:view.state.sliceDoc(selection.from,selection.to),x:event.clientX,y:event.clientY}}));return true;}}),EditorView.lineWrapping,editing.current.of([EditorState.readOnly.of(!editable),EditorView.editable.of(editable),EditorView.contentAttributes.of({'aria-readonly':String(!editable)})]),EditorView.updateListener.of(u=>{if(u.docChanged)callback.current(u.state.doc.toString().replace(/\r?\n/g,ending));}),EditorView.contentAttributes.of({'aria-label':/\.(md|markdown|mdx)$/i.test(path)?'Markdown 源码编辑器':'文件内容编辑器'}),EditorView.theme({'&':{height:'100%',backgroundColor:'var(--surface)',color:'var(--text)'},'.cm-content':{fontFamily:'Consolas, "Noto Sans SC Variable", monospace',fontSize:'14px',padding:'18px 10px'},'.cm-gutters':{backgroundColor:'var(--soft)',color:'var(--subtle)',borderRight:'1px solid var(--line)'},'.cm-activeLine,.cm-activeLineGutter':{backgroundColor:'var(--accent-soft)'},'.cm-cursor':{borderLeftColor:'var(--accent)'},'.cm-selectionBackground':{backgroundColor:'var(--accent-soft) !important'},'.cm-scroller':{overflow:'auto'}})]})});view.current=v;v.scrollDOM.dataset.previewContent='code';const find=()=>{if(!host.current?.closest('.document-pane.focused'))return;openSearchPanel(v);v.focus();};window.addEventListener('editor-find',find);return()=>{window.removeEventListener('editor-find',find);v.destroy();view.current=null;};},[path]);
+ useEffect(()=>{const v=view.current;if(v&&v.state.doc.toString()!==value.replace(/\r\n/g,'\n'))v.dispatch({changes:{from:0,to:v.state.doc.length,insert:value}});},[value]);
+ useLayoutEffect(()=>{view.current?.dispatch({effects:editing.current.reconfigure([EditorState.readOnly.of(!editable),EditorView.editable.of(editable),EditorView.contentAttributes.of({'aria-readonly':String(!editable)})])});},[editable]);
+ useLayoutEffect(()=>{const v=view.current;if(!v)return;v.dispatch({effects:sizing.current.reconfigure(EditorView.theme({'.cm-content,.cm-gutters':{fontSize:14*scale+'px',lineHeight:'1.4'}}))});v.requestMeasure();},[scale,path]);
+ return <div ref={host} className="source-editor"/>;
+}
+

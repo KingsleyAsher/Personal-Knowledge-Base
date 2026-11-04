@@ -1,0 +1,11 @@
+import {useEffect,useState} from 'react';import {ArrowLeft,X} from 'lucide-react';import {FileIcon} from './components';import ReadOnlyPreview from './ReadOnlyPreview';import {api,fileName} from './types';import type {Doc,FileInfo,Preview} from './types';
+export default function OperationPreview({file,archived=false,onClose}:{file:any;archived?:boolean;onClose:()=>void}){
+ const [relative,setRelative]=useState(''),[doc,setDoc]=useState<Doc>(),[items,setItems]=useState<any[]>([]),[current,setCurrent]=useState<FileInfo>(),[error,setError]=useState('');
+ useEffect(()=>{let live=true;setDoc(undefined);setCurrent(undefined);setItems([]);setError('');void(async()=>{
+  const path=file.path+(relative?'/'+relative:'');let p:Preview;
+  if(archived){const r=await api('trashPreview',{id:file.id,path:relative});p=r;if(live)setItems(r.items??[]);}
+  else{p=await api<Preview>('preview',{path});if(p.file.type==='directory'){const r=await api('list',{parent:path,offset:0,sort:'name-asc'});if(live)setItems(r.items.map((f:FileInfo)=>({...f,path:f.path.slice(file.path.length+1)})));}}
+  if(live){setCurrent(p.file);setDoc({path:p.file.path,preview:p,text:p.text??'',savedText:p.text??'',revision:p.file.revision,dirty:false,mode:'read'});}
+ })().catch(e=>live&&setError(e.message));return()=>{live=false;};},[file.id,file.path,relative,archived]);
+ return <aside className="operation-preview" role="complementary" aria-label="文件小窗预览"><header><strong>{current?.name??fileName(file.path)}</strong><button aria-label="关闭文件小窗预览" onClick={onClose}><X size={16}/></button></header><div className="operation-preview-body">{relative?<button className="preview-back" onClick={()=>setRelative(relative.split('/').slice(0,-1).join('/'))}><ArrowLeft size={14}/>上一级</button>:null}<p className="preview-source-path">{file.path}{relative?'/'+relative:''}</p>{error?<p role="alert">{error}</p>:!doc?<p>正在读取资料…</p>:current?.type==='directory'?<>{items.length?items.map(f=><button className="result-row" key={f.path} onClick={()=>setRelative(f.path)}><FileIcon file={{type:f.type,path:f.path}}/><span>{f.name}</span></button>):<p className="muted">空文件夹</p>}</>:<ReadOnlyPreview doc={doc}/>}</div><small className="operation-preview-hint">只读预览 · 确认后执行操作</small></aside>;
+}

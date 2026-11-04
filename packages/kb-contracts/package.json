@@ -1,0 +1,17 @@
+{
+  "name": "@local/kb-contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "./index.js",
+  "files": [
+    "index.js",
+    "schema.js",
+    "node.js"
+  ],
+  "exports": {
+    ".": "./index.js",
+    "./schema": "./schema.js",
+    "./node": "./node.js"
+  }
+}

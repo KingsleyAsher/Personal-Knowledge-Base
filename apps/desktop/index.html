@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data: kb-media:; font-src 'self' data:; connect-src 'self' kb-media:; worker-src 'self' blob:; media-src 'self' kb-media: blob:; object-src 'none'; frame-src 'none'; base-uri 'none'; form-action 'none'">
+ <title>知识工作台 · 候选版</title>
+ <style>
+  html,body,#root{margin:0;height:100%;overflow:hidden}html{background:#f5f6f8;color:#1e1e1e;color-scheme:light}body{background:inherit}
+  html[data-theme=dark]{background:#15171b;color:#eceef4;color-scheme:dark}
+  @media(prefers-color-scheme:dark){html:not([data-theme]){background:#15171b;color:#eceef4;color-scheme:dark}}
+  #startup-shell{height:100%;display:grid;place-items:center;font:14px/1.6 system-ui,"Microsoft YaHei UI",sans-serif}
+  #startup-shell .startup-content{text-align:center;padding:24px}#startup-shell svg{display:block;margin:0 auto 14px;color:#8069e8}#startup-shell strong{font-size:18px;font-weight:600}#startup-shell p{margin:8px 0 0;opacity:.65;font-size:12px}
+ </style>
+ <script src="./theme.js"></script>
+</head>
+<body>
+ <div id="root"><div id="startup-shell" role="status" aria-live="polite"><div class="startup-content"><svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 5v16M3 3h5a4 4 0 0 1 4 2 4 4 0 0 1 4-2h5v16h-5a4 4 0 0 0-4 2 4 4 0 0 0-4-2H3z"/></svg><strong>知识工作台</strong><p>正在打开工作区…</p></div></div></div>
+ <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>
