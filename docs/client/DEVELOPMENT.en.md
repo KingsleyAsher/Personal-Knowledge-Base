@@ -1,3 +1,5 @@
+> Unified project: [main README](../../README.md) · [shared architecture](../../ARCHITECTURE.en.md).
+
 # Development and packaging
 
 [中文](DEVELOPMENT.md) · English

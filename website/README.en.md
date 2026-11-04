@@ -1,8 +1,8 @@
-# Personal Knowledge Base 2.1.0 · Product Showcase
+# Personal Knowledge Base · Plugin and Client Showcase
 
 [English](README.en.md) · [简体中文](README.md)
 
-This directory contains the standalone product showcase page for the DSH Personal Knowledge Base 2.1.0 stable release. Open `index.html` directly or preview it with any static HTTP server. No dependencies or build step are required. GitHub Pages deploys changes under `website/**` on the `main` branch.
+This directory contains the unified plugin/client project showcase. Download sections still describe published plugin artifacts, not unpublished source versions. Open `index.html` directly or preview it with any static HTTP server. No dependencies or build step are required. GitHub Pages deploys changes under `website/**` on the `main` branch.
 
 The page introduces the library, relationship graph, reading and excerpts, review, quick capture, managed OCR/ASR, and Trash. It also provides the stable download and setup guide. Case-study content is pre-authored demonstration material; it does not run model inference. Product-concept visualizations are not pixel-identical representations of the plugin UI.
 

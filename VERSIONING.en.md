@@ -1,3 +1,13 @@
+# Unified repository version policy
+
+Client and plugin versions are independent: apps/desktop/package.json is client 1.0.0; root package.json is plugin 2.4.0. Root release-manifest.json and preview-manifest.json remain plugin-only. Existing v2.x tags and download links retain their meanings. Reserve client-v1.x tags and a separate client-update.json for the client; its update path is not implemented yet.
+
+Do not use GitHub's generic latest Release as the authoritative source for both products. Resolve product-specific manifests and payload identity. Publishing a client Release must not replace the plugin's latest designation or trigger plugin mirror publication. Preparing source is distinct from publishing verified binaries.
+
+## Existing plugin version and update rules
+
+The following rules apply to the plugin and retain its historical compatibility.
+
 # Versioning and Update Rules
 
 [English](VERSIONING.en.md) · [简体中文](VERSIONING.md)

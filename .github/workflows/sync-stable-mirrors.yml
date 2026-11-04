@@ -52,7 +52,7 @@ jobs:
     needs: test
     if: >-
       github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'release' && !github.event.release.prerelease && !github.event.release.draft) ||
+      (github.event_name == 'release' && startsWith(github.event.release.tag_name, 'v') && !github.event.release.prerelease && !github.event.release.draft) ||
       (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'push' && github.event.workflow_run.conclusion == 'success')
     runs-on: ubuntu-latest
     timeout-minutes: 45

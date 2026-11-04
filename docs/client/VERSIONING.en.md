@@ -1,3 +1,5 @@
+> Client-specific guide in the unified repository. See the [main README](../../README.md) and [shared release policy](../../VERSIONING.en.md).
+
 # Version and release policy
 
 The client uses x.y.z, currently 1.0.0. The paired plugin is versioned independently at 2.4.0.

@@ -1,3 +1,7 @@
+# Unified repository source · 2026-11-04
+
+Source versions: client 1.0.0 / plugin 2.4.0. Consolidated desktop app, shared core/service, optional memory integration adapters and existing installer source. Both products use this repository for ongoing development. No binary Release is published by this documentation change; the public plugin manifest remains 2.3.1. Historical entries below describe the plugin unless stated otherwise. [Client release notes](docs/client/RELEASE.en.md).
+
 # 2.3.1: inbox requests and task-state fixes (2026-11-03)
 
 - Inbox organization sends exactly “帮我整理并归档收件箱内文件”, without the generic workflow or directory wrapper. Model selection and High reasoning effort remain in effect.

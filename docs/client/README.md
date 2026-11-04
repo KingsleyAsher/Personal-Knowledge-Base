@@ -1,3 +1,5 @@
+> Client-specific guide in the unified repository. See the [main README](../../README.md) and [shared release policy](../../VERSIONING.en.md).
+
 # Personal Knowledge Base Client
 
 [English](README.md) · [简体中文](README.zh-CN.md)

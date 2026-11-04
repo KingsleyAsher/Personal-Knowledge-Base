@@ -1,17 +1,24 @@
-> 2026-11-04: client source is now maintained in this repository, sharing packages with plugin adapters. Source versions: client 1.0.0 / plugin 2.4.0. Existing public artifacts remain governed by their release manifest. See [repository migration](MONOREPO.md) and [client evolution](docs/client/PROJECT-RECORD.en.md).
-
-# Plugin Design and Development Record
+# Personal Knowledge Base · Unified Design and Evolution
 
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 2.3.1 -->
+<!-- project-record-version: 2.4.0 -->
 
-**Implementation covered: 2.3.1 (stable) · Updated: 2026-11-03 · Maintenance: review this record alongside the source with every release.**
+**Source covered: plugin 2.4.0 / client 1.0.0 · Updated: 2026-11-04 · Maintenance: review this record alongside the source with every release.**
 
 This long-term record is for users, maintainers, and future contributors. It explains why the product is built this way, what it can currently do, how its features fit together, where data is stored, and what may come next. “Implemented” refers to source code in this repository. Roadmap items are future directions, not features already delivered. The installed version and build ID must be checked in the client and the corresponding release manifest.
 
 See the [workbench guide](WORKBENCH.en.md) for usage, [release notes](RELEASE.en.md) for changes in each release, and [versioning policy](VERSIONING.en.md) for version comparisons. This record explains the product as a whole; release notes are not an architecture document.
+
+## 2026-11-04: one repository, two products
+
+This repository is the sole maintenance home for the client and plugin. The former separate client repository has been removed. Shared code lives in packages; the desktop app is under apps/desktop. Plugin entry paths stay compatible. Both Git histories were preserved in merge commit 174fc8b.
+
+Client 1.0.0 and plugin 2.4.0 remain independently versioned and installed. The existing plugin public manifest still describes 2.3.1. Source consolidation does not publish binaries or enable automatic updates.
+
+The merged source passed a client production build and 11 focused checks; one installed-DSH-dependent check was skipped. New-source privacy scanning found no pattern matches. This is not a full regression or real-model evaluation. See [client evolution](docs/client/PROJECT-RECORD.en.md), [architecture](ARCHITECTURE.en.md) and [repository rules](MONOREPO.md).
+
 
 ## 2.3.1: inbox requests and honest task progress
 

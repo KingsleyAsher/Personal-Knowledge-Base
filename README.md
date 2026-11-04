@@ -1,74 +1,55 @@
-> **Unified source repository:** client 1.0.0 and plugin 2.4.0 source now live here. The last published plugin release remains defined by the existing release manifest. [Client documentation](docs/client/README.md) · [中文客户端文档](docs/client/README.zh-CN.md) · [Repository structure](MONOREPO.md).
-
-# Personal Knowledge Base for DSH 2.3.1
-
-2.3.1 is a maintenance release. Inbox organization sends only the requested sentence, OCR/ASR task lists refresh without shifting the page, and knowledge-base command calls tolerate a missing display label. Conversation plans receive a bounded end-of-turn reconciliation; stopped sessions leave unfinished steps unconfirmed instead of showing an endless spinner.
+# Personal Knowledge Base · Plugin and Desktop Client
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
-Keep files, ideas, and experience connected as a personal knowledge base you can use over time. The DSH plugin supports importing materials, OCR and ASR, retrieval, and custom workflows while keeping your data and choices under your control.
+**Personal-Knowledge-Base is the single maintained repository for the DSH knowledge-base plugin and standalone desktop client.** They share a core, contracts and library service while retaining independent installations and versions.
 
-## Product and project references
+| Product | Source version | Runtime |
+|---|---|---|
+| Desktop client | **1.0.0** | Windows x64 file workspace with multiple preview/editing panes |
+| DSH plugin | **2.4.0** | DeepSeek Harness tools, knowledge workbench and model tasks |
 
-- [Product design and development record](PROJECT-RECORD.en.md): product goals, capabilities, architecture, implementation, source map, roadmap, and current boundaries. This record is maintained with each release; the package includes a versioned snapshot.
-- [Product showcase](https://kingsleyasher.github.io/Personal-Knowledge-Base/): browse the product concepts, workflows, download, and setup guide. The page supports English and Simplified Chinese.
-- [Workbench guide](WORKBENCH.en.md): capabilities, usage, privacy controls, and recovery boundaries.
-- [Release notes](RELEASE.en.md): shipped changes and current development status.
-- [Versioning policy](VERSIONING.en.md): version formats, update ordering, and update notices.
-- [Retrieval guide](RETRIEVAL.en.md), [parsing and index maintenance](PARSING-PREVIEW.en.md), and [performance records](PERFORMANCE.en.md).
+Source versions are distinct from published artifacts. The [public plugin manifest](release-manifest.json) still describes **2.3.1**. Client 1.0.0 and plugin 2.4.0 have local delivery packages; this documentation update does not publish them as GitHub Release assets.
 
-English reference pages are authored for English readers and paired with their Chinese counterparts. They preserve the same project facts, scope, and evidence boundaries. The development record focuses on stable releases; detailed release notes remain available separately.
+## One library, two entry points
 
-## Current release
+- **Client:** full file tree and path navigation, up to four resizable panes, draggable tabs, Markdown/text/code editing, vertically scrolling selectable PDF, image zoom/pan and limited DOCX/XLSX/CSV editing.
+- **Plugin:** DSH import, retrieval, OCR/ASR, organization workflows, relationships, indexing, backup and existing tool/UI entry points.
+- **Shared modules:** text/vector indexing, exclusions, inbox, relationships, reading/annotations and backup. Authorized shared services coordinate writes; do not manually duplicate index databases.
+- **Connected workspace:** the DSH sidebar provides sessions, Agent presets, model/reasoning controls and streamed replies. Users explicitly attach files or selected text. Optional memory integration depends on its corresponding host service.
+- **Independent operation:** local client file/library functions remain available independently. The plugin retains its DSH entry points. Chat, model organization and host-provided global-memory writes require their services to be online.
 
-The currently recommended stable release is **2.3.1**. No preview build is currently offered. Version 2.3.0 adds inbox organization, index exclusion with relationship cleanup and restoration, unified desktop settings, and corrected knowledge-agent parsing authorization. Custom workflows can save a model and reasoning level as defaults or choose temporary overrides before a run. This requires no new dependency or migration of existing workflows.
+## Download and installation
 
-The workbench includes privacy controls, setup guidance, a directory and relationship map, quick capture, PDF reading and annotations, native `@` knowledge-base questions, and optional full backups. See the [workbench guide](WORKBENCH.en.md) for detailed capabilities and boundaries.
+Source, issues and future releases are maintained here. In [Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases), choose the correct product: Windows Setup.exe for the client, TGZ for the plugin.
 
-## Download
+Published plugin 2.3.1: [Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.3.1) · [TGZ](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.3.1/local-dsh-knowledge-base-2.3.1.tgz). See [plugin usage](WORKBENCH.en.md) and [mirror information](MIRROR-RELEASES.md) for extensions and regional sources. Mirror availability can vary.
 
-- **Stable release 2.3.1:** [GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.3.1/local-dsh-knowledge-base-2.3.1.tgz) · [Gitee](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.3.1.tgz) · [GitCode](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.3.1.tgz?ref=main) · [GitHub direct link](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.3.1.tgz).
-- **Browser extension for Chrome and Edge:** [Gitee](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.3.1/knowledge-base-browser-extension.zip) · [GitHub direct link](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/knowledge-base-browser-extension.zip). Mirrors can lag behind. If a file is unavailable, try another source.
-- Historical packages are no longer offered from public download locations. Users of older versions should install 2.3.1 first, then use the in-plugin updater.
+The existing client installer retains its paper-green interface and animations, requires an empty application directory and preserves personal data on uninstall. Client online updates, automated publishing and in-place upgrades are unfinished. The plugin keeps its existing update manifests and installation flow.
 
-The updater checks stable and preview channels. Stable updates within the same major version can install in the background; major-version changes and preview-channel changes require a manual choice. If the host cannot install from the client, update through the DSH plugin manager. See the [release notes](RELEASE.en.md) and [versioning policy](VERSIONING.en.md).
+## Documentation
 
-## What the plugin does
+| Topic | English | 中文 |
+|---|---|---|
+| Unified design and evolution | [Project record](PROJECT-RECORD.en.md) | [设计与演进](PROJECT-RECORD.md) |
+| Installation and usage | [Workbench](WORKBENCH.en.md) | [使用说明](WORKBENCH.md) |
+| Shared architecture | [Architecture](ARCHITECTURE.en.md) | [架构](ARCHITECTURE.md) |
+| Source development | [Development](DEVELOPMENT.en.md) | [开发与构建](DEVELOPMENT.md) |
+| Release policy | [Versioning](VERSIONING.en.md) | [版本规则](VERSIONING.md) |
+| Changes | [Release notes](RELEASE.en.md) | [版本说明](RELEASE.md) |
+| Client details | [Client docs](docs/client/README.md) | [客户端文档](docs/client/README.zh-CN.md) |
+| Retrieval, parsing and performance | [Retrieval](RETRIEVAL.en.md) · [Parsing](PARSING-PREVIEW.en.md) · [Performance](PERFORMANCE.en.md) | [检索](RETRIEVAL.md) · [解析](PARSING-PREVIEW.md) · [性能](PERFORMANCE.md) |
 
-The DSH Personal Knowledge Base plugin provides directory binding, item management and retrieval, material import, OCR and ASR parsing, custom workflows, and knowledge-base presets. Capabilities introduced since 1.1.x have continued to evolve through 2.1.0 and later releases.
+[Product showcase](https://kingsleyasher.github.io/Personal-Knowledge-Base/) · [Repository structure](MONOREPO.md) · [Privacy](PRIVACY.md) · [Security](SECURITY.md) · [Contributing](CONTRIBUTING.md)
 
-- **Updates:** the plugin downloads and verifies packages, then asks the DSH plugin manager to install them. Hot loading is used when supported; the host requests a restart when needed.
-- **Parsing:** OCR and ASR requests from managed agents, imports, and workflows use the configured parsing service. Results return to the originating session. Parsing and writing into the knowledge base require separate authorization.
-- **Retrieval:** the current stable release includes full-text retrieval. The repository documents later retrieval and indexing work separately; see the [retrieval guide](RETRIEVAL.en.md).
-- **Privacy:** private-material display, use in knowledge questions, and outbound processing are distinct controls. Adding a cloud service does not change the local default. The plugin does not automatically send local failures to a cloud service.
-- **Backups:** full automatic backups are off by default. Index snapshots restore indexes only; they do not restore deleted source files, chats, or other memory.
+## Source layout
 
-The showcase source is in [`website/`](website/) and is deployed with GitHub Pages.
+`apps/desktop` contains the client. `src` retains plugin adapters and UI paths for compatibility. `packages` owns the shared core, contracts and service. `presets` and `skills` contain DSH configuration rules; `installer-design-b` owns installer design/implementation; `website` is the showcase; `docs/client` contains client guides; `tools` and `tests` provide build and verification utilities.
 
-## Install
+## Privacy, evidence and licensing
 
-For a first install or to move to the current updater, enter this package URL in the DSH plugin manager's installation source:
+No personal libraries, conversations, credentials, index databases, runtime configurations, logs or local test outputs belong in Git. Opening a file does not automatically send it to a model; explicit attachments and cloud tasks follow provider configuration and authorization.
 
-```text
-https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.3.1.tgz
-```
+The merged client passed a production build and focused checks. See the project record for historical evidence and limits. Static checks and synthetic services do not establish live-model performance, cloud availability, full Office fidelity or every DSH-version compatibility.
 
-The client downloads and installs the package. You can also install a local package from `dist/`. Older versions may use the old download flow, so install this release before using the new updater.
-
-After installation, use **Check for updates → Install stable / Install preview** in the plugin. It verifies the download's SHA-256 and package identity, installs it, and checks the loaded version. Restart DSH only if the host requests it. The [release manifest](release-manifest.json) contains the package and build details. If the host does not expose a client installation interface, use its plugin manager.
-
-Upgrading preserves bindings and runtime data. A separate legacy delegation gateway is not required. Actual calls remain subject to the host's knowledge-base preset, delegation, and isolation rules.
-
-## Verification and limits
-
-The 2.3.0 workflow-model changes passed targeted checks for saved settings, one-run overrides, model selection before sending, and failure blocking. The package and digest were checked by the release script. Version 2.2.0 passed 34 targeted regression checks and an isolated backend smoke check in a Windows package. Full integration with the DSH React host, installation in a production desktop host, and real cloud API calls were not verified. Tests used synthetic materials and simulated services; the maintainer's personal knowledge base was not used.
-
-Version 2.1.0 passed 25 targeted automated checks, per-file package and SHA-256 checks, the GitHub release workflow, and the product-page deployment. The stable package was not installed on the maintainer's machine, and no live cloud Embedding or Rerank API was called. Automated checks mainly used synthetic materials and simulated services.
-
-Index maintenance changes indexes and maintenance state; it does not modify knowledge text, source files, chats, or other memory. Managed agents, imports, and workflows use the unified parsing channel by default. Standalone scripts and other plugins are outside this plugin's routing control.
-
-## Regional update mirrors
-
-The updater includes Gitee, GitCode, and GitHub as update sources. It checks stable and preview manifests concurrently and selects the newest version available from a working source. A digest mismatch for the same version blocks installation. It prefers regional mirrors and switches sources after a download or package-verification failure. GitCode uses its official file API; Gitee uses a retrievable raw-file URL rather than a temporary signed URL. At the time of the 2.1.0 release, the Gitee mirror workflow succeeded and the GitCode mirror workflow failed. Mirror availability must be checked against the platform's current status. If all sources fail, the updater reports an error instead of claiming the package is up to date. Older versions must first install an updater that supports these sources.
-
-In the client, open **Knowledge Base → Inbox → Browser Extension Guide → First Use: Install and Connect**, then choose **Download browser extension**. The updater selects and verifies a file from Gitee, GitCode, or GitHub, then tries another source if needed. If every source fails, it shows the errors and fallback links.
+[MIT licensed](LICENSE). Third-party components retain their licenses; see [notices](THIRD-PARTY-NOTICES.md).

@@ -1,3 +1,5 @@
+> 本文是统一仓库内的客户端专题。主入口见 [统一 README](../../README.zh-CN.md)，两端版本与发布规则见 [统一版本规则](../../VERSIONING.md)。
+
 # 个人知识库客户端
 
 [English](README.md) · [简体中文](README.zh-CN.md)

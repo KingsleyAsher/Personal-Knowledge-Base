@@ -1,3 +1,5 @@
+> Client-specific guide in the unified repository. See the [main README](../../README.md) and [shared release policy](../../VERSIONING.en.md).
+
 # Product design and evolution
 
 [中文](PROJECT-RECORD.md) · English

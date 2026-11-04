@@ -1,3 +1,5 @@
+> 统一项目入口：[主 README](../../README.zh-CN.md) · [架构与共库](../../ARCHITECTURE.md)。
+
 # 客户端版本说明
 
 [English](RELEASE.en.md) · 中文

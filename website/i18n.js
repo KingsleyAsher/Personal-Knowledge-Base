@@ -10,7 +10,7 @@
     '开始使用': 'Get started',
     '让积累的知识，': 'Let what you learn today',
     '成为下一次的灵感。': 'inspire what you do next.',
-    '把散落的文件、想法与经历，连接成可以持续使用的个人知识库。': 'Connect scattered files, ideas, and experiences in a personal knowledge base you can keep using.',
+    '独立客户端与 DSH 插件，共享文件与知识，在同一个仓库持续演进。': 'A standalone client and DSH plugin share files and knowledge, evolving together in one repository.',
     '探索产品': 'Explore the product',
     '体验工作流程': 'See the workflow',
     '项目': 'Projects',
@@ -177,11 +177,11 @@
         }
       });
       document.documentElement.lang = useEnglish ? 'en' : 'zh-CN';
-      document.title = useEnglish ? 'Personal Knowledge Base · Knowledge that keeps growing' : '个人知识库 · 让知识持续生长';
+      document.title = useEnglish ? 'Personal Knowledge Base · Plugin & Client' : '个人知识库 · 插件与客户端';
       const description = $('meta[name="description"]');
       description.content = useEnglish
-        ? 'Personal Knowledge Base for DSH connects files, ideas, and experience over time. Import materials, use OCR and ASR, search, and run custom workflows while staying in control.'
-        : 'DSH 个人知识库，让文件、想法与经历成为可持续使用的知识。资料导入、OCR、ASR、检索与自定义流程，尽在你的掌控。';
+        ? 'A standalone client and DSH plugin share one knowledge base, connecting files, ideas and experience over time.'
+        : '独立客户端与 DSH 插件共用一个知识库，让文件、想法与经历持续连接。';
       document.querySelectorAll('[data-doc-cn][data-doc-en]').forEach(link => {
         link.href = useEnglish ? link.dataset.docEn : link.dataset.docCn;
       });

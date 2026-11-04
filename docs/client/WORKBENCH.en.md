@@ -1,3 +1,5 @@
+> Unified project: [main README](../../README.md) · [shared architecture](../../ARCHITECTURE.en.md).
+
 # Installation and use
 
 [中文](WORKBENCH.md) · English

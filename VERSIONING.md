@@ -1,3 +1,13 @@
+# 统一仓库版本规则
+
+客户端与插件独立版本：apps/desktop/package.json 为客户端 1.0.0，根 package.json 为插件 2.4.0。根 release-manifest.json 与 preview-manifest.json 仍只服务插件。原 v2.x 标签与下载链接保留含义；客户端预留 client-v1.x 标签和独立 client-update.json，目前尚未接入程序。
+
+两端不能把 GitHub 通用 latest Release 同时当作更新权威，应使用各自清单并校验产品身份。未来发布客户端 Release 时不得覆盖插件 latest 标识或误触发插件镜像。源码版本准备与经校验二进制包的公开发布分别进行。
+
+## 既有插件版本与更新规则
+
+后续规则适用于插件，保留历史兼容说明。
+
 # 版本命名与更新判断
 
 [简体中文](VERSIONING.md) · [English](VERSIONING.en.md)

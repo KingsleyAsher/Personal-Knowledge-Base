@@ -1,3 +1,5 @@
+> Unified project: [main README](../../README.md) · [shared architecture](../../ARCHITECTURE.en.md).
+
 # Client release notes
 
 [中文](RELEASE.md) · English

@@ -1,3 +1,22 @@
+# Unified installation and usage
+
+[中文](WORKBENCH.md) · English
+
+Choose the client for a standalone file workspace, or the plugin for tools and model workflows inside DSH. They can connect to the same authorized library, with shared operations coordinated by the service.
+
+| Task | Guide |
+|---|---|
+| Install the Windows client, use panes and editing | [Client usage](docs/client/WORKBENCH.en.md) |
+| Install/configure the DSH plugin | Plugin-specific sections below |
+| Develop or package either product | [Development](DEVELOPMENT.en.md) |
+| Understand library sharing and offline limits | [Architecture](ARCHITECTURE.en.md) |
+
+Source versions are client 1.0.0 and plugin 2.4.0. Public plugin downloads still follow the existing 2.3.1 manifest until a new release is published. Client online updates/in-place upgrades are unfinished. Removing a library registration does not delete its original files; application uninstall and document deletion are different operations.
+
+## Plugin usage and historical instructions
+
+The sections below retain plugin behavior and release-specific history. Their version numbers are historical, not client version numbers.
+
 # Workbench Guide
 
 [English](WORKBENCH.en.md) · [简体中文](WORKBENCH.md)

@@ -1,3 +1,5 @@
+> 统一项目入口：[主 README](../../README.zh-CN.md) · [架构与共库](../../ARCHITECTURE.md)。
+
 # 安装与使用
 
 [English](WORKBENCH.en.md) · 中文

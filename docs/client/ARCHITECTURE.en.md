@@ -1,3 +1,5 @@
+> Unified project: [main README](../../README.md) · [shared architecture](../../ARCHITECTURE.en.md).
+
 # Architecture and library boundaries
 
 [中文](ARCHITECTURE.md) · English

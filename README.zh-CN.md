@@ -1,89 +1,64 @@
-> **统一源码仓库：** 已纳入客户端 1.0.0 与插件 2.4.0 源码。公开插件安装包版本仍以原有发布清单为准；合仓本身不发布新包。[客户端说明](docs/client/README.zh-CN.md) · [仓库结构](MONOREPO.md)。
-
-# 个人知识库 2.3.1
-
-2.3.1 为维护修复版：收件箱整理仅发送指定的一句话，OCR/ASR 任务记录静默刷新，命令工具漏传显示说明时自动补全，会话待办在结束前核对真实进度，停止后不再持续转圈。未确认完成的步骤不会自动记为成功。
+# 个人知识库 · 插件与客户端
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
-2.3.0 将收件箱整理、索引隐私控制、统一桌面界面和知识库 Agent 解析授权修复纳入正式版；自定义流程也可保存执行模型与推理强度，或在运行前临时更换。无需新增依赖或迁移已有流程。
+**Personal-Knowledge-Base 是知识库插件与独立桌面客户端的唯一维护仓库。** 两个产品共用业务内核、接口与共库服务，分别安装、独立版本，也可以连接同一知识库协同使用。
 
-## 📘 [插件设计与演进记录 →](PROJECT-RECORD.md)
+| 产品 | 当前源码版本 | 入口与运行方式 |
+|---|---|---|
+| 知识库客户端 | **1.0.0** | Windows x64 独立应用，多栏阅读编辑与文件管理 |
+| DSH 知识库插件 | **2.4.0** | 在 DeepSeek Harness 中使用工具、知识工作台与模型任务 |
 
-产品定位、基础能力、底层架构、实现方案、源码导航、演进路线与未来方向。此文档随每次发布维护，并随安装包提供版本快照。
+源码版本不代表对应安装包已经公开发布。**当前已公开的插件安装包仍以 [发布清单](release-manifest.json) 为准（2.3.1）；客户端 1.0.0 与插件 2.4.0 已有本地交付包，尚未随本次文档更新发布到 GitHub Releases。**
 
-## 🌐 [访问产品展示网页 →](https://kingsleyasher.github.io/Personal-Knowledge-Base/)
+## 一个知识库，两个入口
 
-了解产品功能、查看界面展示与使用场景，快速找到下载和安装入口。
+- **客户端**：完整文件树和路径定位，最多四个可调预览栏，标签拖放，Markdown、文本和代码编辑，PDF 纵向阅读与选字、图片缩放拖动，以及受限的 DOCX、XLSX 和 CSV 编辑。
+- **插件**：在 DSH 中导入资料、检索、解析 OCR/ASR、运行整理流程、浏览关系、管理索引与备份，并保留原有工具和界面入口。
+- **共享能力**：全文与向量索引、索引排除、收件箱、关系网络、阅读与摘录、备份与恢复由共享模块支撑；共库通过授权服务统一写入，不手工复制索引数据库。
+- **联动能力**：客户端右侧 DSH 对话支持会话、Agent 预设、模型与推理强度和流式回复。用户主动添加文件或选中文字作为上下文；可选记忆插件在线时提供对应联动。
+- **独立使用**：客户端本地文件与知识库功能可以独立运行；插件在 DSH 中保留完整入口。聊天、模型整理和宿主提供的全局记忆写入需要相应宿主与服务在线。
 
-知识工作台提供可控隐私、首次及跨版本设置引导、目录与关系地图、快速收集、PDF 阅读摘录、原生 @ 知识库提问和默认关闭的完整备份。完整使用与边界见 [工作台说明](WORKBENCH.md)。
+## 下载与安装
 
-关系索引加速、回收站、统一解析记录和更新弹窗规则见 [正式版说明](RELEASE.md)；版本命名及旧预览版迁移规则见 [VERSIONING.md](VERSIONING.md)。
+所有后续源码、问题反馈和发布统一放在本仓库。访问 [Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases)，按产品名称选择文件：客户端使用 Windows Setup.exe，插件使用 TGZ。不要将插件包当作客户端安装程序。
 
-## 当前下载版本
+已发布插件 2.3.1：[GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.3.1) · [直接安装包](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.3.1/local-dsh-knowledge-base-2.3.1.tgz)。浏览器扩展及地区镜像见 [插件使用说明](WORKBENCH.md) 和 [镜像说明](MIRROR-RELEASES.md)。镜像可能延迟，以实际校验结果为准。
 
-当前仅推荐正式版 **2.3.1**。预览通道暂无可用版本。
+客户端现有安装器保留纸页绿界面与动画，要求空的应用安装目录；卸载保留个人资料与设置。客户端在线更新、自动发布及覆盖升级尚未完成。插件继续使用既有插件更新清单与安装流程。
 
-## 2.3.1 维护更新
+## 文档导航
 
-- 收件箱只发送“帮我整理并归档收件箱内文件”。
-- OCR/ASR 任务记录静默刷新，保留列表位置和展开详情。
-- 知识库命令工具漏传显示说明时补全，权限与参数校验继续生效。
-- 会话待办结束前核对一次，停止后不再转圈；未完成项不自动记为成功。
+| 内容 | 中文 | English |
+|---|---|---|
+| 统一设计与演进记录 | [项目记录](PROJECT-RECORD.md) | [Project record](PROJECT-RECORD.en.md) |
+| 两端安装与使用入口 | [使用说明](WORKBENCH.md) | [Workbench](WORKBENCH.en.md) |
+| 统一架构 | [架构](ARCHITECTURE.md) | [Architecture](ARCHITECTURE.en.md) |
+| 源码开发与构建 | [开发](DEVELOPMENT.md) | [Development](DEVELOPMENT.en.md) |
+| 版本与发布规则 | [版本规则](VERSIONING.md) | [Versioning](VERSIONING.en.md) |
+| 更新记录 | [版本说明](RELEASE.md) | [Release notes](RELEASE.en.md) |
+| 客户端专题 | [客户端文档](docs/client/README.zh-CN.md) | [Client documentation](docs/client/README.md) |
+| 检索、解析与性能边界 | [检索](RETRIEVAL.md) · [解析](PARSING-PREVIEW.md) · [性能](PERFORMANCE.md) | [Retrieval](RETRIEVAL.en.md) · [Parsing](PARSING-PREVIEW.en.md) · [Performance](PERFORMANCE.en.md) |
 
-## 2.3.0 已有能力
+[产品展示页](https://kingsleyasher.github.io/Personal-Knowledge-Base/) · [仓库与目录规则](MONOREPO.md) · [隐私说明](PRIVACY.md) · [安全报告](SECURITY.md) · [贡献指南](CONTRIBUTING.md)
 
-收件箱支持拖入或选择资料，并以知识库 Agent 和 High 推理强度一键整理归档；排除索引的资料进入独立分区，清理全文、向量与关系索引，取消排除后重建。知识库页签与桌面设置采用统一样式，并修复知识库 Agent 的 OCR / ASR 授权和任务详情。自定义流程可保存执行模型与推理强度，也可在运行前临时调整；选模成功后才发送任务。此前的检索与稳定性优化继续保留，见 [优化记录](EXISTING-FRAMEWORK-OPTIMIZATION.md)。
+## 源码结构
 
-## 选择下载版本
+```text
+apps/desktop/          客户端界面、Electron 主进程与测试
+src/                  插件适配与界面入口，保留原路径兼容
+packages/             两端共享内核、契约与共库服务
+presets/、skills/      DSH Agent 预设与规则
+installer-design-b/   客户端安装器源文件与动画
+website/              项目展示网页
+docs/client/          客户端专题文档
+tools/、tests/         构建、校验及插件测试
+```
 
-- **正式版 2.3.1**：[GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.3.1/local-dsh-knowledge-base-2.3.1.tgz) · [Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/local-dsh-knowledge-base-2.3.1.tgz) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/local-dsh-knowledge-base-2.3.1.tgz?ref=main) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.3.1.tgz)。
-- **浏览器扩展（Chrome／Edge）**：[Gitee 下载](https://gitee.com/KingsleyAsher/Personal-Knowledge-Base/raw/main/dist/knowledge-base-browser-extension.zip) · [GitCode 下载](https://api.gitcode.com/api/v5/repos/KingsleyAsher/Personal-Knowledge-Base/raw/dist/knowledge-base-browser-extension.zip?ref=main) · [GitHub Release 下载](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.3.1/knowledge-base-browser-extension.zip) · [GitHub 直链](https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/knowledge-base-browser-extension.zip)。镜像可能存在同步延迟；文件暂不可用时可切换其他下载源。
-- 历史安装包已从公开下载处撤下；旧版用户请先安装 2.3.1，再使用插件内更新器。
+## 数据、验证与许可
 
-新版更新器同时检查正式版和预览版；同一大版本内可自动安装的正式版在后台更新，不弹更新前提醒。跨大版本与预览版保留手动选择；正式版用户的可选预览版仅在更新入口显示红点。宿主不支持客户端安装时通过宿主插件管理器更新。当前正式版为 `2.3.1`，暂无预览版；旧预览版已退出当前下载入口。
+不提交个人知识库、聊天、凭据、索引数据库、运行配置、日志和本机测试输出。打开文件不等于将其发给模型；主动添加上下文或执行云端任务时按实际服务和授权处理。
 
-以下能力沿袭自 1.1.x 并持续迭代至 2.1.0；逐项发布记录见 [正式版说明](RELEASE.md)。
+合仓后客户端生产构建与针对性检查通过；具体功能、历史测试和限制见演进记录。静态检查、模拟服务和虚构资料测试不代表真实模型、云端可用性、完整 Office 保真度或所有 DSH 版本兼容性。
 
-DSH 个人知识库插件：目录绑定、条目管理与检索、资料导入、OCR / ASR 解析、自定义流程及知识库预设。
-
-产品展示页源码位于 [`website/`](website/)，通过 GitHub Pages 自动部署。
-
-## 基础能力与演进记录
-
-- 客户端内一键更新：点击「安装新版本」后自动下载并校验安装包，由 DSH 插件管理器安装并尝试热加载；仅当宿主报告需要重启时提示重启。热加载断线后通过安装请求编号与实际构建恢复结果。
-- 1.1.3：修复 `kb_import action=parse` 绕过解析授权门的问题；导入解析现在校验活跃调用方、实时知识库授权和 H1 就绪状态，并记录授权来源。更新公告按 Esc 关闭后也会持久化已读状态。
-- 同一大版本内的正式版在后台自动更新，不弹更新前提醒；补丁更新不弹更新内容，只有正式版小版本或大版本升级才显示。预览版每次更新显示更新内容。跨大版本、预览版与渠道切换保留手动选择。跨版本内容合并去重展示，关闭后记录已读。
-- 新增产品展示网页，并配置 GitHub Pages 自动发布。
-- 保留 1.1.0 的 OCR / ASR、索引维护与数据保护能力。
-
-- OCR / ASR 简易配置与高级设置分层，新增 Qwen、百度原生接口及凭据引用管理，保留 OpenAI 兼容和 CLI 配置。
-- 本地模型快速扫描及选择目录扫描，识别权重、运行环境和配套组件；修复 PaddleOCR-VL 与 Qwen3-ASR 分散目录关联。
-- 桌面识别与转写界面重新整理，分开配置、发现模型和任务记录；本版没有新增手机适配。
-- 知识库索引后台增量维护，提示框可直接重建；提供具体原因、快照、不完整扫描和异常下降保护。
-- 会话解析、导入解析和工作流解析强制跟随设置中的默认服务，模型记忆里的服务 ID 不再覆盖；用户可在设置页单次选择服务。已提交任务与重试保留原快照。
-- 修复源路径逃逸、任务切库串写、外发策略收紧后继续请求、排除规则告警不消失和异常旧索引无法修复。
-
-详细接入方式、依赖及边界见 [解析与维护说明](PARSING-PREVIEW.md)。不自动安装模型依赖，不自动降级到云端。
-
-## 安装
-
-首次安装或从旧版接入新更新器：在 DSH 插件管理器的安装源中填写 `https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/dist/local-dsh-knowledge-base-2.3.1.tgz`，由客户端下载和安装；也可安装仓库 `dist/` 下的本地包。旧版自身的下载按钮仍采用旧流程，需先安装本版才能获得新更新器。
-
-安装本版后，插件内「检查版本更新 → 安装新版本 / 安装预览版」自动完成下载、SHA-256 与包身份校验、安装及加载核对。普通宿主支持时热加载，宿主返回需要重启时再完全退出（含托盘）并重开。核对版本及构建号，摘要见 [发布清单](release-manifest.json)。宿主未提供安装接口时，按钮会说明需使用宿主插件管理器。
-
-升级保留绑定和运行数据。不需要另装旧委派网关；真实调用仍须满足宿主知识库预设、委派及隔离授权规则。
-
-## 验证与边界
-
-2.3.0 通过流程模型保存、单次覆盖、发送前选模和失败阻断的定向检查，包体与摘要经发布脚本校验。2.2.0 完成34项定向回归及Windows包内隔离后端冒烟，另通过协议、存储和版本相关检查；此前的检索、索引及刷新验证记录保留在性能文档。完整 DSH React 宿主、正式桌面安装及真实云 API 未验证；未使用个人知识库。
-
-2.1.0 发布前完成 25 项定向自动检查、安装包逐文件与 SHA-256 校验；GitHub 正式发布工作流和产品页部署均通过。正式包未在维护者本机安装验证，未调用真实云端 Embedding/Rerank API；自动化主要使用合成资料和模拟服务。
-
-索引维护只改索引及维护状态，不改知识正文、原件、聊天和其他记忆。快照恢复仅恢复索引。所有受管 Agent、导入和流程解析默认进入统一解析通道；独立脚本或其他插件不受本插件路由控制。
-
-## 国内更新源
-
-更新器内置 Gitee、GitCode 和 GitHub 三个源，并发检查正式版与预览通道，采用可用源中的最新版本；同版本摘要冲突时阻止更新。优先使用国内源，下载失败或包校验失败时切换其他源。正常更新自动选择可用源，不展示来源清单；只有全部源失败时才列出原因与备用入口。GitCode 使用官方文件 API，Gitee 使用可重新获取的原始文件链接，不保存临时签名地址。2.1.0 发布时 Gitee 镜像工作流成功，GitCode 镜像工作流失败；镜像可用性以实际平台状态为准。全部源不可用会明确报错，不视为最新。旧版需要先安装支持新源的更新器。
-
-客户端内下载入口：知识库 → 收件箱 → 浏览器扩展使用指南 → 首次使用：安装与连接，点击“下载浏览器扩展”，自动匹配 Gitee、GitCode、GitHub 并校验下载文件，源失败时自动切换；全部失败时显示原因与备用链接。
+采用 [MIT 许可证](LICENSE)；第三方组件保留原有许可，见 [第三方说明](THIRD-PARTY-NOTICES.md)。
