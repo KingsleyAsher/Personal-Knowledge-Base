@@ -40,10 +40,13 @@ def release_files(repo, tag):
     files = {manifest['tgz']: archive, 'release-manifest.json': show('release-manifest.json'), 'SHA256SUMS': sums}
     for name in ['knowledge-base-browser-extension.zip', 'memory-evolve-context-fix.zip', 'memory-context-SHA256SUMS']:
         files[name] = show('dist/' + name)
-    notes = show('RELEASE.md').decode('utf-8')
-    # Mirror the current release's entry, rather than copying all historical notes.
-    sections = re.split(r'(?m)^# ', notes)
-    notes = '# ' + next(section for section in sections if section.startswith(manifest['version'] + ' '))
+    # Unified releases have product-specific notes, retained at the exact tag.
+    try:
+        notes = '# ' + manifest['version'] + ' · 个人知识库插件\n\n' + show('docs/releases/plugin-' + manifest['version'] + '.md').decode('utf-8')
+    except subprocess.CalledProcessError:
+        notes = show('RELEASE.md').decode('utf-8')
+        sections = re.split(r'(?m)^# ', notes)
+        notes = '# ' + next(section for section in sections if section.startswith(manifest['version'] + ' '))
     commit = git_bytes(repo, 'rev-parse', tag + '^{commit}').decode().strip()
     return manifest, commit, notes.strip(), files
 
