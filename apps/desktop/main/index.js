@@ -1,3 +1,4 @@
+import {createFeedbackClient} from './feedback.js';
 import {createClientUpdater} from './client-updates.js';
 import {withLibraryScope} from './library-scope.js';
 import {COLOR_THEMES,validPalette,normalizePalette} from './theme-palettes.js';
@@ -42,11 +43,16 @@ async function writeCall(method,args,requestId=randomUUID()){
 function register(name,fn){
  ipcMain.handle('kb:'+name,async(event,args={})=>{
   if(event.sender!==window?.webContents||event.senderFrame!==window.webContents.mainFrame||!event.senderFrame.url.startsWith(appUrl))return {ok:false,error:{code:'FORBIDDEN',message:'拒绝非应用主页面请求'}};
-  try{checkInput(args);if(!['window','pointer','preferences','appInfo','clientUpdates','copyFeedback'].includes(name))await backendReady;return {ok:true,value:await (['search','knowledge','providers','dsh','health','appInfo','clientUpdates','window','pointer'].includes(name)?fn(args):ipcQueue(()=>fn(args)))};}catch(e){return {ok:false,error:{code:e.code??'BAD_REQUEST',message:String(e.message).slice(0,600),requestId:e.requestId}};}
+  try{checkInput(args);if(!['window','pointer','preferences','appInfo','clientUpdates','copyFeedback','feedback'].includes(name))await backendReady;return {ok:true,value:await (['search','knowledge','providers','dsh','health','appInfo','clientUpdates','window','pointer','feedback'].includes(name)?fn(args):ipcQueue(()=>fn(args)))};}catch(e){return {ok:false,error:{code:e.code??'BAD_REQUEST',message:String(e.message).slice(0,600),requestId:e.requestId}};}
  });
 }
 const clientKey=()=>manager.status().library?.instanceId??'none';
-let clientUpdater;
+let clientUpdater,feedbackClient;
+async function feedback(a){
+ if(!feedbackClient){const manifest=app.isPackaged?await readJson(path.join(path.dirname(process.execPath),'BUILD-MANIFEST.json'),{}):{};const config=await readJson(path.join(appDir,'main/feedback-config.json'),{});feedbackClient=createFeedbackClient({endpoint:process.env.KB_FEEDBACK_ENDPOINT??config.endpoint,version:manifest.version??app.getVersion(),buildId:manifest.buildId??'development'});}
+ if(a.action==='status'){const manifest=app.isPackaged?await readJson(path.join(path.dirname(process.execPath),'BUILD-MANIFEST.json'),{}):{};return {...feedbackClient.status(),version:manifest.version??app.getVersion(),buildId:manifest.buildId??'development'};}
+ if(a.action!=='submit')throw Error('未知反馈操作');return feedbackClient.submit(a);
+}
 async function appInfo(){
  const manifest=app.isPackaged?await readJson(path.join(path.dirname(process.execPath),'BUILD-MANIFEST.json'),{}):{};
  return {version:manifest.version??app.getVersion(),buildId:manifest.buildId??'development',channel:manifest.channel??'desktop-candidate',electron:process.versions.electron,updates:clientUpdater?await clientUpdater.check():{configured:true,policy:UPDATE_POLICY,message:'更新器正在初始化'}};
@@ -153,6 +159,7 @@ function wire(){
  register('window',async a=>{if(a.action==='minimize')window.minimize();else if(a.action==='maximize')window.isMaximized()?window.unmaximize():window.maximize();else if(a.action==='close'){allowClose=true;window.close();}});
  register('diagnostics',()=>({candidate:true,dataDir,service:manager.status(),nodeIntegration:false,contextIsolation:true,sandbox:true,dshConnected:false}));
  register('appInfo',appInfo);
+ register('feedback',feedback);
  register('copyFeedback',async a=>{if(typeof a.text!=='string'||!a.text.trim()||a.text.length>8000)throw Error('反馈内容应为 1–8000 字符');const info=await appInfo();clipboard.writeText('个人知识库 · 桌面候选版\n版本：'+info.version+'\n构建：'+info.buildId+'\n\n'+a.text.trim());return true;});
 }
 async function launch(){
