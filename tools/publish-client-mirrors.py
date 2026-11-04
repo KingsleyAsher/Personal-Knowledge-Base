@@ -1,6 +1,6 @@
 """Publish the dedicated client payload using repository Actions Secrets."""
 from pathlib import Path
-import sys,json,hashlib,importlib.util
+import sys,json,hashlib,importlib.util,urllib.request
 from urllib.parse import quote
 from mirror_release import MirrorAPI,redact
 root=Path(__file__).resolve().parents[1]
@@ -9,7 +9,7 @@ def publish(platform,folder):
  folder=Path(folder);m=json.loads((folder/'client-update.json').read_text(encoding='utf-8'));tag=m['tag'];assert tag=='client-v'+m['version'] and m['product']=='knowledge-workbench-client'
  payload=folder/m['asset'];assert payload.stat().st_size==m['bytes']
  with payload.open('rb') as f:assert hashlib.file_digest(f,'sha256').hexdigest()==m['sha256']
- api=MirrorAPI(platform);route='/releases/tags/'+quote(tag,safe='');release=api.repo(route,missing=True)
+ api=MirrorAPI(platform,opener=lambda request,timeout=90:urllib.request.urlopen(request,timeout=max(timeout,600)));route='/releases/tags/'+quote(tag,safe='');release=api.repo(route,missing=True)
  body=(root/'docs/releases'/('client-'+m['version']+'.md')).read_text(encoding='utf-8')+'\n\nSHA-256: '+m['sha256']
  if release is None:
   payload={'tag_name':tag,'target_commitish':'main','name':'客户端 '+m['version'],'body':body}

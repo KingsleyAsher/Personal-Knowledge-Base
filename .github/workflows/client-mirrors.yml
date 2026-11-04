@@ -10,6 +10,9 @@ on:
         default: client-v1.0.1
 permissions:
   contents: read
+concurrency:
+  group: client-mirrors-${{ inputs.tag || github.event.release.tag_name }}
+  cancel-in-progress: false
 jobs:
   mirror:
     if: github.event_name == 'workflow_dispatch' || startsWith(github.event.release.tag_name, 'client-v')
@@ -26,6 +29,8 @@ jobs:
       RELEASE_TAG: ${{ inputs.tag || github.event.release.tag_name }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'

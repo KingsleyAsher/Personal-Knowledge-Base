@@ -1,5 +1,5 @@
 from pathlib import Path
-import json,hashlib,tarfile,re,os,sys
+import json,hashlib,tarfile,re,os,sys,io,zipfile,urllib.request
 r=Path(__file__).resolve().parents[1]
 version=json.loads((r/'package.json').read_text(encoding='utf-8'))['version']
 record = (r/'PROJECT-RECORD.md').read_text(encoding='utf-8')
@@ -34,10 +34,25 @@ for rel,data in files.items():
     text=data.decode('utf-8')
     for label,pattern in private_patterns.items():
         assert not pattern.search(text), f'Public package content contains {label}: {rel}'
+runtime_archive=None
+def source_bytes(rel):
+    global runtime_archive
+    source=r/rel
+    if source.is_file():return source.read_bytes()
+    if not rel.startswith('runtime/python/'):raise FileNotFoundError(rel)
+    if runtime_archive is None:
+        cached=r/'apps/desktop/.build-cache/python-3.14.10-embed-amd64.zip'
+        if cached.is_file():raw=cached.read_bytes()
+        else:
+            with urllib.request.urlopen('https://www.python.org/ftp/python/3.14.10/python-3.14.10-embed-amd64.zip',timeout=120) as response:raw=response.read(32*1024*1024)
+        assert hashlib.sha256(raw).hexdigest()=='90905e64a840557d8c1bc4f5b74db3d7ee85e3ffb217611cac1c7813acea4159','Pinned Python archive mismatch'
+        runtime_archive=zipfile.ZipFile(io.BytesIO(raw))
+    return runtime_archive.read(rel.removeprefix('runtime/python/'))
+
 for x in m['files']:
     data=files[x['path']]
     assert len(data)==x['bytes'] and hashlib.sha256(data).hexdigest()==x['sha256'],x['path']
-    assert (r/x['path']).read_bytes()==data,x['path']
+    assert source_bytes(x['path'])==data,x['path']
 build=re.findall(r"'([^']+)'",re.search(r'const list = (\[.*?\])',(r/'src/host/index.js').read_text(encoding='utf-8')).group(1))
 h=hashlib.sha256()
 for rel in build:h.update((rel+'\0'+hashlib.sha256(files[rel]).hexdigest()+'\n').encode())
