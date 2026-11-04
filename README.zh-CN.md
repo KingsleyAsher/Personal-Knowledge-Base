@@ -6,10 +6,10 @@
 
 | 产品 | 已发布版本 | 直接下载 | 发布说明 |
 |---|---|---|---|
-| **知识库客户端 · Windows x64** | **1.0.1** | **[⬇ 下载客户端安装包（EXE）](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.1/KnowledgeWorkbench-1.0.1-Setup.exe)** | [客户端 Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.1) |
+| **知识库客户端 · Windows x64** | **1.0.2** | **[⬇ 下载客户端安装包（EXE）](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.2/KnowledgeWorkbench-1.0.2-Setup.exe)** | [客户端 Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.2) |
 | **DSH 知识库插件** | **2.4.1** | **[⬇ 下载插件包（TGZ）](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.1/local-dsh-knowledge-base-2.4.1.tgz)** | [插件 Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.1) |
 
-当前发布入口：[客户端 1.0.1](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.1) · [插件 2.4.1](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.1)。请按产品选择 Windows 安装包或 TGZ，摘要与构建号以各自清单为准。
+当前发布入口：[客户端 1.0.2](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.2) · [插件 2.4.1](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.1)。请按产品选择 Windows 安装包或 TGZ，摘要与构建号以各自清单为准。
 
 ## 一个知识库，两个入口
 
@@ -21,9 +21,9 @@
 
 ## 下载与安装
 
-### 客户端 1.0.1 · Windows x64
+### 客户端 1.0.2 · Windows x64
 
-**[下载 KnowledgeWorkbench-1.0.1-Setup.exe](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.1/KnowledgeWorkbench-1.0.1-Setup.exe)** · [版本说明与全部附件](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.1) · [SHA-256 校验文件](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.1/client-SHA256SUMS)
+**[下载 KnowledgeWorkbench-1.0.2-Setup.exe](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.2/KnowledgeWorkbench-1.0.2-Setup.exe)** · [版本说明与全部附件](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.2) · [SHA-256 校验文件](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.2/client-SHA256SUMS)
 
 下载后运行 EXE 安装。客户端安装包约 186 MiB，运行环境随包提供。该文件是独立客户端安装器，不是 DSH 插件。
 

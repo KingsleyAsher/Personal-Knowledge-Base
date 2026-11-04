@@ -1,12 +1,13 @@
 import {Fragment,useEffect,useRef,useState} from 'react';import type {DragEvent,ReactNode} from 'react';import {Plus,FileText} from 'lucide-react';import {Resizer} from './components';import type {Pane} from './types';import {MAX_PANES} from './workspace-state';import type {TabDrag,DropTarget} from './workspace-state';
 import {columnWidths} from './panel-layout';
+import {observeSettledSize} from './resize';
 import {beginWorkspaceDrag,endWorkspaceDrag,getWorkspaceDrag,useWorkspaceDrag} from './workspace-drag';
 export interface TabDragHandlers {onDragStart:(event:DragEvent,drag:TabDrag)=>void;onDragEnd:()=>void}
 export default function WorkspaceArea({panes,renderPane,onDropTab,onOpenFile,onResize,onLimit,onQuickOpen}:{onQuickOpen?:()=>void;panes:Pane[];renderPane:(pane:Pane,drag:TabDragHandlers)=>ReactNode;onDropTab:(drag:TabDrag,target:DropTarget)=>void;onOpenFile:(path:string,target:DropTarget)=>void;onResize:(index:number,left:number,weights?:number[])=>void;onLimit:()=>void}){
  const root=useRef<HTMLDivElement>(null),dragging=useWorkspaceDrag();const [over,setOver]=useState<{target:DropTarget;allowed:boolean}|null>(null);
  const [width,setWidth]=useState(800);
  useEffect(()=>{if(!dragging)setOver(null);},[dragging]);
- useEffect(()=>{if(!root.current)return;const observer=new ResizeObserver(([e])=>setWidth(e.contentRect.width));observer.observe(root.current);return()=>observer.disconnect();},[]);
+ useEffect(()=>{if(root.current)return observeSettledSize(root.current,size=>setWidth(size.width));},[]);
  useEffect(()=>{for(const strip of root.current?.querySelectorAll<HTMLElement>('.tab-list')??[]){const active=strip.querySelector<HTMLElement>('.document-tab.active');if(!active)continue;const a=active.getBoundingClientRect(),b=strip.getBoundingClientRect();if(a.right>b.right)strip.scrollLeft+=a.right-b.right;else if(a.left<b.left)strip.scrollLeft-=b.left-a.left;}},[panes]);
  const finish=()=>{endWorkspaceDrag();setOver(null);};
  const handlers:TabDragHandlers={onDragStart:(event,drag)=>{beginWorkspaceDrag(event.dataTransfer,{...drag,kind:'tab'});setWidth(root.current?.clientWidth??800);},onDragEnd:finish};
@@ -32,9 +33,9 @@ export default function WorkspaceArea({panes,renderPane,onDropTab,onOpenFile,onR
   const item=getWorkspaceDrag(e.dataTransfer,true);if(!item)return;e.preventDefault();e.stopPropagation();const hit=targetAt(e);if(hit.allowed){if(item.kind==='tab')onDropTab(item,hit.target);else onOpenFile(item.path,hit.target);}else onLimit();finish();
  }}>
   {!panes.length?<div className="workspace-empty" role="region" aria-label="空白工作区"><FileText size={32}/><h2>打开文件开始预览</h2><p>从文件树选择资料，或将文件拖到这里。</p><button onClick={onQuickOpen}>打开文件</button></div>:null}
-  <div className="preview-columns" style={{gridTemplateColumns:widths.map(w=>w+'px').join(' 6px '),minWidth:panes.length*200+Math.max(0,panes.length-1)*6}}>
+  <div className="preview-columns" style={{gridTemplateColumns:weights.map(w=>`minmax(200px,${w}fr)`).join(' 6px '),minWidth:panes.length*200+Math.max(0,panes.length-1)*6}}>
    {panes.map((p,i)=><Fragment key={p.id}>
-    {i>0?<div className="column-resize" data-split-index={i} onPointerDown={()=>setWidth(root.current?.clientWidth??800)}><Resizer label={`调整预览栏 ${i} 和 ${i+1} 的宽度`} value={weights[i-1]} onChange={n=>onResize(i-1,n,weights)} min={200/available*100} max={weights[i-1]+weights[i]-200/available*100} scale={100/available}/></div>:null}
+    {i>0?<div className="column-resize" data-split-index={i}><Resizer label={`调整预览栏 ${i} 和 ${i+1} 的宽度`} value={weights[i-1]} onChange={n=>onResize(i-1,n,weights)} onPreview={(n,el)=>{const next=[...weights];next[i-1]=n;next[i]=weights[i-1]+weights[i]-n;el.closest<HTMLElement>('.preview-columns')!.style.gridTemplateColumns=next.map(w=>`minmax(200px,${w}fr)`).join(' 6px ');}} min={200/available*100} max={weights[i-1]+weights[i]-200/available*100} scale={100/available}/></div>:null}
     <div className={'pane-slot '+(over?.allowed&&over.target.kind==='merge'&&over.target.paneId===p.id?'merge-target':'')} data-pane-id={p.id}>
      {renderPane(p,handlers)}
      {over?.allowed&&over.target.kind==='merge'&&over.target.paneId===p.id?<div className="pane-drop-label">{dragging?.kind==='file'?'在此栏打开 · 添加标签':'移入此栏 · 合并为标签'}</div>:null}

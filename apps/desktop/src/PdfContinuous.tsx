@@ -1,4 +1,5 @@
 import {useEffect,useRef,useState} from 'react';
+import {observeSettledSize} from './resize';
 import {getDocument,GlobalWorkerOptions,TextLayer,type PDFDocumentProxy,type RenderTask} from 'pdfjs-dist';
 import workerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';import {ChevronUp,ChevronDown,Plus,Minus} from 'lucide-react';
 import {useCtrlWheel,previewScale} from './PreviewZoom';import './pdf-text-layer.css';
@@ -45,7 +46,7 @@ export default function Pdf({url}:{url:string}){
  useEffect(()=>{let stopped=false;setPdf(null);setError('');setPage(1);setPageInput('1');pageRef.current=1;setActive(new Set([1]));scales.current.clear();if(scroll.current)scroll.current.scrollTop=0;
   const loading=getDocument({url,disableAutoFetch:true});void loading.promise.then(async doc=>{const first=await doc.getPage(1);if(stopped)return;const viewport=first.getViewport({scale:UNITS});setFirstSize({width:viewport.width,height:viewport.height});setPdf(doc);}).catch(e=>{if(!stopped)setError(e.message);});return()=>{stopped=true;void loading.destroy();};
  },[url]);
- useEffect(()=>{if(!scroll.current)return;const observer=new ResizeObserver(([e])=>setSize(old=>old.width===Math.floor(e.contentRect.width)&&old.height===Math.floor(e.contentRect.height)?old:{width:Math.floor(e.contentRect.width),height:Math.floor(e.contentRect.height)}));observer.observe(scroll.current);return()=>observer.disconnect();},[]);
+ useEffect(()=>{if(scroll.current)return observeSettledSize(scroll.current,next=>setSize(old=>old.width===next.width&&old.height===next.height?old:next));},[]);
  useEffect(()=>{if(!pdf||!scroll.current)return;const visible=new Set<number>();const observer=new IntersectionObserver(entries=>{for(const e of entries){const n=Number((e.target as HTMLElement).dataset.pdfPage);if(e.isIntersecting)visible.add(n);else if(!window.getSelection()?.containsNode(e.target,true))visible.delete(n);}setActive(new Set(visible));},{root:scroll.current,rootMargin:'600px 0px'});scroll.current.querySelectorAll('[data-pdf-page]').forEach(el=>observer.observe(el));return()=>observer.disconnect();},[pdf,size.width>0]);
  useEffect(()=>()=>cancelAnimationFrame(frame.current),[]);
  function updatePage(n:number){pageRef.current=n;setPage(n);setPageInput(String(n));const known=scales.current.get(n);if(known)setEffective(known);}

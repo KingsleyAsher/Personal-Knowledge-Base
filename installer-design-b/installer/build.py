@@ -25,7 +25,7 @@ else:
  css='*{box-sizing:border-box}body{font-family:"Microsoft YaHei UI","Microsoft YaHei",sans-serif;color:#26392f}button{font:inherit;cursor:pointer}p{color:#747e73;font-size:13px;line-height:1.8}svg{display:block}'+css
  html='<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src \'self\'; script-src \'self\' \'unsafe-inline\'; style-src \'self\' \'unsafe-inline\'; img-src \'self\' data:; connect-src \'none\'"><title>知识工作台安装程序</title><style>'+css+'</style></head><body><div id="view"></div><div id="toast"></div><script>const screens='+screens+';</script><script>'+(DESIGN/'vector-scenes.js').read_text(encoding='utf-8')+'\n'+motion+'\n'+(BASE/'production-ui.js').read_text(encoding='utf-8')+'</script></body></html>'
  (UI/'index.html').write_text(html,encoding='utf-8')
- for name in ['main.cjs','preload.cjs']:shutil.copy2(BASE/name,UI/name)
+ for name in ['main.cjs','preload.cjs','launch-client.cjs']:shutil.copy2(BASE/name,UI/name)
  (UI/'package.json').write_text(json.dumps({'name':'knowledge-workbench-installer','version':'1.0.0','main':'main.cjs'}),encoding='utf-8')
  compiler=Path('C:/Windows/Microsoft.NET/Framework64/v4.0.30319/csc.exe')
  stub=BASE/'SetupStub.exe'

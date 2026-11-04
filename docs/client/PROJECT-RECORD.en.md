@@ -4,7 +4,7 @@
 
 [中文](PROJECT-RECORD.md) · English
 
-Client 1.0.1, paired plugin 2.4.1. Updated 2026-11-04.
+Client 1.0.2, paired plugin 2.4.1. Updated 2026-11-04.
 
 The product puts the existing file hierarchy at the center of a desktop workspace. Reading, editing, comparison and optional DSH conversations share one interface. The file sidebar remains a file browser; management tools open in movable windows with full-page entry points.
 

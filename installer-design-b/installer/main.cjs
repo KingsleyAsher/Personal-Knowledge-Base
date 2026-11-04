@@ -1,6 +1,7 @@
 const {app,BrowserWindow,ipcMain,dialog,shell,screen}=require('electron');
 const fs=require('original-fs'),fsp=fs.promises,path=require('path'),os=require('os'),crypto=require('crypto');
 const {spawn,execFile}=require('child_process');const {promisify}=require('util');const exec=promisify(execFile);
+const {launchClient}=require('./launch-client.cjs');
 const APPID='KnowledgeWorkbench.PaperGreen',EXE='KnowledgeWorkbench-Candidate.exe';
 const testRoot=process.env.KB_SETUP_TEST_ROOT?path.resolve(process.env.KB_SETUP_TEST_ROOT):null;
 const registry='HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\'+APPID+(testRoot?'.Test':'');
@@ -72,7 +73,7 @@ app.whenReady().then(async()=>{
  handle('info',()=>({target:uninstallTarget||defaultTarget,existing,uninstall:!!uninstallTarget}));
  handle('pick',async()=>{if(busy)return null;const r=await dialog.showOpenDialog(win,{title:'选择安装位置的上级文件夹',properties:['openDirectory','createDirectory']});return r.canceled?null:path.join(r.filePaths[0],'KnowledgeWorkbench');});
  handle('install',install);handle('uninstall',uninstall);handle('cancel',()=>{if(committing)return {accepted:false};canceled=true;return {accepted:true};});
- handle('launch',()=>{if(!installed)throw Error('程序尚未安装');const child=spawn(path.join(installed,EXE),[],{cwd:installed,detached:true,stdio:'ignore',windowsHide:true,env:{...process.env,ELECTRON_RUN_AS_NODE:undefined}});child.unref();allowClose=true;app.quit();});
+ handle('launch',async()=>{if(!installed)throw Error('程序尚未安装');await launchClient(path.join(installed,EXE),installed);allowClose=true;app.quit();});
  handle('close',()=>{if(busy)return false;allowClose=true;app.quit();return true;});
  win.on('close',e=>{if(!allowClose){e.preventDefault();win.webContents.send('setup:close-request');}});
  await win.loadFile(path.join(uiRoot,'index.html'));win.show();

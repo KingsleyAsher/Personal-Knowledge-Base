@@ -1,11 +1,12 @@
 import {useLayoutEffect,useRef,useState} from 'react';import type {PointerEvent} from 'react';import {previewScale,useCtrlWheel,useFileZoom} from './PreviewZoom';
+import {observeSettledSize} from './resize';
 type Point={x:number;y:number};
 export default function ImagePreview({src,alt}:{src:string;alt:string}){
  const host=useRef<HTMLDivElement>(null),image=useRef<HTMLImageElement>(null),{scale,setScale,resetKey}=useFileZoom(),[size,setSize]=useState({width:0,height:0}),[natural,setNatural]=useState({width:0,height:0}),[pan,setPan]=useState<Point>({x:0,y:0}),position=useRef(pan),drag=useRef<{id:number;start:Point;pan:Point}|null>(null);position.current=pan;
  const fit=natural.width&&natural.height?Math.min(1,Math.max(1,size.width-48)/natural.width,Math.max(1,size.height-48)/natural.height):1,width=natural.width*fit,height=natural.height*fit;
  const clamp=(p:Point,z=scale)=>{const x=Math.max(0,(width*z-Math.max(1,size.width-48))/2),y=Math.max(0,(height*z-Math.max(1,size.height-48))/2);return {x:Math.max(-x,Math.min(x,p.x)),y:Math.max(-y,Math.min(y,p.y))};};
  const transform=(p:Point)=>`translate3d(calc(-50% + ${p.x}px),calc(-50% + ${p.y}px),0) scale(${scale})`;
- useLayoutEffect(()=>{const node=host.current;if(!node)return;const o=new ResizeObserver(([e])=>setSize({width:e.contentRect.width,height:e.contentRect.height}));o.observe(node);return()=>o.disconnect();},[]);
+ useLayoutEffect(()=>{if(host.current)return observeSettledSize(host.current,next=>setSize(old=>old.width===next.width&&old.height===next.height?old:next));},[]);
  useLayoutEffect(()=>{setPan({x:0,y:0});},[src,resetKey]);
  useLayoutEffect(()=>{setPan(p=>{const next=clamp(p);return next.x===p.x&&next.y===p.y?p:next;});},[scale,width,height,size.width,size.height]);
  useCtrlWheel(host,(factor,point)=>{const next=previewScale(scale,factor),r=host.current?.getBoundingClientRect();if(!r||next===scale)return;const x=point.x-r.left-r.width/2,y=point.y-r.top-r.height/2;setPan(clamp({x:x-(x-position.current.x)*next/scale,y:y-(y-position.current.y)*next/scale},next));setScale(next);});

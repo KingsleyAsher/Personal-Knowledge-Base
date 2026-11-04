@@ -6,10 +6,10 @@
 
 | Product | Published version | Direct download | Release notes |
 |---|---|---|---|
-| **Desktop client · Windows x64** | **1.0.1** | **[⬇ Download client installer (EXE)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.1/KnowledgeWorkbench-1.0.1-Setup.exe)** | [Client Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.1) |
+| **Desktop client · Windows x64** | **1.0.2** | **[⬇ Download client installer (EXE)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.2/KnowledgeWorkbench-1.0.2-Setup.exe)** | [Client Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.2) |
 | **DSH knowledge-base plugin** | **2.4.1** | **[⬇ Download plugin (TGZ)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.1/local-dsh-knowledge-base-2.4.1.tgz)** | [Plugin Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.1) |
 
-Release entries: [client 1.0.1](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.1) · [plugin 2.4.1](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.1). Choose the correct installer/TGZ and verify its product-specific manifest and digest.
+Release entries: [client 1.0.2](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.2) · [plugin 2.4.1](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.1). Choose the correct installer/TGZ and verify its product-specific manifest and digest.
 
 ## One library, two entry points
 
@@ -21,9 +21,9 @@ Release entries: [client 1.0.1](https://github.com/KingsleyAsher/Personal-Knowle
 
 ## Download and installation
 
-### Desktop client 1.0.1 · Windows x64
+### Desktop client 1.0.2 · Windows x64
 
-**[Download KnowledgeWorkbench-1.0.1-Setup.exe](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.1/KnowledgeWorkbench-1.0.1-Setup.exe)** · [Release notes and assets](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.1) · [SHA-256 checksums](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.1/client-SHA256SUMS)
+**[Download KnowledgeWorkbench-1.0.2-Setup.exe](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.2/KnowledgeWorkbench-1.0.2-Setup.exe)** · [Release notes and assets](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.2) · [SHA-256 checksums](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.2/client-SHA256SUMS)
 
 Run the EXE to install. The approximately 186 MiB package includes its runtime. This is the standalone client installer, not a DSH plugin bundle.
 

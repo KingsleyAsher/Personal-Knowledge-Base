@@ -73,6 +73,6 @@ export async function createManager({dataDir,backendRoot,assetDir,python,node,se
   if(typeof name!=='string'||!name.trim()||name.length>80||/[<>:"|?*\\/\x00-\x1f]/.test(name)||/[. ]$/.test(name)||/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\.|$)/i.test(name))throw Object.assign(Error('库名称无效'),{code:'BAD_REQUEST'});
   const root=path.join(sandbox,'libraries',name.trim());await mkdir(root);await createFixture(root,backendRoot,assetDir);return openLibrary(root);
  }
- return {initialize,call,status,removeLibrary,reconnectDsh,openLibrary,listLibraries,createLibrary,ensureCandidate,get root(){return activeRoot;},get privateDir(){return privateDir;},get sandbox(){return sandbox;},async close(){clearInterval(leaseTimer);await unlink(leaseFile).catch(()=>{});clearTimeout(retryTimer);subscription?.();await runtime?.close();client=null;connectionState='offline';},async reconnect(){return openLibrary(activeRoot);}};
+ return {initialize,call,status,removeLibrary,reconnectDsh,openLibrary,listLibraries,createLibrary,ensureCandidate,get root(){return activeRoot;},get privateDir(){return privateDir;},get sandbox(){return sandbox;},async close(){clearInterval(leaseTimer);await unlink(leaseFile).catch(()=>{});clearTimeout(retryTimer);subscription?.();await runtime?.close();client=null;connectionState='offline';},async reconnect(){return activeRoot?openLibrary(activeRoot):initialize();}};
 }
 
