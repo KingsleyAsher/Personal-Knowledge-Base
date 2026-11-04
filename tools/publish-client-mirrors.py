@@ -11,7 +11,11 @@ def publish(platform,folder):
  with payload.open('rb') as f:assert hashlib.file_digest(f,'sha256').hexdigest()==m['sha256']
  api=MirrorAPI(platform);route='/releases/tags/'+quote(tag,safe='');release=api.repo(route,missing=True)
  body=(root/'docs/releases'/('client-'+m['version']+'.md')).read_text(encoding='utf-8')+'\n\nSHA-256: '+m['sha256']
- if release is None:release=api.repo('/releases',method='POST',data={'tag_name':tag,'target_commitish':'main','name':'客户端 '+m['version'],'body':body,'prerelease':False})
+ if release is None:
+  payload={'tag_name':tag,'target_commitish':'main','name':'客户端 '+m['version'],'body':body}
+  if platform=='gitee':payload['prerelease']=False
+  else:payload['release_status']='latest'
+  release=api.repo('/releases',method='POST',data=payload)
  for name in [m['asset'],'client-update.json','client-SHA256SUMS']:
   raw=(folder/name).read_bytes();rows=publisher.attachment_rows(api,release);row=next((x for x in rows if (x.get('name') or x.get('filename'))==name),None)
   if row is None:

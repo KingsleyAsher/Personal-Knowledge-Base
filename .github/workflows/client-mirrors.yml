@@ -33,5 +33,8 @@ jobs:
         run: |
           case "$RELEASE_TAG" in client-v*) ;; *) exit 1 ;; esac
           gh release download "$RELEASE_TAG" --dir .release-work/client --pattern '*Setup.exe' --pattern 'client-update.json' --pattern 'client-SHA256SUMS'
+      - name: Sync product release refs
+        continue-on-error: true
+        run: python tools/publish-stable-mirror.py "${{ matrix.platform }}"
       - name: Publish and verify native mirror attachments
         run: python tools/publish-client-mirrors.py "${{ matrix.platform }}" .release-work/client
