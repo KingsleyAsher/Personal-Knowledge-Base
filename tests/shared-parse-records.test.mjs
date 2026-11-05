@@ -7,7 +7,7 @@ import {createCore} from '../packages/kb-core/index.js'
 import {connectRuntime} from '../packages/kb-service/runtime.js'
 import {connectService} from '../packages/kb-service/client.js'
 
-test('shared settings see agent OCR/ASR running and historical records without granting ordinary sessions access', {skip:process.platform!=='win32',timeout:30000}, async t => {
+test('global shared settings see knowledge and ordinary Agent OCR/ASR records without elevating model tools', {skip:process.platform!=='win32',timeout:30000}, async t => {
   const parent=path.resolve('.test-runs');await mkdir(parent,{recursive:true})
   const root=await mkdtemp(path.join(parent,'parse-records-')),library=path.join(root,'library')
   await mkdir(library)
@@ -30,23 +30,25 @@ test('shared settings see agent OCR/ASR running and historical records without g
   const ready=JSON.parse(await readFile(path.join(runtime.privateDir,'ready.json'),'utf8'))
   const grant=await client.call('connection.grant',{label:'synthetic read-only UI',access:['read'],expiresAt:Date.now()+60000})
   reader=await connectService({pipe:ready.pipe,python:'python',credential:grant.credential,kind:'desktop'})
-  for(const kind of ['ocr','asr']){
+  for(const [authority,kind] of [['knowledge','ocr'],['knowledge','asr'],['workspace','ocr'],['workspace','asr']]){
     await client.call('host.bridge',{action:'register',hostInstanceId:'synthetic-host',label:'synthetic',workspaceId:'synthetic-workspace',capabilities:[]})
-    const sourceRel='40-素材资源/synthetic.'+(kind==='ocr'?'png':'wav')
+    const sourceRel='40-素材资源/synthetic-'+authority+'.'+(kind==='ocr'?'png':'wav')
     await writeFile(path.join(library,sourceRel),'synthetic original')
     const provider=await ui({op:'parse.provider.save',provider:{id:'synthetic-'+kind,kind,protocol:kind==='ocr'?'openai-vision':'openai-audio-transcriptions',locality:'local',baseUrl:'http://127.0.0.1:'+server.address().port+'/v1'}})
     assert.equal(provider.ok,true,JSON.stringify(provider))
     const called=new Promise(resolve=>{started=resolve})
-    const submitted=await client.call('host.tool',{name:'kb_parse',input:{action:'submit',kind,sourceRel,providerId:'synthetic-'+kind},hostSession:'synthetic-agent-session',hostAuthority:'knowledge'})
+    const stage=authority==='workspace'?await client.call('desktop.importStage',{name:path.basename(sourceRel),data:Buffer.from('synthetic ordinary Agent '+kind).toString('base64'),final:true}):null
+    const session='synthetic-'+authority+'-'+kind+'-session'
+    const submitted=await client.call('host.tool',{name:'kb_parse',input:{action:'submit',kind,...(stage?{}:{sourceRel}),providerId:'synthetic-'+kind},hostSession:session,hostAuthority:authority,...(stage?{sourceStage:stage.stageId}:{})})
     assert.equal(submitted.ok,true,JSON.stringify(submitted));await called
     for(const method of ['adapter.dispatch','workspace.read']){
       const running=await client.call(method,{operation:{op:'parse.jobs',kind,status:'running'}})
-      assert(running.jobs.some(j=>j.jobId===submitted.jobId),'admin settings must see the Agent running job via '+method)
+      assert(running.jobs.some(j=>j.jobId===submitted.jobId&&j.requestedBy.session===session),'admin settings must see '+authority+' Agent running job via '+method)
       const requests=await client.call(method,{operation:{op:'parse.requests',kind}})
       assert(requests.requests.some(r=>r.requestId===submitted.requestId),'admin settings must see Agent submissions')
     }
     for(const method of ['adapter.dispatch','workspace.read']){
-      const hidden=await reader.call(method,{operation:{op:'parse.jobs',kind,admin:true,session:'synthetic-agent-session'}},{policyVersion:client.welcome.policyVersion})
+      const hidden=await reader.call(method,{operation:{op:'parse.jobs',kind,admin:true,session}},{policyVersion:client.welcome.policyVersion})
       assert.equal(hidden.total,0,'read-only caller cannot claim management or another session')
       const requests=await reader.call(method,{operation:{op:'parse.requests',kind}},{policyVersion:client.welcome.policyVersion})
       assert.equal(requests.total,0)
