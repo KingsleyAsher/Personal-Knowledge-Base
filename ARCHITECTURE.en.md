@@ -23,7 +23,7 @@ Parsing records use a shared in-process read/write queue and atomic replacement.
 - Successful installation requires a Host restart. Embedded mode, missing drain capability, unsupported dependency layouts and incomplete previous installations fail closed.
 See [2.4.4 notes](docs/releases/plugin-2.4.4.md) for the transition and verification boundary.
 
-## 2.4.5: direct 2.4.3 updates and legacy service handoff (2026-11-05)
+## 2.4.6: direct 2.4.3 updates and legacy service handoff (2026-11-05)
 
 Restore the stable feed for direct updates from normal 2.4.3 installations. Identify the published legacy runtime by its exact fingerprint, release the probe connection and wait for its existing idle lifecycle to finish. Require matching process identity and a clean receipt before starting the new service. Never send legacy shutdown or terminate other clients/tasks; timeout offers recovery guidance.
 

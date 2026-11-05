@@ -4284,12 +4284,12 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     // END GENERATED TODO LIFECYCLE UI
 
-    const RELEASE_VERSION = '2.4.5'
+    const RELEASE_VERSION = '2.4.6'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.
     const RELEASE_NOTICES = [
-      {version:'2.4.5',items:['恢复 2.4.3 的直接自动升级；旧服务按原有空闲机制退出后自动交接。','升级或交接失败时提供恢复说明，增加受损 2.4.3 安装的校验修复入口。']},
+      {version:'2.4.6',items:['恢复 2.4.3 的直接自动升级；旧服务按原有空闲机制退出后自动交接。','升级或交接失败时提供恢复说明，增加受损 2.4.3 安装的校验修复入口。']},
       { version: '2.4.4', items: ['Windows 更新先校验和准备候选包，安全停服后切换，失败恢复旧包和清单。', '安全更新使用独立协议；旧版首次升级需过渡安装，忙碌或缺少停服能力时延后安装。'] },
       { version: '2.4.3', items: ['原件编辑后同步检索内容与引用范围，保留独立撰写的摘要。', '修复 Windows 解析任务状态写入冲突；后台失败保留记录、报告诊断并支持恢复重试。'] },
       { version: '2.4.1', items: ['同步两端版本规则；所选通道内跨大版本与预览版均自动更新，保留包校验与安装状态保护。', '客户端国内更新源与两端独立 Release 交付。'] },

@@ -1,3 +1,11 @@
+# 2.4.6：2.4.3 直接自动升级与恢复（2026-11-05）
+
+沿用本次验证的 2.4.3 直接安装、自然退出交接、条件错误提示和固定旧包恢复。补充 Windows 内置管理员 SID 别名的规范化校验，权限仍要求同一组明确的主体与授权。2.4.5 候选未通过发布环境校验，未创建正式 Release；保留其包字节，后续以 2.4.6 为自动更新目标。
+
+Direct 2.4.3 upgrades, natural idle handoff, conditional recovery help and pinned legacy repair are retained. Windows SID aliases are normalized before exact ACL comparison. The unpublished 2.4.5 candidate is preserved; 2.4.6 is the follow-up distribution.
+
+[升级错误恢复说明 / Recovery instructions](docs/UPDATE-RECOVERY.md)
+
 [升级报错后的手动恢复说明 / Upgrade error recovery](docs/UPDATE-RECOVERY.md)
 
 ## 2.4.5: direct 2.4.3 updates and legacy service handoff (2026-11-05)

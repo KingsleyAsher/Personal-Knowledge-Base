@@ -74,6 +74,13 @@ def private_dir(target):
     expected = 'D:P(A;OICI;FA;;;SY)(A;OICI;FA;;;' + SID + ')'
     sd, sa = security(expected)
     try:
+        # Windows may render an equivalent account SID as an SDDL alias (LA for
+        # the built-in local administrator). Normalize the requested descriptor
+        # with the same API used for the actual descriptor; do not relax ACLs.
+        normalized = W.LPWSTR()
+        checked(sd_string(sd, 1, 4, C.byref(normalized), None))
+        try: expected = normalized.value
+        finally: local_free(normalized)
         if not create_dir(str(p), C.byref(sa)) and C.get_last_error() != 183: raise C.WinError(C.get_last_error())
     finally: local_free(sd)
     if p.is_symlink() or p.is_junction(): raise ValueError('private directory cannot be a link')
