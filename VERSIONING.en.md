@@ -42,3 +42,8 @@ The new client shows recovery help only after an installation or handoff error. 
 
 Windows evidence uses the actual public 2.4.3 archive, a live service and real pnpm. Initial legacy installation still runs through the old Host installer and cannot retroactively acquire transaction protection. Recovery is the fallback on failure. No live user profile installation or complete Electron UI automation is claimed; other legacy versions are outside this targeted verification.
 
+## 2.4.6 migration boundary (2026-11-05)
+
+The pristine 2.4.6 updater can block on a missing legacy receipt before downloading any new or transition payload. Its old preparation worker may also resolve unrelated Host dependencies. Publishing 2.4.13 cannot repair that already-running code. Success after a one-time local recovery does not prove zero-intervention upgrades for other users.
+
+A separate [2.4.6 migration recovery entry](docs/LEGACY-246-BOOTSTRAP.md) verifies the public old package and transactionally installs the unchanged official 2.4.13 package. It discovers one profile or requires an explicit choice. This is one-time external recovery, not silent automatic migration. Four Windows entry/real-pnpm checks and two client-boundary checks cover dependency preservation, EPERM rollback, busy processes, profile selection and bundled Python. Mismatched historical safe transactions remain a limitation. Universal zero-intervention migration requires an independent Host recovery channel and is not claimed complete.

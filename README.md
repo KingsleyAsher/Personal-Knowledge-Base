@@ -1,5 +1,8 @@
 # Personal Knowledge Base · Plugin and Desktop Client
 
+> **2.4.6 updater limitation:** a pristine installation stuck on a pending receipt cannot self-repair from the feed alone. The [general recovery entry](docs/LEGACY-246-BOOTSTRAP.md) is a one-time external migration, not a zero-intervention update.
+
+
 > **2.4.3 can update directly.** Use [manual recovery instructions](docs/UPDATE-RECOVERY.md) only after an upgrade error; no preliminary transition package is required for the normal path.
 
 

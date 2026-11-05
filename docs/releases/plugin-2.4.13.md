@@ -12,3 +12,8 @@ Resolve only the dependency-free knowledge package in an isolated resolver, then
 
 Nineteen update-confirmation checks and eight real-pnpm/transaction checks passed. An isolated copy of the actual profile metadata also prepared successfully while the live manifest and lock remained unchanged. Rollback and crash recovery remain in place. Live installation and activation results are recorded separately from staging success.
 
+## 2.4.6 升级范围补充（2026-11-05）
+
+原版 2.4.6 的旧回执确认会在下载新包前阻断更新，旧准备器还可能重新解析其他宿主依赖。仅发布 2.4.13 或过渡包不能修复已经运行的旧代码；本机经过单次兼容恢复后成功，不代表其他原版用户均能零操作升级。
+
+现提供独立的 [2.4.6 通用升级恢复入口](../LEGACY-246-BOOTSTRAP.md)，校验公开原包后事务安装未改动的正式 2.4.13，支持自动发现单一 profile 或明确选择其他 profile。它是一次性外部恢复，不是静默自动升级。4 项 Windows 入口/真实 pnpm 检查和 2 项旧客户端边界检查通过，覆盖其他依赖保持、提交 EPERM 回滚、忙碌拒绝、多 profile 选择和独立 Python。历史安全事务不匹配仍可能阻止后续安装，不能宣称通用零操作自动迁移已经完成；这需要 DSH 宿主独立恢复通道。
