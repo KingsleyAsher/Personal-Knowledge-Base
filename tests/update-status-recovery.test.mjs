@@ -2,8 +2,17 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import path from 'node:path'
 import os from 'node:os'
-import {mkdtemp,mkdir,writeFile,unlink} from 'node:fs/promises'
+import {mkdtemp,mkdir,writeFile,unlink,readFile} from 'node:fs/promises'
+import vm from 'node:vm'
 import {createSafeUpdate} from '../packages/kb-service/safe-update.js'
+
+test('shared POST status includes the same Host build used by update confirmation',async()=>{
+  const source=await readFile(new URL('../packages/kb-service/host-adapter.js',import.meta.url),'utf8')
+  const expression=source.match(/const sharedStatus=(async\(\)=>[^\r\n]+)/)[1]
+  const build={version:'2.4.6',buildId:'5c9679e46cbc1498'}
+  const status=vm.runInNewContext('('+expression+')',{client:{call:async()=>({bound:true,kbId:'synthetic'})},build,nativeBridge:null,controllerScope:null,bridgeError:''})
+  const result=await status();assert.equal(result.build?.version,build.version);assert.equal(result.build?.buildId,build.buildId)
+})
 
 test('status without a journal reports the installed build and quiet writer; busy or damaged state never permits legacy retry',async()=>{
   const profile=await mkdtemp(path.join(os.tmpdir(),'kb-update-status-')),plugin=path.join(profile,'node_modules/@local/dsh-knowledge-base')

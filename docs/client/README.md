@@ -9,7 +9,7 @@
 
 A local-first Windows knowledge workspace for reading, editing and connecting your files. Use it independently, or connect it to DeepSeek Harness (DSH) and the [Personal Knowledge Base plugin](https://github.com/KingsleyAsher/Personal-Knowledge-Base).
 
-**Client 1.0.3 · Shared plugin source 2.4.10 · Windows x64**
+**Client 1.0.3 · Shared plugin source 2.4.11 · Windows x64**
 
 ## Your files, in one workspace
 
@@ -51,8 +51,8 @@ MIT licensed; bundled third-party components retain their own licenses. See [thi
 
 Update policy: every eligible version in the selected channel updates automatically, including majors and previews. The client online executor remains unfinished; see [version policy](../../VERSIONING.en.md).
 
-Shared source update: see [plugin 2.4.3](../releases/plugin-2.4.10.md) for source synchronization and Windows parsing fixes. The published client 1.0.3 installer still contains its original paired plugin 2.4.2 payload.
+Shared source update: see [plugin 2.4.3](../releases/plugin-2.4.11.md) for source synchronization and Windows parsing fixes. The published client 1.0.3 installer still contains its original paired plugin 2.4.2 payload.
 
-See [2.4.4 safe update and legacy transition](../releases/plugin-2.4.10.md). The published client installer remains 1.0.3.
+See [2.4.4 safe update and legacy transition](../releases/plugin-2.4.11.md). The published client installer remains 1.0.3.
 
-2.4.3 direct upgrade and conditional error recovery: [release 2.4.10](../releases/plugin-2.4.10.md). Client installer remains independently versioned at 1.0.3.
+2.4.3 direct upgrade and conditional error recovery: [release 2.4.11](../releases/plugin-2.4.11.md). Client installer remains independently versioned at 1.0.3.

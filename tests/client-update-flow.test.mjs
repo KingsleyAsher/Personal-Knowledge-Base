@@ -22,8 +22,8 @@ function setup(options = {}, data = new Map()) {
     },
     async waitForInstall() { waits++; return { ok: true, value: null } },
   }
-  const flow = factory({ api: async (request) => {
-    if (request.op === 'status') return { status: { build: installed ? { version: target.latestVersion, buildId: target.buildId } : { version: '1.1.2', buildId: 'd881ed4ff0990f64' } } }
+  const flow = factory({ api: async (request,method) => {
+    if (method==='GET'||request.op === 'status') return { status: { build: method!=='GET'&&options.postOmitsBuild?undefined:installed ? { version: target.latestVersion, buildId: target.buildId } : { version: '1.1.2', buildId: 'd881ed4ff0990f64' } } }
     if(request.op==='updates.install')return (await manager.installBundle('/verified/cache/hash/package.tgz',{enabled:true,requestId:'safe-transaction'})).value
     if(request.op==='updates.status')return options.updateStatus||{transactionId:'transaction-fixture',phase:'publishing'}
     prepares++; if (options.downloadFails) throw Error(options.downloadError || 'hash mismatch')
@@ -120,4 +120,9 @@ test('a prepared but never started safe transaction resumes the same transaction
   const s=setup({updateStatus:{...quietStatus,phase:'prepared',transactionId:record.transactionId}},pendingData(record))
   await s.flow.recover();assert.equal(s.final.resumeAvailable,true);assert.equal(s.installs,0)
   await s.flow.install(target.latestVersion);assert.equal(s.installs,1);assert.equal(s.prepares,0);assert.equal(JSON.parse(s.data.get(key)),null)
+})
+
+test('legacy shared Host missing POST build is confirmed through its read-only GET status',async()=>{
+  const s=setup({active:true,postOmitsBuild:true},pendingData(legacyRecord));await s.flow.recover()
+  assert.equal(JSON.parse(s.data.get(key)),null);assert.equal(s.final.completedVersion,target.latestVersion);assert.equal(s.installs,0)
 })

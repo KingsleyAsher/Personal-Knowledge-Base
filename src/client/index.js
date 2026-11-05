@@ -3095,7 +3095,8 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       const show = (message, extra = {}) => notify({ busy: false, uncertain: false, restartRequired: false, refreshRequired: false, deferred:false, manualHelp:false, message, ...extra })
       const hostActive = async (record) => {
         try {
-          const build = (await api({ op: 'status' }))?.status?.build
+          let build = (await api({ op: 'status' }))?.status?.build
+          if(!build)build=(await api({},'GET'))?.status?.build
           return build?.version === record.latestVersion && build?.buildId === record.buildId
         } catch { return false }
       }
@@ -4322,11 +4323,12 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     // END GENERATED TODO LIFECYCLE UI
 
-    const RELEASE_VERSION = '2.4.10'
+    const RELEASE_VERSION = '2.4.11'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.
     const RELEASE_NOTICES = [
+      {version:'2.4.11',items:['补齐共享模式状态接口的构建字段；兼容从旧版只读接口核对已完成更新，避免旧安装记录阻挡后续自动升级。']},
       {version:'2.4.10',items:['更新核对增加已安装构建与安装锁检查；安全解除失效的旧请求，支持继续尚未开始的已准备事务。']},
       {version:'2.4.9',items:['修复共享模式 kb_flow 返回缺少 action 导致工具结果校验失败的问题，成功与错误返回均保留原请求动作。']},
       {version:'2.4.8',items:['修复共库设置页看不到其他会话发起的 OCR / ASR 正在执行和历史记录的问题。']},
