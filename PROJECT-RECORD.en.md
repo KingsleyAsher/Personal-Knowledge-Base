@@ -3,15 +3,21 @@
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 2.4.11 -->
+<!-- project-record-version: 2.4.12 -->
 
-**Source covered: plugin 2.4.11 / client 1.0.3 · Updated: 2026-11-05 · Maintenance: review this record alongside the source with every release.**
+**Source covered: plugin 2.4.12 / client 1.0.3 · Updated: 2026-11-05 · Maintenance: review this record alongside the source with every release.**
 
 This long-term record is for users, maintainers, and future contributors. It explains why the product is built this way, what it can currently do, how its features fit together, where data is stored, and what may come next. “Implemented” refers to source code in this repository. Roadmap items are future directions, not features already delivered. The installed version and build ID must be checked in the client and the corresponding release manifest.
 
 See the [workbench guide](WORKBENCH.en.md) for usage, [release notes](RELEASE.en.md) for changes in each release, and [versioning policy](VERSIONING.en.md) for version comparisons. This record explains the product as a whole; release notes are not an architecture document.
 
 
+
+## 2.4.12: local dependencies during automatic update staging (2026-11-05)
+
+Retain the shared-build and legacy confirmation fixes from 2.4.11. Profile-local relative package dependencies are now copied into isolated shadow staging so pnpm can resolve them without changing their live source specifiers or files. Escapes, links, metadata collisions and relative packages over 64 MiB are rejected. Knowledge libraries and credentials are not staged.
+
+Nineteen confirmation checks and seven real-pnpm/transaction checks passed, including dependency preservation, escape rejection, rollback and crash recovery. Live-device automatic upgrade results are recorded separately; downloads, synthetic checks and disk package versions alone do not establish activation of the new running build.
 
 ## 2.4.11: shared build status and automatic update confirmation (2026-11-05)
 

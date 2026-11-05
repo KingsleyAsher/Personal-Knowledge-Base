@@ -38,8 +38,12 @@ jobs:
       - name: Verify version, archive, source and checksums
         if: github.event_name == 'push'
         run: python -X utf8 tools/verify-release.py
+      - name: Install pinned package manager for transaction checks
+        run: npm.cmd install --global --prefix "$env:APPDATA\npm" pnpm@11.23.0 --ignore-scripts
       - name: Focused release checks
         run: |
+          python -X utf8 -m unittest discover -s tests -p test_transactional_update.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node --test tests/update-status-recovery.test.mjs tests/flow-tool-output.test.mjs tests/shared-parse-records.test.mjs tests/parse-desktop-authorization.test.mjs tests/handoff-api.test.mjs tests/legacy-handoff.test.mjs tests/runtime-resume.test.mjs tests/parse-job-storage.test.mjs tests/flow-model-selection.test.mjs tests/inbox-entry.test.mjs tests/command-description.test.mjs tests/todo-lifecycle.test.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node tests/flow-conversation-probe.mjs

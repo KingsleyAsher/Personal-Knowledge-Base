@@ -71,4 +71,24 @@ class TransactionTests(unittest.TestCase):
         with self.assertRaises(RuntimeError): self.stage()
         self.assert_old()
 
+    def test_relative_host_plugin_is_staged_and_its_live_source_and_spec_are_preserved(self):
+        local = self.profile / 'local-plugins/pure-agent'; local.mkdir(parents=True)
+        (local / 'package.json').write_text(json.dumps({'name': '@local/pure-agent', 'version': '1.0.0'}), encoding='utf-8')
+        (local / 'index.js').write_bytes(b'// synthetic local Host plugin')
+        config = json.loads(self.metadata); config['dependencies']['@local/pure-agent'] = 'file:local-plugins/pure-agent'
+        (self.profile / 'package.json').write_text(json.dumps(config), encoding='utf-8'); self.metadata = (self.profile / 'package.json').read_bytes()
+        original = transaction.tree(local)
+        ident = self.stage(); self.assert_old(); self.assertEqual(transaction.tree(local), original)
+        self.assertEqual(transaction.tree(self.profile / '.kb-safe-updates' / ident / 'profile/local-plugins/pure-agent'), original)
+        transaction.commit(self.profile, ident)
+        self.assertEqual(json.loads((self.profile / 'package.json').read_text())['dependencies']['@local/pure-agent'], 'file:local-plugins/pure-agent')
+        self.assertEqual(transaction.tree(local), original)
+
+    def test_relative_staging_rejects_escape_without_copying_external_material(self):
+        outside = self.root / 'outside'; outside.mkdir(); (outside / 'package.json').write_text('{}')
+        shadow = self.root / 'shadow'; shadow.mkdir()
+        with self.assertRaises(RuntimeError):
+            transaction.stage_local_dependencies(self.profile, shadow, {'dependencies': {'fixture': 'file:../outside'}})
+        self.assertEqual(list(shadow.iterdir()), [])
+
 if __name__ == '__main__': unittest.main()

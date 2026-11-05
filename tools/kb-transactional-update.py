@@ -103,6 +103,35 @@ def validate_archive(archive, expected, destination):
     if digest.hexdigest()[:16] != expected['buildId']: raise RuntimeError('Build ID mismatch')
     return pkg
 
+def stage_local_dependencies(profile, shadow, config):
+    staged = set()
+    for group in ('dependencies', 'devDependencies', 'optionalDependencies'):
+        for name, value in config.get(group, {}).items():
+            if name == PACKAGE or not isinstance(value, str) or not value.startswith(('file:', 'link:')): continue
+            relative = Path(value.split(':', 1)[1])
+            if relative.is_absolute(): continue
+            source = (profile / relative).resolve(strict=True)
+            destination = (shadow / relative).resolve()
+            if source == profile or not source.is_relative_to(profile) or source.is_relative_to(profile / '.kb-safe-updates'):
+                raise RuntimeError('Relative dependency must stay inside the profile')
+            if destination == shadow or not destination.is_relative_to(shadow):
+                raise RuntimeError('Relative dependency escapes isolated staging')
+            for part in [profile / relative, *(profile / relative).parents]:
+                if part == profile: break
+                if part.is_symlink() or part.is_junction(): raise RuntimeError('Linked relative dependency requires Host-managed migration')
+            if destination in staged: continue
+            if destination.exists(): raise RuntimeError('Relative dependency conflicts with staging metadata')
+            if source.is_dir():
+                tree(source)  # Reject linked descendants before copying code into private staging.
+                if sum(p.stat().st_size for p in source.rglob('*') if p.is_file()) > 64 * 1024 * 1024:
+                    raise RuntimeError('Relative dependency exceeds staging limit')
+                shutil.copytree(source, destination)
+            elif source.is_file():
+                if source.stat().st_size > 64 * 1024 * 1024: raise RuntimeError('Relative dependency exceeds staging limit')
+                destination.parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(source, destination)
+            else: raise RuntimeError('Relative dependency is not a regular package')
+            staged.add(destination)
+
 def prepare(profile, archive, expected, pnpm=None):
     profile, plugin, journal = locations(profile)
     with profile_lock(profile):
@@ -120,10 +149,7 @@ def prepare(profile, archive, expected, pnpm=None):
             if (profile / name).is_file(): shutil.copyfile(profile / name, shadow / name)
         staged_config = json.loads(json.dumps(config))
         staged_config['dependencies'][PACKAGE] = 'file:' + archive.resolve().as_posix()
-        for group in ('dependencies', 'devDependencies', 'optionalDependencies'):
-            for name, value in staged_config.get(group, {}).items():
-                if name != PACKAGE and value.startswith(('file:', 'link:')) and not Path(value.split(':', 1)[1]).is_absolute():
-                    raise RuntimeError('Relative local dependencies need a Host-managed migration; old profile unchanged')
+        stage_local_dependencies(profile, shadow, staged_config)
         save(shadow / 'package.json', staged_config)
         pnpm = pnpm or Path(os.environ.get('APPDATA', str(Path.home() / 'AppData/Roaming'))) / 'npm/node_modules/pnpm/bin/pnpm.mjs'
         node = shutil.which('node.exe') or shutil.which('node')

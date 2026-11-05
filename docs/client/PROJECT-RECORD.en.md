@@ -4,7 +4,7 @@
 
 [中文](PROJECT-RECORD.md) · English
 
-Client 1.0.3, shared plugin source 2.4.11. Updated 2026-11-05.
+Client 1.0.3, shared plugin source 2.4.12. Updated 2026-11-05.
 
 The product puts the existing file hierarchy at the center of a desktop workspace. Reading, editing, comparison and optional DSH conversations share one interface. The file sidebar remains a file browser; management tools open in movable windows with full-page entry points.
 
@@ -16,6 +16,12 @@ The renderer lives in `apps/desktop/src`, desktop permissions in `apps/desktop/m
 
 Future work includes online updates, data-preserving in-place installation, broader Office fidelity and cross-version compatibility testing. These are plans, not shipped guarantees. Release notes and this record must evolve together.
 
+
+## 2.4.12: local dependencies during automatic update staging (2026-11-05)
+
+Retain the shared-build and legacy confirmation fixes from 2.4.11. Profile-local relative package dependencies are now copied into isolated shadow staging so pnpm can resolve them without changing their live source specifiers or files. Escapes, links, metadata collisions and relative packages over 64 MiB are rejected. Knowledge libraries and credentials are not staged.
+
+Nineteen confirmation checks and seven real-pnpm/transaction checks passed, including dependency preservation, escape rejection, rollback and crash recovery. Live-device automatic upgrade results are recorded separately; downloads, synthetic checks and disk package versions alone do not establish activation of the new running build.
 
 ## 2.4.11: shared build status and automatic update confirmation (2026-11-05)
 

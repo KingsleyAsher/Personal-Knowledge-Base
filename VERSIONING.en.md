@@ -2,7 +2,7 @@
 
 [中文](VERSIONING.md) · English
 
-Both products share this policy while retaining independent versions: plugin source 2.4.11, client source 1.0.3. Shared implementation: packages/kb-contracts/version-policy.js; the plugin keeps its legacy import entry.
+Both products share this policy while retaining independent versions: plugin source 2.4.12, client source 1.0.3. Shared implementation: packages/kb-contracts/version-policy.js; the plugin keeps its legacy import entry.
 
 ## Names and ordering
 
@@ -34,7 +34,7 @@ Publication state is defined by the current release-manifest-v2.json and product
 
 更新源进展 / Update feed status：客户端已实现 Gitee、GitCode、GitHub 清单检查与校验下载；自动安装执行器尚未完成。当前安装包、版本与镜像可用性以各自 Release 和实际检查为准。
 
-## 2.4.11: direct 2.4.3 updates and legacy service handoff (2026-11-05)
+## 2.4.12: direct 2.4.3 updates and legacy service handoff (2026-11-05)
 
 Restore the stable feed for direct updates from normal 2.4.3 installations. Identify the published legacy runtime by its exact fingerprint, release the probe connection and wait for its existing idle lifecycle to finish. Require matching process identity and a clean receipt before starting the new service. Never send legacy shutdown or terminate other clients/tasks; timeout offers recovery guidance.
 
