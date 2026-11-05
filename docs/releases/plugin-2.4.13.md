@@ -1,5 +1,9 @@
 # 知识库插件 2.4.13 / Knowledge-base plugin 2.4.13
 
+**原版 2.4.6 直升补验：** 未打补丁、无旧待确认记录、仅注册知识库包的有效 Windows profile，已通过原自动决策、实际 HTTP API、旧事务安装器和真实 pnpm 直接安装 2.4.13；按原流程重启 Host 后新版加载并自行清除该次待确认记录。旧回执、相对依赖、缺锁且离线不可用的 SDK 三类受阻场景均保留旧版本。不是完整 Electron 或所有用户依赖组合的验证。[详细范围与结果](../validation/windows-direct-246-to-2413.md)
+
+**Original 2.4.6 direct-upgrade check:** an unpatched, valid Windows profile containing only the knowledge package and no stale pending receipt installed 2.4.13 through its shipped automatic decision, HTTP API, old transaction worker and real pnpm. A fresh Host process loaded 2.4.13 and reconciled the update record. Three blocked scenarios preserved the old installation. Complete Electron automation and all dependency combinations are outside this check.
+
 **正常 2.4.3 可直接升级到 2.4.13，无需先装 2.4.6。** 已补验公开原包、Windows 真实 pnpm 和旧服务交接，合成原件保持不变。测试没有驱动完整 Electron 自动安装界面；已受旧回执阻断的实例及其他更早版本需分别判断，不能把恢复限制推广到所有旧用户。[验证范围](../validation/windows-auto-update-2.4.13.md)
 
 **A normal 2.4.3 installation can migrate directly to 2.4.13 without first installing 2.4.6.** The public old package, real Windows pnpm installation and live service handoff were rechecked. This does not establish complete Electron automation or compatibility for every earlier version or blocked receipt state.
