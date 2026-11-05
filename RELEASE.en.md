@@ -1,3 +1,9 @@
+## 2.4.13: preserve unrelated Host dependency locks (2026-11-05)
+
+Resolve only the dependency-free knowledge package in an isolated resolver, then merge its importer, package and snapshot entries into the original pnpm v9 lockfile. Other source specifiers, pinned versions and records remain byte-for-byte intact. Host-internal packages are not looked up, copied or reinstalled. Unsupported or ambiguous locks and cross-package references fail closed.
+
+Nineteen update-confirmation checks and eight real-pnpm/transaction checks passed. An isolated copy of the actual profile metadata also prepared successfully while the live manifest and lock remained unchanged. Rollback and crash recovery remain in place. Live installation and activation results are recorded separately from staging success.
+
 ## 2.4.12: local dependencies during automatic update staging (2026-11-05)
 
 Retain the shared-build and legacy confirmation fixes from 2.4.11. Profile-local relative package dependencies are now copied into isolated shadow staging so pnpm can resolve them without changing their live source specifiers or files. Escapes, links, metadata collisions and relative packages over 64 MiB are rejected. Knowledge libraries and credentials are not staged.

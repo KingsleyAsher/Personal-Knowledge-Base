@@ -103,34 +103,51 @@ def validate_archive(archive, expected, destination):
     if digest.hexdigest()[:16] != expected['buildId']: raise RuntimeError('Build ID mismatch')
     return pkg
 
-def stage_local_dependencies(profile, shadow, config):
-    staged = set()
-    for group in ('dependencies', 'devDependencies', 'optionalDependencies'):
-        for name, value in config.get(group, {}).items():
-            if name == PACKAGE or not isinstance(value, str) or not value.startswith(('file:', 'link:')): continue
-            relative = Path(value.split(':', 1)[1])
-            if relative.is_absolute(): continue
-            source = (profile / relative).resolve(strict=True)
-            destination = (shadow / relative).resolve()
-            if source == profile or not source.is_relative_to(profile) or source.is_relative_to(profile / '.kb-safe-updates'):
-                raise RuntimeError('Relative dependency must stay inside the profile')
-            if destination == shadow or not destination.is_relative_to(shadow):
-                raise RuntimeError('Relative dependency escapes isolated staging')
-            for part in [profile / relative, *(profile / relative).parents]:
-                if part == profile: break
-                if part.is_symlink() or part.is_junction(): raise RuntimeError('Linked relative dependency requires Host-managed migration')
-            if destination in staged: continue
-            if destination.exists(): raise RuntimeError('Relative dependency conflicts with staging metadata')
-            if source.is_dir():
-                tree(source)  # Reject linked descendants before copying code into private staging.
-                if sum(p.stat().st_size for p in source.rglob('*') if p.is_file()) > 64 * 1024 * 1024:
-                    raise RuntimeError('Relative dependency exceeds staging limit')
-                shutil.copytree(source, destination)
-            elif source.is_file():
-                if source.stat().st_size > 64 * 1024 * 1024: raise RuntimeError('Relative dependency exceeds staging limit')
-                destination.parent.mkdir(parents=True, exist_ok=True); shutil.copyfile(source, destination)
-            else: raise RuntimeError('Relative dependency is not a regular package')
-            staged.add(destination)
+def lock_entries(lines, start, end, indent):
+    rows = []
+    pattern = re.compile(r"^(?:'((?:[^']|'')*)'|\"((?:[^\"\\]|\\.)*)\"|([^:#]+)):\s*(?:.*)$")
+    for at in range(start, end):
+        line = lines[at].rstrip('\r\n')
+        if not line.strip() or len(line) - len(line.lstrip()) != indent: continue
+        match = pattern.fullmatch(line.lstrip())
+        if not match: raise RuntimeError('Unsupported lockfile mapping')
+        key = match[1].replace("''", "'") if match[1] is not None else json.loads('"' + match[2] + '"') if match[2] is not None else match[3].strip()
+        rows.append((key, at))
+    return [(key, at, rows[i+1][1] if i+1 < len(rows) else end) for i, (key, at) in enumerate(rows)]
+
+def managed_lock_blocks(text):
+    lines = text.splitlines(keepends=True)
+    if not re.search(r"^lockfileVersion: ['\"]?9\.0['\"]?\s*$", text, re.M): raise RuntimeError('Unsupported lockfile version')
+    def parent(keys):
+        start, end, indent = 0, len(lines), 0
+        for key in keys:
+            choices = [row for row in lock_entries(lines, start, end, indent) if row[0] == key]
+            if len(choices) != 1: raise RuntimeError('Lockfile structure is ambiguous')
+            _, begin, end = choices[0]; start = begin + 1; indent += 2
+        return start, end, indent
+    blocks = []
+    for keys, prefix in [(('importers', '.', 'dependencies'), False), (('packages',), True), (('snapshots',), True)]:
+        start, end, indent = parent(keys)
+        found = [row for row in lock_entries(lines, start, end, indent) if row[0].startswith(PACKAGE + '@')] if prefix else [row for row in lock_entries(lines, start, end, indent) if row[0] == PACKAGE]
+        if len(found) != 1: raise RuntimeError('Knowledge plugin lock entry is missing or ambiguous')
+        blocks.append(found[0][1:])
+    return lines, blocks
+
+def merge_plugin_lock(original, resolved):
+    old_lines, old_blocks = managed_lock_blocks(original)
+    new_lines, new_blocks = managed_lock_blocks(resolved)
+    newline = '\r\n' if '\r\n' in original else '\n'
+    merged = old_lines[:]
+    for (start, end), (a, b) in reversed(list(zip(old_blocks, new_blocks))):
+        merged[start:end] = [line.rstrip('\r\n') + newline for line in new_lines[a:b]]
+    result = ''.join(merged)
+    def unrelated(text):
+        lines, blocks = managed_lock_blocks(text)
+        for start, end in reversed(blocks): del lines[start:end]
+        return ''.join(lines)
+    if unrelated(result) != unrelated(original): raise RuntimeError('Unrelated lock records changed')
+    if PACKAGE in unrelated(original): raise RuntimeError('Another lock entry depends on the knowledge package')
+    return result
 
 def prepare(profile, archive, expected, pnpm=None):
     profile, plugin, journal = locations(profile)
@@ -149,15 +166,24 @@ def prepare(profile, archive, expected, pnpm=None):
             if (profile / name).is_file(): shutil.copyfile(profile / name, shadow / name)
         staged_config = json.loads(json.dumps(config))
         staged_config['dependencies'][PACKAGE] = 'file:' + archive.resolve().as_posix()
-        stage_local_dependencies(profile, shadow, staged_config)
         save(shadow / 'package.json', staged_config)
         pnpm = pnpm or Path(os.environ.get('APPDATA', str(Path.home() / 'AppData/Roaming'))) / 'npm/node_modules/pnpm/bin/pnpm.mjs'
         node = shutil.which('node.exe') or shutil.which('node')
         if not node or not Path(pnpm).is_file(): raise RuntimeError('Existing Node/pnpm toolchain required')
-        command = [node, str(pnpm), 'install', '--lockfile-only', '--offline', '--ignore-scripts', '--no-frozen-lockfile']
+        resolver = work / 'resolver'; resolver.mkdir()
+        save(resolver / 'package.json', {'private': True, 'dependencies': {PACKAGE: staged_config['dependencies'][PACKAGE]}})
+        (resolver / 'pnpm-workspace.yaml').write_text('packages:\n  - .\n', encoding='utf-8')
+        command = [node, str(pnpm), 'install', '--ignore-workspace', '--lockfile-only', '--offline', '--ignore-scripts', '--no-frozen-lockfile']
         with (work / 'prepare.log').open('wb') as log:
-            result = subprocess.run(command, cwd=shadow, stdout=log, stderr=subprocess.STDOUT, timeout=120)
+            result = subprocess.run(command, cwd=resolver, stdout=log, stderr=subprocess.STDOUT, timeout=120)
         if result.returncode: raise RuntimeError('Staging failed; live profile unchanged. ' + (work / 'prepare.log').read_text(encoding='utf-8', errors='replace')[-2000:])
+        resolved_lock = (resolver / 'pnpm-lock.yaml').read_text(encoding='utf-8')
+        original_lock = read(profile / 'pnpm-lock.yaml')
+        if original_lock is None:
+            if any(name != PACKAGE for group in ('dependencies', 'devDependencies', 'optionalDependencies') for name in config.get(group, {})): raise RuntimeError('Existing lockfile required to preserve unrelated dependencies')
+            merged_lock = resolved_lock
+        else: merged_lock = merge_plugin_lock(original_lock.decode('utf-8'), resolved_lock)
+        (shadow / 'pnpm-lock.yaml').write_bytes(merged_lock.encode('utf-8'))
         new = {name: base64.b64encode((shadow / name).read_bytes()).decode() for name in METADATA}
         next_config = json.loads(base64.b64decode(new['package.json']))
         check = json.loads(json.dumps(next_config)); check['dependencies'][PACKAGE] = config['dependencies'][PACKAGE]

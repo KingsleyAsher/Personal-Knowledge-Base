@@ -3,15 +3,21 @@
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 2.4.12 -->
+<!-- project-record-version: 2.4.13 -->
 
-**Source covered: plugin 2.4.12 / client 1.0.3 · Updated: 2026-11-05 · Maintenance: review this record alongside the source with every release.**
+**Source covered: plugin 2.4.13 / client 1.0.3 · Updated: 2026-11-05 · Maintenance: review this record alongside the source with every release.**
 
 This long-term record is for users, maintainers, and future contributors. It explains why the product is built this way, what it can currently do, how its features fit together, where data is stored, and what may come next. “Implemented” refers to source code in this repository. Roadmap items are future directions, not features already delivered. The installed version and build ID must be checked in the client and the corresponding release manifest.
 
 See the [workbench guide](WORKBENCH.en.md) for usage, [release notes](RELEASE.en.md) for changes in each release, and [versioning policy](VERSIONING.en.md) for version comparisons. This record explains the product as a whole; release notes are not an architecture document.
 
 
+
+## 2.4.13: preserve unrelated Host dependency locks (2026-11-05)
+
+Resolve only the dependency-free knowledge package in an isolated resolver, then merge its importer, package and snapshot entries into the original pnpm v9 lockfile. Other source specifiers, pinned versions and records remain byte-for-byte intact. Host-internal packages are not looked up, copied or reinstalled. Unsupported or ambiguous locks and cross-package references fail closed.
+
+Nineteen update-confirmation checks and eight real-pnpm/transaction checks passed. An isolated copy of the actual profile metadata also prepared successfully while the live manifest and lock remained unchanged. Rollback and crash recovery remain in place. Live installation and activation results are recorded separately from staging success.
 
 ## 2.4.12: local dependencies during automatic update staging (2026-11-05)
 

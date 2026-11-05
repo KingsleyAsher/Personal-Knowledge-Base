@@ -71,24 +71,67 @@ class TransactionTests(unittest.TestCase):
         with self.assertRaises(RuntimeError): self.stage()
         self.assert_old()
 
-    def test_relative_host_plugin_is_staged_and_its_live_source_and_spec_are_preserved(self):
+    def locked_other(self, name, specifier, version):
+        lock = f"""lockfileVersion: '9.0'
+
+settings:
+  autoInstallPeers: false
+
+importers:
+  .:
+    dependencies:
+      '@local/dsh-knowledge-base':
+        specifier: file:old.tgz
+        version: file:old.tgz
+      '{name}':
+        specifier: {specifier}
+        version: {version}
+
+packages:
+  '@local/dsh-knowledge-base@file:old.tgz':
+    resolution: {{tarball: file:old.tgz}}
+  '{name}@{version}':
+    resolution: {{integrity: sha512-synthetic}}
+
+snapshots:
+  '@local/dsh-knowledge-base@file:old.tgz': {{}}
+  '{name}@{version}': {{}}
+"""
+        (self.profile / 'pnpm-lock.yaml').write_text(lock, encoding='utf-8')
+        return lock
+
+    def test_relative_host_plugin_is_not_resolved_or_modified(self):
         local = self.profile / 'local-plugins/pure-agent'; local.mkdir(parents=True)
         (local / 'package.json').write_text(json.dumps({'name': '@local/pure-agent', 'version': '1.0.0'}), encoding='utf-8')
         (local / 'index.js').write_bytes(b'// synthetic local Host plugin')
         config = json.loads(self.metadata); config['dependencies']['@local/pure-agent'] = 'file:local-plugins/pure-agent'
         (self.profile / 'package.json').write_text(json.dumps(config), encoding='utf-8'); self.metadata = (self.profile / 'package.json').read_bytes()
+        original_lock = self.locked_other('@local/pure-agent', 'file:local-plugins/pure-agent', 'file:local-plugins/pure-agent')
         original = transaction.tree(local)
         ident = self.stage(); self.assert_old(); self.assertEqual(transaction.tree(local), original)
-        self.assertEqual(transaction.tree(self.profile / '.kb-safe-updates' / ident / 'profile/local-plugins/pure-agent'), original)
+        self.assertFalse((self.profile / '.kb-safe-updates' / ident / 'profile/local-plugins').exists())
         transaction.commit(self.profile, ident)
         self.assertEqual(json.loads((self.profile / 'package.json').read_text())['dependencies']['@local/pure-agent'], 'file:local-plugins/pure-agent')
         self.assertEqual(transaction.tree(local), original)
+        merged = (self.profile / 'pnpm-lock.yaml').read_text(encoding='utf-8')
+        def other(text):
+            lines, blocks = transaction.managed_lock_blocks(text)
+            for start, end in reversed(blocks): del lines[start:end]
+            return ''.join(lines)
+        self.assertEqual(other(merged), other(original_lock))
 
-    def test_relative_staging_rejects_escape_without_copying_external_material(self):
-        outside = self.root / 'outside'; outside.mkdir(); (outside / 'package.json').write_text('{}')
-        shadow = self.root / 'shadow'; shadow.mkdir()
-        with self.assertRaises(RuntimeError):
-            transaction.stage_local_dependencies(self.profile, shadow, {'dependencies': {'fixture': 'file:../outside'}})
-        self.assertEqual(list(shadow.iterdir()), [])
+    def test_unpublished_host_sdk_pin_does_not_need_registry_resolution(self):
+        config = json.loads(self.metadata); config['dependencies']['@example/private-host-sdk'] = '99.0.0-unpublished'
+        (self.profile / 'package.json').write_text(json.dumps(config), encoding='utf-8'); self.metadata = (self.profile / 'package.json').read_bytes()
+        self.locked_other('@example/private-host-sdk', '99.0.0-unpublished', '99.0.0-unpublished')
+        ident = self.stage(); self.assert_old()
+        resolver = json.loads((self.profile / '.kb-safe-updates' / ident / 'resolver/package.json').read_text())
+        self.assertEqual(set(resolver['dependencies']), {transaction.PACKAGE})
+
+    def test_unsupported_lock_schema_fails_without_modifying_the_live_profile(self):
+        original = b"lockfileVersion: '8.0'\n"
+        (self.profile / 'pnpm-lock.yaml').write_bytes(original)
+        with self.assertRaises(RuntimeError): self.stage()
+        self.assert_old(); self.assertEqual((self.profile / 'pnpm-lock.yaml').read_bytes(), original)
 
 if __name__ == '__main__': unittest.main()

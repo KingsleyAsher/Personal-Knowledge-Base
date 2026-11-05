@@ -11,7 +11,7 @@ Choose the client for a standalone file workspace, or the plugin for tools and m
 | Develop or package either product | [Development](DEVELOPMENT.en.md) |
 | Understand library sharing and offline limits | [Architecture](ARCHITECTURE.en.md) |
 
-Source versions are client 1.0.3 and plugin 2.4.12. Public plugin downloads follow release-manifest-v2.json; the current publication is 2.4.12. Client update checks and verified downloads are available; automatic in-place installation and activation remain unfinished. Removing a library registration does not delete its original files; application uninstall and document deletion are different operations.
+Source versions are client 1.0.3 and plugin 2.4.13. Public plugin downloads follow release-manifest-v2.json; the current publication is 2.4.13. Client update checks and verified downloads are available; automatic in-place installation and activation remain unfinished. Removing a library registration does not delete its original files; application uninstall and document deletion are different operations.
 
 ## Plugin usage and historical instructions
 
@@ -187,7 +187,7 @@ Open the plugin's Inbox tab and drag in files or select several; they are saved 
 
 First choose a model in **Model for organization**, then click **Organize now**. The plugin remembers the last model per knowledge base and starts a new knowledge-base Agent session using that model and High reasoning effort. Progress, results, and stop controls are in the session. Organization cannot start if no model is selected or if the model does not support High. The Workflow page also has a permanent **Organize and archive inbox** built-in workflow that allows model selection at run time and cannot be deleted. Text, web, and legacy capture records are in a collapsed auxiliary entry.
 
-## 2.4.12: direct 2.4.3 updates and legacy service handoff (2026-11-05)
+## 2.4.13: direct 2.4.3 updates and legacy service handoff (2026-11-05)
 
 Restore the stable feed for direct updates from normal 2.4.3 installations. Identify the published legacy runtime by its exact fingerprint, release the probe connection and wait for its existing idle lifecycle to finish. Require matching process identity and a clean receipt before starting the new service. Never send legacy shutdown or terminate other clients/tasks; timeout offers recovery guidance.
 

@@ -4323,11 +4323,12 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     // END GENERATED TODO LIFECYCLE UI
 
-    const RELEASE_VERSION = '2.4.12'
+    const RELEASE_VERSION = '2.4.13'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.
     const RELEASE_NOTICES = [
+      {version:'2.4.13',items:['安全更新仅解析知识库包并合并对应锁记录，避免重新解析宿主内置插件和其他依赖。']},
       {version:'2.4.12',items:['安全更新兼容宿主 profile 内的相对路径本地插件，仅复制到隔离准备目录，保持其他插件来源和原件不变。']},
       {version:'2.4.11',items:['补齐共享模式状态接口的构建字段；兼容从旧版只读接口核对已完成更新，避免旧安装记录阻挡后续自动升级。']},
       {version:'2.4.10',items:['更新核对增加已安装构建与安装锁检查；安全解除失效的旧请求，支持继续尚未开始的已准备事务。']},

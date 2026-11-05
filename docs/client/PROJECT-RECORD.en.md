@@ -4,7 +4,7 @@
 
 [中文](PROJECT-RECORD.md) · English
 
-Client 1.0.3, shared plugin source 2.4.12. Updated 2026-11-05.
+Client 1.0.3, shared plugin source 2.4.13. Updated 2026-11-05.
 
 The product puts the existing file hierarchy at the center of a desktop workspace. Reading, editing, comparison and optional DSH conversations share one interface. The file sidebar remains a file browser; management tools open in movable windows with full-page entry points.
 
@@ -16,6 +16,12 @@ The renderer lives in `apps/desktop/src`, desktop permissions in `apps/desktop/m
 
 Future work includes online updates, data-preserving in-place installation, broader Office fidelity and cross-version compatibility testing. These are plans, not shipped guarantees. Release notes and this record must evolve together.
 
+
+## 2.4.13: preserve unrelated Host dependency locks (2026-11-05)
+
+Resolve only the dependency-free knowledge package in an isolated resolver, then merge its importer, package and snapshot entries into the original pnpm v9 lockfile. Other source specifiers, pinned versions and records remain byte-for-byte intact. Host-internal packages are not looked up, copied or reinstalled. Unsupported or ambiguous locks and cross-package references fail closed.
+
+Nineteen update-confirmation checks and eight real-pnpm/transaction checks passed. An isolated copy of the actual profile metadata also prepared successfully while the live manifest and lock remained unchanged. Rollback and crash recovery remain in place. Live installation and activation results are recorded separately from staging success.
 
 ## 2.4.12: local dependencies during automatic update staging (2026-11-05)
 
