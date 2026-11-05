@@ -17,7 +17,7 @@ test('stable and preview checks are read-only; preview remains an independent us
   assert.equal(result.preview.updateAvailable, true)
   assert.equal(result.preview.latestVersion, '2.0-beta1')
   assert.equal(urls.length, 2)
-  assert(urls.every(url => url.endsWith('manifest.json')))
+  assert(urls.every(url => /\/(?:release-manifest-v2|preview-manifest)\.json$/.test(url)))
   assert.equal(compareReleaseVersions('2.0-beta1', '2.0-beta1'), 0)
   assert.equal(compareReleaseVersions('2.0.0', '2.0-beta1'), 1)
   assert.equal(compareReleaseVersions('2.1-beta1', '2.0-beta9'), 1)
