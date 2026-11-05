@@ -9,7 +9,7 @@
 
 围绕本地文件构建的 Windows 知识工作台：浏览资料、并排阅读、编辑笔记和探索关联。客户端可以独立使用，也可以与 [DSH 知识库插件](https://github.com/KingsleyAsher/Personal-Knowledge-Base) 共库联动。
 
-**客户端 1.0.3 · 共享知识库插件源码 2.4.8 · Windows x64**
+**客户端 1.0.3 · 共享知识库插件源码 2.4.9 · Windows x64**
 
 ## 主要能力
 
@@ -41,8 +41,8 @@
 
 更新策略统一为所选通道内所有新版本自动更新（含跨大版本与预览版）；不再逐次要求手动确认。客户端在线执行链路仍未完成，详见 [版本规则](../../VERSIONING.md)。
 
-共享源码更新见 [插件 2.4.3](../releases/plugin-2.4.8.md)：原件同步与 Windows 解析任务修复。已发布的客户端 1.0.3 安装器仍包含原先配套的插件 2.4.2，不因源码更新而替换其附件。
+共享源码更新见 [插件 2.4.3](../releases/plugin-2.4.9.md)：原件同步与 Windows 解析任务修复。已发布的客户端 1.0.3 安装器仍包含原先配套的插件 2.4.2，不因源码更新而替换其附件。
 
-See [2.4.4 safe update and legacy transition](../releases/plugin-2.4.8.md). The published client installer remains 1.0.3.
+See [2.4.4 safe update and legacy transition](../releases/plugin-2.4.9.md). The published client installer remains 1.0.3.
 
-2.4.3 direct upgrade and conditional error recovery: [release 2.4.8](../releases/plugin-2.4.8.md). Client installer remains independently versioned at 1.0.3.
+2.4.3 direct upgrade and conditional error recovery: [release 2.4.9](../releases/plugin-2.4.9.md). Client installer remains independently versioned at 1.0.3.

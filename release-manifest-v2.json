@@ -1,12 +1,12 @@
 {
   "package": "@local/dsh-knowledge-base",
-  "version": "2.4.8",
-  "buildId": "2a2d53cea46d6825",
-  "tgz": "local-dsh-knowledge-base-2.4.8.tgz",
-  "bytes": 15750784,
-  "sha256": "a9d5101fe477e5a2a69337a8cec8c546671d8858daa450f5cb4079f4417d17d3",
-  "integrity": "sha512-bdX4jNa07auTnDYl/nQXObr1iPrS0XZJxh9Fm1JnI+xhJD59MMT23JdzJxD99AADEsHM9KpGu303zlFADy2SzA==",
-  "packageFileCount": 469,
+  "version": "2.4.9",
+  "buildId": "fdd6134750b1861a",
+  "tgz": "local-dsh-knowledge-base-2.4.9.tgz",
+  "bytes": 15755573,
+  "sha256": "f78987cc94165d7c534b0d4628c59d871d6654bee0ca7ccc24c6155fa7b44315",
+  "integrity": "sha512-MGiDp8yFOHkcZ/RT3EQ1kDH9QmfPKw8yVY4Ov10ooSqj0HFZ/hiQqjTvg7RE4ybuTdNGdNixq0KUsVYb9TQ1Sg==",
+  "packageFileCount": 470,
   "buildFileCount": 371,
   "files": [
     {
@@ -47,12 +47,12 @@
     {
       "path": "DEVELOPMENT.en.md",
       "bytes": 2772,
-      "sha256": "9f950c8099301e491ce47a2cb0b6e19164ef3eda26813c5157162f34a9f8ebe2"
+      "sha256": "2cf4118ea2ea25bd39a39f769d5f7b13a4a975c38bf5b06bc8c6155f9a842b99"
     },
     {
       "path": "DEVELOPMENT.md",
       "bytes": 3147,
-      "sha256": "508f992aee2c63e985ebd416a9f6d20867308deafca7ce4cdfa1e15fb757f220"
+      "sha256": "2512d12bb1670eb04c1fbefefd9952908ae45d9c216a853535e110a5a3900a75"
     },
     {
       "path": "EXISTING-FRAMEWORK-OPTIMIZATION.md",
@@ -86,33 +86,33 @@
     },
     {
       "path": "PROJECT-RECORD.en.md",
-      "bytes": 65128,
-      "sha256": "09a97dd16e90c30b1cbbb0b302cdad7ee0beb2839154efee4a362dd08075cbbf"
+      "bytes": 66067,
+      "sha256": "d1a71ecaffb9efda92234a57b7bb5d4a41780f2998d4724076295b173e1a4dda"
     },
     {
       "path": "PROJECT-RECORD.md",
-      "bytes": 55072,
-      "sha256": "bc7f9e160010e70ca6f5a6b9bb43c572f3f0c6b9331918a286300c3977471a60"
+      "bytes": 56065,
+      "sha256": "92257d1e47f09f9690f958b643348910fad675aff678bd973c8ffd6def078c2f"
     },
     {
       "path": "README.md",
       "bytes": 8622,
-      "sha256": "dae453f28c512b92d16793e329eeee0dace0a27e0f5014b8a22b9dd7374424b5"
+      "sha256": "e00785d6cd7849035dd97ccae2b8b2a704275c9e4e95fdf51615df8b2d6e0f34"
     },
     {
       "path": "README.zh-CN.md",
       "bytes": 8892,
-      "sha256": "38fe87009b7d56ba30b0972f9f2a34bfb0e711a1d65c25123bb49147f357454d"
+      "sha256": "68bb14e2aa1f933f406e4a40a8b154a84d19c9f3b0532e7b4e3161e8a35eda08"
     },
     {
       "path": "RELEASE.en.md",
-      "bytes": 43694,
-      "sha256": "ed82fc3f0e8f5878f9a7d628d293a3dccf338d385552b9ecde4a6613b7f4c05c"
+      "bytes": 44633,
+      "sha256": "81e92820fc91c88e9167fd38e2214cec35d582ea02c86d654983576f9a20b482"
     },
     {
       "path": "RELEASE.md",
-      "bytes": 37352,
-      "sha256": "8e72b9c9e6c3cae69ad0791565a70364a7f7f0b994ef6653617b42c2e9f77ec1"
+      "bytes": 38345,
+      "sha256": "86bd18968b716f1c0631916188f4f97a471542b398dca10249bb9d620226aacb"
     },
     {
       "path": "RETRIEVAL.md",
@@ -132,22 +132,22 @@
     {
       "path": "VERSIONING.en.md",
       "bytes": 4926,
-      "sha256": "29d77806820d71e9415338165446d145952dad771de94cd7b2730cae764aec1f"
+      "sha256": "ce59439c8224e10e14b2e91bed76d8df0e895f28de18484f0ef9b0a5d63b6066"
     },
     {
       "path": "VERSIONING.md",
       "bytes": 5173,
-      "sha256": "c71b34fbc7035713aa5cb5492a8072f19c9eb65e7fd93dc0dd2c05550e021cbd"
+      "sha256": "d1ed4e24c40d2fa669843ca72186b4df0efb0706a5e5133a3d3ba0ca2e6a649f"
     },
     {
       "path": "WORKBENCH.en.md",
       "bytes": 28775,
-      "sha256": "c6f17ddaf6e967c93ac197a04dba07d5e040fd0f17b91e06bc73998942cc7be8"
+      "sha256": "0fcbc0d32efbf795d0778ffe29851ccda7f07ab6f6d0163c0ffedb33943004c9"
     },
     {
       "path": "WORKBENCH.md",
       "bytes": 24009,
-      "sha256": "c491fefb15a8ff519e05db3888af8fcc5dd72ae0a4524977953627ba85bfd852"
+      "sha256": "d73ed3e7cb9b0ccec79100557a22e19842cbe219e77b07069b3503dea34cf265"
     },
     {
       "path": "browser-extension/background.js",
@@ -207,12 +207,12 @@
     {
       "path": "cordis.patch.yml",
       "bytes": 5235,
-      "sha256": "ae69b1c9a19db8be8b1a33e9ace9bd3ab8175502a9e93e14b7d0367d5d9e28be"
+      "sha256": "206e1bd258c9b6d41ec2a12c67f819953f1336d2082c4c1d09a5be33c993b083"
     },
     {
       "path": "docs/UPDATE-RECOVERY.md",
       "bytes": 2125,
-      "sha256": "05d7050338580fa325ef638c5ca49dc68eec8c65fffdaa34a823bdec6f4d277d"
+      "sha256": "e8fb7bfdd1f29e7f02dd095c0570b0f8f946ff50b7599c6d48b12695ece9ad50"
     },
     {
       "path": "docs/client/ARCHITECTURE.en.md",
@@ -261,33 +261,33 @@
     },
     {
       "path": "docs/client/PROJECT-RECORD.en.md",
-      "bytes": 9705,
-      "sha256": "ab650b3199edf03614a13bce565378e219b08c1c6a6d8964af1daf504d745e22"
+      "bytes": 10644,
+      "sha256": "a6cb0714a26868c3a3a1409e693130f4fd1d2b8157160e3fc42b2dc1290630eb"
     },
     {
       "path": "docs/client/PROJECT-RECORD.md",
-      "bytes": 10214,
-      "sha256": "e600acd1a7a04936197421d5fd34bd95d44c163bb6a4307309b0a680de03e658"
+      "bytes": 11207,
+      "sha256": "573b5c00d3c118ed334bcb1a56fc9b6d04170daf7e4b9a5b73b3e2dc22e0b101"
     },
     {
       "path": "docs/client/README.md",
       "bytes": 4623,
-      "sha256": "55381a50219af5d2d479583b5ea9587c9bba8cef26587689535c44ab0ebb1c7a"
+      "sha256": "237eda5884db193d9cff9f2fbe457218ee0685c974d0128d86ac91e5c1d7d1af"
     },
     {
       "path": "docs/client/README.zh-CN.md",
       "bytes": 3850,
-      "sha256": "1ff5f376212c5383b223319a6544a9a9e2e36534e509b576c033d95b070c6e24"
+      "sha256": "b79742de3eec0575c23e99ac8b80eb6a3c7a88176c4b686e7684401daf03e9b1"
     },
     {
       "path": "docs/client/RELEASE.en.md",
-      "bytes": 10607,
-      "sha256": "ca242931ee5c501dc2802ff4ab5eb4faffc8443cfcd219dc2f04749583dd6fec"
+      "bytes": 11546,
+      "sha256": "a423669bd9e149ea790f01d7d7f69ad4c521060899ec5a6c020b812aaf91daf5"
     },
     {
       "path": "docs/client/RELEASE.md",
-      "bytes": 10156,
-      "sha256": "4c9c7849acec4fae2f07883d062d047b3272e6a62b142b01b86ad945dd8a8c03"
+      "bytes": 11149,
+      "sha256": "2cb49592e493c97a3778886888a895b68b09d8abcb4a5a8b54d6222fd9edb268"
     },
     {
       "path": "docs/client/RETRIEVAL.md",
@@ -307,22 +307,22 @@
     {
       "path": "docs/client/VERSIONING.en.md",
       "bytes": 3994,
-      "sha256": "d999b053cfaf24575d8516e3ba48083175776671d2b46be3216db51d6638a479"
+      "sha256": "085efc8177739685efd0d38c6ac59c3e66dec8853b383b13b83d6e6689966ce3"
     },
     {
       "path": "docs/client/VERSIONING.md",
       "bytes": 4001,
-      "sha256": "3f16189b40886119a3c77b481e48ce839ac6d3c272d189fc67be0e3a8f07945c"
+      "sha256": "d2b59238abf178fed6d4cb58804bbc23902387801612c7039a6a6b5901ed6555"
     },
     {
       "path": "docs/client/WORKBENCH.en.md",
       "bytes": 1921,
-      "sha256": "518fda7a6bb6f3d5cd4a091cfd3089a138215acab21f38ebded3aaf60956be05"
+      "sha256": "3081e1f56635472e4c6a78393f1668527d0367cda2f8e3421dfa5fe70ed6bbf4"
     },
     {
       "path": "docs/client/WORKBENCH.md",
       "bytes": 2078,
-      "sha256": "aa0a59bfacfc65590cd45f509172f2b80ebd7c709a93b54a81ead8be293f8abe"
+      "sha256": "b59d8108ec2cbd08391f57bdb78bb7a307dac380f3240db08cf0043f2547538b"
     },
     {
       "path": "docs/client/skills/personal-knowledge-base/SKILL.md",
@@ -385,9 +385,14 @@
       "sha256": "3b525bccad1a0a67f617a61df83380ebb463e8932e505232c3ffcd9c92801faf"
     },
     {
+      "path": "docs/releases/plugin-2.4.9.md",
+      "bytes": 2005,
+      "sha256": "b854422490fe7021e32e840c64126d4d836ad1a305286e24a1899ea0b143e442"
+    },
+    {
       "path": "package.json",
       "bytes": 1833,
-      "sha256": "b654758c35139c11aed89bbf4e1b5e7c446f8f633b3f4af6aea295c3931d291c"
+      "sha256": "e6733b98c3db19bb12b87d80606036cbb8ca9de7330f9e6ea945d335a64834bf"
     },
     {
       "path": "packages/kb-contracts/desktop.js",
@@ -497,7 +502,7 @@
     {
       "path": "packages/kb-core/src/kbcore.js",
       "bytes": 131948,
-      "sha256": "aea01599e93210446e0647b53724f385c9fa199e3bd7dfa88ca51f6a1f45f862"
+      "sha256": "cd0dabbe9121a5db7f786e1d9aa079f5772f0be5e239457ef03371973194ce77"
     },
     {
       "path": "packages/kb-core/src/library-state.js",
@@ -726,8 +731,8 @@
     },
     {
       "path": "packages/kb-service/host-adapter.js",
-      "bytes": 15055,
-      "sha256": "f9f5d86cfcf3cee865aad307278bc447d5a6d9199cb70290b6b8cef042632846"
+      "bytes": 15201,
+      "sha256": "137578245de36fe405e95df753c6acee65d858dd71beb4d6922b86515f31f097"
     },
     {
       "path": "packages/kb-service/host-assets.js",
@@ -836,8 +841,8 @@
     },
     {
       "path": "packages/kb-service/tool-router.js",
-      "bytes": 3794,
-      "sha256": "1c5bf440846d141e40607ce4a83ca2d9e2e06e467f4c77a94b020a6b72227233"
+      "bytes": 4110,
+      "sha256": "494329fb32874d5829a2bf83fd0ac661154a8a9e3f2f4dc6413ba519f581da44"
     },
     {
       "path": "packages/kb-service/vector-profiles.js",
@@ -1086,8 +1091,8 @@
     },
     {
       "path": "src/client/index.js",
-      "bytes": 470540,
-      "sha256": "2d07ac0edc255beafdc42643c697226c4f491027f55aea4f2ad683c1184f7ad7"
+      "bytes": 470713,
+      "sha256": "ad94691641d6a3d8048fdc4932bccff5cc2cea84edd7a5c18931a678c52ce900"
     },
     {
       "path": "src/client/knowledge-ui.css",
@@ -2360,10 +2365,9 @@
     "formalRuntimeVerified": false,
     "realModelAnswerVerified": false,
     "realCloudApiTested": false,
-    "focusedParsingChecks": 3,
-    "realWindowsSharedParsingRecordsVerified": true,
-    "syntheticParsingEndpoints": true,
-    "liveUserUiVerified": false,
+    "focusedFlowOutputChecks": 3,
+    "realWindowsSharedFlowContractVerified": true,
+    "liveUserFlowReplayed": false,
     "direct243UpgradeFlowPreviouslyVerifiedIn": "2.4.6"
   },
   "installProtocol": 2

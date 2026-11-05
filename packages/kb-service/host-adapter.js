@@ -1,5 +1,6 @@
 import {createHostUpdates} from './host-updates.js';
 import {publishKnowledgeMemory} from './memory-sync.js';
+import {normalizeToolResult} from './tool-router.js';
 import {atomic,readJson,serialQueue} from './io.js';
 import os from 'node:os';
 import {AsyncLocalStorage} from "node:async_hooks";
@@ -74,7 +75,7 @@ export async function mountServiceHost(ctx, config, { isLiveKnowledgeGrant, gate
     const entry = { name:definition.name, description:'共享知识库服务：'+definition.name, parameters:definition.parameters,
       output:{schema:definition.outputSchema,render:(_args,value)=>[{type:'text',text:JSON.stringify(value)}]},
       isConcurrencySafe:()=>false,
-      async execute(input,exec) {const target=desktopLinks?.clientForAgent(exec?.agent);if(target===null)return {ok:false,reason:'HOST_UNAVAILABLE'};return routing.run(target??primaryClient,async()=>{
+      async execute(input,exec) {const invoke=async()=>{const target=desktopLinks?.clientForAgent(exec?.agent);if(target===null)return {ok:false,reason:'HOST_UNAVAILABLE'};return routing.run(target??primaryClient,async()=>{
         if (!trusted(exec,definition.name,input)) return {ok:false,reason:'CALLER_UNVERIFIED'}
         try {
           if (!connected) return {ok:false,reason:'HOST_UNAVAILABLE'}
@@ -84,7 +85,7 @@ export async function mountServiceHost(ctx, config, { isLiveKnowledgeGrant, gate
           if (definition.name==='kb_status') return {...value,build,service:{connected:true,...client.welcome.library}}
           return value
         } catch(e) {return {ok:false,reason:e.code??'HOST_UNAVAILABLE',error:e.message}}
-      });},
+       });};return normalizeToolResult(definition.name,input,await invoke());},
     }
     ctx.effect(()=>tools.register(entry),'kb-service: '+entry.name)
   }

@@ -36,6 +36,6 @@ Publication state is defined by the current release-manifest-v2.json and product
 
 更新源进展 / Update feed status：客户端已实现 Gitee、GitCode、GitHub 清单检查与校验下载；自动安装执行器尚未完成。当前安装包、版本与镜像可用性以各自 Release 和实际检查为准。
 
-See [2.4.4 safe update and legacy transition](../releases/plugin-2.4.8.md). The published client installer remains 1.0.3.
+See [2.4.4 safe update and legacy transition](../releases/plugin-2.4.9.md). The published client installer remains 1.0.3.
 
-2.4.3 direct upgrade and conditional error recovery: [release 2.4.8](../releases/plugin-2.4.8.md). Client installer remains independently versioned at 1.0.3.
+2.4.3 direct upgrade and conditional error recovery: [release 2.4.9](../releases/plugin-2.4.9.md). Client installer remains independently versioned at 1.0.3.

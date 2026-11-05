@@ -1,5 +1,10 @@
 import path from 'node:path';import {error} from './io.js';
 import {toolWrites} from './operations.js';
+// The shared engine returns domain data; the Host tool contract also requires
+// the requested action on kb_flow successes and structured failures.
+export function normalizeToolResult(name,input,value){
+ return name==='kb_flow'?{...value,action:String(input?.action??'')}:value;
+}
 export function createToolRouter({kernel,engines,wb,write,online,root,kbId,sourceFromStage}){
  return async function route({name,input,hostSession,hostAuthority,sourceStage},caller){
   const session=hostSession??'host-ui',a=input??{};
@@ -21,7 +26,7 @@ export function createToolRouter({kernel,engines,wb,write,online,root,kbId,sourc
   if(map[name]){if(toolWrites(name,a))write(caller);return kernel.dispatch({...a,op:map[name],expectedKbId:kbId},session);}
   if(name==='kb_flow_resolve')return engines.dispatch({...a,op:'flows.resolve'},{session});
   if(name==='kb_flow'){
-   if(!['list','get','resolve','runs'].includes(a.action))write(caller);return engines.dispatch({...a,op:'flows.'+a.action},{session});
+   if(!['list','get','resolve','runs'].includes(a.action))write(caller);return normalizeToolResult(name,a,await engines.dispatch({...a,op:'flows.'+a.action},{session}));
   }
   if(name==='kb_parse'){
    if(!['source','requests','providers','jobs','job','result','submit','cancel','retry','land','test-connection','test-parse'].includes(a.action))throw error('FORBIDDEN','提供方程序、地址、凭据与外发策略只能由用户在设置页配置');
