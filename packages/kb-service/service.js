@@ -120,7 +120,9 @@ export async function startService({ library, privateDir, python, sources = {}, 
   async function workspaceOperation(operation,mutation,caller,operationId){
     if(!operation||operation.owner&&!operation.op?.startsWith('onboarding.')||operation.caller||operation.roles||!(mutation?WRITE_OPERATIONS:READ_OPERATIONS).has(operation.op))throw error('FORBIDDEN','接口不属于该授权范围')
     if(operation.op.startsWith('memory.'))return memoryChannel(operation,caller,operationId);
-    if(operation.op.startsWith('flows.')||operation.op.startsWith('parse.')||operation.op.startsWith('import.'))return engines.dispatch(operation,{admin:mutation,session:'user-interface'})
+    // Management visibility comes from the authenticated grant, including reads.
+    // A read operation is not evidence that the caller is an ordinary session.
+    if(operation.op.startsWith('flows.')||operation.op.startsWith('parse.')||operation.op.startsWith('import.'))return engines.dispatch(operation,{admin:caller.access.includes('admin'),session:'user-interface'})
     if(['overview','files','dirs','index-maintenance.status','index-maintenance.configure','index-snapshots','index-rebuild','setup','bind','probe-folder'].includes(operation.op))return legacyPorts(operation)
     if(operation.op==='index.policy.get')return {ok:true,...readIndexPolicy(root)}
     const result=await kernel.dispatch({...operation,expectedKbId:kbId})

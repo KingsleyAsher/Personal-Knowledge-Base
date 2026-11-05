@@ -3,15 +3,21 @@
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 2.4.7 -->
+<!-- project-record-version: 2.4.8 -->
 
-**Source covered: plugin 2.4.7 / client 1.0.3 · Updated: 2026-11-05 · Maintenance: review this record alongside the source with every release.**
+**Source covered: plugin 2.4.8 / client 1.0.3 · Updated: 2026-11-05 · Maintenance: review this record alongside the source with every release.**
 
 This long-term record is for users, maintainers, and future contributors. It explains why the product is built this way, what it can currently do, how its features fit together, where data is stored, and what may come next. “Implemented” refers to source code in this repository. Roadmap items are future directions, not features already delivered. The installed version and build ID must be checked in the client and the corresponding release manifest.
 
 See the [workbench guide](WORKBENCH.en.md) for usage, [release notes](RELEASE.en.md) for changes in each release, and [versioning policy](VERSIONING.en.md) for version comparisons. This record explains the product as a whole; release notes are not an architecture document.
 
 
+
+## 2.4.8: parsing records in shared-service settings (2026-11-05)
+
+Fix management reads being treated as ordinary session reads. OCR/ASR job and submission visibility now follows the authenticated connection's admin grant instead of whether the request mutates state. Settings can see Agent-initiated tasks across sessions while library visibility filtering remains active. Ordinary model tools and read-only grants retain their existing restrictions; management writes still require authorization.
+
+Three focused tests passed. An isolated real Windows shared service uses synthetic local OCR/ASR endpoints and a separate Agent session; both settings read paths see running jobs, submissions and completed history. Ordinary sessions, read-only grants and forged input fields do not gain management access. The regression fails before the fix and passes afterward. No live personal library, paid API or full user-UI verification is claimed.
 
 ## 2.4.7: service preparation during update handoff (2026-11-05)
 

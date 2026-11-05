@@ -13,8 +13,8 @@ def digest(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 def verify_package(folder=HERE):
     manifest=json.loads((folder/'manifest.json').read_text(encoding='utf-8'))
-    archive=folder/'local-dsh-knowledge-base-2.4.7.tgz'
-    if manifest['tgz']!=archive.name or manifest['version']!='2.4.7':raise RuntimeError('Unexpected package identity')
+    archive=folder/'local-dsh-knowledge-base-2.4.8.tgz'
+    if manifest['tgz']!=archive.name or manifest['version']!='2.4.8':raise RuntimeError('Unexpected package identity')
     if archive.stat().st_size!=manifest['bytes'] or digest(archive)!=manifest['sha256']:raise RuntimeError('Archive SHA-256/size mismatch; nothing was installed')
     with tarfile.open(archive) as stream:
         entries=stream.getmembers()
@@ -22,7 +22,7 @@ def verify_package(folder=HERE):
             parts=Path(e.name.replace('\\','/')).parts
             if not parts or parts[0]!='package' or '..' in parts or e.issym() or e.islnk() or not(e.isfile() or e.isdir()):raise RuntimeError('Unsafe archive entry')
         pkg=json.loads(stream.extractfile('package/package.json').read())
-        if pkg['name']!=PACKAGE or pkg['version']!='2.4.7':raise RuntimeError('Incorrect plugin package')
+        if pkg['name']!=PACKAGE or pkg['version']!='2.4.8':raise RuntimeError('Incorrect plugin package')
         for row in manifest['files']:
             data=stream.extractfile('package/'+row['path']).read()
             if hashlib.sha256(data).hexdigest()!=row['sha256']:raise RuntimeError('Build inventory mismatch')

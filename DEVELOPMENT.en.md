@@ -2,7 +2,7 @@
 
 [中文](DEVELOPMENT.md) · English
 
-Start at the repository root. Follow the [client build guide](docs/client/DEVELOPMENT.en.md) for dependencies, production build, isolated checks and installer commands. Root package metadata describes plugin 2.4.7; apps/desktop/package.json describes client 1.0.3.
+Start at the repository root. Follow the [client build guide](docs/client/DEVELOPMENT.en.md) for dependencies, production build, isolated checks and installer commands. Root package metadata describes plugin 2.4.8; apps/desktop/package.json describes client 1.0.3.
 
 Edit shared logic in packages and inspect both consumers. Do not duplicate it in another repository. After plugin UI changes, run tools/sync-workbench-client.py; refresh loaded-file inventory with tools/sync-workbench-build.py. Client build regenerates desktop management views.
 
@@ -14,7 +14,7 @@ Use synthetic libraries and focused checks; never default to personal data or pa
 
 Update policy: every eligible version in the selected channel updates automatically, including majors and previews. The client online executor remains unfinished; see [version policy](VERSIONING.en.md).
 
-## 2.4.7: direct 2.4.3 updates and legacy service handoff (2026-11-05)
+## 2.4.8: direct 2.4.3 updates and legacy service handoff (2026-11-05)
 
 Restore the stable feed for direct updates from normal 2.4.3 installations. Identify the published legacy runtime by its exact fingerprint, release the probe connection and wait for its existing idle lifecycle to finish. Require matching process identity and a clean receipt before starting the new service. Never send legacy shutdown or terminate other clients/tasks; timeout offers recovery guidance.
 

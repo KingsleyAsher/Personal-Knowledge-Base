@@ -4299,11 +4299,12 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     // END GENERATED TODO LIFECYCLE UI
 
-    const RELEASE_VERSION = '2.4.7'
+    const RELEASE_VERSION = '2.4.8'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.
     const RELEASE_NOTICES = [
+      {version:'2.4.8',items:['修复共库设置页看不到其他会话发起的 OCR / ASR 正在执行和历史记录的问题。']},
       {version:'2.4.7',items:['升级交接时显示服务准备提示并自动恢复，避免将接口准备空档显示为 HTTP 405。']},
       {version:'2.4.6',items:['恢复 2.4.3 的直接自动升级；旧服务按原有空闲机制退出后自动交接。','升级或交接失败时提供恢复说明，增加受损 2.4.3 安装的校验修复入口。']},
       { version: '2.4.4', items: ['Windows 更新先校验和准备候选包，安全停服后切换，失败恢复旧包和清单。', '安全更新使用独立协议；旧版首次升级需过渡安装，忙碌或缺少停服能力时延后安装。'] },
