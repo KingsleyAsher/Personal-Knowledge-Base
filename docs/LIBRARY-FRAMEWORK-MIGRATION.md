@@ -1,6 +1,6 @@
 # 旧库框架迁移
 
-状态：源码已实现并完成定向检查，尚未打包发布。当前正式 2.4.13 下载包不包含此入口；插件自动升级与知识库框架迁移是两个独立流程。
+状态：随 2.4.14 正式包交付。插件自动升级与知识库框架迁移是两个独立流程；安装新版后须先预览并确认迁移。
 
 迁移范围按用户确认的方案：补齐新版标准目录、缺失模板和框架管理说明，已有资料继续留在原位置，自定义目录继续使用。不会自动重新分类、搬移原件、重写笔记或更改隐私配置。
 
@@ -36,10 +36,10 @@
 
 7 项检查通过：只读预览和原件保留；确认、身份、过期计划、类型冲突与链接拒绝；EPERM 后撤销及重试；用户后续修改保护和损坏恢复记录拒绝；真实 Windows 共享服务入口及授权；界面先预览再确认；后台业务失败不误报成功。
 
-另复验既有托管文件升级的 2 项相关检查，通过。使用隔离合成库，没有读取或迁移用户真实知识库，没有完成完整 Electron 窗口验收。源码能力尚未发布到自动更新源。
+另复验既有托管文件升级的 2 项相关检查，通过。使用隔离合成库，没有读取或迁移用户真实知识库，没有完成完整 Electron 窗口验收。功能随 2.4.14 自动更新包交付；发布不代表已迁移任何真实知识库。
 
 ## English
 
-Implemented in source and checked, not released in the existing 2.4.13 package. The migration previews and adds missing standard folders, bundled templates and a framework guide while retaining original document locations and custom structure. Existing AGENTS rules, manual navigation and different template contents remain intact; bundled reference text can be reviewed separately.
+Available in the 2.4.14 stable package; installing it does not migrate a library without preview and confirmation. The migration previews and adds missing standard folders, bundled templates and a framework guide while retaining original document locations and custom structure. Existing AGENTS rules, manual navigation and different template contents remain intact; bundled reference text can be reviewed separately.
 
 The user previews changes and explicitly confirms the same library and snapshot. Stale plans, changed bindings, type conflicts and linked paths stop publication. Failed publication rolls back only verifiable newly created files and empty directories. Follow-up user edits stop recovery and are preserved. Only authenticated management access may use this interface. Seven new focused checks and two related managed-upgrade checks passed, including a real Windows shared service; complete Electron and real private-library migration were not performed. Publication and migration are separate actions.

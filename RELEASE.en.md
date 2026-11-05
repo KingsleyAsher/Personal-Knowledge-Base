@@ -1,3 +1,11 @@
+## 2.4.14: existing-library framework migration (2026-11-05)
+
+Add a read-only preview and explicit confirmation under version settings. Fill missing standard folders, entry templates and framework guidance. Preserve document locations, custom folders, AGENTS rules, manual INDEX and differing templates; bundled reference text is available for review. No automatic reorganization, note rewriting or model calls.
+
+Bind the preview to the library and file snapshot. Changed state, path-type conflicts or links stop execution. Failed publication removes only verified additions and empty directories; follow-up user edits are preserved for recovery. The shared service enforces management access and reports the actual core version.
+
+Seven migration/UI checks and two existing managed-upgrade checks passed, including a real Windows shared service and EPERM recovery. Package integrity and upgrade activation receive separate focused checks. No real private library was migrated, complete Electron UI or model calls verified. Program updates and library migration are separate; legacy updater limitations remain.
+
 ## 2.4.6 migration boundary (2026-11-05)
 
 The pristine 2.4.6 updater can block on a missing legacy receipt before downloading any new or transition payload. Its old preparation worker may also resolve unrelated Host dependencies. Publishing 2.4.13 cannot repair that already-running code. Success after a one-time local recovery does not prove zero-intervention upgrades for other users.

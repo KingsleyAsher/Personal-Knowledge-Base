@@ -1,6 +1,6 @@
 # Unified installation and usage
 
-The unreleased [existing-library framework migration](docs/LIBRARY-FRAMEWORK-MIGRATION.md#english) adds a preview and confirmation flow under version settings. It fills missing standard folders, templates and guidance while keeping document locations and custom content. Plugin installation and library migration are separate; the published 2.4.13 package does not include this new entry yet.
+The 2.4.14 [existing-library framework migration](docs/LIBRARY-FRAMEWORK-MIGRATION.md#english) adds a preview and confirmation flow under version settings. It fills missing standard folders, templates and guidance while keeping document locations and custom content. Plugin installation and library migration are separate; the new entry ships in 2.4.14.
 
 [中文](WORKBENCH.md) · English
 
@@ -13,7 +13,7 @@ Choose the client for a standalone file workspace, or the plugin for tools and m
 | Develop or package either product | [Development](DEVELOPMENT.en.md) |
 | Understand library sharing and offline limits | [Architecture](ARCHITECTURE.en.md) |
 
-Source versions are client 1.0.3 and plugin 2.4.13. Public plugin downloads follow release-manifest-v2.json; the current publication is 2.4.13. Client update checks and verified downloads are available; automatic in-place installation and activation remain unfinished. Removing a library registration does not delete its original files; application uninstall and document deletion are different operations.
+Source versions are client 1.0.3 and plugin 2.4.14. Public plugin downloads follow release-manifest-v2.json; the current publication is 2.4.14. Client update checks and verified downloads are available; automatic in-place installation and activation remain unfinished. Removing a library registration does not delete its original files; application uninstall and document deletion are different operations.
 
 ## Plugin usage and historical instructions
 

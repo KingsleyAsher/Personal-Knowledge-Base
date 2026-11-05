@@ -1,8 +1,8 @@
-## Unreleased: existing-library framework migration (2026-11-05)
+## 2.4.14: existing-library framework migration (2026-11-05)
 
 Implement the user-selected additive migration: preview, per-path decisions, bundled reference text, confirmation and failure recovery. Add missing standard folders, templates, guidance and absent rule/navigation files. Preserve document locations and custom contents. Changed bindings or snapshots stop execution; recovery only removes verified additions and preserves follow-up user edits.
 
-The shared service enforces management access and library identity. Mechanism status now reports the core program version instead of a fixed 0.5.0. Seven new focused checks and two related regression checks passed, including a real Windows service. No real private library was migrated or complete Electron UI verified. This source feature is not packaged or published; the official 2.4.13 archive and feed remain unchanged. [Details](docs/LIBRARY-FRAMEWORK-MIGRATION.md#english)
+The shared service enforces management access and library identity. Mechanism status now reports the core program version instead of a fixed 0.5.0. Seven new focused checks and two related regression checks passed, including a real Windows service. No real private library was migrated or complete Electron UI verified. The feature ships in the 2.4.14 stable package and update manifest. [Details](docs/LIBRARY-FRAMEWORK-MIGRATION.md#english)
 
 ## 2.4.6 migration boundary (2026-11-05)
 
@@ -15,9 +15,9 @@ A separate [2.4.6 migration recovery entry](docs/LEGACY-246-BOOTSTRAP.md) verifi
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 2.4.13 -->
+<!-- project-record-version: 2.4.14 -->
 
-**Source covered: plugin 2.4.13 / client 1.0.3 · Updated: 2026-11-05 · Maintenance: review this record alongside the source with every release.**
+**Source covered: plugin 2.4.14 / client 1.0.3 · Updated: 2026-11-05 · Maintenance: review this record alongside the source with every release.**
 
 This long-term record is for users, maintainers, and future contributors. It explains why the product is built this way, what it can currently do, how its features fit together, where data is stored, and what may come next. “Implemented” refers to source code in this repository. Roadmap items are future directions, not features already delivered. The installed version and build ID must be checked in the client and the corresponding release manifest.
 
