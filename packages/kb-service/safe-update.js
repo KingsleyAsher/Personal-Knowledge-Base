@@ -47,7 +47,7 @@ export function createSafeUpdate({ profileDir, packageRoot, quiesce, resume }) {
         // Must fail closed when the current runtime cannot prove quiescence.
         if (!quiesce) throw Error('当前运行模式不支持安全停服，更新已延后，旧版未改动')
         try{await quiesce()}catch(error){await invoke('recover');await resume?.();return {application:'deferred',error:error.message,retryable:error.code==='STATE_BUSY'}}
-        try{return await invoke('commit',['--transaction',transactionId])}catch(error){const state=JSON.parse(await readFile(path.join(home,'transaction.json'),'utf8'));if(state.phase==='rolled-back')await resume?.();throw error}
+        try{return await invoke('commit',['--transaction',transactionId])}catch(error){const state=JSON.parse(await readFile(path.join(home,'transaction.json'),'utf8'));if(['rolled-back','prepared','aborted'].includes(state.phase))await resume?.();throw error}
       })().finally(() => { operation = null })
       return operation
     },

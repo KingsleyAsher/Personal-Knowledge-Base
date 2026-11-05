@@ -3079,7 +3079,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       let running = null
       const read = () => { try { return JSON.parse(storage.getItem(key)) } catch { return null } }
       const save = (record) => { try { storage.setItem(key, JSON.stringify(record)) } catch { throw Error('无法保存更新状态，请检查客户端存储后重试') } }
-      const show = (message, extra = {}) => notify({ busy: false, uncertain: false, restartRequired: false, refreshRequired: false, deferred:false, message, ...extra })
+      const show = (message, extra = {}) => notify({ busy: false, uncertain: false, restartRequired: false, refreshRequired: false, deferred:false, manualHelp:false, message, ...extra })
       const hostActive = async (record) => {
         try {
           const build = (await api({ op: 'status' }))?.status?.build
@@ -3104,7 +3104,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         if(value?.application==='deferred'){save(null);show(value.error || '更新已延后，旧版本保持可用',{deferred:value.retryable===true});return}
         if (value?.application === 'failed' || value?.application === 'cancelled') {
           save(null)
-          show(value.application === 'cancelled' ? '更新已取消' : '安装失败：' + (value.error?.diagnostic || value.error?.code || value.packageResult?.kind || '请在宿主插件管理器查看详情'))
+          show(value.application === 'cancelled' ? '更新已取消' : '安装失败：' + (value.error?.diagnostic || value.error?.code || value.packageResult?.kind || '请在宿主插件管理器查看详情'),{manualHelp:true})
           return
         }
         if (value?.application === 'restart-required') {
@@ -3132,7 +3132,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         if (record.stage === 'restart-required') { show('新版已安装，宿主要求重启后生效', { restartRequired: true }); return }
         if (record.stage === 'client-refresh') { await resolveLoaded(record); return }
         if(record.transactionId){
-          try{const status=await api({op:'updates.status'});if(status.transactionId!==record.transactionId){uncertain(record);return}if(status.phase==='committed')await settle({application:'restart-required'},record);else if(['rolled-back','aborted'].includes(status.phase)){save(null);show('更新未完成，旧版本已保留或恢复')}else uncertain(record)}catch{uncertain(record)}
+          try{const status=await api({op:'updates.status'});if(status.transactionId!==record.transactionId){uncertain(record);return}if(status.phase==='committed')await settle({application:'restart-required'},record);else if(['rolled-back','aborted'].includes(status.phase)){save(null);show('更新未完成，旧版本已保留或恢复',{manualHelp:true})}else uncertain(record)}catch{uncertain(record)}
           return
         }
         const remote = manager()
@@ -3148,7 +3148,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         if (running) return running
         running = Promise.resolve().then(task).catch((error) => {
           const message = String(error.message || error)
-          show(message, { allSourcesFailed: message.startsWith('安装包下载失败：') })
+          show(message, { manualHelp:true, allSourcesFailed: message.startsWith('安装包下载失败：') })
         }).finally(() => { running = null })
         return running
       }
@@ -3333,6 +3333,10 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       const state = react.useSyncExternalStore(subscribeBuildBadge, getBuildBadge, getBuildBadge)
       const [updating, setUpdating] = react.useState(updateViewState)
       const [managerReady, setManagerReady] = react.useState(Boolean(updateManager))
+      const [handoffError,setHandoffError]=react.useState(null)
+      const [helpClosed,setHelpClosed]=react.useState(false)
+      react.useEffect(()=>{let disposed=false;const controller=new AbortController();const poll=()=>{void fetch('/kb-upgrade/status',{cache:'no-store',signal:controller.signal}).then(r=>r.ok?r.json():null).then(value=>{if(!disposed&&value?.failed)setHandoffError(value.code||'UPGRADE_HANDOFF_FAILED')}).catch(()=>{})};poll();const timer=setInterval(poll,3000);return()=>{disposed=true;controller.abort();clearInterval(timer)}},[])
+      react.useEffect(()=>{if(updating.manualHelp||handoffError)setHelpClosed(false)},[updating.manualHelp,handoffError])
       const owner = react.useRef(Symbol('kb-update-prompt'))
       const [restartDeferred, setRestartDeferred] = react.useState(false)
       const restartCloseRef = react.useRef(null)
@@ -3370,6 +3374,11 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         window.addEventListener('keydown', onKeyDown)
         return () => window.removeEventListener('keydown', onKeyDown)
       }, [state.promptOwner, releases.map(release => updateDismissKey(release)).join('|')])
+      if((updating.manualHelp||handoffError)&&!helpClosed)return reactDom.createPortal(e('div',{className:'kb-release-backdrop'},e('section',{className:'kb-release-card',role:'alertdialog','aria-modal':'true','aria-label':'更新未完成'},
+        e('h2',null,'自动更新未完成'),e('p',null,handoffError?'旧服务交接暂未完成，请等待现有任务结束或按恢复说明处理。':updating.message),
+        e('p',null,'请勿反复安装或清空知识库与解析记录。保存工作后，可按说明核对状态并恢复安装。'),
+        e('a',{href:'https://github.com/KingsleyAsher/Personal-Knowledge-Base/blob/main/docs/UPDATE-RECOVERY.md',target:'_blank',rel:'noopener noreferrer'},'打开手动更新与恢复说明'),
+        e('button',{className:'kb-update-install',onClick:()=>setHelpClosed(true)},'关闭'))),document.body)
       if (updating.restartRequired && !restartDeferred) return reactDom.createPortal(e('div', { className: 'kb-release-backdrop', role: 'presentation' },
         e('section', { className: 'kb-release-card', role: 'alertdialog', 'aria-modal': 'true', 'aria-labelledby': 'kb-restart-title', 'aria-describedby': 'kb-restart-intro' },
           e('button', { ref: restartCloseRef, className: 'kb-release-close', type: 'button', 'aria-label': '暂不重启并关闭提示', onClick: deferRestart }, '×'),
@@ -4275,11 +4284,12 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     // END GENERATED TODO LIFECYCLE UI
 
-    const RELEASE_VERSION = '2.4.4'
+    const RELEASE_VERSION = '2.4.5'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.
     const RELEASE_NOTICES = [
+      {version:'2.4.5',items:['恢复 2.4.3 的直接自动升级；旧服务按原有空闲机制退出后自动交接。','升级或交接失败时提供恢复说明，增加受损 2.4.3 安装的校验修复入口。']},
       { version: '2.4.4', items: ['Windows 更新先校验和准备候选包，安全停服后切换，失败恢复旧包和清单。', '安全更新使用独立协议；旧版首次升级需过渡安装，忙碌或缺少停服能力时延后安装。'] },
       { version: '2.4.3', items: ['原件编辑后同步检索内容与引用范围，保留独立撰写的摘要。', '修复 Windows 解析任务状态写入冲突；后台失败保留记录、报告诊断并支持恢复重试。'] },
       { version: '2.4.1', items: ['同步两端版本规则；所选通道内跨大版本与预览版均自动更新，保留包校验与安装状态保护。', '客户端国内更新源与两端独立 Release 交付。'] },

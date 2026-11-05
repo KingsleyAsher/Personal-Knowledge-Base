@@ -13,8 +13,8 @@ def digest(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 def verify_package(folder=HERE):
     manifest=json.loads((folder/'manifest.json').read_text(encoding='utf-8'))
-    archive=folder/'local-dsh-knowledge-base-2.4.4.tgz'
-    if manifest['tgz']!=archive.name or manifest['version']!='2.4.4':raise RuntimeError('Unexpected package identity')
+    archive=folder/'local-dsh-knowledge-base-2.4.5.tgz'
+    if manifest['tgz']!=archive.name or manifest['version']!='2.4.5':raise RuntimeError('Unexpected package identity')
     if archive.stat().st_size!=manifest['bytes'] or digest(archive)!=manifest['sha256']:raise RuntimeError('Archive SHA-256/size mismatch; nothing was installed')
     with tarfile.open(archive) as stream:
         entries=stream.getmembers()
@@ -22,7 +22,7 @@ def verify_package(folder=HERE):
             parts=Path(e.name.replace('\\','/')).parts
             if not parts or parts[0]!='package' or '..' in parts or e.issym() or e.islnk() or not(e.isfile() or e.isdir()):raise RuntimeError('Unsafe archive entry')
         pkg=json.loads(stream.extractfile('package/package.json').read())
-        if pkg['name']!=PACKAGE or pkg['version']!='2.4.4':raise RuntimeError('Incorrect plugin package')
+        if pkg['name']!=PACKAGE or pkg['version']!='2.4.5':raise RuntimeError('Incorrect plugin package')
         for row in manifest['files']:
             data=stream.extractfile('package/'+row['path']).read()
             if hashlib.sha256(data).hexdigest()!=row['sha256']:raise RuntimeError('Build inventory mismatch')
@@ -85,7 +85,7 @@ def toolchain():
 
 def main():
     import runpy
-    parser=argparse.ArgumentParser();parser.add_argument('--check',action='store_true');parser.add_argument('--recover',action='store_true');args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--check',action='store_true');parser.add_argument('--recover',action='store_true');parser.add_argument('--repair-243',action='store_true');args=parser.parse_args()
     archive,manifest=verify_package()
     live=blockers()
     if live:
@@ -100,6 +100,9 @@ def main():
     worker=runpy.run_path(str(HERE/'kb-transactional-update.py'),run_name='safe_update_worker')
     if args.recover:
         print(json.dumps(worker['recover'](PROFILE)));return 0
+    if args.repair_243:
+        repair_api=runpy.run_path(str(HERE/'repair-legacy-243.py'),run_name='legacy_recovery')
+        print(json.dumps(repair_api['repair'](PROFILE,HERE)))
     if not (PLUGIN/'package.json').is_file():
         raise RuntimeError('Existing plugin is already incomplete. Restore a trusted previous package/backup first; automatic installation did not change it.')
     worker['recover'](PROFILE)

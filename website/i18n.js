@@ -94,9 +94,9 @@
     '怎样找回曾经整理过的内容？': 'How do I find materials I organized earlier?',
     '支持标题、标签、类型与正文全文检索，并沿来源定位原始资料。当前能力不是向量语义搜索。索引缺失或损坏时，可回退磁盘扫描；日常变动由后台增量维护，必要时可以手动重建。索引维护不修改正文或原件。': 'Search titles, tags, types, and full text, then follow source links back to original materials. The current capability is not vector semantic search. If an index is missing or damaged, the plugin can fall back to a disk scan. Routine changes are maintained incrementally in the background; rebuild manually when needed. Index maintenance does not modify source text or originals.',
     '让每一次积累，都有下一次回响。': 'Let what you build today help with what comes next.',
-    '插件 2.4.4：安全停服、候选包切换与失败恢复；旧版首次升级请使用过渡安装包。客户端独立版本为 1.0.3。': 'Plugin 2.4.4: safe service drain, staged switching and rollback. Legacy users need the transition installer once. The independent client remains 1.0.3.',
-    '个人知识库 2.4.4': 'Personal Knowledge Base 2.4.4',
-    '下载插件 2.4.4': 'Download plugin 2.4.4',
+    '插件 2.4.5：支持 2.4.3 直接自动升级与旧服务交接；仅在失败时查看恢复说明。客户端独立版本为 1.0.3。': 'Plugin 2.4.5: direct 2.4.3 updates and legacy service handoff. Recovery instructions appear only on failure. The independent client remains 1.0.3.',
+    '个人知识库 2.4.5': 'Personal Knowledge Base 2.4.5',
+    '下载插件 2.4.5': 'Download plugin 2.4.5',
     'GitHub 仓库': 'GitHub repository',
     'DSH 插件 · 本地安装包': 'DSH plugin · local package',
     '安装指南 ↗': 'Installation guide ↗',
@@ -107,7 +107,7 @@
     '在客户端安装插件': 'Install the plugin in the client',
     '将「下载插件」按钮的链接填入 DSH 插件管理器的安装源，由客户端自动下载；也可选择本地安装包': 'Add the **Download plugin** link as an installation source in the DSH plugin manager and let the client download it, or choose the local package',
     '核对加载结果': 'Confirm that it loaded',
-    '先保存任务并退出 DSH（含托盘）及连接同库的客户端。安装后核对 2.4.4 及发布清单中的构建号；遇到 runtime 占用时使用 Release 提供的独立离线安装包。': 'Save work and exit DSH, including its tray process, and clients sharing the library. After installation, verify 2.4.4 and the manifest build ID. Use the optional offline installer from the Release if runtime files are locked.',
+    '先保存任务并退出 DSH（含托盘）及连接同库的客户端。安装后核对 2.4.5 及发布清单中的构建号；遇到 runtime 占用时使用 Release 提供的独立离线安装包。': 'Save work and exit DSH, including its tray process, and clients sharing the library. After installation, verify 2.4.5 and the manifest build ID. Use the optional offline installer from the Release if runtime files are locked.',
     '绑定一个本地文件夹': 'Bind a local folder',
     '打开「设置 → 个人知识库」，选择目录并点击「自动建库 / 识别」。先预览，再接入已有资料。': 'Open **Settings → Personal Knowledge Base**, choose a folder, and select **Initialize / Recognize**. Preview the plan before bringing in existing materials.',
     '按需配置 OCR 与 ASR': 'Configure OCR and ASR when needed',
@@ -115,9 +115,11 @@
     '下载插件 ↓': 'Download plugin ↓',
     '可选 OCR／ASR 服务沿用已有环境；本版底层优化无需额外安装或配置。安装包来自公开仓库，可通过发布清单核对版本与 SHA-256 摘要。': 'Optional OCR/ASR services reuse existing environments. The foundational optimizations in this version require no extra installation or configuration. The package comes from a public repository; verify its version and SHA-256 against the release manifest.'
   };
-  text["解压过渡安装包，保存工作并退出 DSH（含托盘）和连接客户端，再运行 安装2.4.4.cmd。旧版首次过渡请勿在运行中的宿主内原地安装。"] = "Extract the transition bundle, save work and exit DSH including its tray process and connected clients, then run the installer CMD. Do not perform the initial legacy transition inside a running Host.";
+  text["解压过渡安装包，保存工作并退出 DSH（含托盘）和连接客户端，再运行 安装2.4.5.cmd。旧版首次过渡请勿在运行中的宿主内原地安装。"] = "Extract the transition bundle, save work and exit DSH including its tray process and connected clients, then run the installer CMD. Do not perform the initial legacy transition inside a running Host.";
   text["DSH 插件 · 旧版过渡安装包"] = "DSH plugin \u00b7 Legacy transition installer";
-  text["安装器先准备候选包，再切换并保留旧版；失败保留恢复记录。重开 DSH 后核对 2.4.4 与发布清单构建号。"] = "The installer stages before switching and retains the previous package and recovery journal. Reopen DSH and verify 2.4.4 and the manifest build ID.";
+  text["安装器先准备候选包，再切换并保留旧版；失败保留恢复记录。重开 DSH 后核对 2.4.5 与发布清单构建号。"] = "The installer stages before switching and retains the previous package and recovery journal. Reopen DSH and verify 2.4.5 and the manifest build ID.";
+  text['DSH 插件 · 支持直接自动升级'] = 'DSH plugin · Direct automatic updates';
+  text['2.4.3 用户可在设置中检查更新并直接升级，等待旧服务交接。仅在升级报错时，按更新说明中的恢复文档处理；新装用户可直接安装 TGZ。'] = 'Users on 2.4.3 can check for updates and upgrade directly, then wait for the legacy service handoff. Use recovery instructions only after an error; fresh installations can use the TGZ.';
   text['下载客户端 1.0.3'] = 'Download client 1.0.3';
   const attributes = {
     '主导航': 'Primary navigation',

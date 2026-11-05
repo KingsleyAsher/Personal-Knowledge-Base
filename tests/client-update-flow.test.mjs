@@ -96,3 +96,5 @@ test('late reply from an old module cannot erase a newer installation record', a
 })
 
 test('a legacy prepare response cannot reach the destructive native installer',async()=>{const s=setup({prepared:{safeInstall:false}});await s.flow.install('1.1.3');assert.equal(s.installs,0);assert.match(s.final.message,/安全更新协议/)});
+
+test("manual recovery help is conditional on failure",async()=>{const ok=setup();await ok.flow.install("1.1.3");assert.notEqual(ok.final.manualHelp,true);const failed=setup({application:"failed",loads:false});await failed.flow.install("1.1.3");assert.equal(failed.final.manualHelp,true)});

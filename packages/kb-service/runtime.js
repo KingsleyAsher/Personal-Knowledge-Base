@@ -1,4 +1,5 @@
 import path from 'node:path';
+import {waitForLegacy243,LEGACY_243_BUILD} from './legacy-handoff.js';
 import os from 'node:os';
 import {mkdir,open,unlink,realpath,readFile} from 'node:fs/promises';
 import {randomUUID} from 'node:crypto';
@@ -18,11 +19,12 @@ async function bootstrapRuntime({library,home=defaultServiceHome(),python='pytho
  const build=await runtimeBuild(),lockFile=path.join(privateDir,'launch.lock'),owner=randomUUID();
  let lock,client,off;
  async function connect(){const ready=await readJson(readyFile,null);if(!ready)return null;let c;try{c=await connectService({pipe:ready.pipe,python,credentialFile:path.join(privateDir,'bootstrap.dpapi.json'),kind});const h=await c.call('service.health');if(h.library.instanceId!==identity.instanceId)throw error('BINDING_CHANGED');return {client:c,health:h};}catch(e){c?.close();if(['BINDING_CHANGED','UNAUTHORIZED'].includes(e.code))throw e;return null;}}
- const until=Date.now()+20000;
+ const until=Date.now()+90000;
  try{
   while(Date.now()<until){
    const live=await connect();
    if(live&&required.every(m=>live.health.supported.includes(m))&&live.health.serviceBuildId===build){client=live.client;break;}
+   if(live&&!live.health.supported.includes('service.prepareUpgrade')&&live.health.serviceBuildId===LEGACY_243_BUILD){await waitForLegacy243({health:live.health,client:live.client,privateDir,python});continue;}
    if(live){if(live.health.connections>1){live.client.close();throw error('SERVICE_UPGRADE_REQUIRED','同库仍有其他版本在线，请先退出旧候选版本，原窗口与原件未改动。');}if(!live.health.supported.includes('service.prepareUpgrade')){live.client.close();throw error('CAPABILITY_UNSUPPORTED','旧服务没有安全停服协议，请使用过渡安装入口')}
      let receipt;try{receipt=await live.client.call('service.prepareUpgrade')}finally{live.client.close()}
      const deadline=Date.now()+15000;let stopped=false;
@@ -55,7 +57,7 @@ export async function connectRuntime(options){
   if(closed||reconnecting)return reconnecting;
   reconnecting=(async()=>{await link?.close().catch(()=>{});link=null;signal('offline');try{const next=await bootstrapRuntime(opts);if(closed){await next.close();return;}link=next;lastWelcome=next.client.welcome;signal('ready');notify({event:'snapshot.required',data:{}});}catch(e){signal('offline',e.code);}finally{reconnecting=null;}})();return reconnecting;
  }
- const timer=setInterval(()=>{if(closed)return;if(!link){void reconnect();return;}void link.client.call('service.health').catch(()=>void reconnect());},2000);timer.unref?.();
+ const tick=()=>{if(closed)return;if(!link){void reconnect();return;}void link.client.call('service.health').catch(()=>void reconnect());};let timer=setInterval(tick,2000);timer.unref?.();
  const runtime={
   async resume(){if(!closed)return;closed=false;await reconnect();timer=setInterval(tick,2000);timer.unref?.();},
    async prepareUpgrade(){

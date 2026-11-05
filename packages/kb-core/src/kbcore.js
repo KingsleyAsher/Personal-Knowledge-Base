@@ -23,7 +23,7 @@ import { readImportSources, derivedPrivatePartitions, effectivePrivateDirs, fold
 import { sourceReferences, reconcileImportedSources, SOURCE_TEXT } from './source-references.js'
 
 // 版本单一来源：package.json 的 version 必须与此一致（详见 INSTALL 说明）
-export const VERSION = '2.4.4'
+export const VERSION = '2.4.5'
 
 export const REQUIRED_FIELDS = ['title', 'type', 'tags', 'status', 'updated']
 export const SCHEMA_VERSION = 1
