@@ -1,5 +1,7 @@
 # Personal Knowledge Base · Plugin and Desktop Client
 
+> **Unreleased source feature:** [existing-library framework migration](docs/LIBRARY-FRAMEWORK-MIGRATION.md#english) previews and adds missing standard folders, templates and guidance while preserving document locations and custom content. The published 2.4.13 package does not yet include it.
+
 > **2.4.6 updater limitation:** a pristine installation stuck on a pending receipt cannot self-repair from the feed alone. The [general recovery entry](docs/LEGACY-246-BOOTSTRAP.md) is a one-time external migration, not a zero-intervention update.
 
 

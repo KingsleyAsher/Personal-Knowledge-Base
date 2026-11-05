@@ -1,3 +1,9 @@
+## Unreleased: existing-library framework migration (2026-11-05)
+
+Implement the user-selected additive migration: preview, per-path decisions, bundled reference text, confirmation and failure recovery. Add missing standard folders, templates, guidance and absent rule/navigation files. Preserve document locations and custom contents. Changed bindings or snapshots stop execution; recovery only removes verified additions and preserves follow-up user edits.
+
+The shared service enforces management access and library identity. Mechanism status now reports the core program version instead of a fixed 0.5.0. Seven new focused checks and two related regression checks passed, including a real Windows service. No real private library was migrated or complete Electron UI verified. This source feature is not packaged or published; the official 2.4.13 archive and feed remain unchanged. [Details](docs/LIBRARY-FRAMEWORK-MIGRATION.md#english)
+
 ## 2.4.6 migration boundary (2026-11-05)
 
 The pristine 2.4.6 updater can block on a missing legacy receipt before downloading any new or transition payload. Its old preparation worker may also resolve unrelated Host dependencies. Publishing 2.4.13 cannot repair that already-running code. Success after a one-time local recovery does not prove zero-intervention upgrades for other users.

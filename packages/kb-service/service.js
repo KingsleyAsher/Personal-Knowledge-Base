@@ -8,7 +8,7 @@ import { spawn } from 'node:child_process'
 import { createInterface } from 'node:readline'
 import { randomUUID } from 'node:crypto'
 import { AsyncLocalStorage } from 'node:async_hooks'
-import { createEmbeddedKernel, createIndexMaintenance } from '../kb-core/index.js'
+import { createEmbeddedKernel, createIndexMaintenance, VERSION as KERNEL_VERSION } from '../kb-core/index.js'
 import { safePath, relativePath, DEFAULT_PREFERENCES } from '../kb-core/src/workbench-state.js'
 import { fileRole } from '../kb-core/src/workbench-files.js'
 import { validateCall, validate, HELLO, METHODS, authorize, ERRORS } from '../kb-contracts/index.js'
@@ -118,6 +118,10 @@ export async function startService({ library, privateDir, python, sources = {}, 
     return { rel, absolute: await safePath(root, rel), b }
   }
   async function workspaceOperation(operation,mutation,caller,operationId){
+    if(operation?.op?.startsWith('upgrade.framework-')){
+      if(!caller.access.includes('admin'))throw error('FORBIDDEN','旧库框架迁移仅供用户设置使用');
+      if(operation.expectedKbId!==kbId)throw error('BINDING_CHANGED','知识库身份已改变，请重新预览');
+    }
     if(!operation||operation.owner&&!operation.op?.startsWith('onboarding.')||operation.caller||operation.roles||!(mutation?WRITE_OPERATIONS:READ_OPERATIONS).has(operation.op))throw error('FORBIDDEN','接口不属于该授权范围')
     if(operation.op.startsWith('memory.'))return memoryChannel(operation,caller,operationId);
     // Management visibility comes from the authenticated grant, including reads.
@@ -352,7 +356,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
     await atomic(runtimeFile, { ...identity, ownerToken, pipe, bootId })
     kernel = createEmbeddedKernel({ stateDir: path.join(privateDir, 'kernel'), config: { kbPath: root, serviceOwnerToken: ownerToken, autoIndex: false }, ports: {
       sharedState:true,policyScope:()=> 'phase4-shared-library',getParsing:()=>engines?.parsing,getImports:()=>engines?.imports,getFlows:()=>engines?.flows,
-      getUpgradeContext:async()=>({version:'0.5.0',buildId:runtimeBuildId}),downloadExtension:()=>extensionArchive(path.resolve(import.meta.dirname,'../../browser-extension')),
+      getUpgradeContext:async()=>({version:KERNEL_VERSION,buildId:runtimeBuildId,runtimeId:bootId}),downloadExtension:()=>extensionArchive(path.resolve(import.meta.dirname,'../../browser-extension')),
       getAIWorkspace:()=>{const h=broker.status().hosts[0];if(!h)throw error('HOST_UNAVAILABLE','DSH 离线');return {workspaceId:h.workspaceId,workspaceName:'知识库流程',workspacePath:h.workspacePath,cwd:h.workspacePath};},
       retrievalProfile:()=>vectorProfiles?.profile(contexts.getStore()?.kind??'desktop')??'plugin',retrievalProfiles:()=>['plugin','desktop'],
       authorizeDocument: async ({ caller, action }) => { const grant = stillAuthorized(); return caller?.id === grant.id && grant.access.includes(action === 'save' ? 'write' : 'edit') },

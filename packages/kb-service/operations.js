@@ -10,6 +10,8 @@ for(const op of ['atlas.file-action','backup.export','backup.restore-file','capt
 TOOL_READ_ACTIONS.kb_relation_review=['inspect','read'];TOOL_READ_ACTIONS.kb_import=['status','waiting'];TOOL_READ_ACTIONS.kb_parse=['source','requests','providers','jobs','job','result'];
 for(const op of ['upgrade.get','upgrade.diff','upgrade.external-diff'])READ_OPERATIONS.add(op);
 for(const op of ['upgrade.check','upgrade.retry','upgrade.keep-local','upgrade.apply'])WRITE_OPERATIONS.add(op);
+for(const op of ['upgrade.framework-preview','upgrade.framework-status'])READ_OPERATIONS.add(op);
+for(const op of ['upgrade.framework-apply','upgrade.framework-recover'])WRITE_OPERATIONS.add(op);
 
 for(const op of ['overview','files','dirs','index-maintenance.status','probe-folder'])READ_OPERATIONS.add(op);
 for(const op of ['index-maintenance.configure','index-snapshots','index-rebuild','setup','bind'])WRITE_OPERATIONS.add(op);

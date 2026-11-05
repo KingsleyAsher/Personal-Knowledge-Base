@@ -1,9 +1,11 @@
 import { readFile } from 'node:fs/promises'
 import { digest, safePath, readJson, atomicJson, locked, fail } from './workbench-state.js'
 import { atomicText, syncManagedFiles } from './managed-files.js'
+import { createLibraryFramework } from './library-framework.js'
 
 export function createSystemUpgrades({ binding, catalog, runtime, retrieval, now = Date.now }) {
   const pending = new Map(), checked = new Set()
+  const framework = createLibraryFramework({ binding, now })
   const statePath = b => safePath(b.root, '.kbmeta/system-state.json', { missing: true })
   const checkIdentity = async b => { if ((await binding(b.st.kbId)).key !== b.key) throw fail('SETTINGS_CHANGED', '知识库身份已改变') }
   async function check(b, force = false) {
@@ -54,6 +56,7 @@ export function createSystemUpgrades({ binding, catalog, runtime, retrieval, now
   }
   async function dispatch(b, args, caller) {
     if (caller) throw fail('ADMIN_ONLY', '升级处理仅供知识库设置使用')
+    if (args.op.startsWith('upgrade.framework-')) return framework.dispatch(b, args)
     if (['upgrade.get', 'upgrade.check', 'upgrade.retry'].includes(args.op)) return { upgrade: await check(b, args.op !== 'upgrade.get') }
     if(args.op==='upgrade.external-diff'){
       const info=await runtime(),source=info.external?.[args.scope]

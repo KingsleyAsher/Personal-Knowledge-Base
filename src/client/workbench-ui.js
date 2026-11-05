@@ -1265,6 +1265,37 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
       btn('刷新当前知识库',refresh,false,{className:'kbc-btn kbc-btn-ghost',style:{marginTop:12}}))
   }
 
+  function FrameworkMigration({snapshot:provided}={}) {
+    const [plan,setPlan]=R.useState(null),[receipt,setReceipt]=R.useState(null),[busy,setBusy]=R.useState(false),[message,setMessage]=R.useState('')
+    const generation=R.useRef(0)
+    const run=async(op,extra={})=>{
+      const token=++generation.current;setBusy(true);setMessage('')
+      let kbId
+      try{
+        kbId=extra.expectedKbId||provided?.kbId||(await api({op:'preferences.get'})).kbId
+        if(!kbId)throw Error('请先绑定已有知识库')
+        const out=await api({op,expectedKbId:kbId,...extra})
+        if(out.ok!==true)throw Error(out.error||out.detail||'框架迁移未完成')
+        if(token!==generation.current)return
+        if(op==='upgrade.framework-preview')setPlan(out.framework)
+        else{setReceipt(out.framework);if(op==='upgrade.framework-apply'){setPlan(null);setMessage('已补齐 '+out.framework.created.length+' 项；已有资料和自定义文件保持原位。')}if(op==='upgrade.framework-recover'){setPlan(null);setMessage('已核对并撤销未完成迁移的新增内容，请重新预览。')}}
+      }catch(err){if(token===generation.current){setMessage(err.message);if(kbId&&['upgrade.framework-apply','upgrade.framework-recover'].includes(op))try{const out=await api({op:'upgrade.framework-status',expectedKbId:kbId});if(token===generation.current&&out.ok)setReceipt(out.framework)}catch{}}}
+      finally{if(token===generation.current)setBusy(false)}
+    }
+    R.useEffect(()=>{setPlan(null);setReceipt(null);void run('upgrade.framework-status');return()=>{generation.current++}},[provided?.kbId])
+    const names={create:'将新增',current:'已具备',preserved:'保留已有内容',blocked:'同名文件或目录冲突'}
+    return e('section',{className:'kbw-panel','aria-label':'旧库框架迁移'},e('h3',null,'旧库框架迁移'),
+      e('p',{className:'kbw-meta'},'补齐当前版本的标准目录、缺失模板和框架手册。资料位置、自定义目录、已有 AGENTS.md 和人工 INDEX.md 保留。'),
+      e('div',{className:'kbw-actions'},btn('预览旧库迁移',()=>run('upgrade.framework-preview'),busy),
+        plan?btn('确认补齐新版框架',()=>run('upgrade.framework-apply',{expectedKbId:plan.kbId,planId:plan.planId,revision:plan.revision,confirm:true}),busy||!plan.canApply||plan.creates===0,{className:'kbw-button kbw-primary'}):null,
+        receipt?.needsRecovery?btn('恢复未完成迁移',()=>run('upgrade.framework-recover'),busy):null),
+      plan?e('div',null,e('p',null,'将新增 '+plan.creates+' 项，保留 '+plan.preserved+' 项已有不同内容。'),
+        plan.rows.map(row=>e('div',{key:row.path,className:'kbw-meta'},(row.kind==='directory'?row.path+'/':row.path)+' · '+names[row.status],row.candidate?e('details',null,e('summary',null,'查看新版参考'),e('pre',{style:{whiteSpace:'pre-wrap',overflowWrap:'anywhere',maxHeight:240,overflow:'auto'}},row.candidate)):null)),
+        !plan.canApply?e('p',{role:'alert'},plan.previous?.needsRecovery?'请先恢复未完成的迁移，再重新预览。':'存在同名文件或目录冲突，请先处理后重新预览。'):plan.creates===0?e('p',null,'标准框架已齐全；不同的已有内容继续保留，可在下方查看托管模板差异。'):null):null,
+      receipt?e('p',{className:'kbw-meta'},'最近迁移：'+({completed:'已完成','rolled-back':'已撤销本次新增',failed:'待恢复',applying:'未完成','rolling-back':'恢复未完成'}[receipt.phase]||receipt.phase)):null,
+      message?e('p',{role:'status'},message):null)
+  }
+
   function UpgradeSettings({snapshot:provided}={}) {
     const [snapshot,setSnapshot]=R.useState(provided||null),[data,setData]=R.useState(null),[busy,setBusy]=R.useState(false),[message,setMessage]=R.useState(''),[diff,setDiff]=R.useState(null)
     const request=async(op='upgrade.get',extra={})=>{setBusy(true);setMessage('');try{
@@ -1276,7 +1307,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
     R.useEffect(()=>{void request()},[provided?.kbId])
     const labels={current:'已检查，机制兼容',attention:'有自定义文件待处理',failed:'升级未完成，可重试',checking:'检查中','index-building':'新索引后台构建中','index-paused':'索引尚未就绪，保留暂停或失败状态，可在检索设置中继续'}
     const activation={'new-session-required':'已有会话请新建会话以加载当前规则；新会话使用当前机制','restart-required':'托管预设已更新，重启宿主后生效',current:'当前运行机制已加载'}
-    return e('section',{className:'kbw-panel'},e('h3',null,'系统版本与机制升级'),
+    return e('section',{className:'kbw-panel'},e(FrameworkMigration,{snapshot:provided}),e('h3',null,'系统版本与机制升级'),
       data?e('div',null,e('p',null,'版本 '+data.program.version),e('p',null,labels[data.status]||data.status),
         e('p',{className:'kbw-meta'},activation[data.activation]||data.activation),
         data.mechanisms?e('p',{className:'kbw-meta'},'全文 '+data.mechanisms.fulltext.format+' / '+data.mechanisms.fulltext.tokenizer+' · 向量 '+data.mechanisms.vector.format+' / '+data.mechanisms.vector.chunkVersion+' · 问答协议 '+data.mechanisms.questionProtocol):null,

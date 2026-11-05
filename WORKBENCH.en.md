@@ -1,5 +1,7 @@
 # Unified installation and usage
 
+The unreleased [existing-library framework migration](docs/LIBRARY-FRAMEWORK-MIGRATION.md#english) adds a preview and confirmation flow under version settings. It fills missing standard folders, templates and guidance while keeping document locations and custom content. Plugin installation and library migration are separate; the published 2.4.13 package does not include this new entry yet.
+
 [中文](WORKBENCH.md) · English
 
 Choose the client for a standalone file workspace, or the plugin for tools and model workflows inside DSH. They can connect to the same authorized library, with shared operations coordinated by the service.
