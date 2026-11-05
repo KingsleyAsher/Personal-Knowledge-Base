@@ -6,6 +6,7 @@ import { EXCLUDED_PARTITION, readIndexPolicy, groupFor, policyExcluded, pathWith
 import { locked, safePath, relativePath, atomicJson, readJson, digest, fail } from './workbench-state.js'
 import { walkTree } from './fsindex.js'
 import { extractReferences, extractHtmlReferences } from './workbench-links.js'
+import { isOriginalArchive } from './source-references.js'
 
 // A durable file-group journal: policies are committed before the first move.
 // On failure both source/destination remain denied until an explicit retry.
@@ -64,7 +65,7 @@ export function createIndexPolicyService({ userData, getParsing, invalidate, pur
             if (processed.has(file)) continue
             let g = groupFor(policy, file)
             const { members, jobs } = await discover(b, g ? g.files.map(f => f.current) : [file], data, policy)
-            if (!g) { const id = randomUUID(); g = policy.groups[id] = { id, files: [], savedLinks: [], pending: file.startsWith('90-收件箱/') } }
+            if (!g) { const id = randomUUID(); g = policy.groups[id] = { id, files: [], savedLinks: [], pending: file.startsWith('90-收件箱/') && !isOriginalArchive(file) } }
             for (const member of members) {
               const other = groupFor(policy, member)
               if (other && other.id !== g.id) { g.files.push(...other.files.filter(f => !g.files.some(x => x.current === f.current))); g.savedLinks.push(...other.savedLinks || []); delete policy.groups[other.id] }

@@ -11,9 +11,17 @@ Choose the client for a standalone file workspace, or the plugin for tools and m
 | Develop or package either product | [Development](DEVELOPMENT.en.md) |
 | Understand library sharing and offline limits | [Architecture](ARCHITECTURE.en.md) |
 
-Source versions are client 1.0.3 and plugin 2.4.2. Public plugin downloads follow release-manifest.json; the current publication is 2.4.2. Client online updates/in-place upgrades are unfinished. Removing a library registration does not delete its original files; application uninstall and document deletion are different operations.
+Source versions are client 1.0.3 and plugin 2.4.3. Public plugin downloads follow release-manifest.json; the current publication is 2.4.3. Client update checks and verified downloads are available; automatic in-place installation and activation remain unfinished. Removing a library registration does not delete its original files; application uninstall and document deletion are different operations.
 
 ## Plugin usage and historical instructions
+
+### Text originals and index synchronization
+
+PDF page rendering accepts administrator-configured Windows Python executables and absolute Unix paths to `python`, `python3`, or versioned executables such as `python3.11`. The renderer environment requires PyMuPDF.
+
+Completed text sources and text in the original archive participate in retrieval; pending inbox material remains excluded. New quick-capture category entries contain source references. Legacy generated mirrors and import entries are retained, while retrieval uses their source records to read the current original and return its path, revision and text ranges. Independently written summaries remain searchable. After a source edit, stale ranges cannot be cited and index maintenance updates the original's JSON record.
+
+Maintenance defaults to a 5-second quiet period, a 30-second minimum interval between starts, and a maximum coalescing wait of 30 seconds, excluding queue and execution time. Changes arriving during maintenance remain pending for the next pass. Startup and periodic patrols recover missed events. Unchanged vector inputs are reused; changed inputs are embedded again. Privacy classifications and index exclusions also protect associated originals. This applies to readable text; PDF/Office binaries still depend on parsing and do not gain native page/layout coordinates through this change.
 
 The sections below retain plugin behavior and release-specific history. Their version numbers are historical, not client version numbers.
 

@@ -21,6 +21,8 @@ import { readFile, writeFile, mkdir, stat, rename, copyFile } from 'node:fs/prom
 import { existsSync } from 'node:fs'
 import { toPosix, normSegs, walkTree, sha256File, privateRootOf, DEFAULT_PRIVATE_DIRS } from './fsindex.js'
 import { checkRealPath, realOf, insideReal } from './kbcore.js'
+import { readIndexPolicy, groupFor, policyFile, savePolicy } from './index-policy.js'
+import { locked } from './workbench-state.js'
 
 export const IMPORT_VERSION = 2
 
@@ -809,6 +811,10 @@ export async function runImport({ core, stateDir, importId, log = () => {}, onPr
           updatedAt: new Date().toISOString(),
         }
         await writeSourceMap(manifest.target, sourceMap)
+        await locked(policyFile(manifest.target), async () => {
+          const policy = readIndexPolicy(manifest.target), group = groupFor(policy, originalRef)
+          if (group?.pending) { group.pending = false; await savePolicy(manifest.target, policy) }
+        })
       }
     } catch (error) {
       await fail(item, String((error && error.message) ?? error))

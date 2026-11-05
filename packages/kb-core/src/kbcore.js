@@ -20,9 +20,10 @@ import { atomicJsonStream, fileFingerprint } from './storage-io.js'
 import { createByteCache } from './retrieval-cache.js'
 import { policyExcludes, readIndexPolicy, policyExcluded, excludedSource, EXCLUDED_PARTITION, registerDerived, resolveAssetPath } from './index-policy.js'
 import { readImportSources, derivedPrivatePartitions, effectivePrivateDirs, foldGeneratedPairs } from './fsindex.js'
+import { sourceReferences, reconcileImportedSources, SOURCE_TEXT } from './source-references.js'
 
 // 版本单一来源：package.json 的 version 必须与此一致（详见 INSTALL 说明）
-export const VERSION = '2.4.2'
+export const VERSION = '2.4.3'
 
 export const REQUIRED_FIELDS = ['title', 'type', 'tags', 'status', 'updated']
 export const SCHEMA_VERSION = 1
@@ -42,7 +43,7 @@ export const TEMPLATES = {
 }
 
 // 这些目录**不是知识条目**，任何情况下都不进索引（配置只能加、不能去掉）。
-const DEFAULT_EXCLUDES = ['_模板', '_手册', '.kbmeta', '.kb-state', '50-底稿', '90-收件箱']
+const DEFAULT_EXCLUDES = ['_模板', '_手册', '.kbmeta', '.kb-state', '50-底稿']
 
 const nowIso = () => new Date().toISOString()
 const today = () => nowIso().slice(0, 10)
@@ -1515,6 +1516,7 @@ export function createCore(cfg, logger) {
         const meta = await readMeta(root)
         if (kbRootOf(current) !== root || current.revision !== conf.revision || expectedRevision != null && expectedRevision !== current.revision || expectedKbId && meta.value?.kbId !== expectedKbId) return { ok: false, reason: 'binding-changed' }
         if (!health.healthy || current.degraded || automatic && current.autoIndex === false) return { ok: false, reason: 'maintenance-disabled-or-unhealthy' }
+        await reconcileImportedSources(root, meta.value?.kbId)
         maintenanceState = { ...maintenanceState, state: 'running', reason: null }
         const snap = await indexSnapshot(conf)
         if (snap.freshness.reason === 'index-kbid-mismatch') throw Object.assign(new Error('索引身份不一致，未自动替换'), { code: 'index-kbid-mismatch' })
@@ -1647,7 +1649,7 @@ export function createCore(cfg, logger) {
     }
   }
 
-  async function walkMd(root, exclude, dir = root, acc = [], errors = [], links = []) {
+  async function walkMd(root, exclude, dir = root, acc = [], errors = [], links = [], policy = readIndexPolicy(root)) {
     let items = []
     try {
       items = await readdir(dir, { withFileTypes: true })
@@ -1670,8 +1672,8 @@ export function createCore(cfg, logger) {
         links.push(rel)
         continue
       }
-      if (item.isDirectory()) await walkMd(root, exclude, full, acc, errors, links)
-      else if (item.name.endsWith('.md') && !item.name.includes('.tmp-')) acc.push(full)
+      if (item.isDirectory()) await walkMd(root, exclude, full, acc, errors, links, policy)
+      else if ((item.name.endsWith('.md') || rel.startsWith('90-收件箱/') && SOURCE_TEXT.test(rel)) && !item.name.includes('.tmp-') && !policyExcluded(policy, rel)) acc.push(full)
     }
     return acc
   }
@@ -2118,6 +2120,24 @@ export function createCore(cfg, logger) {
       note = `${why}，已改为**扫描磁盘**兜底（${scanned.scannedFiles} 个 .md${scanned.scanErrors.length ? `，${scanned.scanErrors.length} 处扫描错误` : ''}${(scanned.skippedLinks ?? []).length ? `，跳过 ${scanned.skippedLinks.length} 个链接目录` : ''}）；建议 kb_check(rebuild) 重建索引。`
     }
 
+    const references = await sourceReferences(root, entries, parseFrontmatter, (await readMeta(root)).value?.kbId)
+    // Generated category entries are navigation. Match and cite the current
+    // original; never return an old embedded copy as current evidence.
+    const canonical = new Map()
+    for (const entry of entries) {
+      const source = references.get(entry.path)
+      if (!source) { if (!canonical.has(entry.path)) canonical.set(entry.path, entry); continue }
+      if (policyExcluded(readIndexPolicy(root), source) || (conf.excludeFromSearch || []).some(p => source === p || source.startsWith(p + '/'))) continue
+      const absolute = path.join(root, source), guard = await checkRealPath(root, absolute)
+      if (!guard.ok) continue
+      try {
+        const before = await stat(absolute), buf = await readFile(absolute), info = await stat(absolute)
+        if (before.size !== info.size || before.mtimeMs !== info.mtimeMs || before.ctimeMs !== info.ctimeMs || buf.length !== info.size) continue
+        const original = entryFromBuffer(source, absolute, buf, info.mtimeMs)
+        canonical.set(source, { ...original, title: original.title || entry.title, tags: [...new Set([...original.tags, ...(canonical.get(source)?.tags || []), ...entry.tags])] })
+      } catch { /* Missing sources cannot fall back to stale mirror text. */ }
+    }
+    entries = [...canonical.values()]
     const metaHits = []
     const bodyHits = []
     const metaPaths = new Set()
@@ -2193,6 +2213,7 @@ export function createCore(cfg, logger) {
 
     const defects = []
     for (const entry of fresh.entries) {
+      if (entry.path.startsWith('90-收件箱/')) continue // Originals do not require knowledge-note frontmatter.
       const file = path.join(root, entry.path)
       let text = ''
       try {

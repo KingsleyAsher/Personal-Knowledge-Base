@@ -39,7 +39,7 @@ test('archived family moves together; all index generations and both relation di
   await f.call({ op: 'atlas.link.save', from: derived.path, to: other.path, expectedRevision: snap.revision })
   const before = await f.call({ op: 'atlas.relations', force: true })
   assert.ok(before.edges.some(e => e.from === derived.path || e.to === derived.path))
-  assert.equal((await f.core.search({ query: 'PRIVATE_TOKEN' })).hits.length, 1)
+  assert.deepEqual(new Set((await f.core.search({ query: 'PRIVATE_TOKEN' })).hits.map(h => h.path)), new Set([original, derived.path]))
   const vectorDir = path.join(f.root, '索引层', 'a'.repeat(32))
   await mkdir(vectorDir, { recursive: true }); await writeFile(path.join(vectorDir, 'vectors-0.bin'), 'sensitive old vector')
   await writeFile(path.join(vectorDir, 'catalog.json'), JSON.stringify({ documents: [{ path: derived.path }] }))
@@ -65,7 +65,7 @@ test('archived family moves together; all index generations and both relation di
   assert.equal(restored.mapping[moved], derived.path)
   assert.equal(resolveAssetPath(f.root, source), original)
   assert.match(await readFile(path.join(f.root, derived.path), 'utf8'), /source:.*90-收件箱/)
-  assert.equal((await f.core.search({ query: 'PRIVATE_TOKEN' })).hits.length, 1)
+  assert.deepEqual(new Set((await f.core.search({ query: 'PRIVATE_TOKEN' })).hits.map(h => h.path)), new Set([original, derived.path]))
   const after = await f.call({ op: 'atlas.relations', force: true })
   assert.ok(after.edges.some(e => e.type === 'manual' && e.from === derived.path && e.to === other.path))
   assert.ok(after.edges.some(e => e.from === other.path && e.to === derived.path))
@@ -183,6 +183,7 @@ test('excluded OCR output is materialized beside the original and follows it bac
   const original = '90-收件箱/sample.png'
   await writeFile(path.join(f.root, original), Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a0R8AAAAASUVORK5CYII=', 'base64'))
   const parser = createParsingService({ stateDir: f.stateDir, getBinding: async () => ({ kbId: f.kbId, kbPath: f.root }), getCore: () => f.core,
+    lookup: async () => [{ address: '93.184.216.34', family: 4 }], // Transport below is entirely synthetic; do not require public DNS.
     credentialStore: { configured: async () => true, read: async () => ({ apiKey: 'fixture', secretKey: 'fixture' }) },
     nativeRequest: async (_p, url) => url.includes('/token') ? { ok: true, json: { access_token: 'fixture-token', expires_in: 3600 } } : { ok: true, json: { words_result: [{ words: 'SYNTHETIC_OCR_TOKEN' }] } } })
   await parser.setPolicy('allow-configured', { viaAdmin: true })

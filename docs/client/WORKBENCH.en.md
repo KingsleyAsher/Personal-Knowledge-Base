@@ -15,3 +15,5 @@ Alt+F opens movable global search. Results can be dragged into panes. Explore re
 The DSH sidebar offers reconnect, sessions, Agent presets and model/reasoning controls. Enter sends; Shift+Enter inserts a newline. Attach tabs or selected text explicitly. Capabilities depend on the connected host.
 
 Index snapshots are not backups of original files. Confirm backup type and restore target. Preserve originals when editing complex Office documents.
+
+Shared source update: see [plugin 2.4.3](../releases/plugin-2.4.3.md) for source synchronization and Windows parsing fixes. The published client 1.0.3 installer still contains its original paired plugin 2.4.2 payload.

@@ -1,3 +1,14 @@
+## 2.4.3: source synchronization and Windows parsing jobs (2026-11-05)
+
+- Merge text-original retrieval and citation synchronization. Archived text is searchable; edits refresh source records and ranges. Legacy generated mirrors resolve to current originals while independently authored summaries remain searchable.
+- Preserve exclusions across related originals and derived records, reuse unchanged embeddings, and support PDF rendering with non-ASCII paths and versioned Python executables.
+- Serialize parsing-record reads and atomic replacements in one process, including separate service instances. External locks receive bounded retries; exhausted writes preserve the old record and clean up temporary files.
+- Catch background failures during submission, retry and startup recovery. Persist failure diagnostics where possible, report persistence failures, and release heartbeats and running registrations.
+
+Windows focused verification passed 73/73 tests: 68 existing checks and 5 injected-failure regressions. Synthetic inputs and transport stubs do not establish real OCR/ASR quality, automatic PDF/Office re-indexing, native source-position mapping or complete desktop compatibility. The independently released client remains 1.0.3; its installer is not rebuilt for this release.
+
+## 历史记录 / Earlier releases
+
 # Unified repository source · 2026-11-04
 
 Source versions: client 1.0.1 / plugin 2.4.1. Consolidated desktop app, shared core/service, optional memory integration adapters and existing installer source. Both products use this repository for ongoing development. No binary Release is published by this documentation change; the public plugin manifest remains 2.3.1. Historical entries below describe the plugin unless stated otherwise. [Client release notes](docs/client/RELEASE.en.md).

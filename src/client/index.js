@@ -369,6 +369,7 @@ window.__ModuleLoader__.load({
         const inlines = value => value.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, i) => part.startsWith('**') ? e('strong', { key: i }, inline(part.slice(2, -2))) : part.startsWith('`') ? e('code', { key: i }, part.slice(1, -1)) : inline(part))
         for (let i = 0; i < lines.length; i++) {
           const line = lines[i]; if (!line.trim()) continue
+          if (line === '<!-- kb:source-reference -->') continue
           if (/^```|^~~~/.test(line)) { const fence = line.slice(0, 3), code = []; while (++i < lines.length && !lines[i].startsWith(fence)) code.push(lines[i]); nodes.push(e('pre', { key: i }, e('code', null, code.join('\n')))); continue }
           const heading = /^(#{1,6})\s+(.+)$/.exec(line)
           if (heading) { nodes.push(e('h' + heading[1].length, { key: i }, inlines(heading[2]))); continue }
@@ -662,12 +663,14 @@ window.__ModuleLoader__.load({
           const links = str => str.split(/(\[[^\]\n]+\]\([^)\n]+\)|\[\[[^\]\n]+\]\])/g).map((part, i) => {
             const m = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(part), wiki = /^\[\[([^\]]+)\]\]$/.exec(part)
             if (!m && !wiki) return part
-            const label = m?.[1] || wiki[1], target = m?.[2] || wiki[1]
+            const label = m?.[1] || wiki[1], target = (m?.[2] || wiki[1]).replace(/^<|>$/g, '')
             if (/^https?:\/\//i.test(target)) return e('a', { key: i, href: target, target: '_blank', rel: 'noopener noreferrer' }, label)
             if (/^[a-z]+:/i.test(target)) return part
             return e('button', { key: i, className: 'kbw-link', onClick: async () => {
+              let decoded
+              try { decoded = decodeURIComponent(target.split('#')[0]) } catch { setError('链接地址编码无效'); return }
               let segments = file.split('/').slice(0, -1)
-              for (const s of target.split('#')[0].split('/')) { if (s === '..') segments.pop(); else if (s && s !== '.') segments.push(s) }
+              for (const s of decoded.split('/')) { if (s === '..') segments.pop(); else if (s && s !== '.') segments.push(s) }
               const p = segments.join('/')
               try { await api({ op: 'atlas.detail', ...base, path: p }); onNavigate('map', p) } catch { setError('链接目标不存在或不可展示，请从关系清单检查依据') }
             } }, label)
@@ -4266,11 +4269,12 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     // END GENERATED TODO LIFECYCLE UI
 
-    const RELEASE_VERSION = '2.4.2'
+    const RELEASE_VERSION = '2.4.3'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.
     const RELEASE_NOTICES = [
+      { version: '2.4.3', items: ['原件编辑后同步检索内容与引用范围，保留独立撰写的摘要。', '修复 Windows 解析任务状态写入冲突；后台失败保留记录、报告诊断并支持恢复重试。'] },
       { version: '2.4.1', items: ['同步两端版本规则；所选通道内跨大版本与预览版均自动更新，保留包校验与安装状态保护。', '客户端国内更新源与两端独立 Release 交付。'] },
       { version: '2.4.0', items: ['整合知识库插件与独立客户端的共享服务、统一写入和实时连接。', '加入可选的记忆插件联动与记忆管理入口；未连接时保留独立知识库功能。', '保留收件箱整理、双层索引、关系网络与现有插件入口。'] },
       { version: '2.3.1', items: ['收件箱整理只发送一句指定任务，不再拼接流程说明。', 'OCR / ASR 任务记录改为静默刷新，保持列表位置和展开状态。', '修复知识库命令工具漏传显示说明时的参数错误。', '任务计划增加逐步更新与结束前核对；会话停止后未确认步骤不再持续转圈。'] },

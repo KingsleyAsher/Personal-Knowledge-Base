@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import { mkdtemp, mkdir } from 'node:fs/promises'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
-import { createParsingService } from '../src/host/parsing.js'
+import { createParsingService, normalizeProvider } from '../src/host/parsing.js'
 
 delete process.env.PYTHONIOENCODING
 delete process.env.PYTHONUTF8
@@ -25,6 +25,14 @@ const waitJob = async (s, id, binding) => {
   throw new Error('job timeout')
 }
 
+test('versioned POSIX Python executable paths are preserved for PDF rendering', () => {
+  for (const renderCommand of ['/opt/ocr/bin/python', '/opt/ocr/bin/python3', '/opt/ocr/bin/python3.11']) {
+    const provider = normalizeProvider({ id: 'synthetic-python', kind: 'ocr', vendor: 'baidu', renderCommand })
+    assert.equal(provider.ok, true)
+    assert.equal(provider.value.renderCommand, renderCommand)
+  }
+})
+
 test('PDF page rendering survives non-ASCII paths with a clean minimal child env', async () => {
   const python = execFileSync('python', ['-c', 'import sys; print(sys.executable)'], { encoding: 'utf8', windowsHide: true }).trim()
   await mkdir(kbPath)
@@ -34,6 +42,7 @@ test('PDF page rendering survives non-ASCII paths with a clean minimal child env
   let config = { parsing: { providers: [], externalPolicy: 'allow-configured' } }
   const seenImagePaths = []
   const service = createParsingService({
+    lookup: async () => [{ address: '93.184.216.34', family: 4 }], // Offline native transport fixture.
     stateDir: path.join(root, 'state'),
     getBinding: async () => binding,
     getCore: () => ({ getConfig: async () => config, setConfig: async patch => { config = { ...config, ...patch }; return { ok: true, revision: 1 } } }),

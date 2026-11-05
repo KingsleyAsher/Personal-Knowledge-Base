@@ -11,3 +11,5 @@ Text/vector indexes, relationships and maintenance state are library-scoped. Sta
 Local client functions survive host disconnection; chat, model organization and optional memory services require their hosts. Project-memory isolation is retained. Packaged client configuration uses the current user's .dsh/knowledge-desktop-client directory; tests use isolated storage.
 
 See [client architecture](docs/client/ARCHITECTURE.en.md). Repository unification does not merge or upload user libraries.
+
+Parsing records use a shared in-process read/write queue and atomic replacement. Cross-process safety still relies on the authorized service writer boundary. Background errors report whether failure state was persisted; failed replacements retain the old disk record.

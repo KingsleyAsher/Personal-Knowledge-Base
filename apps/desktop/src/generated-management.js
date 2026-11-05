@@ -346,6 +346,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
     const inlines = value => value.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, i) => part.startsWith('**') ? e('strong', { key: i }, inline(part.slice(2, -2))) : part.startsWith('`') ? e('code', { key: i }, part.slice(1, -1)) : inline(part))
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]; if (!line.trim()) continue
+      if (line === '<!-- kb:source-reference -->') continue
       if (/^```|^~~~/.test(line)) { const fence = line.slice(0, 3), code = []; while (++i < lines.length && !lines[i].startsWith(fence)) code.push(lines[i]); nodes.push(e('pre', { key: i }, e('code', null, code.join('\n')))); continue }
       const heading = /^(#{1,6})\s+(.+)$/.exec(line)
       if (heading) { nodes.push(e('h' + heading[1].length, { key: i }, inlines(heading[2]))); continue }
@@ -639,12 +640,14 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
       const links = str => str.split(/(\[[^\]\n]+\]\([^)\n]+\)|\[\[[^\]\n]+\]\])/g).map((part, i) => {
         const m = /^\[([^\]]+)\]\(([^)]+)\)$/.exec(part), wiki = /^\[\[([^\]]+)\]\]$/.exec(part)
         if (!m && !wiki) return part
-        const label = m?.[1] || wiki[1], target = m?.[2] || wiki[1]
+        const label = m?.[1] || wiki[1], target = (m?.[2] || wiki[1]).replace(/^<|>$/g, '')
         if (/^https?:\/\//i.test(target)) return e('a', { key: i, href: target, target: '_blank', rel: 'noopener noreferrer' }, label)
         if (/^[a-z]+:/i.test(target)) return part
         return e('button', { key: i, className: 'kbw-link', onClick: async () => {
+          let decoded
+          try { decoded = decodeURIComponent(target.split('#')[0]) } catch { setError('链接地址编码无效'); return }
           let segments = file.split('/').slice(0, -1)
-          for (const s of target.split('#')[0].split('/')) { if (s === '..') segments.pop(); else if (s && s !== '.') segments.push(s) }
+          for (const s of decoded.split('/')) { if (s === '..') segments.pop(); else if (s && s !== '.') segments.push(s) }
           const p = segments.join('/')
           try { await api({ op: 'atlas.detail', ...base, path: p }); onNavigate('map', p) } catch { setError('链接目标不存在或不可展示，请从关系清单检查依据') }
         } }, label)

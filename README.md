@@ -7,9 +7,9 @@
 | Product | Published version | Direct download | Release notes |
 |---|---|---|---|
 | **Desktop client · Windows x64** | **1.0.3** | **[⬇ Download client installer (EXE)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.3/KnowledgeWorkbench-1.0.3-Setup.exe)** | [Client Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.3) |
-| **DSH knowledge-base plugin** | **2.4.2** | **[⬇ Download plugin (TGZ)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.2/local-dsh-knowledge-base-2.4.2.tgz)** | [Plugin Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.2) |
+| **DSH knowledge-base plugin** | **2.4.3** | **[⬇ Download plugin (TGZ)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.3/local-dsh-knowledge-base-2.4.3.tgz)** | [Plugin Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.3) |
 
-Release entries: [client 1.0.3](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.3) · [plugin 2.4.2](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.2). Choose the correct installer/TGZ and verify its product-specific manifest and digest.
+Release entries: [client 1.0.3](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.3) · [plugin 2.4.3](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.3). Choose the correct installer/TGZ and verify its product-specific manifest and digest.
 
 ## One library, two entry points
 
@@ -27,15 +27,15 @@ Release entries: [client 1.0.3](https://github.com/KingsleyAsher/Personal-Knowle
 
 Run the EXE to install. The approximately 186 MiB package includes its runtime. This is the standalone client installer, not a DSH plugin bundle.
 
-### DSH plugin 2.4.2
+### DSH plugin 2.4.3
 
-**[Download local-dsh-knowledge-base-2.4.2.tgz](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.2/local-dsh-knowledge-base-2.4.2.tgz)** · [Release notes and assets](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.2)
+**[Download local-dsh-knowledge-base-2.4.3.tgz](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.3/local-dsh-knowledge-base-2.4.3.tgz)** · [Release notes and assets](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.3)
 
 Install the TGZ through DSH plugin management. GitHub highlights only one Latest release, but both products have independent releases. Use the product links above or browse [all Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases).
 
 Source, issues and future releases are maintained here. In [Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases), choose the correct product: Windows Setup.exe for the client, TGZ for the plugin.
 
-Published plugin 2.4.2: [Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.2) · [TGZ](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.2/local-dsh-knowledge-base-2.4.2.tgz). See [plugin usage](WORKBENCH.en.md) and [mirror information](MIRROR-RELEASES.md) for extensions and regional sources. Mirror availability can vary.
+Published plugin 2.4.3: [Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.3) · [TGZ](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.3/local-dsh-knowledge-base-2.4.3.tgz). See [plugin usage](WORKBENCH.en.md) and [mirror information](MIRROR-RELEASES.md) for extensions and regional sources. Mirror availability can vary.
 
 The existing client installer retains its paper-green interface and animations, requires an empty application directory and preserves personal data on uninstall. Client online checks and verified downloads are implemented; automatic in-place installation and activation remain unfinished. The plugin keeps its existing update manifests and installation flow.
 

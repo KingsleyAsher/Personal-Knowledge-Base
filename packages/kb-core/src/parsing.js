@@ -22,6 +22,7 @@
  *  解析成功与落库成功分开记录（job.status 与 job.land.status 相互独立）。
  */
 import { spawn } from 'node:child_process'
+import { createParseJobStorage } from './parse-job-storage.js'
 import { atomicJson as atomicWriteJson, safePath } from './workbench-state.js'
 import { createHash, randomUUID } from 'node:crypto'
 import { promises as dnsPromises } from 'node:dns'
@@ -298,7 +299,7 @@ export function normalizeProvider(input, extra = {}) {
   }
   if (['cli-transcribe', 'qwen3-local', 'paddle-local', 'paddle-service', 'ppocr-local'].includes(protocol)) {
     command = typeof src.command === 'string' ? src.command.trim() : ''
-    if (protocol !== 'cli-transcribe' && command && !/python(?:3)?(?:\.exe)?$/i.test(path.basename(command))) command = path.join(command, 'Scripts', 'python.exe')
+    if (protocol !== 'cli-transcribe' && command && !/python(?:\d+(?:\.\d+)*)?(?:\.exe)?$/i.test(path.basename(command))) command = path.join(command, 'Scripts', 'python.exe')
     if (command === '') errors.push({ field: 'command', code: 'BAD_COMMAND', message: 'CLI 协议需要固定的可执行程序路径' })
     if (Array.isArray(src.args)) args = src.args.map((a) => String(a))
     else if (typeof src.args === 'string' && src.args.trim() !== '') errors.push({ field: 'args', code: 'BAD_ARGS', message: 'args 必须是数组（程序参数由程序构造，不接受命令串）' })
@@ -340,10 +341,10 @@ export function normalizeProvider(input, extra = {}) {
     notes: typeof src.notes === 'string' ? src.notes.slice(0, 300) : '',
     updatedAt: extra.now ?? nowIso(),
   }
-  if (value.renderCommand && !/python(?:3)?(?:\.exe)?$/i.test(path.basename(value.renderCommand))) value.renderCommand = path.join(value.renderCommand, 'Scripts', 'python.exe')
+  if (value.renderCommand && !/python(?:\d+(?:\.\d+)*)?(?:\.exe)?$/i.test(path.basename(value.renderCommand))) value.renderCommand = path.join(value.renderCommand, 'Scripts', 'python.exe')
   if (value.ffmpegCommand && !/^ffmpeg(?:\.exe)?$/i.test(path.basename(value.ffmpegCommand))) value.ffmpegCommand = path.join(value.ffmpegCommand, 'ffmpeg.exe')
   if (['qwen3-local', 'paddle-local', 'paddle-service', 'ppocr-local'].includes(protocol)) {
-    if (!path.isAbsolute(command) || !/python(?:3)?(?:\.exe)?$/i.test(path.basename(command))) errors.push({ field: 'command', message: '本地适配器需要 Python 可执行文件绝对路径' })
+    if (!path.isAbsolute(command) || !/python(?:\d+(?:\.\d+)*)?(?:\.exe)?$/i.test(path.basename(command))) errors.push({ field: 'command', message: '本地适配器需要 Python 可执行文件绝对路径' })
     if (['qwen3-local', 'paddle-local'].includes(protocol) && !path.isAbsolute(value.modelPath)) errors.push({ field: 'modelPath', message: '请选择模型绝对路径' })
     if (['paddle-local', 'paddle-service'].includes(protocol) && !path.isAbsolute(value.layoutModelPath || '')) errors.push({ field: 'layoutModelPath', message: '请选择 PP-DocLayoutV3 版面模型目录' })
     if (protocol === 'ppocr-local' && (!path.isAbsolute(value.detModelPath) || !path.isAbsolute(value.recModelPath))) errors.push({ field: 'modelPath', message: '请选择配套的检测模型、识别模型目录' })
@@ -471,7 +472,7 @@ async function listJobFiles(dir) {
  * @param {function} [deps.lookup]    DNS 解析器（默认 dns.promises.lookup）。**只给受控桩测试用**：
  *                                    作用是让"域名解析到公网地址 → 发正文前拦下"可以被离线证明。
  */
-export function createParsingService({ stateDir, log = () => {}, getCore, getBinding, lookup = null, credentialStore = null, nativeRequest = null, onEvent = () => {}, resourceRoot = null }) {
+export function createParsingService({ stateDir, log = () => {}, getCore, getBinding, lookup = null, credentialStore = null, nativeRequest = null, onEvent = () => {}, resourceRoot = null, jobStorage = createParseJobStorage() }) {
   const resource = name => { if (!resourceRoot) throw Object.assign(new Error('Parsing helper resource root is required'), { code: 'RESOURCE_ROOT_REQUIRED' }); return path.join(resourceRoot, 'tools', name) }
   const root = path.join(stateDir, 'parse')
   const credentials = credentialStore || createParseCredentials(stateDir)
@@ -1025,7 +1026,8 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
   /** 用随包固定脚本把 PDF 拆成逐页 PNG（并读出文字层，文本页可跳过 OCR）。 */
   async function renderPdfPages(provider, pdfPath, outDir, { signal, maxPages, onChild }) {
     const python = provider.renderCommand || provider.command
-    if (!python || !/\.(exe|cmd|bat)$/i.test(python)) {
+    const posixPython = process.platform !== 'win32' && path.isAbsolute(python || '') && /^python(?:\d+(?:\.\d+)*)?$/.test(path.basename(python || ''))
+    if (!python || !/\.(exe|cmd|bat)$/i.test(python) && !posixPython) {
       return { ok: false, code: 'NO_RENDERER', detail: 'PDF 需要提供方配置 renderCommand 指向固定 Python 可执行文件（如本机 ocr-venv 的 python.exe）' }
     }
     await mkdir(outDir, { recursive: true })
@@ -1204,7 +1206,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     if (candidates.length === 0) return null
     for (const p of candidates) {
       try {
-        const job = JSON.parse(await readFile(p, 'utf8'))
+        const job = await jobStorage.read(p)
         if (job.kbId !== binding.kbId || job.binding && !sameBinding(job.binding, binding)) return null
         return job
       } catch {
@@ -1215,7 +1217,6 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
   }
 
   const jobWriteChains = new Map()
-  let writeSeq = 0
 
   /**
    * 任务记录原子写。
@@ -1251,19 +1252,9 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
           job.materializedFile = rel
         })
       }
-      writeSeq = (writeSeq + 1) % 1_000_000
-      const tmp = `${file}.tmp-${process.pid}-${writeSeq}`
-      await writeFile(tmp, JSON.stringify(job, null, 2), 'utf8')
-      // Windows readers / antivirus can briefly hold the destination even with
-      // writers serialized. Retry replacement without deleting the old record.
-      for (let attempt = 0; ; attempt++) {
-        try { await rename(tmp, file); break }
-        catch (e) {
-          if (!['EPERM', 'EBUSY', 'EACCES'].includes(e.code) || attempt >= 7) throw e
-          await new Promise(resolve => setTimeout(resolve, 20 * (attempt + 1)))
-        }
-      }
-      onEvent({ type: 'parse-jobs-changed', kbId: binding.kbId, jobId: job.jobId })
+      try { await jobStorage.write(file, job) }
+      catch (error) { throw Object.assign(error, { jobStateWriteFailed: true }) }
+      try { onEvent({ type: 'parse-jobs-changed', kbId: binding.kbId, jobId: job.jobId }) } catch { /* subscriber cannot undo a durable write */ }
       return job
     } finally {
       release()
@@ -1466,7 +1457,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     }
     await writeJob(binding, job)
     log('info', `解析任务已排队 ${job.jobId}（${job.kind} ← ${job.source.relPath} via ${provider.id}）`)
-    void runJob(job.jobId, binding)
+    launchJob(job.jobId, binding)
     return { ok: true, deduped: false, jobId: job.jobId, status: 'queued', job: publicJob(job) }
   }
 
@@ -1476,7 +1467,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     let best = null
     for (const f of files) {
       try {
-        const j = JSON.parse(await readFile(path.join(dir, f), 'utf8'))
+        const j = await jobStorage.read(path.join(dir, f))
         if (j.kbId !== binding.kbId || j.binding && !sameBinding(j.binding, binding)) continue
         if (j.dedupeKey !== dedupeKey) continue
         if (Boolean(j.source?.external) !== Boolean(external)) continue
@@ -1491,16 +1482,42 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
   }
 
   // ── 执行 ────────────────────────────────────────────────────────────────
+  function launchJob(jobId, binding) {
+    // A final guard also covers failures in lookup and error reporting itself.
+    void runJob(jobId, binding).catch(() => {
+      try { log('error', `解析任务 ${jobId} 后台处理失败，原任务记录已保留`) } catch { /* logger unavailable */ }
+    })
+  }
+
   async function runJob(jobId, bindingIn) {
     const binding = snapshotBinding(bindingIn || await getBinding())
     if (!binding) return
     const job = await readJob(jobId, binding)
-    if (!job) return
-    if (running.has(jobId)) return
-    if (!['queued'].includes(job.status)) return
+    if (!job || running.has(jobId) || job.status !== 'queued') return
     const controller = new AbortController()
-    const entry = { controller, child: null, job, binding, bindingChanged: false }
+    const entry = { controller, child: null, job, binding, bindingChanged: false, heartbeat: null }
     running.set(jobId, entry)
+    try {
+      await executeJob(jobId, binding, job, entry, controller)
+    } catch (error) {
+      clearInterval(entry.heartbeat)
+      controller.abort()
+      job.status = 'failed'
+      job.stage = 'failed'
+      job.finishedAt = nowIso()
+      const diagnostic = { code: error.jobStateWriteFailed ? 'JOB_STATE_WRITE_FAILED' : 'JOB_BACKGROUND_FAILED', cause: error.code || 'PARSE_FAILED', message: '后台任务未能完成；请检查任务诊断后重试', at: nowIso() }
+      job.diagnostics = [...(job.diagnostics ?? []), diagnostic]
+      let persisted = false
+      try { await writeJob(binding, job); persisted = true } catch { /* retain last durable record */ }
+      try { log('error', `解析任务 ${jobId} 后台失败 [${diagnostic.cause}]；失败状态${persisted ? '已保存' : '未能保存，原记录已保留'}`) } catch { /* logger unavailable */ }
+      try { onEvent({ type: 'parse-job-error', kbId: binding.kbId, jobId, code: diagnostic.code, cause: diagnostic.cause, persisted }) } catch { /* subscriber unavailable */ }
+    } finally {
+      clearInterval(entry.heartbeat)
+      if (running.get(jobId) === entry) running.delete(jobId)
+    }
+  }
+
+  async function executeJob(jobId, binding, job, entry, controller) {
     const conf = normalizeParsingConfig(job.configSnapshot?.provider ? { externalPolicy: job.configSnapshot.externalPolicy, providers: [job.configSnapshot.provider], defaultOcr: job.kind === 'ocr' ? job.configSnapshot.provider.id : null, defaultAsr: job.kind === 'asr' ? job.configSnapshot.provider.id : null } : null).value
     const provider = job.configSnapshot.provider
     conf.executionBinding = binding
@@ -1519,7 +1536,6 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
         job.diagnostics = [{ code: pre.code, message: pre.detail ?? '', at: nowIso() }]
         await writeJob(binding, job)
         log('warn', `解析任务 ${jobId} 在发送前被策略拦下：${pre.code}`)
-        running.delete(jobId)
         return
       }
     }
@@ -1533,7 +1549,6 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
       job.diagnostics = [{ code: cliRefusal.code, message: cliRefusal.message, at: nowIso() }]
       await writeJob(binding, job)
       log('warn', `解析任务 ${jobId} 的 CLI 配置被策略拒绝：${cliRefusal.code}`)
-      running.delete(jobId)
       return
     }
     job.status = 'running'
@@ -1542,7 +1557,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     job.heartbeatAt = job.startedAt
     job.attempts += 1
     await writeJob(binding, job)
-    const heartbeat = setInterval(() => { void (async () => {
+    const heartbeat = entry.heartbeat = setInterval(() => { void (async () => {
       if (!sameBinding(binding, await getBinding())) { entry.bindingChanged = true; controller.abort(Object.assign(new Error('binding changed'), { code: 'BINDING_CHANGED' })) }
       job.heartbeatAt = nowIso()
       await writeJob(binding, job)
@@ -1594,7 +1609,6 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
       outcome = { ok: false, code: (error && error.code) || 'PARSE_FAILED', detail: errText(error) }
     } finally {
       clearInterval(heartbeat)
-      running.delete(jobId)
       await rm(work, { recursive: true, force: true }).catch(() => {})
     }
     const elapsedMs = Date.now() - t0
@@ -1888,7 +1902,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     job.finishedAt = null
     job.diagnostics = [...(job.diagnostics ?? []), { code: 'RETRY', message: String(reason ?? '手动重试'), at: nowIso() }]
     await writeJob(binding, job)
-    void runJob(job.jobId, binding)
+    launchJob(job.jobId, binding)
     return { ok: true, retryKind: 'parse', jobId, status: 'queued', attempts: job.attempts }
   }
 
@@ -2011,7 +2025,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     let jobs = [], unreadable = 0
     for (const f of files) {
       try {
-        const j = JSON.parse(await readFile(path.join(dir, f), 'utf8'))
+        const j = await jobStorage.read(path.join(dir, f))
         if (j.kbId !== binding.kbId || j.binding && !sameBinding(j.binding, binding)) continue
         if (kind && j.kind !== kind) continue
         if (status === 'completed' ? !['succeeded', 'partial', 'failed'].includes(j.status) : status && j.status !== status) continue
@@ -2054,7 +2068,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
       const file = path.join(dir, f)
       let j
       try {
-        j = JSON.parse(await readFile(file, 'utf8'))
+        j = await jobStorage.read(file)
       } catch {
         continue
       }
@@ -2068,7 +2082,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
         j.stage = 'queued'
         j.note = 'requeued-after-restart'
         await writeJob(binding, j)
-        void runJob(j.jobId, binding)
+        launchJob(j.jobId, binding)
       } else {
         j.status = 'failed'
         j.stage = 'failed'
@@ -2090,7 +2104,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     const rows = []
     for (const f of files) {
       try {
-        const j = JSON.parse(await readFile(path.join(dir, f), 'utf8'))
+        const j = await jobStorage.read(path.join(dir, f))
         rows.push({ f, at: j.createdAt, terminal: ['succeeded', 'partial', 'failed', 'canceled'].includes(j.status) })
       } catch {
         rows.push({ f, at: '', terminal: true })

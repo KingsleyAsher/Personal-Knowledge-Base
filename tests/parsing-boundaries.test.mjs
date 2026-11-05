@@ -14,7 +14,7 @@ async function fixture(extra={}){
   const dir=await mkdtemp(path.join(root,'case-')),a={kbId:'A',kbPath:path.join(dir,'A')},b={kbId:'B',kbPath:path.join(dir,'B')}
   await mkdir(a.kbPath);await mkdir(b.kbPath)
   let binding=a,config={followLinks:false,parsing:{externalPolicy:'allow-configured',providers:[]}}
-  const deps={stateDir:path.join(dir,'state'),getBinding:async()=>binding,getCore:()=>({getConfig:async()=>config,setConfig:async p=>{config={...config,...p};return{ok:true,revision:1}}}),credentialStore:{configured:async()=>true,read:async()=>({apiKey:'synthetic',secretKey:'synthetic'})},...extra}
+  const deps={stateDir:path.join(dir,'state'),getBinding:async()=>binding,getCore:()=>({getConfig:async()=>config,setConfig:async p=>{config={...config,...p};return{ok:true,revision:1}}}),credentialStore:{configured:async()=>true,read:async()=>({apiKey:'synthetic',secretKey:'synthetic'})},lookup:extra.nativeRequest?async()=>[{address:'93.184.216.34',family:4}]:null,...extra}
   return{dir,a,b,s:createParsingService(deps),bind:v=>binding=v,links:v=>config.followLinks=v}
 }
 const baidu=async(s,extra={})=>{const p=await s.saveProvider({kind:'ocr',vendor:'baidu',credentialRef:'SYNTHETIC',renderCommand:python,...extra},admin);assert.equal(p.ok,true);return p.provider}

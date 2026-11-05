@@ -7,6 +7,7 @@ export const EXCLUDED_PARTITION = '排除索引分区'
 export const policyFile = root => path.join(root, '.kbmeta', 'index-policy.json')
 export const emptyPolicy = () => ({ format: 1, revision: 0, groups: {} })
 const normalized = p => String(p || '').replaceAll('\\', '/').normalize('NFC').toLowerCase()
+const archived = file => /(^|\/)(原件归档|_archive)(\/|$)/i.test(String(file).replaceAll('\\', '/'))
 export const pathWithin = (p, prefix) => normalized(p) === normalized(prefix) || normalized(p).startsWith(normalized(prefix) + '/')
 
 // Fail closed on damaged policy. Small metadata only; never cache across mutations.
@@ -26,7 +27,9 @@ export function groupFor(policy, file) {
   return Object.values(policy.groups).find(g => g.files.some(f => [f.normal, f.current, f.target, ...(f.aliases || [])].filter(Boolean).some(p => normalized(p) === normalized(file))))
 }
 export function policyExcluded(policy, file, pending = true) {
-  if (pathWithin(file, EXCLUDED_PARTITION) || pending && pathWithin(file, '90-收件箱')) return true
+  if (pathWithin(file, EXCLUDED_PARTITION)) return true
+  const group = groupFor(policy, file)
+  if (pending && pathWithin(file, '90-收件箱') && !archived(file) && group?.pending !== false) return true
   return Object.values(policy.groups).some(g => (g.state !== 'included' || pending && g.pending) && g.files.some(f => [f.normal, f.current, f.target, ...(f.aliases || [])].filter(Boolean).some(p => pathWithin(file, p))))
 }
 export function policyExcludes(root) {

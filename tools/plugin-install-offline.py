@@ -13,8 +13,8 @@ def digest(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 def verify_package(folder=HERE):
     manifest=json.loads((folder/'manifest.json').read_text(encoding='utf-8'))
-    archive=folder/'local-dsh-knowledge-base-2.4.2.tgz'
-    if manifest['tgz']!=archive.name or manifest['version']!='2.4.2':raise RuntimeError('Unexpected package identity')
+    archive=folder/'local-dsh-knowledge-base-2.4.3.tgz'
+    if manifest['tgz']!=archive.name or manifest['version']!='2.4.3':raise RuntimeError('Unexpected package identity')
     if archive.stat().st_size!=manifest['bytes'] or digest(archive)!=manifest['sha256']:raise RuntimeError('Archive SHA-256/size mismatch; nothing was installed')
     with tarfile.open(archive) as stream:
         entries=stream.getmembers()
@@ -22,7 +22,7 @@ def verify_package(folder=HERE):
             parts=Path(e.name.replace('\\','/')).parts
             if not parts or parts[0]!='package' or '..' in parts or e.issym() or e.islnk() or not(e.isfile() or e.isdir()):raise RuntimeError('Unsafe archive entry')
         pkg=json.loads(stream.extractfile('package/package.json').read())
-        if pkg['name']!=PACKAGE or pkg['version']!='2.4.2':raise RuntimeError('Incorrect plugin package')
+        if pkg['name']!=PACKAGE or pkg['version']!='2.4.3':raise RuntimeError('Incorrect plugin package')
         for row in manifest['files']:
             data=stream.extractfile('package/'+row['path']).read()
             if hashlib.sha256(data).hexdigest()!=row['sha256']:raise RuntimeError('Build inventory mismatch')
@@ -88,7 +88,7 @@ def main():
     archive,manifest=verify_package();node,pnpm=toolchain()
     conf=json.loads((PROFILE/'package.json').read_text(encoding='utf-8'))
     if PACKAGE not in conf.get('dependencies',{}) or PACKAGE not in conf.get('dsh',{}).get('profile',{}).get('bundles',[]):raise RuntimeError('Existing desktop knowledge plugin registration not found; no profile was changed')
-    print('Verified package: 2.4.2 / '+manifest['buildId'])
+    print('Verified package: 2.4.3 / '+manifest['buildId'])
     while True:
         busy=blockers()
         if not busy:break
@@ -100,7 +100,7 @@ def main():
     # Check again immediately before the backup/install boundary.
     if blockers():raise RuntimeError('A client restarted; close it before installing')
     before=state_snapshot(state_roots())
-    dest=Path.home()/'.dsh/backups'/('knowledge-2.4.2-'+datetime.now().strftime('%Y%m%d-%H%M%S'))
+    dest=Path.home()/'.dsh/backups'/('knowledge-2.4.3-'+datetime.now().strftime('%Y%m%d-%H%M%S'))
     backup_profile(PROFILE,SHARED,dest)
     if before!=state_snapshot(state_roots()):raise RuntimeError('State changed while backing up; no installation started. Finish active tasks and retry.')
     print('Local private backup: '+str(dest))
@@ -116,10 +116,10 @@ def main():
     if not state_ok:raise RuntimeError('Config/parse state changed during installation; backups retained. No automatic state rollback was performed.')
     verify_installed_files(archive,PLUGIN)
     version,build=installed_build(PLUGIN)
-    if version!='2.4.2' or build!=manifest['buildId']:raise RuntimeError('Installed build mismatch; backup retained at '+str(dest))
+    if version!='2.4.3' or build!=manifest['buildId']:raise RuntimeError('Installed build mismatch; backup retained at '+str(dest))
     result={'installed':True,'version':version,'buildId':build,'configAndParseBytesUnchanged':True,'backup':str(dest),'runtimeActivationVerified':False}
     (dest/'result.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
-    print('SUCCESS: installed 2.4.2 / '+build)
+    print('SUCCESS: installed 2.4.3 / '+build)
     print('Knowledge config and parse records are byte-for-byte unchanged.')
     print('You can now open DSH and verify the settings and task history.')
     return 0

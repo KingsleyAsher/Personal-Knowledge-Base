@@ -23,6 +23,7 @@ import { VERSION, TEMPLATES } from './kbcore.js'
 import { readIndexPolicy, policyExcluded, policyExcludes, groupFor, resolveAssetPath, EXCLUDED_PARTITION, referenceExcluded, policyFile, savePolicy } from './index-policy.js'
 import { createIndexPolicyService } from './index-policy-service.js'
 import { inboxSource, moveInboxFile } from './workbench-inbox.js'
+import { sourceReferences, sourceReferenceBody, SOURCE_TEXT } from './source-references.js'
 
 export const GUIDE_ID = 'knowledge-workbench-v1'
 const TEXT = /\.(md|txt|csv|json|log|ya?ml)$/i
@@ -92,7 +93,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     await relations(await binding(b.st.kbId), { force: true }); await retrieval.automatic()
   }
   const upgrades=createSystemUpgrades({binding,catalog:async()=>Object.entries(TEMPLATES).map(([name,content])=>({path:'_模板/'+name,content,version:VERSION})),runtime:getUpgradeContext,retrieval,now})
-  const isPrivate = (b, file) => privateRootOf(file, b.privateDirs) !== null || deliverablePrivate(b.deliverables, file) || Boolean(groupFor(b.indexPolicy, file)?.files.some(f => f.current === file && privateRootOf(f.normal, b.privateDirs) !== null))
+  const isPrivate = (b, file) => privateRootOf(file, b.privateDirs) !== null || deliverablePrivate(b.deliverables, file) || Boolean(groupFor(b.indexPolicy, file)?.files.some(f => privateRootOf(f.normal, b.privateDirs) !== null))
   const visible = (b, file, question = false, includePrivate = false) => (!question || !policyExcluded(b.indexPolicy, file)) && (!isPrivate(b, file) || (question ? b.preferences.showPrivate && b.preferences.allowPrivateQuestions && includePrivate : b.preferences.showPrivate))
   const indexable = (b, file) => !policyExcluded(b.indexPolicy, file)
   function redactReferences(b, file, text, allowPrivate = b.preferences.showPrivate) {
@@ -295,10 +296,14 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     // successfully-readable set. Preserve that behavior until scoped folding
     // can prove the same result without loading the counterpart.
     const filter=Object.values(b.sources||{}).some(s=>s.mode==='attach')?null:selection
-    const selected = (f,text=false) => !filter || visible(b,f.path,filter.question,filter.includePrivate) && (!filter.path||f.path===filter.path) && scopeMatch(f.path,filter.prefix) && (!text||!filter.direct||filter.prefix===undefined||path.posix.dirname(f.path)===(filter.prefix||'.'))
-    const textType = /\.(md|txt|csv|tsv|json|jsonl|log|ya?ml|html?|xml)$/i
+    const refs = await sourceReferences(b.root, snap.indexed.values(), b.core._internal.parseFrontmatter, b.st.kbId)
+    const aliases = new Map()
+    for (const [entry, source] of refs) if (visible(b, entry, filter?.question, filter?.includePrivate) && indexable(b, entry)) aliases.set(source, [...(aliases.get(source) || []), snap.indexed.get(entry)])
+    const selected = (f,text=false) => !filter || visible(b,f.path,filter.question,filter.includePrivate) && [f.path,...(aliases.get(f.path)||[]).map(e=>e.path)].some(p=>(!filter.path||p===filter.path) && scopeMatch(p,filter.prefix) && (!text||!filter.direct||filter.prefix===undefined||path.posix.dirname(p)===(filter.prefix||'.')))
+    const textType = SOURCE_TEXT
     const excluded = b.conf.excludeFromSearch || []
     for (const f of snap.files) {
+      if (refs.has(f.path)) continue
       if (!indexable(b, f.path)) continue
       if (++visitedFiles % 50 === 0) await resources.checkpoint()
       if (inside(stateDir,path.resolve(b.root,f.path))) continue
@@ -315,8 +320,9 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
           full = { ...content, fingerprint }; retrievalText.set(key,full)
         }else textCacheHits++
         const parsed = b.core._internal.parseFrontmatter(full.text)
-        documents.push({ ...f, title:parsed.data.title || f.title, tags:Array.isArray(parsed.data.tags)?parsed.data.tags:f.tags,
-          kind:parsed.data.type || f.kind, entryId:parsed.data.id || f.entryId, text:full.text, revision:full.revision })
+        const references = aliases.get(f.path) || []
+        documents.push({ ...f, title:parsed.data.title || references[0]?.title || f.title, tags:[...new Set([...(Array.isArray(parsed.data.tags)?parsed.data.tags:f.tags),...references.flatMap(e=>e.tags||[])])],
+          kind:parsed.data.type || references[0]?.kind || f.kind, referencePaths:references.map(e=>e.path), entryId:parsed.data.id || f.entryId, text:full.text, revision:full.revision })
       } catch (e) { errors.push({path:f.path,reason:e.code || 'READ_ERROR'}) }
     }
     for (const key of retrievalText.keys()) if (!live.has(key)) retrievalText.delete(key)
@@ -722,10 +728,9 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
         if (!submitted.ok) throw fail(submitted.reason || 'PARSE_FAILED', submitted.detail || submitted.reason)
         item.status = 'processing'; item.jobId = submitted.jobId; return { capture: item }
       }
-      const content = await textOf(b, item.path, 1024 * 1024)
       const kinds = { '20-知识笔记': '知识', '10-项目': '项目', '30-人物关系': '人物', '40-素材资源': '素材', '00-画像': '画像' }
       if (args.dir && !kinds[args.dir]) throw fail('BAD_CATEGORY', '请选择现有知识分类分区')
-      const result = await b.core.createEntry({ title: item.title, kind: args.kind || kinds[args.dir] || '知识', tags: args.tags || [], content: content.text, source: item.path,
+      const result = await b.core.createEntry({ title: item.title, kind: args.kind || kinds[args.dir] || '知识', tags: args.tags || [], content: sourceReferenceBody(item.path), source: item.path,
         requestId: 'capture-' + item.id, expectedBinding: { kbId: b.st.kbId, kbPath: b.root, revision: b.conf.revision } })
       if (!result.ok) throw fail(result.reason || 'LAND_FAILED', result.detail || result.reason)
       item.status = 'done'; item.entryId = result.entryId; item.entryPath = result.path; delete item.error

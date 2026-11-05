@@ -4,7 +4,7 @@
 
 [中文](PROJECT-RECORD.md) · English
 
-Client 1.0.3, paired plugin 2.4.2. Updated 2026-11-05.
+Client 1.0.3, shared plugin source 2.4.3. Updated 2026-11-05.
 
 The product puts the existing file hierarchy at the center of a desktop workspace. Reading, editing, comparison and optional DSH conversations share one interface. The file sidebar remains a file browser; management tools open in movable windows with full-page entry points.
 
@@ -16,6 +16,15 @@ The renderer lives in `apps/desktop/src`, desktop permissions in `apps/desktop/m
 
 Future work includes online updates, data-preserving in-place installation, broader Office fidelity and cross-version compatibility testing. These are plans, not shipped guarantees. Release notes and this record must evolve together.
 
+
+## 2.4.3: source synchronization and Windows parsing jobs (2026-11-05)
+
+- Merge text-original retrieval and citation synchronization. Archived text is searchable; edits refresh source records and ranges. Legacy generated mirrors resolve to current originals while independently authored summaries remain searchable.
+- Preserve exclusions across related originals and derived records, reuse unchanged embeddings, and support PDF rendering with non-ASCII paths and versioned Python executables.
+- Serialize parsing-record reads and atomic replacements in one process, including separate service instances. External locks receive bounded retries; exhausted writes preserve the old record and clean up temporary files.
+- Catch background failures during submission, retry and startup recovery. Persist failure diagnostics where possible, report persistence failures, and release heartbeats and running registrations.
+
+Windows focused verification passed 73/73 tests: 68 existing checks and 5 injected-failure regressions. Synthetic inputs and transport stubs do not establish real OCR/ASR quality, automatic PDF/Office re-indexing, native source-position mapping or complete desktop compatibility. The independently released client remains 1.0.3; its installer is not rebuilt for this release.
 
 ## 2026-11-05: plugin 2.4.2 / desktop client 1.0.3
 

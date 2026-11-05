@@ -401,7 +401,7 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
     Object.assign(timings,data.documentMetrics)
     if(versionOf(current)!==versionOf(b))throw fail('SETTINGS_CHANGED','检索设置已改变')
     const sourceDocs=data.documents.filter(d=>visible(current,d.path,args.question===true,args.includePrivate===true) &&
-      (!args.path||d.path===args.path) && (!args.direct||args.prefix===undefined||path.posix.dirname(d.path)===(args.prefix||'.')) && (!args.prefix||d.path===args.prefix||d.path.startsWith(args.prefix.replace(/\/$/,'')+'/')) && (!args.layer||args.layer===d.layer) &&
+      [d.path,...(d.referencePaths||[])].some(p=>(!args.path||p===args.path) && (!args.direct||args.prefix===undefined||path.posix.dirname(p)===(args.prefix||'.')) && (!args.prefix||p===args.prefix||p.startsWith(args.prefix.replace(/\/$/,'')+'/'))) && (!args.layer||args.layer===d.layer) &&
       (!args.extension||args.extension===d.extension) && (!args.kind||args.kind===d.kind) && (!args.tag||d.tags?.includes(args.tag)) &&
       (!args.after||d.mtimeMs>=Date.parse(args.after)) && (!args.before||d.mtimeMs<Date.parse(args.before)+86400000))
     const {dir,manifest,revision:manifestRevision}=await manifestOf(b,embedding), catalogStarted=performance.now()
