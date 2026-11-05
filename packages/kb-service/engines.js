@@ -28,5 +28,5 @@ export function createEngines({kernel,stateDir,root,resourceRoot,online,invoke,n
   throw error('BAD_REQUEST','未知引擎接口');
  }
  const gatedParsing=new Proxy(parsing,{get(target,key){const value=Reflect.get(target,key);if(['submit','testParse','retry'].includes(key))return (...args)=>{if(!online())throw error('HOST_UNAVAILABLE','DSH 离线，模型解析暂不可用');return value.apply(target,args)};return typeof value==='function'?value.bind(target):value;}});
- return {parsing:gatedParsing,imports,flows,dispatch,async recover(){await parsing.recover();},dispose(){flows.dispose?.();parsing.dispose?.();}};
+ return {async upgradeBusy(){const [running,queued,imported]=await Promise.all([parsing.listJobs({status:'running',limit:1}),parsing.listJobs({status:'queued',limit:1}),imports.status()]);return !!(running.warning||queued.warning||running.total>0||queued.total>0||imported.imports?.some(x=>x.running)||flows.activeRuns().length);},parsing:gatedParsing,imports,flows,dispatch,async recover(){await parsing.recover();},dispose(){flows.dispose?.();parsing.dispose?.();}};
 }

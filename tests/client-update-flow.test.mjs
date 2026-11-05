@@ -24,8 +24,10 @@ function setup(options = {}, data = new Map()) {
   }
   const flow = factory({ api: async (request) => {
     if (request.op === 'status') return { status: { build: installed ? { version: target.latestVersion, buildId: target.buildId } : { version: '1.1.2', buildId: 'd881ed4ff0990f64' } } }
+    if(request.op==='updates.install')return (await manager.installBundle('/verified/cache/hash/package.tgz',{enabled:true,requestId:'safe-transaction'})).value
+    if(request.op==='updates.status')return {transactionId:'transaction-fixture',phase:'publishing'}
     prepares++; if (options.downloadFails) throw Error(options.downloadError || 'hash mismatch')
-    return { ok: true, spec: '/verified/cache/hash/package.tgz', ...target, ...(options.prepared || {}) }
+    return { ok: true, spec: '/verified/cache/hash/package.tgz',safeInstall:true,transactionId:'transaction-fixture', ...target, ...(options.prepared || {}) }
   }, manager: () => manager, storage, clientVersion: () => installed && options.clientLoads !== false ? target.latestVersion : '1.1.2', notify: (state) => states.push(state), delay: async () => {} })
   return { flow, states, data, get installs() { return installs }, get prepares() { return prepares }, get waits() { return waits }, get final() { return states.at(-1) } }
 }
@@ -92,3 +94,5 @@ test('late reply from an old module cannot erase a newer installation record', a
   resolve({ ok: true, value: { application: 'failed' } }); await operation
   assert.deepEqual(JSON.parse(s.data.get(key)), newer)
 })
+
+test('a legacy prepare response cannot reach the destructive native installer',async()=>{const s=setup({prepared:{safeInstall:false}});await s.flow.install('1.1.3');assert.equal(s.installs,0);assert.match(s.final.message,/安全更新协议/)});

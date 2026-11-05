@@ -7,7 +7,7 @@ Version 2.3.0 release: verified knowledge agents can submit OCR and ASR on stand
 
 The current stable version described here is 2.1.0; the current download and capabilities are in the [README](README.md) and [release notes](RELEASE.en.md). This page preserves the corresponding feature and historical-stage notes.
 
-This document covers parsing, indexes, and data protection for the Personal Knowledge Base plugin. The package version covered here is stable 2.1.0, with preview `2.1-beta4`. OCR/ASR from all managed Agents, imports, and workflows uses the unified parsing service by default. Caller, authorization, request, and execution result share one task record, and results return to the originating session. Parsing and writing to the knowledge base require separate authorization. The repository's `release-manifest.json` is authoritative for package, build ID, and per-file digests. After installation through the DSH plugin manager, check the actual version and build ID. Fully restart only if the host requests it.
+This document covers parsing, indexes, and data protection for the Personal Knowledge Base plugin. The package version covered here is stable 2.1.0, with preview `2.1-beta4`. OCR/ASR from all managed Agents, imports, and workflows uses the unified parsing service by default. Caller, authorization, request, and execution result share one task record, and results return to the originating session. Parsing and writing to the knowledge base require separate authorization. The repository's `release-manifest-v2.json` is authoritative for package, build ID, and per-file digests. After installation through the DSH plugin manager, check the actual version and build ID. Fully restart only if the host requests it.
 
 ## Desktop operation
 

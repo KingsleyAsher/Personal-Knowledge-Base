@@ -6,7 +6,7 @@ This directory contains the unified plugin/client project showcase. Download sec
 
 The page introduces the library, relationship graph, reading and excerpts, review, quick capture, managed OCR/ASR, and Trash. It also provides the stable download and setup guide. Case-study content is pre-authored demonstration material; it does not run model inference. Product-concept visualizations are not pixel-identical representations of the plugin UI.
 
-The stable installer is distributed through GitHub Releases; the update manifest is `release-manifest.json` in the repository root. The preview manifest is `preview-manifest.json`; its package is under `dist/` and mirrored to Gitee and GitCode. See the root [versioning policy](../VERSIONING.en.md) for version formats and migration notes.
+The stable installer is distributed through GitHub Releases; the update manifest is `release-manifest-v2.json` in the repository root. The preview manifest is `preview-manifest.json`; its package is under `dist/` and mirrored to Gitee and GitCode. See the root [versioning policy](../VERSIONING.en.md) for version formats and migration notes.
 
 Repository: [github.com/KingsleyAsher/Personal-Knowledge-Base](https://github.com/KingsleyAsher/Personal-Knowledge-Base)
 

@@ -16,4 +16,6 @@ The DSH sidebar offers reconnect, sessions, Agent presets and model/reasoning co
 
 Index snapshots are not backups of original files. Confirm backup type and restore target. Preserve originals when editing complex Office documents.
 
-Shared source update: see [plugin 2.4.3](../releases/plugin-2.4.3.md) for source synchronization and Windows parsing fixes. The published client 1.0.3 installer still contains its original paired plugin 2.4.2 payload.
+Shared source update: see [plugin 2.4.3](../releases/plugin-2.4.4.md) for source synchronization and Windows parsing fixes. The published client 1.0.3 installer still contains its original paired plugin 2.4.2 payload.
+
+See [2.4.4 safe update and legacy transition](../releases/plugin-2.4.4.md). The published client installer remains 1.0.3.

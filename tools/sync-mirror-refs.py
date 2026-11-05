@@ -38,7 +38,7 @@ def publish(platform):
     repo=Path(__file__).resolve().parents[1]
     if os.environ.get('SANITIZE_HISTORY','').lower()=='true':
         raise RuntimeError('History pruning is not part of release synchronization; no refs were deleted')
-    manifest=json.loads((repo/'release-manifest.json').read_text(encoding='utf-8'))
+    manifest=json.loads((repo/'release-manifest-v2.json').read_text(encoding='utf-8'))
     tag=os.environ.get('RELEASE_TAG') or 'v'+manifest['version']
     if not re.fullmatch(r'(?:client-v|v)(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)',tag):raise RuntimeError('Unsupported product release tag')
     if manifest['tgz']!='local-dsh-knowledge-base-'+manifest['version']+'.tgz' or '-beta' in tag:

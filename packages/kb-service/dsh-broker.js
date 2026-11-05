@@ -12,7 +12,7 @@ export async function createDshBroker({privateDir,alive,emit,now=Date.now}){
  function selected(id){const h=id?hosts.get(id):[...hosts.values()].find(live);if(!live(h))throw error('HOST_UNAVAILABLE','DSH 未连接，依赖模型的操作暂不可用');return h;}
  function authorizeSession(h,id){if(id&&!sessions.get(h.id)?.has(id))throw error('FORBIDDEN','会话不属于该知识库的已授权工作区');}
  return {
-  status(){return {online:[...hosts.values()].some(live),hosts:[...hosts.values()].filter(live).map(({owner,until,...h})=>h)};},
+  status(){return {busy:[...jobs.values()].some(j=>['queued','running'].includes(j.state)),online:[...hosts.values()].some(live),hosts:[...hosts.values()].filter(live).map(({owner,until,...h})=>h)};},
   scope(hostId){const h=selected(hostId);return {hostInstanceId:h.id,workspaces:[h.workspaceId],sessions:[...(sessions.get(h.id)??[])]};},
   async request(method,args,grantId,operationId){
    const old=[...jobs.values()].find(j=>j.operationId===operationId&&j.grantId===grantId);if(old)return publicJob(old);

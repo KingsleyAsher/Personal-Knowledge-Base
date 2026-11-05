@@ -29,7 +29,7 @@ import {startClipper} from './clipper.js'
 import {extensionArchive} from './extension.js'
 import {createLegacyPorts} from './legacy-ports.js'
 
-export const SUPPORTED = Object.freeze(['host.tool', 'service.health', 'service.shutdown', 'connection.grant', 'connection.revoke', 'migration.preview', 'migration.commit', 'migration.recover', 'adapter.dispatch', 'library.snapshot', 'library.tree', 'document.read', 'document.readForEdit', 'document.create', 'document.save', 'state.patch', 'search.query', 'relations.query', 'inbox.list', 'inbox.organize', 'inbox.organizeStatus', 'inbox.organizeBridge', 'policy.get', 'policy.setIndexExcluded', 'events.subscribe', 'operation.status', 'task.get'])
+export const SUPPORTED = Object.freeze(['host.tool', 'service.health', 'service.prepareUpgrade', 'service.shutdown', 'connection.grant', 'connection.revoke', 'migration.preview', 'migration.commit', 'migration.recover', 'adapter.dispatch', 'library.snapshot', 'library.tree', 'document.read', 'document.readForEdit', 'document.create', 'document.save', 'state.patch', 'search.query', 'relations.query', 'inbox.list', 'inbox.organize', 'inbox.organizeStatus', 'inbox.organizeBridge', 'policy.get', 'policy.setIndexExcluded', 'events.subscribe', 'operation.status', 'task.get'])
 const legacyRead = new Set(['atlas.snapshot', 'atlas.tree', 'atlas.detail', 'search.list', 'reading.list', 'reading.export', 'review.list', 'atlas.relations', 'capture.list', 'capture.inbox-files', 'inbox.list', 'index.policy.get'])
 const legacyWrite = new Set(['reading.progress', 'reading.annotate', 'reading.delete', 'review.update'])
 export async function libraryIdentity(root) {
@@ -68,6 +68,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
   let ownerHandle
   try { ownerHandle = await open(ownerFile, 'wx'); await ownerHandle.writeFile(JSON.stringify({ pid: process.pid, birth, bootId, instanceId })); await ownerHandle.sync() }
   catch (e) { if (e.code === 'EEXIST') throw error('STATE_BUSY'); throw e } finally { await ownerHandle?.close() }
+  let upgradeDraining = false;
   let bridge, kernel, maintenance, automaticTimer, closing = false, closePromise, ready = false, sequence = 0, timer
   const queue = serialQueue(), connections = new Map(), contexts = new AsyncLocalStorage(), ring = []
   const send = (id, frame) => { if (bridge?.stdin.writable) {const payload=JSON.stringify({ id, frame })+'\n'; if(Buffer.byteLength(JSON.stringify(frame))>1048576) throw error('BAD_REQUEST','Response exceeds frame limit'); bridge.stdin.write(payload)}  }
@@ -98,7 +99,10 @@ export async function startService({ library, privateDir, python, sources = {}, 
     if (closePromise) return closePromise
     closing = true
     closePromise = queue(async () => {
-      await clipper?.close();clearInterval(timer);clearInterval(automaticTimer);clearTimeout(pendingEvent);unsubscribe?.();broker?.dispose();engines?.dispose();maintenance?.dispose();kernel?.dispose();bridge?.stdin.end()
+      await clipper?.close();clearInterval(timer);clearInterval(automaticTimer);clearTimeout(pendingEvent);unsubscribe?.();broker?.dispose();engines?.dispose();maintenance?.dispose();kernel?.dispose();
+      if(bridge && bridge.exitCode===null){
+        await new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(error('STATE_BUSY','Python helper has not exited')),10000);bridge.once('exit',()=>{clearTimeout(timeout);resolve()});bridge.stdin.end()})
+      }
       const owner = await readJson(ownerFile, null)
       if (owner?.bootId === bootId) await unlink(ownerFile)
       await atomic(path.join(privateDir, 'last-close.json'), { bootId, clean: true, pendingConnections: connections.size, at: new Date().toISOString() })
@@ -124,9 +128,16 @@ export async function startService({ library, privateDir, python, sources = {}, 
     return result
   }
   async function route(call, connection) {
+    if(upgradeDraining && call.method!=='service.health')throw error('STATE_BUSY','Service is draining for an update')
     const a = call.args, caller = currentGrant(), lib = kernel.workbench.libraryState
     const wb = operation => kernel.dispatch({ ...operation, expectedKbId: kbId }, caller)
     if (call.method === 'service.health') return { library: identity, bootId,serviceBuildId:runtimeBuildId, active: await active(), connections: [...connections.values()].filter(c => c.authenticated).length, writers: 1, indexers: maintenance ? 1 : 0, index:maintenance?.status(),dsh:broker?.status(),providers:vectorProfiles?.info(),clipper:clipper?{endpoint:clipper.endpoint}:null,supported }
+    if (call.method === 'service.prepareUpgrade') {
+      if([...connections.values()].filter(c=>c.authenticated).length>1 || await engines.upgradeBusy() || broker?.status().busy)throw error('STATE_BUSY','知识库仍有其他连接或运行任务，更新已延后，旧版本保持可用')
+      upgradeDraining=true
+      setTimeout(()=>{void close().catch(e=>console.warn('[kb-upgrade] '+e.code))},100)
+      return {closing:true,bootId,pid:process.pid}
+    }
     if (call.method === 'service.shutdown') { setTimeout(() => { void close() }, 100); return { closing: true } }
     if (call.method === 'connection.grant') return auth.issue(a.label, a.access, a.expiresAt)
     if (call.method === 'connection.revoke') { await auth.revoke(a.grantId); for (const [id, c] of connections) if (c.grantId === a.grantId) disconnect(id); return { revoked: true } }

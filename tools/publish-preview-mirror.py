@@ -61,9 +61,9 @@ def publish(platform):
         if git('rev-parse', tag + '^{commit}').decode().strip() != head:
             raise RuntimeError('Checked-out source differs from preview tag')
         git('merge-base', '--is-ancestor', old, head)
-        stable = json.loads((repo / 'release-manifest.json').read_text())
-        assert json.loads(git('show', old + ':release-manifest.json')) == stable, 'Mirror stable manifest differs; refusing to overwrite it'
-        protected = ['release-manifest.json', 'SHA256SUMS', 'dist/' + stable['tgz'], 'website/downloads/' + stable['tgz']]
+        stable = json.loads((repo / 'release-manifest-v2.json').read_text())
+        assert json.loads(git('show', old + ':release-manifest-v2.json')) == stable, 'Mirror stable manifest differs; refusing to overwrite it'
+        protected = ['release-manifest-v2.json', 'SHA256SUMS', 'dist/' + stable['tgz'], 'website/downloads/' + stable['tgz']]
         changed = git('diff', '--name-only', old, head, '--', *protected).decode().strip()
         assert not changed, 'Stable release files changed: ' + changed
         # No force and no mirror push: divergent branches or existing tags fail.

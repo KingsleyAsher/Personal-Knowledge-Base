@@ -23,7 +23,11 @@ async function bootstrapRuntime({library,home=defaultServiceHome(),python='pytho
   while(Date.now()<until){
    const live=await connect();
    if(live&&required.every(m=>live.health.supported.includes(m))&&live.health.serviceBuildId===build){client=live.client;break;}
-   if(live){if(live.health.connections>1){live.client.close();throw error('SERVICE_UPGRADE_REQUIRED','同库仍有其他版本在线，请先退出旧候选版本，原窗口与原件未改动。');}await live.client.call('service.shutdown');live.client.close();await pause(250);continue;}
+   if(live){if(live.health.connections>1){live.client.close();throw error('SERVICE_UPGRADE_REQUIRED','同库仍有其他版本在线，请先退出旧候选版本，原窗口与原件未改动。');}if(!live.health.supported.includes('service.prepareUpgrade')){live.client.close();throw error('CAPABILITY_UNSUPPORTED','旧服务没有安全停服协议，请使用过渡安装入口')}
+     let receipt;try{receipt=await live.client.call('service.prepareUpgrade')}finally{live.client.close()}
+     const deadline=Date.now()+15000;let stopped=false;
+     while(Date.now()<deadline){const done=await readJson(path.join(privateDir,'last-close.json'),null);if(done?.bootId===receipt.bootId&&done.clean&&await native(python,'birth',{pid:receipt.pid})===null){stopped=true;break}await pause(100)}
+     if(!stopped)throw error('STATE_BUSY','旧服务未确认退出，未启动替换服务');continue;}
    try{lock=await open(lockFile,'wx');await lock.writeFile(JSON.stringify({owner,pid:process.pid,birth:await native(python,'birth',{pid:process.pid})}));await lock.sync();break;}
    catch(e){if(e.code!=='EEXIST')throw e;const held=await readJson(lockFile,null).catch(e=>{if(e instanceof SyntaxError)return null;throw e});if(held&&await native(python,'birth',{pid:held.pid})!==held.birth){const latest=await readJson(lockFile,null);if(latest?.owner===held.owner)await unlink(lockFile).catch(()=>{});}await pause(100);}
   }
@@ -53,7 +57,18 @@ export async function connectRuntime(options){
  }
  const timer=setInterval(()=>{if(closed)return;if(!link){void reconnect();return;}void link.client.call('service.health').catch(()=>void reconnect());},2000);timer.unref?.();
  const runtime={
-  get privateDir(){return link?.privateDir??path.join(path.resolve(options.home??defaultServiceHome()),lastWelcome.library.instanceId)},
+  async resume(){if(!closed)return;closed=false;await reconnect();timer=setInterval(tick,2000);timer.unref?.();},
+   async prepareUpgrade(){
+     if(!link||closed)throw error('HOST_UNAVAILABLE');
+     const health=await link.client.call('service.health');
+     if(!health.supported.includes('service.prepareUpgrade'))throw error('CAPABILITY_UNSUPPORTED','旧服务不支持安全停服，请通过过渡安装入口升级');
+     const receipt=await link.client.call('service.prepareUpgrade');
+     const dir=link.privateDir;closed=true;clearInterval(timer);await link.close();link=null;
+     const deadline=Date.now()+15000;
+     while(Date.now()<deadline){const done=await readJson(path.join(dir,'last-close.json'),null);if(done?.bootId===receipt.bootId&&done.clean&&await native(options.python??'python','birth',{pid:receipt.pid})===null)return receipt;await pause(100)}
+     throw error('STATE_BUSY','旧服务未确认完全退出，安装未开始，旧版本保留')
+   },
+   get privateDir(){return link?.privateDir??path.join(path.resolve(options.home??defaultServiceHome()),lastWelcome.library.instanceId)},
   get identity(){return lastWelcome.library},
   client:{get welcome(){return link?.client.welcome??structuredClone(lastWelcome)},async call(method,args={},opts={}){if(!link||closed){if(!closed)void reconnect();throw Object.assign(error('HOST_UNAVAILABLE','本地服务正在重新连接，原文与草稿已保留'),{transport:true});}try{return await link.client.call(method,args,opts);}catch(e){if(e.transport||e.code==='UNAUTHORIZED')void reconnect();throw e;}},subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},close(){void runtime.close();}},
   async close(){closed=true;clearInterval(timer);listeners.clear();await link?.close();link=null;},

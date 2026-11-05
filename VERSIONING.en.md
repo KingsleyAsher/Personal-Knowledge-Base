@@ -2,7 +2,7 @@
 
 [中文](VERSIONING.md) · English
 
-Both products share this policy while retaining independent versions: plugin source 2.4.3, client source 1.0.3. Shared implementation: packages/kb-contracts/version-policy.js; the plugin keeps its legacy import entry.
+Both products share this policy while retaining independent versions: plugin source 2.4.4, client source 1.0.3. Shared implementation: packages/kb-contracts/version-policy.js; the plugin keeps its legacy import entry.
 
 ## Names and ordering
 
@@ -26,10 +26,19 @@ Installation needs no update confirmation. Post-install notes are separate: patc
 
 ## Independent publication and completion
 
-Plugin metadata remains at the root, with v<version> tags and release-manifest.json / preview-manifest.json. The client uses apps/desktop/package.json, client-v<version> tags and a separate feed. Electron package metadata may map x.y-betaN to x.y.0-beta.N; display/build manifests and comparisons keep the canonical version.
+Plugin metadata remains at the root, with v<version> tags and release-manifest-v2.json / preview-manifest.json. The client uses apps/desktop/package.json, client-v<version> tags and a separate feed. Electron package metadata may map x.y-betaN to x.y.0-beta.N; display/build manifests and comparisons keep the canonical version.
 
 Do not use generic GitHub latest as authority for both products. Maintain guides, evolution records and changelogs. Upload payload/checksum assets before manifests. Confirm the actually loaded version and build before clearing availability; stale requests must not overwrite verified completion.
 
-Publication state is defined by the current release-manifest.json and product Release entries. Historical release entries retain their original policy context.
+Publication state is defined by the current release-manifest-v2.json and product Release entries. Historical release entries retain their original policy context.
 
 更新源进展 / Update feed status：客户端已实现 Gitee、GitCode、GitHub 清单检查与校验下载；自动安装执行器尚未完成。当前安装包、版本与镜像可用性以各自 Release 和实际检查为准。
+
+### Safe updates in 2.4.4
+
+- Run pnpm only against an isolated profile-metadata copy. Verify the archive, build inventory and staged files before touching the live package.
+- An admin-authorized drain protocol refuses other connections and queued/running parsing, import or flow work. Require a clean shutdown receipt and process exit before switching complete directories.
+- Retain the previous package and metadata in a private transaction directory. Failed publication restores and verifies the old files. Durable receipts support recovery after installer interruption and prevent unknown outcomes from being reported as success or retried blindly.
+- The safe feed is release-manifest-v2.json. Legacy release-manifest.json distribution is disabled so old updaters cannot execute the unsafe in-place path. Versions through 2.4.3 need the transition installer once, after exiting the Host and connected clients. A legacy service without the drain protocol is refused.
+- Successful installation requires a Host restart. Embedded mode, missing drain capability, unsupported dependency layouts and incomplete previous installations fail closed.
+See [2.4.4 notes](docs/releases/plugin-2.4.4.md) for the transition and verification boundary.

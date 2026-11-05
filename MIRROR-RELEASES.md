@@ -11,12 +11,12 @@ GitHub is the source of truth for stable code and tags. A successful stable tag 
 
 ## Stable Releases
 
-The mirror workflow runs for each newly published non-prerelease GitHub Release. It reads files from the exact published tag, validates the archive against `release-manifest.json` and `SHA256SUMS`, then creates or updates the matching Release on Gitee and GitCode.
+The mirror workflow runs for each newly published non-prerelease GitHub Release. It reads files from the exact published tag, validates the archive against `release-manifest-v2.json` and `SHA256SUMS`, then creates or updates the matching Release on Gitee and GitCode.
 
 It uploads the six stable distribution files as native Release attachments and verifies their SHA-256 values. Re-running is safe: existing attachments with matching bytes are kept, unrelated release notes remain, and the managed notes section is replaced in place. After a transient upload timeout, automation checks whether the attachment arrived before retrying. A same-name attachment with different bytes causes a clear failure; automation does not delete or overwrite it.
 
 GitHub Actions needs repository secrets named `GITEE_TOKEN` and `GITCODE_TOKEN`. The manual workflow options support read-only diagnosis and release-only reconciliation of a specified stable tag.
 
-The mirror test API follows the version in `release-manifest.json`, including release lookup, update and signed-upload routes. This fixes the stale `v2.1.3` test routes that blocked synchronization after the 2.1.4 release; it does not change the published tag or installation archive.
+The mirror test API follows the version in `release-manifest-v2.json`, including release lookup, update and signed-upload routes. This fixes the stale `v2.1.3` test routes that blocked synchronization after the 2.1.4 release; it does not change the published tag or installation archive.
 
 GitCode mirror documentation: <https://docs.gitcode.com/docs/help/home/org_project/project_manage/project_settings/repository_mirroring/>.

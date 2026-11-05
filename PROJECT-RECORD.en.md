@@ -3,15 +3,25 @@
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 2.4.3 -->
+<!-- project-record-version: 2.4.4 -->
 
-**Source covered: plugin 2.4.3 / client 1.0.3 · Updated: 2026-11-05 · Maintenance: review this record alongside the source with every release.**
+**Source covered: plugin 2.4.4 / client 1.0.3 · Updated: 2026-11-05 · Maintenance: review this record alongside the source with every release.**
 
 This long-term record is for users, maintainers, and future contributors. It explains why the product is built this way, what it can currently do, how its features fit together, where data is stored, and what may come next. “Implemented” refers to source code in this repository. Roadmap items are future directions, not features already delivered. The installed version and build ID must be checked in the client and the corresponding release manifest.
 
 See the [workbench guide](WORKBENCH.en.md) for usage, [release notes](RELEASE.en.md) for changes in each release, and [versioning policy](VERSIONING.en.md) for version comparisons. This record explains the product as a whole; release notes are not an architecture document.
 
 
+
+## 2.4.4: safe Windows updates and rollback (2026-11-05)
+
+- Run pnpm only against an isolated profile-metadata copy. Verify the archive, build inventory and staged files before touching the live package.
+- An admin-authorized drain protocol refuses other connections and queued/running parsing, import or flow work. Require a clean shutdown receipt and process exit before switching complete directories.
+- Retain the previous package and metadata in a private transaction directory. Failed publication restores and verifies the old files. Durable receipts support recovery after installer interruption and prevent unknown outcomes from being reported as success or retried blindly.
+- The safe feed is release-manifest-v2.json. Legacy release-manifest.json distribution is disabled so old updaters cannot execute the unsafe in-place path. Versions through 2.4.3 need the transition installer once, after exiting the Host and connected clients. A legacy service without the drain protocol is refused.
+- Successful installation requires a Host restart. Embedded mode, missing drain capability, unsupported dependency layouts and incomplete previous installations fail closed.
+
+Evidence: 35 focused Node checks, 5 real-filesystem/real-pnpm transaction tests and 1 composite live-service scenario on Windows passed. The scenario covers legacy 2.4.3 refusal, busy connections/tasks, a protocol-capable service using the old package Python, exact restoration after a real 2.4.3 package switch fails, successful upgrade/restart and preserved synthetic originals. Forward safe-protocol upgrades and the unmodified legacy transition are distinct paths. No live user profile installation, real-model evaluation or complete UI regression was performed.
 
 ## 2.4.3: source synchronization and Windows parsing jobs (2026-11-05)
 
@@ -167,7 +177,7 @@ The persistent retrieval worker, content-fingerprint tokenization cache, and mer
 
 ### Stable release record (2026-10-22)
 
-The stable release was first merged to `main` in [PR #25](https://github.com/KingsleyAsher/Personal-Knowledge-Base/pull/25) and published as a GitHub Release: [`v2.1.0`](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.1.0). Initial release commit: `bf41c52c088495596c619af30b38a4a4bc43a3e1`. [PR #26](https://github.com/KingsleyAsher/Personal-Knowledge-Base/pull/26) then synchronized release notes, package documentation, installer, website download copy, and digest manifest to `main`, merged as `5abc0bbfd37162e91343906aa761a37ea590639f`. The build ID stayed `37b7ff660806754d` because the synchronization changed no executable build files. The current package byte count, SHA-256, and per-file inventory are authoritative in [`release-manifest.json`](release-manifest.json). The maintainer did not install the stable package locally and no real cloud model API was called. Stable-release validation and the showcase deployment passed; the Gitee mirror succeeded and the GitCode mirror workflow failed. Mirror status is tracked separately from the GitHub Release.
+The stable release was first merged to `main` in [PR #25](https://github.com/KingsleyAsher/Personal-Knowledge-Base/pull/25) and published as a GitHub Release: [`v2.1.0`](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.1.0). Initial release commit: `bf41c52c088495596c619af30b38a4a4bc43a3e1`. [PR #26](https://github.com/KingsleyAsher/Personal-Knowledge-Base/pull/26) then synchronized release notes, package documentation, installer, website download copy, and digest manifest to `main`, merged as `5abc0bbfd37162e91343906aa761a37ea590639f`. The build ID stayed `37b7ff660806754d` because the synchronization changed no executable build files. The current package byte count, SHA-256, and per-file inventory are authoritative in [`release-manifest-v2.json`](release-manifest-v2.json). The maintainer did not install the stable package locally and no real cloud model API was called. Stable-release validation and the showcase deployment passed; the Gitee mirror succeeded and the GitCode mirror workflow failed. Mirror status is tracked separately from the GitHub Release.
 
 ## Contents
 
@@ -336,7 +346,7 @@ This record is linked near the top of the README, in workbench settings, and in 
 
 Build sequence: edit source modules → synchronize the embedded client region → synchronize the build file list → create the npm package → validate each file and the build ID → update the release manifest and website download → merge to the main branch → create the stable tag → publish assets and website.
 
-`buildId` is computed from the entry point's declared load-file inventory and per-file SHA-256. The list grows with modules, so an early fixed file count is not a permanent rule. The package also records its size, SHA-256, SRI, and file inventory. Release digests are computed from actual bytes. Do not hard-code build IDs in prose when they may change; use the corresponding `release-manifest.json`.
+`buildId` is computed from the entry point's declared load-file inventory and per-file SHA-256. The list grows with modules, so an early fixed file count is not a permanent rule. The package also records its size, SHA-256, SRI, and file inventory. Release digests are computed from actual bytes. Do not hard-code build IDs in prose when they may change; use the corresponding `release-manifest-v2.json`.
 
 Main tools: [`package-workbench.py`](tools/package-workbench.py), [`sync-workbench-client.py`](tools/sync-workbench-client.py), [`sync-workbench-build.py`](tools/sync-workbench-build.py), [`verify-release.py`](tools/verify-release.py), and [`stage-stable-candidate.py`](tools/stage-stable-candidate.py). The site is under [`website/`](website/) and deploys through GitHub Pages. Mirror-repository permissions, behavior, and delays must be checked against actual platform results.
 
@@ -434,7 +444,7 @@ Compared with `03bcde504978f416`, deferred optimization drafts were archived rat
 
 ### 2026-10-22 / 2.1.0 stable release
 
-Version 2.1.0 first released through PR #25. PR #26 synchronized the release record, bundled documentation, package, website download copy, and digest manifest. The package identity is in `release-manifest.json`; the build ID remains `37b7ff660806754d` because PR #26 changed documentation and release metadata only, not executable build files. All 25 targeted automated checks passed; the initial stable-release and Pages workflows passed. Gitee mirroring succeeded; the GitCode mirror workflow failed. Any later correction to release history must be synchronized across the source record, bundled copy, manifest, and relevant downloadable attachment; the manifest digest is authoritative.
+Version 2.1.0 first released through PR #25. PR #26 synchronized the release record, bundled documentation, package, website download copy, and digest manifest. The package identity is in `release-manifest-v2.json`; the build ID remains `37b7ff660806754d` because PR #26 changed documentation and release metadata only, not executable build files. All 25 targeted automated checks passed; the initial stable-release and Pages workflows passed. Gitee mirroring succeeded; the GitCode mirror workflow failed. Any later correction to release history must be synchronized across the source record, bundled copy, manifest, and relevant downloadable attachment; the manifest digest is authoritative.
 
 In-client download entry: **Knowledge Base → Inbox → Browser Extension Guide → First Use: Install and Connect**, then click **Download browser extension**. It selects among Gitee, GitCode, and GitHub, validates the downloaded file, and switches sources after failure. If every source fails, it shows the reasons and fallback links.
 

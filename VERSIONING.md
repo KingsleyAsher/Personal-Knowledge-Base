@@ -2,11 +2,11 @@
 
 [English](VERSIONING.en.md) · 简体中文
 
-插件与客户端共用本规则，独立版本：插件当前源码 2.4.3，客户端当前源码 1.0.3。共享实现位于 packages/kb-contracts/version-policy.js；插件 src/host/versioning.js 保留兼容入口。
+插件与客户端共用本规则，独立版本：插件当前源码 2.4.4，客户端当前源码 1.0.3。共享实现位于 packages/kb-contracts/version-policy.js；插件 src/host/versioning.js 保留兼容入口。
 
 ## 版本格式与顺序
 
-正式版使用 x.y.z（例如 1.0.3、2.4.3）；预览版使用 x.y-betaN（例如 1.1-beta1），N 为正整数，各段不允许前导零。拒绝新发布 rc1、x.y.z-betaN 或 beta0。旧 x.y.z-betaN 仅作为已安装版本和历史预览清单迁移输入接受。
+正式版使用 x.y.z（例如 1.0.3、2.4.4）；预览版使用 x.y-betaN（例如 1.1-beta1），N 为正整数，各段不允许前导零。拒绝新发布 rc1、x.y.z-betaN 或 beta0。旧 x.y.z-betaN 仅作为已安装版本和历史预览清单迁移输入接受。
 
 先比较大版本和小版本，同一迭代中 beta 按数字比较，正式版高于所有预览版，正式版按补丁号比较。例如 1.1-beta2 < 1.1-beta10 < 1.1.0 < 1.1.1 < 1.2-beta1。规范预览号高于同序号的旧格式迁移输入。相同版本与降级不自动安装。
 
@@ -26,10 +26,19 @@
 
 ## 分别发布与确认完成
 
-插件使用根 package.json、v<版本> 标签、release-manifest.json / preview-manifest.json；客户端使用 apps/desktop/package.json、client-v<版本> 标签和独立客户端清单。客户端 Electron 包内部可将 x.y-betaN 映射为 x.y.0-beta.N，外部展示、构建清单及比较仍使用规范 x.y-betaN。
+插件使用根 package.json、v<版本> 标签、release-manifest-v2.json / preview-manifest.json；客户端使用 apps/desktop/package.json、client-v<版本> 标签和独立客户端清单。客户端 Electron 包内部可将 x.y-betaN 映射为 x.y.0-beta.N，外部展示、构建清单及比较仍使用规范 x.y-betaN。
 
 禁止两端共用 GitHub 通用 latest 作为更新权威。发布前更新对应 README、演进记录和更新说明，先上传包与校验文件，再发布清单。只有实际加载版本及构建均确认匹配后才清除旧更新状态；旧请求不得覆盖已确认的新状态。
 
-发布状态以当前 release-manifest.json 和产品 Release 为准。历史发布记录保留当时规则，不作为当前策略。
+发布状态以当前 release-manifest-v2.json 和产品 Release 为准。历史发布记录保留当时规则，不作为当前策略。
 
 更新源进展 / Update feed status：客户端已实现 Gitee、GitCode、GitHub 清单检查与校验下载；自动安装执行器尚未完成。当前安装包、版本与镜像可用性以各自 Release 和实际检查为准。
+
+### 2.4.4 安全更新
+
+- pnpm 只在隔离的清单副本中准备锁文件；新包先完成摘要、构建号、路径和文件校验，不让包管理器改写在线插件目录。
+- 更新前通过管理员授权的停服协议检查其他连接、排队及运行中的解析、导入和流程任务；忙碌时延后。停服后核对清理回执及进程退出，再切换完整包目录。
+- 原插件目录和清单保留在私有事务目录；切换或清单写入失败时回退并逐文件校验。中途退出的安装可从持久事务记录恢复，不把未知结果标为成功，不重复发起安装。
+- 2.4.4 使用 release-manifest-v2.json。旧 release-manifest.json 停用安装分发，阻断旧更新器继续走不安全的原地安装。2.4.3 及更早版本首次过渡须退出宿主及连接客户端，使用本版过渡安装包；旧服务不支持停服协议时自动路径会拒绝接管。
+- 成功安装后明确提示重启生效。嵌入模式或缺少安全停服能力时保持旧版，暂不自动安装。包带额外依赖、相对本地依赖或旧包已不完整等不支持的情况均停止，不擅自重建用户配置。
+完整验证与过渡步骤见 [2.4.4 说明](docs/releases/plugin-2.4.4.md)。

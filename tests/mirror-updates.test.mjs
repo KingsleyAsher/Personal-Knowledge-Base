@@ -9,7 +9,7 @@ import { createUpdateChecker, createUpdateDownloader } from '../src/host/updates
 const stable = { package: '@local/dsh-knowledge-base', version: '1.1.4', tgz: 'local-dsh-knowledge-base-1.1.4.tgz', sha256: 'a'.repeat(64), bytes: 100, buildId: 'b'.repeat(16) }
 const preview = { ...stable, version: '2.0-beta2', tgz: 'local-dsh-knowledge-base-2.0-beta2.tgz' }
 async function publishedFixture() {
-  const manifest=JSON.parse(await readFile(new URL('../release-manifest.json',import.meta.url),'utf8'))
+  const manifest=JSON.parse(await readFile(new URL('../release-manifest-v2.json',import.meta.url),'utf8'))
   const raw=await readFile(new URL('../dist/'+manifest.tgz,import.meta.url))
   return {manifest,raw}
 }
@@ -18,7 +18,7 @@ test('domestic manifests work without GitHub; source links and status are explic
   const c = createUpdateChecker({ currentVersion: '1.1.3', fetch: async (url, options) => {
     if (url.includes('/dist/')) packages++
     if (url.includes('githubusercontent')) throw Error('offline')
-    if (url.startsWith('https://gitee.com/')) return new Response(null, { status: 302, headers: { location: 'https://raw.giteeusercontent.com/file/' + (url.includes('preview') ? 'preview-manifest.json' : 'release-manifest.json') } })
+    if (url.startsWith('https://gitee.com/')) return new Response(null, { status: 302, headers: { location: 'https://raw.giteeusercontent.com/file/' + (url.includes('preview') ? 'preview-manifest.json' : 'release-manifest-v2.json') } })
     if (url.includes('api.gitcode')) assert.equal(options.headers.referer, 'https://gitcode.com/KingsleyAsher/Personal-Knowledge-Base')
     return Response.json(url.includes('preview') ? preview : stable)
   } })

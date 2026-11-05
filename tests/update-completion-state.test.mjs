@@ -15,7 +15,8 @@ test('verified completion refreshes every badge and rejects a late check from th
   const api = vm.runInNewContext(helpers + '\n' + code + '\n({ updateFlow, checkBuildUpdates, patchBuildBadge, getBuildBadge, pendingUpdatePrompts })', {
     callApi: async request => {
       if (request.op === 'status') return { status: { build: { version: installed ? '2.1.3' : '2.1.2', buildId: installed ? available.buildId : 'b'.repeat(16) } } }
-      if (request.op === 'updates.prepare') return { ...available, spec: '/verified/package.tgz' }
+      if(request.op==='updates.install'){installed=true;return {application:'applied'}}
+      if (request.op === 'updates.prepare') return { ...available, spec: '/verified/package.tgz',safeInstall:true,transactionId:'transaction-fixture' }
       if (++checks === 1) return oldCheck
       assert.equal(request.force, true)
       return { ...available, currentVersion: '2.1.3', updateAvailable: false, autoInstallEligible: false }

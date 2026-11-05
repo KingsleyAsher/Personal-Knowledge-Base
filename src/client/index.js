@@ -3079,7 +3079,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       let running = null
       const read = () => { try { return JSON.parse(storage.getItem(key)) } catch { return null } }
       const save = (record) => { try { storage.setItem(key, JSON.stringify(record)) } catch { throw Error('无法保存更新状态，请检查客户端存储后重试') } }
-      const show = (message, extra = {}) => notify({ busy: false, uncertain: false, restartRequired: false, refreshRequired: false, message, ...extra })
+      const show = (message, extra = {}) => notify({ busy: false, uncertain: false, restartRequired: false, refreshRequired: false, deferred:false, message, ...extra })
       const hostActive = async (record) => {
         try {
           const build = (await api({ op: 'status' }))?.status?.build
@@ -3101,6 +3101,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       }
       async function settle(value, record) {
         if (!owns(record)) return
+        if(value?.application==='deferred'){save(null);show(value.error || '更新已延后，旧版本保持可用',{deferred:value.retryable===true});return}
         if (value?.application === 'failed' || value?.application === 'cancelled') {
           save(null)
           show(value.application === 'cancelled' ? '更新已取消' : '安装失败：' + (value.error?.diagnostic || value.error?.code || value.packageResult?.kind || '请在宿主插件管理器查看详情'))
@@ -3130,6 +3131,10 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         if (!owns(record)) return
         if (record.stage === 'restart-required') { show('新版已安装，宿主要求重启后生效', { restartRequired: true }); return }
         if (record.stage === 'client-refresh') { await resolveLoaded(record); return }
+        if(record.transactionId){
+          try{const status=await api({op:'updates.status'});if(status.transactionId!==record.transactionId){uncertain(record);return}if(status.phase==='committed')await settle({application:'restart-required'},record);else if(['rolled-back','aborted'].includes(status.phase)){save(null);show('更新未完成，旧版本已保留或恢复')}else uncertain(record)}catch{uncertain(record)}
+          return
+        }
         const remote = manager()
         if (!remote || typeof remote.waitForInstall !== 'function') { uncertain(record); return }
         show('正在核对宿主安装状态…', { busy: true })
@@ -3156,11 +3161,12 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           show('正在下载并校验安装包…', { busy: true })
           const prepared = await api({ op: 'updates.prepare', expectedVersion })
           if (!prepared?.ok || prepared.latestVersion !== expectedVersion || !/^[a-f0-9]{16}$/.test(prepared.buildId || '') || typeof prepared.spec !== 'string') throw Error(prepared?.error || '下载结果无效')
-          const record = { requestId: 'kb-update-' + Date.now() + '-' + Math.random().toString(36).slice(2), latestVersion: prepared.latestVersion, buildId: prepared.buildId, stage: 'installing' }
+          if(prepared.safeInstall!==true || !prepared.transactionId)throw Error('当前宿主没有安全更新协议，旧版本保持不变，请使用过渡安装入口。')
+          const record = { requestId: 'kb-update-' + Date.now() + '-' + Math.random().toString(36).slice(2), latestVersion: prepared.latestVersion, buildId: prepared.buildId, stage: 'installing', transactionId:prepared.transactionId }
           save(record)
           show('正在安装并重新加载插件…', { busy: true })
           try {
-            const reply = await remote.installBundle(prepared.spec, { enabled: true, requestId: record.requestId })
+            const reply = {ok:true,value:await api({op:'updates.install',expectedVersion,transactionId:prepared.transactionId})}
             if (!reply?.ok) { await reconcile(); return }
             await settle(reply.value, record)
           } catch { await reconcile() }
@@ -4269,11 +4275,12 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     // END GENERATED TODO LIFECYCLE UI
 
-    const RELEASE_VERSION = '2.4.3'
+    const RELEASE_VERSION = '2.4.4'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.
     const RELEASE_NOTICES = [
+      { version: '2.4.4', items: ['Windows 更新先校验和准备候选包，安全停服后切换，失败恢复旧包和清单。', '安全更新使用独立协议；旧版首次升级需过渡安装，忙碌或缺少停服能力时延后安装。'] },
       { version: '2.4.3', items: ['原件编辑后同步检索内容与引用范围，保留独立撰写的摘要。', '修复 Windows 解析任务状态写入冲突；后台失败保留记录、报告诊断并支持恢复重试。'] },
       { version: '2.4.1', items: ['同步两端版本规则；所选通道内跨大版本与预览版均自动更新，保留包校验与安装状态保护。', '客户端国内更新源与两端独立 Release 交付。'] },
       { version: '2.4.0', items: ['整合知识库插件与独立客户端的共享服务、统一写入和实时连接。', '加入可选的记忆插件联动与记忆管理入口；未连接时保留独立知识库功能。', '保留收件箱整理、双层索引、关系网络与现有插件入口。'] },

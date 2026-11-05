@@ -26,7 +26,7 @@ def release_files(repo, tag):
     if not re.fullmatch(r'v(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)', tag):
         raise RuntimeError('A stable vMAJOR.MINOR.PATCH tag is required')
     show = lambda name: git_bytes(repo, 'show', tag + ':' + name)
-    manifest = json.loads(show('release-manifest.json'))
+    manifest = json.loads(show('release-manifest-v2.json'))
     if tag != 'v' + manifest['version'] or manifest['package'] != '@local/dsh-knowledge-base':
         raise RuntimeError('Tag and package identity differ')
     if manifest['tgz'] != 'local-dsh-knowledge-base-' + manifest['version'] + '.tgz':
@@ -37,7 +37,7 @@ def release_files(repo, tag):
     sums = show('SHA256SUMS')
     if sums.decode().strip() != manifest['sha256'] + '  ' + manifest['tgz']:
         raise RuntimeError('Published SHA256SUMS mismatch')
-    files = {manifest['tgz']: archive, 'release-manifest.json': show('release-manifest.json'), 'SHA256SUMS': sums}
+    files = {manifest['tgz']: archive, 'release-manifest-v2.json': show('release-manifest-v2.json'), 'SHA256SUMS': sums}
     for name in ['knowledge-base-browser-extension.zip', 'memory-evolve-context-fix.zip', 'memory-context-SHA256SUMS']:
         files[name] = show('dist/' + name)
     # Unified releases have product-specific notes, retained at the exact tag.
@@ -155,7 +155,7 @@ def upload(api, release, tag, name, raw, *, attempts=3, sleep=time.sleep):
 def publish(platform, repo=None, tag=None, api=None):
     repo = Path(repo or Path(__file__).resolve().parents[1])
     api = api or MirrorAPI(platform)
-    current_manifest = json.loads((repo / 'release-manifest.json').read_text(encoding='utf-8'))
+    current_manifest = json.loads((repo / 'release-manifest-v2.json').read_text(encoding='utf-8'))
     tag = tag or os.environ.get('RELEASE_TAG') or 'v' + current_manifest['version']
     manifest, commit, notes, files = release_files(repo, tag)
     if tuple(map(int, manifest['version'].split('.'))) < tuple(map(int, current_manifest['version'].split('.'))):
@@ -168,7 +168,7 @@ def publish(platform, repo=None, tag=None, api=None):
     release = api.repo(route, missing=True)
     default_name = manifest['version'] + ' · 个人知识库'
     begin, end = '<!-- kb-release-managed:start -->', '<!-- kb-release-managed:end -->'
-    links = '\n'.join('- [' + filename + '](' + ('https://gitee.com/' + PROJECT + '/raw/' + tag + '/' + ('dist/' if filename not in ['release-manifest.json', 'SHA256SUMS'] else '') + filename if platform == 'gitee' else 'https://api.gitcode.com/api/v5/repos/' + PROJECT + '/raw/' + ('dist/' if filename not in ['release-manifest.json', 'SHA256SUMS'] else '') + filename + '?ref=' + tag) + ')' for filename in files)
+    links = '\n'.join('- [' + filename + '](' + ('https://gitee.com/' + PROJECT + '/raw/' + tag + '/' + ('dist/' if filename not in ['release-manifest-v2.json', 'SHA256SUMS'] else '') + filename if platform == 'gitee' else 'https://api.gitcode.com/api/v5/repos/' + PROJECT + '/raw/' + ('dist/' if filename not in ['release-manifest-v2.json', 'SHA256SUMS'] else '') + filename + '?ref=' + tag) + ')' for filename in files)
     managed = begin + '\n' + notes + '\n\n构建：`' + manifest['buildId'] + '`\n\n安装包 SHA-256：`' + manifest['sha256'] + '`\n\n本站下载（附件也会自动上传）：\n' + links + '\n' + end
     def merge_managed(previous):
         if begin in previous and end in previous:

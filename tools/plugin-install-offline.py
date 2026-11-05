@@ -13,8 +13,8 @@ def digest(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 def verify_package(folder=HERE):
     manifest=json.loads((folder/'manifest.json').read_text(encoding='utf-8'))
-    archive=folder/'local-dsh-knowledge-base-2.4.3.tgz'
-    if manifest['tgz']!=archive.name or manifest['version']!='2.4.3':raise RuntimeError('Unexpected package identity')
+    archive=folder/'local-dsh-knowledge-base-2.4.4.tgz'
+    if manifest['tgz']!=archive.name or manifest['version']!='2.4.4':raise RuntimeError('Unexpected package identity')
     if archive.stat().st_size!=manifest['bytes'] or digest(archive)!=manifest['sha256']:raise RuntimeError('Archive SHA-256/size mismatch; nothing was installed')
     with tarfile.open(archive) as stream:
         entries=stream.getmembers()
@@ -22,7 +22,7 @@ def verify_package(folder=HERE):
             parts=Path(e.name.replace('\\','/')).parts
             if not parts or parts[0]!='package' or '..' in parts or e.issym() or e.islnk() or not(e.isfile() or e.isdir()):raise RuntimeError('Unsafe archive entry')
         pkg=json.loads(stream.extractfile('package/package.json').read())
-        if pkg['name']!=PACKAGE or pkg['version']!='2.4.3':raise RuntimeError('Incorrect plugin package')
+        if pkg['name']!=PACKAGE or pkg['version']!='2.4.4':raise RuntimeError('Incorrect plugin package')
         for row in manifest['files']:
             data=stream.extractfile('package/'+row['path']).read()
             if hashlib.sha256(data).hexdigest()!=row['sha256']:raise RuntimeError('Build inventory mismatch')
@@ -84,46 +84,32 @@ def toolchain():
     return node,pnpm
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--check',action='store_true');args=parser.parse_args()
-    archive,manifest=verify_package();node,pnpm=toolchain()
-    conf=json.loads((PROFILE/'package.json').read_text(encoding='utf-8'))
-    if PACKAGE not in conf.get('dependencies',{}) or PACKAGE not in conf.get('dsh',{}).get('profile',{}).get('bundles',[]):raise RuntimeError('Existing desktop knowledge plugin registration not found; no profile was changed')
-    print('Verified package: 2.4.3 / '+manifest['buildId'])
-    while True:
-        busy=blockers()
-        if not busy:break
-        print('Close DSH fully, including its tray icon. Finish parsing tasks first.')
-        for p in busy:print('  PID '+str(p['pid'])+' '+str(p['name']))
-        if args.check:return 2
-        if input('After closing the apps, press Enter to retry; type Q to cancel: ').strip().lower()=='q':return 2
-    if args.check:print('Preflight passed. No files changed and no package installed.');return 0
-    # Check again immediately before the backup/install boundary.
-    if blockers():raise RuntimeError('A client restarted; close it before installing')
-    before=state_snapshot(state_roots())
-    dest=Path.home()/'.dsh/backups'/('knowledge-2.4.3-'+datetime.now().strftime('%Y%m%d-%H%M%S'))
-    backup_profile(PROFILE,SHARED,dest)
-    if before!=state_snapshot(state_roots()):raise RuntimeError('State changed while backing up; no installation started. Finish active tasks and retry.')
-    print('Local private backup: '+str(dest))
-    if blockers():raise RuntimeError('A client restarted during backup; no installation started')
-    # Use the existing package manager while the GUI/old helper is stopped.
-    # Offline and ignore-scripts prevent downloads and install-time code execution.
-    run=subprocess.run([node,str(pnpm),'add',str(archive),'--offline','--ignore-scripts'],cwd=PROFILE,capture_output=True)
-    (dest/'pnpm-install.log').write_bytes(run.stdout+b'\n'+run.stderr)
-    state_ok=before==state_snapshot(state_roots())
-    if run.returncode:
-        print((run.stdout+run.stderr).decode('utf-8',errors='replace')[-5000:])
-        raise RuntimeError('Package manager failed. Backup/log retained at '+str(dest)+'; state unchanged='+str(state_ok)+'. Do not reopen clients until this is reviewed.')
-    if not state_ok:raise RuntimeError('Config/parse state changed during installation; backups retained. No automatic state rollback was performed.')
-    verify_installed_files(archive,PLUGIN)
-    version,build=installed_build(PLUGIN)
-    if version!='2.4.3' or build!=manifest['buildId']:raise RuntimeError('Installed build mismatch; backup retained at '+str(dest))
-    result={'installed':True,'version':version,'buildId':build,'configAndParseBytesUnchanged':True,'backup':str(dest),'runtimeActivationVerified':False}
-    (dest/'result.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
-    print('SUCCESS: installed 2.4.3 / '+build)
-    print('Knowledge config and parse records are byte-for-byte unchanged.')
-    print('You can now open DSH and verify the settings and task history.')
+    import runpy
+    parser=argparse.ArgumentParser();parser.add_argument('--check',action='store_true');parser.add_argument('--recover',action='store_true');args=parser.parse_args()
+    archive,manifest=verify_package()
+    live=blockers()
+    if live:
+        print('Deferred: exit DSH, its tray process and connected clients first. No files were changed.')
+        print(json.dumps(live,ensure_ascii=False,indent=2));return 2
+    if args.check:
+        print('Package verified. Existing profile installation was not changed.');return 0
+    security_script=HERE/'native.py'
+    if not security_script.is_file():security_script=HERE.parent/'packages/kb-service/native.py'
+    security_api=runpy.run_path(str(security_script),run_name='installer_security')
+    security_api['private_dir'](str(PROFILE/'.kb-safe-updates'))
+    worker=runpy.run_path(str(HERE/'kb-transactional-update.py'),run_name='safe_update_worker')
+    if args.recover:
+        print(json.dumps(worker['recover'](PROFILE)));return 0
+    if not (PLUGIN/'package.json').is_file():
+        raise RuntimeError('Existing plugin is already incomplete. Restore a trusted previous package/backup first; automatic installation did not change it.')
+    worker['recover'](PROFILE)
+    staged=worker['prepare'](PROFILE,archive,manifest)
+    result=worker['commit'](PROFILE,staged['transactionId'])
+    print(json.dumps(result))
+    print('SUCCESS: package committed with the previous version retained. Restart DSH and verify '+manifest['version']+' / '+manifest['buildId'])
     return 0
 
 if __name__=='__main__':
     try:sys.exit(main())
-    except Exception as exc:print('STOPPED: '+str(exc));sys.exit(1)
+    except Exception as error:
+        print('UPDATE NOT COMPLETED: '+str(error));sys.exit(1)

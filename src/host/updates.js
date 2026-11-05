@@ -7,7 +7,7 @@ import { parseKnowledgeVersion, compareKnowledgeVersions, updateDecision } from 
 // Manifest checks remain read-only. Every newer selected-channel version is eligible
 // for automatic installation; verification and activation stay host-managed.
 export const UPDATE_REPOSITORY = 'https://github.com/KingsleyAsher/Personal-Knowledge-Base'
-export const UPDATE_MANIFEST_URL = 'https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/release-manifest.json'
+export const UPDATE_MANIFEST_URL = 'https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/release-manifest-v2.json'
 export const UPDATE_PREVIEW_MANIFEST_URL = 'https://raw.githubusercontent.com/KingsleyAsher/Personal-Knowledge-Base/main/preview-manifest.json'
 export const UPDATE_INTERVAL_MS = 6 * 60 * 60 * 1000
 
@@ -93,7 +93,7 @@ export function createUpdateChecker({ currentVersion, fetch: fetchFn = globalThi
   async function channel(preview) {
     const results = await Promise.all(sources.map(async source => {
       try {
-        const raw = await sourceBytes(fetchFn, source, preview ? 'preview-manifest.json' : 'release-manifest.json', 1024 * 1024, timeoutMs)
+        const raw = await sourceBytes(fetchFn, source, preview ? 'preview-manifest.json' : 'release-manifest-v2.json', 1024 * 1024, timeoutMs)
         const m = JSON.parse(raw.toString('utf8'))
         if (preview && m.package === '@local/dsh-knowledge-base' && m.channel === 'preview' && m.active === false) return { source, ok: true, inactive: true }
         const parsedVersion = parseKnowledgeVersion(m.version, { allowLegacyPreview: preview })
@@ -186,7 +186,7 @@ export function createUpdateDownloader({ checker, cacheDir, fetch: fetchFn = glo
     const dir = path.resolve(cacheDir, release.sha256)
     const target = path.join(dir, release.tgz)
     await mkdir(dir, { recursive: true })
-    const result = { ok: true, spec: target, latestVersion: release.latestVersion, buildId: release.buildId }
+    const result = { ok: true, spec: target, latestVersion: release.latestVersion, buildId: release.buildId, bytes: release.bytes, sha256: release.sha256 }
     try {
       const existing = await stat(target)
       if (existing.isFile() && existing.size === release.bytes) {

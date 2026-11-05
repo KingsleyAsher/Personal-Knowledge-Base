@@ -40,6 +40,6 @@ digest = hashlib.sha256()
 for rel in re.findall(r"'([^']+)'", inventory):
     digest.update((rel + '\0' + hashlib.sha256(files[rel]).hexdigest() + '\n').encode())
 assert digest.hexdigest()[:16] == feed['buildId']
-stable = json.loads((repo / 'release-manifest.json').read_text())
+stable = json.loads((repo / 'release-manifest-v2.json').read_text())
 assert hashlib.sha256((repo / 'dist' / stable['tgz']).read_bytes()).hexdigest() == stable['sha256']
 print('PASS: preview version, tag, checksums, build ID, source equality and stable archive')

@@ -7,7 +7,7 @@ assert f'<!-- project-record-version: {version} -->' in record, 'Update PROJECT-
 assert 'PROJECT-RECORD.md' in json.loads((r/'package.json').read_text(encoding='utf-8'))['files'], 'Project record must be shipped with the package'
 candidate = '--candidate' in sys.argv
 release=(r.parent/f'知识库产品-{version}' if (r.parent/f'知识库产品-{version}').exists() else r.parent/f'知识库产品-OCR-ASR预览-{version}') if '-' in version or candidate else r
-m=json.loads((release/'manifest.json' if '-' in version or candidate else r/'release-manifest.json').read_text(encoding='utf-8'))
+m=json.loads((release/'manifest.json' if '-' in version or candidate else r/'release-manifest-v2.json').read_text(encoding='utf-8'))
 assert m['package'] == '@local/dsh-knowledge-base' and m['version'] == version
 assert m['tgz'] == 'local-dsh-knowledge-base-'+version+'.tgz'
 assert re.fullmatch(r'[a-f0-9]{64}', m['sha256']) and re.fullmatch(r'[a-f0-9]{16}', m['buildId'])

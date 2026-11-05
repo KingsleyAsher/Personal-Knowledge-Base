@@ -2,15 +2,25 @@
 
 [简体中文](PROJECT-RECORD.md) · [English](PROJECT-RECORD.en.md)
 
-<!-- project-record-version: 2.4.3 -->
+<!-- project-record-version: 2.4.4 -->
 
-**对应源码：插件 2.4.3 / 客户端 1.0.3 · 更新日期：2026-11-05 · 维护方式：随每次发布更新，与源码一起审阅。**
+**对应源码：插件 2.4.4 / 客户端 1.0.3 · 更新日期：2026-11-05 · 维护方式：随每次发布更新，与源码一起审阅。**
 
 这是个人知识库插件的长期记录，面向使用者、维护者和后续开发者。它说明产品为什么这样构建、目前能做什么、功能如何连接、数据放在哪里，以及下一步往哪里走。这里的“已实现”以本仓库源码为依据；路线图属于后续方向，不代表已经提供。实际安装版本与构建号以客户端运行状态和对应发布清单为准。
 
 使用步骤见 [工作台说明](WORKBENCH.md)，每次发版的变化见 [更新记录](RELEASE.md)，版本比较规则见 [版本命名](VERSIONING.md)。本文负责解释整个产品，避免把发布说明当成架构文档。
 
 
+
+## 2.4.4：Windows 安全更新与失败恢复（2026-11-05）
+
+- pnpm 只在隔离的清单副本中准备锁文件；新包先完成摘要、构建号、路径和文件校验，不让包管理器改写在线插件目录。
+- 更新前通过管理员授权的停服协议检查其他连接、排队及运行中的解析、导入和流程任务；忙碌时延后。停服后核对清理回执及进程退出，再切换完整包目录。
+- 原插件目录和清单保留在私有事务目录；切换或清单写入失败时回退并逐文件校验。中途退出的安装可从持久事务记录恢复，不把未知结果标为成功，不重复发起安装。
+- 2.4.4 使用 release-manifest-v2.json。旧 release-manifest.json 停用安装分发，阻断旧更新器继续走不安全的原地安装。2.4.3 及更早版本首次过渡须退出宿主及连接客户端，使用本版过渡安装包；旧服务不支持停服协议时自动路径会拒绝接管。
+- 成功安装后明确提示重启生效。嵌入模式或缺少安全停服能力时保持旧版，暂不自动安装。包带额外依赖、相对本地依赖或旧包已不完整等不支持的情况均停止，不擅自重建用户配置。
+
+验证：35 项 Node 定向检查、5 项真实文件系统/真实 pnpm 事务测试，以及 1 个 Windows 运行服务升级复合场景通过。复合场景包括原始 2.4.3 服务的拒绝接管、额外连接和排队任务的延后、使用旧目录 Python 的协议服务退出、真实 2.4.3 包切换失败后逐文件恢复、成功升级重启和虚构原件保留。具备新停服协议的服务升级与未修改旧服务的首次过渡是两条不同路径。本次未在正式用户 profile 安装，也未验证真实模型或完整 UI。
 
 ## 2.4.3：原件同步与 Windows 解析任务修复（2026-11-05）
 
@@ -31,7 +41,7 @@ Windows 定向复验 73/73 通过（原有 68 项及新增 5 项故障测试）�
 
 验证包括反馈接口及状态测试、真实部署测试 Issue #46 / #47（重复提交返回原 Issue）、隔离 C/D 双卷回收恢复、服务文件生命周期、Windows helper 存活时原包目录改名，以及 2.4.1 状态重开测试。独立安装器的包管理调用使用模拟；未以用户真实库或真实模型调用作评测，也不声称完整 Office 保真或所有网络可达。
 
-两端分别使用 client-update.json 与 release-manifest.json，版本与 SHA-256 独立核验。客户端检查更新及校验下载已实现，自动覆盖安装与激活尚未实现。镜像附件在同步校验完成后可用。
+两端分别使用 client-update.json 与 release-manifest-v2.json，版本与 SHA-256 独立核验。客户端检查更新及校验下载已实现，自动覆盖安装与激活尚未实现。镜像附件在同步校验完成后可用。
 
 
 ## 客户端 1.0.2 · 2026-11-04
@@ -166,7 +176,7 @@ Edge 使用虚构库和宿主服务替身完成交互检查，未访问个人资
 
 ### 正式发布记录（2026-10-22）
 
-正式版首次通过 [PR #25](https://github.com/KingsleyAsher/Personal-Knowledge-Base/pull/25) 合并至 `main` 并发布 GitHub Release：[`v2.1.0`](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.1.0)。首次发布提交为 `bf41c52c088495596c619af30b38a4a4bc43a3e1`；随后 [PR #26](https://github.com/KingsleyAsher/Personal-Knowledge-Base/pull/26) 完成发布记录、随包文档、安装包和校验清单的全量同步，合并提交为 `5abc0bbfd37162e91343906aa761a37ea590639f`。构建号仍为 `37b7ff660806754d`，因为该次同步没有改变可执行构建文件。当前安装包字节数、SHA-256 和逐文件清单以 [`release-manifest.json`](release-manifest.json) 为准。没有在维护者本机安装正式包，也没有调用真实云端模型 API。正式版发布检查和展示页部署通过；Gitee 镜像同步成功，GitCode 镜像同步工作流失败，镜像结果以工作流记录为准。
+正式版首次通过 [PR #25](https://github.com/KingsleyAsher/Personal-Knowledge-Base/pull/25) 合并至 `main` 并发布 GitHub Release：[`v2.1.0`](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.1.0)。首次发布提交为 `bf41c52c088495596c619af30b38a4a4bc43a3e1`；随后 [PR #26](https://github.com/KingsleyAsher/Personal-Knowledge-Base/pull/26) 完成发布记录、随包文档、安装包和校验清单的全量同步，合并提交为 `5abc0bbfd37162e91343906aa761a37ea590639f`。构建号仍为 `37b7ff660806754d`，因为该次同步没有改变可执行构建文件。当前安装包字节数、SHA-256 和逐文件清单以 [`release-manifest-v2.json`](release-manifest-v2.json) 为准。没有在维护者本机安装正式包，也没有调用真实云端模型 API。正式版发布检查和展示页部署通过；Gitee 镜像同步成功，GitCode 镜像同步工作流失败，镜像结果以工作流记录为准。
 
 ## 目录
 
@@ -335,7 +345,7 @@ flowchart TD
 
 构建顺序为：修改原始模块 → 同步客户端嵌入区 → 同步构建文件清单 → 生成 npm 包 → 逐文件及构建号校验 → 更新发布清单与网站下载 → 合并主分支 → 创建正式标签 → 发布资产与网站。
 
-`buildId` 根据入口声明的装载文件清单和逐文件 SHA-256 计算；清单会随模块扩展，不应把早期的固定文件数量当作永久规则。安装包另外记录包大小、SHA-256、SRI 和文件清单。发布包摘要由实际字节计算；文档内不手写容易失效的构建号，以对应 `release-manifest.json` 为准。
+`buildId` 根据入口声明的装载文件清单和逐文件 SHA-256 计算；清单会随模块扩展，不应把早期的固定文件数量当作永久规则。安装包另外记录包大小、SHA-256、SRI 和文件清单。发布包摘要由实际字节计算；文档内不手写容易失效的构建号，以对应 `release-manifest-v2.json` 为准。
 
 主要工具：[`package-workbench.py`](tools/package-workbench.py)、[`sync-workbench-client.py`](tools/sync-workbench-client.py)、[`sync-workbench-build.py`](tools/sync-workbench-build.py)、[`verify-release.py`](tools/verify-release.py)、[`stage-stable-candidate.py`](tools/stage-stable-candidate.py)。网站位于 [`website/`](website/)，经 GitHub Pages 部署；镜像仓库的同步权限、模式和延迟以平台实际结果核验。
 
@@ -437,7 +447,7 @@ flowchart TD
 
 ### 2026-10-22 / 2.1.0 正式发布
 
-2.1.0 通过 PR #25 首次发布，并于 PR #26 完成正式发布记录、随包文档、安装包、网站下载副本和摘要清单的同步。当前发布包身份见 `release-manifest.json`，构建号仍为 `37b7ff660806754d`；PR #26 只更改文档和发布元数据，没有改动可执行构建文件。定向自动检查 25 项通过，首次正式发布及 Pages 工作流通过。Gitee 镜像同步成功，GitCode 镜像工作流失败。此后若有发布记录更正，应同步源码记录、随包副本、清单及对应下载附件，并以发布清单中的摘要为准。
+2.1.0 通过 PR #25 首次发布，并于 PR #26 完成正式发布记录、随包文档、安装包、网站下载副本和摘要清单的同步。当前发布包身份见 `release-manifest-v2.json`，构建号仍为 `37b7ff660806754d`；PR #26 只更改文档和发布元数据，没有改动可执行构建文件。定向自动检查 25 项通过，首次正式发布及 Pages 工作流通过。Gitee 镜像同步成功，GitCode 镜像工作流失败。此后若有发布记录更正，应同步源码记录、随包副本、清单及对应下载附件，并以发布清单中的摘要为准。
 
 客户端内下载入口：知识库 → 收件箱 → 浏览器扩展使用指南 → 首次使用：安装与连接，点击“下载浏览器扩展”，自动匹配 Gitee、GitCode、GitHub 并校验下载文件，源失败时自动切换；全部失败时显示原因与备用链接。
 

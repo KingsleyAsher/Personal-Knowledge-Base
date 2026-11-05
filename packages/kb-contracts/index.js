@@ -22,6 +22,7 @@ export const HELLO = object({
 export const METHODS = Object.freeze({
   ...DESKTOP_METHODS,
   'service.health': { access: 'read', args: empty },
+  'service.prepareUpgrade': { access: 'admin', args: empty },
   'service.shutdown': { access: 'admin', args: empty },
   'connection.grant': { access: 'admin', args: object({ label: text(128), access: array(choice(['read','edit','write','admin','host','chat','chat-write','approval']), 8), expiresAt: { type: 'integer', min: 1 } }) },
   'connection.revoke': { access: 'admin', args: object({ grantId: text(128) }) },

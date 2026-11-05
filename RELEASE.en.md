@@ -1,3 +1,13 @@
+## 2.4.4: safe Windows updates and rollback (2026-11-05)
+
+- Run pnpm only against an isolated profile-metadata copy. Verify the archive, build inventory and staged files before touching the live package.
+- An admin-authorized drain protocol refuses other connections and queued/running parsing, import or flow work. Require a clean shutdown receipt and process exit before switching complete directories.
+- Retain the previous package and metadata in a private transaction directory. Failed publication restores and verifies the old files. Durable receipts support recovery after installer interruption and prevent unknown outcomes from being reported as success or retried blindly.
+- The safe feed is release-manifest-v2.json. Legacy release-manifest.json distribution is disabled so old updaters cannot execute the unsafe in-place path. Versions through 2.4.3 need the transition installer once, after exiting the Host and connected clients. A legacy service without the drain protocol is refused.
+- Successful installation requires a Host restart. Embedded mode, missing drain capability, unsupported dependency layouts and incomplete previous installations fail closed.
+
+Evidence: 35 focused Node checks, 5 real-filesystem/real-pnpm transaction tests and 1 composite live-service scenario on Windows passed. The scenario covers legacy 2.4.3 refusal, busy connections/tasks, a protocol-capable service using the old package Python, exact restoration after a real 2.4.3 package switch fails, successful upgrade/restart and preserved synthetic originals. Forward safe-protocol upgrades and the unmodified legacy transition are distinct paths. No live user profile installation, real-model evaluation or complete UI regression was performed.
+
 ## 2.4.3: source synchronization and Windows parsing jobs (2026-11-05)
 
 - Merge text-original retrieval and citation synchronization. Archived text is searchable; edits refresh source records and ranges. Legacy generated mirrors resolve to current originals while independently authored summaries remain searchable.
@@ -188,7 +198,7 @@ Update checks and verified downloads are available; automatic in-place installat
 
 - GitHub Release: [`v2.1.0`](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.1.0), published. The original release was merged into `main` by PR [#25](https://github.com/KingsleyAsher/Personal-Knowledge-Base/pull/25), commit `bf41c52c088495596c619af30b38a4a4bc43a3e1`.
 - PR [#26](https://github.com/KingsleyAsher/Personal-Knowledge-Base/pull/26) synchronized the release record, bundled documentation, installer, website download copy, and digest manifest to `main`, merged as `5abc0bbfd37162e91343906aa761a37ea590639f`. This was a documentation and release-metadata sync; build ID remained `37b7ff660806754d`.
-- The authoritative package byte count, SHA-256, and per-file digests are in [`release-manifest.json`](release-manifest.json).
+- The authoritative package byte count, SHA-256, and per-file digests are in [`release-manifest-v2.json`](release-manifest-v2.json).
 - Product showcase: [Personal Knowledge Base 2.1.0](https://kingsleyasher.github.io/Personal-Knowledge-Base/). Stable-release workflow and Pages deployment both passed.
 - Gitee mirror sync succeeded; the GitCode mirror workflow failed. Mirror results are recorded separately from GitHub Release status.
 - The stable package was not installed on the maintainer's machine, and no real cloud Embedding/Rerank API was used.

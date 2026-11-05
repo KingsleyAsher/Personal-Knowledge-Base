@@ -1,5 +1,8 @@
 # Personal Knowledge Base · Plugin and Desktop Client
 
+> **One-time legacy transition:** users on 2.4.3 or earlier must save work, exit DSH (including its tray process) and connected clients, then use the [2.4.4 transition installer](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.4/KnowledgeBase-2.4.4-Transition-Installer.zip). The legacy automatic feed is disabled to prevent unsafe in-place replacement.
+
+
 [English](README.md) · [简体中文](README.zh-CN.md)
 
 **Personal-Knowledge-Base is the single maintained repository for the DSH knowledge-base plugin and standalone desktop client.** They share a core, contracts and library service while retaining independent installations and versions.
@@ -7,9 +10,9 @@
 | Product | Published version | Direct download | Release notes |
 |---|---|---|---|
 | **Desktop client · Windows x64** | **1.0.3** | **[⬇ Download client installer (EXE)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.3/KnowledgeWorkbench-1.0.3-Setup.exe)** | [Client Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.3) |
-| **DSH knowledge-base plugin** | **2.4.3** | **[⬇ Download plugin (TGZ)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.3/local-dsh-knowledge-base-2.4.3.tgz)** | [Plugin Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.3) |
+| **DSH knowledge-base plugin** | **2.4.4** | **[⬇ Download plugin (TGZ)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.4/local-dsh-knowledge-base-2.4.4.tgz)** | [Plugin Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.4) |
 
-Release entries: [client 1.0.3](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.3) · [plugin 2.4.3](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.3). Choose the correct installer/TGZ and verify its product-specific manifest and digest.
+Release entries: [client 1.0.3](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.3) · [plugin 2.4.4](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.4). Choose the correct installer/TGZ and verify its product-specific manifest and digest.
 
 ## One library, two entry points
 
@@ -27,15 +30,15 @@ Release entries: [client 1.0.3](https://github.com/KingsleyAsher/Personal-Knowle
 
 Run the EXE to install. The approximately 186 MiB package includes its runtime. This is the standalone client installer, not a DSH plugin bundle.
 
-### DSH plugin 2.4.3
+### DSH plugin 2.4.4
 
-**[Download local-dsh-knowledge-base-2.4.3.tgz](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.3/local-dsh-knowledge-base-2.4.3.tgz)** · [Release notes and assets](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.3)
+**[Download local-dsh-knowledge-base-2.4.4.tgz](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.4/local-dsh-knowledge-base-2.4.4.tgz)** · [Release notes and assets](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.4)
 
 Install the TGZ through DSH plugin management. GitHub highlights only one Latest release, but both products have independent releases. Use the product links above or browse [all Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases).
 
 Source, issues and future releases are maintained here. In [Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases), choose the correct product: Windows Setup.exe for the client, TGZ for the plugin.
 
-Published plugin 2.4.3: [Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.3) · [TGZ](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.3/local-dsh-knowledge-base-2.4.3.tgz). See [plugin usage](WORKBENCH.en.md) and [mirror information](MIRROR-RELEASES.md) for extensions and regional sources. Mirror availability can vary.
+Published plugin 2.4.4: [Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.4) · [TGZ](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.4/local-dsh-knowledge-base-2.4.4.tgz). See [plugin usage](WORKBENCH.en.md) and [mirror information](MIRROR-RELEASES.md) for extensions and regional sources. Mirror availability can vary.
 
 The existing client installer retains its paper-green interface and animations, requires an empty application directory and preserves personal data on uninstall. Client online checks and verified downloads are implemented; automatic in-place installation and activation remain unfinished. The plugin keeps its existing update manifests and installation flow.
 
@@ -67,3 +70,12 @@ The merged client passed a production build and focused checks. See the project 
 [MIT licensed](LICENSE). Third-party components retain their licenses; see [notices](THIRD-PARTY-NOTICES.md).
 
 Update policy: every eligible version in the selected channel updates automatically, including majors and previews. The client online executor remains unfinished; see [version policy](VERSIONING.en.md).
+
+### Safe updates in 2.4.4
+
+- Run pnpm only against an isolated profile-metadata copy. Verify the archive, build inventory and staged files before touching the live package.
+- An admin-authorized drain protocol refuses other connections and queued/running parsing, import or flow work. Require a clean shutdown receipt and process exit before switching complete directories.
+- Retain the previous package and metadata in a private transaction directory. Failed publication restores and verifies the old files. Durable receipts support recovery after installer interruption and prevent unknown outcomes from being reported as success or retried blindly.
+- The safe feed is release-manifest-v2.json. Legacy release-manifest.json distribution is disabled so old updaters cannot execute the unsafe in-place path. Versions through 2.4.3 need the transition installer once, after exiting the Host and connected clients. A legacy service without the drain protocol is refused.
+- Successful installation requires a Host restart. Embedded mode, missing drain capability, unsupported dependency layouts and incomplete previous installations fail closed.
+See [2.4.4 notes](docs/releases/plugin-2.4.4.md) for the transition and verification boundary.

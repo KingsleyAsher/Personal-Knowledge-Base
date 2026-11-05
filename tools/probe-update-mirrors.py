@@ -2,12 +2,12 @@ from pathlib import Path
 import concurrent.futures, urllib.request, urllib.error, json, hashlib
 base='KingsleyAsher/Personal-Knowledge-Base'
 urls=[
-f'https://gitee.com/{base}/raw/main/release-manifest.json',
-f'https://gitee.com/{base}/raw/master/release-manifest.json',
-f'https://gitee.com/api/v5/repos/{base}/raw/release-manifest.json?ref=main',
-f'https://raw.gitcode.com/{base}/raw/main/release-manifest.json',
-f'https://gitcode.com/{base}/-/raw/main/release-manifest.json',
-f'https://api.gitcode.com/api/v5/repos/{base}/raw/release-manifest.json?ref=main',
+f'https://gitee.com/{base}/raw/main/release-manifest-v2.json',
+f'https://gitee.com/{base}/raw/master/release-manifest-v2.json',
+f'https://gitee.com/api/v5/repos/{base}/raw/release-manifest-v2.json?ref=main',
+f'https://raw.gitcode.com/{base}/raw/main/release-manifest-v2.json',
+f'https://gitcode.com/{base}/-/raw/main/release-manifest-v2.json',
+f'https://api.gitcode.com/api/v5/repos/{base}/raw/release-manifest-v2.json?ref=main',
 f'https://gitee.com/{base}/raw/main/dist/local-dsh-knowledge-base-1.1.4.tgz',
 f'https://raw.gitcode.com/{base}/raw/main/dist/local-dsh-knowledge-base-1.1.4.tgz',
 ]

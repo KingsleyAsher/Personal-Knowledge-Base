@@ -40,7 +40,7 @@ class FakeResponse:
 class FakeAPI:
     def __init__(self, platform, hashes, existing=None):
         self.platform = platform
-        self.tag = 'v' + json.loads((ROOT / 'release-manifest.json').read_text(encoding='utf-8'))['version']
+        self.tag = 'v' + json.loads((ROOT / 'release-manifest-v2.json').read_text(encoding='utf-8'))['version']
         self.token = 'test-upload-token'
         self.hashes = hashes
         self.release = existing
@@ -95,7 +95,7 @@ class FakeAPI:
 class MirrorReleaseTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.manifest = json.loads((ROOT / 'release-manifest.json').read_text(encoding='utf-8'))
+        cls.manifest = json.loads((ROOT / 'release-manifest-v2.json').read_text(encoding='utf-8'))
         cls.tag = 'v' + cls.manifest['version']
         cls.release_data = publisher.release_files(ROOT, cls.tag)
 

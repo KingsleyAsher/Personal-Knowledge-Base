@@ -1,5 +1,8 @@
 # 个人知识库 · 插件与客户端
 
+> **旧版首次升级：** 2.4.3 及更早版本请保存工作并退出 DSH（含托盘）及连接客户端，再使用 [2.4.4 过渡安装包](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.4/KnowledgeBase-2.4.4-Transition-Installer.zip)。旧自动安装源已停用，避免原地替换损坏运行中的插件。
+
+
 [English](README.md) · [简体中文](README.zh-CN.md)
 
 **Personal-Knowledge-Base 是知识库插件与独立桌面客户端的唯一维护仓库。** 两个产品共用业务内核、接口与共库服务，分别安装、独立版本，也可以连接同一知识库协同使用。
@@ -7,9 +10,9 @@
 | 产品 | 已发布版本 | 直接下载 | 发布说明 |
 |---|---|---|---|
 | **知识库客户端 · Windows x64** | **1.0.3** | **[⬇ 下载客户端安装包（EXE）](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.3/KnowledgeWorkbench-1.0.3-Setup.exe)** | [客户端 Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.3) |
-| **DSH 知识库插件** | **2.4.3** | **[⬇ 下载插件包（TGZ）](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.3/local-dsh-knowledge-base-2.4.3.tgz)** | [插件 Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.3) |
+| **DSH 知识库插件** | **2.4.4** | **[⬇ 下载插件包（TGZ）](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.4/local-dsh-knowledge-base-2.4.4.tgz)** | [插件 Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.4) |
 
-当前发布入口：[客户端 1.0.3](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.3) · [插件 2.4.3](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.3)。请按产品选择 Windows 安装包或 TGZ，摘要与构建号以各自清单为准。
+当前发布入口：[客户端 1.0.3](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.3) · [插件 2.4.4](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.4)。请按产品选择 Windows 安装包或 TGZ，摘要与构建号以各自清单为准。
 
 ## 一个知识库，两个入口
 
@@ -27,15 +30,15 @@
 
 下载后运行 EXE 安装。客户端安装包约 186 MiB，运行环境随包提供。该文件是独立客户端安装器，不是 DSH 插件。
 
-### 插件 2.4.3 · DSH
+### 插件 2.4.4 · DSH
 
-**[下载 local-dsh-knowledge-base-2.4.3.tgz](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.3/local-dsh-knowledge-base-2.4.3.tgz)** · [版本说明与全部附件](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.3)
+**[下载 local-dsh-knowledge-base-2.4.4.tgz](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.4/local-dsh-knowledge-base-2.4.4.tgz)** · [版本说明与全部附件](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.4)
 
 通过 DSH 插件管理器安装 TGZ。GitHub 首页只突出显示一个 Latest，但两个产品都有独立 Release；请使用上面的对应入口或查看 [全部 Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases)。
 
 所有后续源码、问题反馈和发布统一放在本仓库。访问 [Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases)，按产品名称选择文件：客户端使用 Windows Setup.exe，插件使用 TGZ。不要将插件包当作客户端安装程序。
 
-已发布插件 2.4.3：[GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.3) · [直接安装包](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.3/local-dsh-knowledge-base-2.4.3.tgz)。浏览器扩展及地区镜像见 [插件使用说明](WORKBENCH.md) 和 [镜像说明](MIRROR-RELEASES.md)。镜像可能延迟，以实际校验结果为准。
+已发布插件 2.4.4：[GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.4) · [直接安装包](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.4/local-dsh-knowledge-base-2.4.4.tgz)。浏览器扩展及地区镜像见 [插件使用说明](WORKBENCH.md) 和 [镜像说明](MIRROR-RELEASES.md)。镜像可能延迟，以实际校验结果为准。
 
 客户端现有安装器保留纸页绿界面与动画，要求空的应用安装目录；卸载保留个人资料与设置。客户端已接入在线检查与校验下载；自动覆盖安装和自动激活尚未完成。插件继续使用既有插件更新清单与安装流程。
 
@@ -76,3 +79,12 @@ tools/、tests/         构建、校验及插件测试
 采用 [MIT 许可证](LICENSE)；第三方组件保留原有许可，见 [第三方说明](THIRD-PARTY-NOTICES.md)。
 
 更新策略统一为所选通道内所有新版本自动更新（含跨大版本与预览版）；不再逐次要求手动确认。客户端在线执行链路仍未完成，详见 [版本规则](VERSIONING.md)。
+
+### 2.4.4 安全更新
+
+- pnpm 只在隔离的清单副本中准备锁文件；新包先完成摘要、构建号、路径和文件校验，不让包管理器改写在线插件目录。
+- 更新前通过管理员授权的停服协议检查其他连接、排队及运行中的解析、导入和流程任务；忙碌时延后。停服后核对清理回执及进程退出，再切换完整包目录。
+- 原插件目录和清单保留在私有事务目录；切换或清单写入失败时回退并逐文件校验。中途退出的安装可从持久事务记录恢复，不把未知结果标为成功，不重复发起安装。
+- 2.4.4 使用 release-manifest-v2.json。旧 release-manifest.json 停用安装分发，阻断旧更新器继续走不安全的原地安装。2.4.3 及更早版本首次过渡须退出宿主及连接客户端，使用本版过渡安装包；旧服务不支持停服协议时自动路径会拒绝接管。
+- 成功安装后明确提示重启生效。嵌入模式或缺少安全停服能力时保持旧版，暂不自动安装。包带额外依赖、相对本地依赖或旧包已不完整等不支持的情况均停止，不擅自重建用户配置。
+完整验证与过渡步骤见 [2.4.4 说明](docs/releases/plugin-2.4.4.md)。

@@ -96,7 +96,7 @@ export async function mountServiceHost(ctx, config, { isLiveKnowledgeGrant, gate
   }
   const send=(res,status,value)=>{res.statusCode=status;res.setHeader('content-type','application/json; charset=utf-8');res.end(JSON.stringify(value))}
   const sameOrigin=req=>req.headers['sec-fetch-site']!=='cross-site' && (!req.headers.origin || (()=>{try{return new URL(req.headers.origin).host===req.headers.host}catch{return false}})())
-  const updates=createHostUpdates({ctx,build,profileDir});
+  const updates=createHostUpdates({ctx,build,profileDir,quiesce:runtime?()=>runtime.prepareUpgrade():null,resume:runtime?()=>runtime.resume():null});
   const server=ctx.get('webServer')
   if(server?.register) {
     await registerHostAssets({ctx,server,root:path.resolve(import.meta.dirname,'../..'),client,send,sameOrigin})
@@ -110,6 +110,8 @@ export async function mountServiceHost(ctx, config, { isLiveKnowledgeGrant, gate
         const body=JSON.parse(Buffer.concat(chunks).toString('utf8'))
         const aliases={'import-plan':'import.plan','import-run':'import.run','import-status':'import.status','import-cancel':'import.cancel','import-waiting':'import.waiting','import-parse':'import.parse'};body.op=aliases[body.op]??body.op
         if(body.op==='updates.check')return send(res,200,await updates.check(body))
+        if(body.op==='updates.install')return send(res,200,await updates.install(body))
+        if(body.op==='updates.status')return send(res,200,await updates.status())
         if(body.op==='updates.prepare')return send(res,200,await updates.prepare(body))
         if(body.op==='pick-dir'){const cap=ctx.get('directoryPicker')?.capability();if(cap?.kind!=='native'||!cap.pick)return send(res,200,{ok:false,reason:'no-directory-picker'});const path=await cap.pick(AbortSignal.timeout(300000));return send(res,200,{ok:true,path,canceled:!path});}
         if(body.op==='atlas.file-action'){const f=await client.call('desktop.stat',{path:body.path}),s=await sharedStatus(),c=controllerScope?.get('sessionController');if(!c?.openWorkspacePath)throw Error('DSH 本机文件操作未连接');return send(res,200,{ok:true,...await c.openWorkspacePath({path:path.join(s.kbPath,f.path),action:body.action},AbortSignal.timeout(15000))});}

@@ -7,7 +7,7 @@ import path from 'node:path'
 import { gzipSync, gunzipSync } from 'node:zlib'
 import { createUpdateChecker, createUpdateDownloader, verifyUpdateArchive } from '../src/host/updates.js'
 
-const manifest = JSON.parse(await readFile(new URL('../release-manifest.json', import.meta.url), 'utf8'))
+const manifest = JSON.parse(await readFile(new URL('../release-manifest-v2.json', import.meta.url), 'utf8'))
 const archive = await readFile(new URL(`../dist/${manifest.tgz}`, import.meta.url))
 const release = (raw = archive) => ({ ok: true, updateAvailable: true, latestVersion: manifest.version, tgz: manifest.tgz,
   sha256: createHash('sha256').update(raw).digest('hex'), bytes: raw.length, buildId: manifest.buildId })
@@ -78,7 +78,7 @@ test('archive preflight checks package identity, version, traversal, links and t
 test('checking alone never downloads a package', async () => {
   const data = release(); let calls = 0
   const checker = createUpdateChecker({ sourceIds: ['github'], previewManifestUrl: null, currentVersion: '2.0.1', fetch: async (url) => {
-    calls++; assert.ok(url.endsWith('/release-manifest.json'))
+    calls++; assert.ok(url.endsWith('/release-manifest-v2.json'))
     return Response.json({ ...data, package: '@local/dsh-knowledge-base', version: data.latestVersion })
   } })
   const result = await checker.check()

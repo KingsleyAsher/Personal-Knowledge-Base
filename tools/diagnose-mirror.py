@@ -30,7 +30,7 @@ def diagnose(platform):
                           source.path.rstrip('/').removesuffix('.git').lower() == ('/' + PROJECT).lower())
         print(platform + ': pull_source_matches_github=' + str(source_matches).lower())
     root = Path(__file__).resolve().parents[1]
-    manifest = json.loads((root / 'release-manifest.json').read_text(encoding='utf-8'))
+    manifest = json.loads((root / 'release-manifest-v2.json').read_text(encoding='utf-8'))
     tag = 'v' + manifest['version']
     release = api.repo('/releases/tags/' + tag, missing=True)
     print(platform + ': release=' + json.dumps(None if release is None else {key: release.get(key) for key in ['id', 'tag_name', 'name', 'release_status', 'prerelease']}))
