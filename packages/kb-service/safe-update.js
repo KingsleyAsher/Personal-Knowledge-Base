@@ -1,9 +1,10 @@
 import path from 'node:path'
-import { readFile, mkdir, writeFile } from 'node:fs/promises'
+import { readFile, mkdir, writeFile, stat } from 'node:fs/promises'
 import { createHash } from 'node:crypto'
 import { spawn } from 'node:child_process'
 import { resolveHostPython } from './host-python.js'
 import { native } from './io.js'
+import { readCandidateBuild } from './build.js'
 
 // The worker and Python live outside the replaceable package. The receipt is
 // durable, so losing the HTTP/HMR reply never means installation is repeated.
@@ -52,9 +53,16 @@ export function createSafeUpdate({ profileDir, packageRoot, quiesce, resume }) {
       return operation
     },
     async status() {
-      let plan = JSON.parse(await readFile(path.join(home, 'transaction.json'), 'utf8'))
+      let plan
+      try{plan=JSON.parse(await readFile(path.join(home,'transaction.json'),'utf8'))}catch(error){if(error.code!=='ENOENT')throw error;plan={phase:'none'}}
       if(plan.phase==='publishing'&&!operation){try{await invoke('recover');plan=JSON.parse(await readFile(path.join(home,'transaction.json'),'utf8'))}catch{/* live worker or recovery requires attention */}}
-      return { phase: plan.phase, version: plan.version, buildId: plan.buildId, transactionId: plan.work, restartRequired: plan.phase === 'committed' }
+      let writerBusy
+      try{await stat(path.join(profileDir,'package.json.lock'));writerBusy=true}catch(error){if(error.code!=='ENOENT')throw error;writerBusy=false}
+      let installedBuild
+      try{const build=await readCandidateBuild(path.join(profileDir,'node_modules/@local/dsh-knowledge-base'));installedBuild={version:build.version,buildId:build.buildId}}catch{/* incomplete package is never proof that retry is safe */}
+      return { phase: plan.phase, version: plan.version, buildId: plan.buildId, transactionId: plan.work, restartRequired: plan.phase === 'committed',
+        confirmationProtocol:1,operationActive:Boolean(operation),writerBusy,installedBuild,
+        canRetryLegacy:Boolean(installedBuild&&!operation&&!writerBusy&&['none','committed','aborted','rolled-back'].includes(plan.phase)) }
     },
   }
 }

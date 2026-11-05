@@ -4,7 +4,7 @@
 
 [中文](PROJECT-RECORD.md) · English
 
-Client 1.0.3, shared plugin source 2.4.9. Updated 2026-11-05.
+Client 1.0.3, shared plugin source 2.4.10. Updated 2026-11-05.
 
 The product puts the existing file hierarchy at the center of a desktop workspace. Reading, editing, comparison and optional DSH conversations share one interface. The file sidebar remains a file browser; management tools open in movable windows with full-page entry points.
 
@@ -16,6 +16,16 @@ The renderer lives in `apps/desktop/src`, desktop permissions in `apps/desktop/m
 
 Future work includes online updates, data-preserving in-place installation, broader Office fidelity and cross-version compatibility testing. These are plans, not shipped guarantees. Release notes and this record must evolve together.
 
+
+## 2.4.10: installation confirmation recovery (2026-11-05)
+
+Fix an old missing installation receipt keeping the UI indefinitely uncertain with installation disabled. Reconciliation now checks the installed disk build, active safe operation and profile writer lock. A legacy record clears only after the Host confirms its request is absent and authoritative quiet-writer/build checks pass. Elapsed time and failed requests alone never authorize retry.
+
+A prepared but unstarted safe transaction can resume the same transaction without another preparation. Target files already installed under an old running Host require a restart. Active, unverifiable and damaged states continue to block blind installation.
+
+Seventeen focused checks passed across legacy recovery, locks, active operations, missing journals, installed-but-unloaded files, transaction continuation and completion state. No live user installation, client-cache deletion or forced restart was performed.
+
+An old UI already locked by a pending record cannot load this fix through its disabled button. Use the Host's own Settings → Plugins entry once with this official release, then reload when requested. See the recovery instructions.
 
 ## 2.4.9: kb_flow output contract (2026-11-05)
 

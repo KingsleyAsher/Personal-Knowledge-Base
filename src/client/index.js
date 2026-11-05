@@ -3103,6 +3103,22 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       const owns = (record) => read()?.requestId === record.requestId
       const complete = (record) => { if (owns(record)) { save(null); show('更新完成，新版本已加载', { completedVersion: record.latestVersion }) } }
       const uncertain = (record) => { if (owns(record)) show('安装状态待确认，请点击核对更新状态；请勿重复安装', { uncertain: true }) }
+      const sameBuild=(build,record)=>build?.version===record.latestVersion&&build?.buildId===record.buildId
+      async function inspectPending(record,legacyAbsent=false){
+        const status=await api({op:'updates.status'})
+        if(!owns(record)||status.confirmationProtocol!==1)return {status}
+        const settled=status.operationActive===false&&status.writerBusy===false&&['none','committed','aborted','rolled-back'].includes(status.phase)
+        if(settled&&sameBuild(status.installedBuild,record)){
+          save({...record,stage:'restart-required'});show('新版文件已安装，当前宿主尚未加载，请保存工作后重启',{restartRequired:true});return {status,resolution:'resolved'}
+        }
+        if(record.transactionId&&status.transactionId===record.transactionId&&status.phase==='prepared'&&status.operationActive===false&&status.writerBusy===false){
+          show('候选包已准备，安装尚未开始，可继续更新',{resumeAvailable:true});return {status,resolution:'resume'}
+        }
+        if(legacyAbsent&&settled&&status.canRetryLegacy===true&&status.installedBuild){
+          save(null);show('旧安装请求已失效，已核对当前包与安装锁，可重新安装新版');return {status,resolution:'resolved'}
+        }
+        return {status}
+      }
       async function resolveLoaded(record) {
         if (!owns(record)) return
         if (await active(record)) complete(record)
@@ -3145,7 +3161,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         if (record.stage === 'restart-required') { show('新版已安装，宿主要求重启后生效', { restartRequired: true }); return }
         if (record.stage === 'client-refresh') { await resolveLoaded(record); return }
         if(record.transactionId){
-          try{const status=await api({op:'updates.status'});if(status.transactionId!==record.transactionId){uncertain(record);return}if(status.phase==='committed')await settle({application:'restart-required'},record);else if(['rolled-back','aborted'].includes(status.phase)){save(null);show('更新未完成，旧版本已保留或恢复',{manualHelp:true})}else uncertain(record)}catch{uncertain(record)}
+          try{const checked=await inspectPending(record);if(checked.resolution)return checked.resolution;const status=checked.status;if(status.transactionId!==record.transactionId){uncertain(record);return}if(status.phase==='committed')await settle({application:'restart-required'},record);else if(['rolled-back','aborted'].includes(status.phase)){save(null);show('更新未完成，旧版本已保留或恢复',{manualHelp:true})}else uncertain(record)}catch{uncertain(record)}
           return
         }
         const remote = manager()
@@ -3154,7 +3170,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         try {
           const reply = await remote.waitForInstall(record.requestId)
           if (reply?.ok && reply.value) await settle(reply.value, record)
-          else await resolveLoaded(record)
+          else {const checked=reply?.ok&&reply.value===null?await inspectPending(record,true):null;if(!checked?.resolution)await resolveLoaded(record)}
         } catch { await resolveLoaded(record) }
       }
       const serialized = (task) => {
@@ -3168,7 +3184,14 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       return {
         recover: () => serialized(reconcile),
         install: (expectedVersion) => serialized(async () => {
-          if (read()?.requestId) { await reconcile(); return }
+          if (read()?.requestId) {
+            const record=read(),resolution=await reconcile()
+            if(resolution==='resume'&&owns(record)){
+              show('正在继续已准备的更新…',{busy:true})
+              try{await settle(await api({op:'updates.install',expectedVersion:record.latestVersion,transactionId:record.transactionId}),record)}catch{await reconcile()}
+            }
+            return
+          }
           const remote = manager()
           if (typeof remote?.installBundle !== 'function' || typeof remote?.waitForInstall !== 'function') throw Error('当前宿主未提供客户端安装接口，请使用宿主插件管理器')
           show('正在下载并校验安装包…', { busy: true })
@@ -4299,11 +4322,12 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     // END GENERATED TODO LIFECYCLE UI
 
-    const RELEASE_VERSION = '2.4.9'
+    const RELEASE_VERSION = '2.4.10'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.
     const RELEASE_NOTICES = [
+      {version:'2.4.10',items:['更新核对增加已安装构建与安装锁检查；安全解除失效的旧请求，支持继续尚未开始的已准备事务。']},
       {version:'2.4.9',items:['修复共享模式 kb_flow 返回缺少 action 导致工具结果校验失败的问题，成功与错误返回均保留原请求动作。']},
       {version:'2.4.8',items:['修复共库设置页看不到其他会话发起的 OCR / ASR 正在执行和历史记录的问题。']},
       {version:'2.4.7',items:['升级交接时显示服务准备提示并自动恢复，避免将接口准备空档显示为 HTTP 405。']},

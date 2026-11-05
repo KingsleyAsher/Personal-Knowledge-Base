@@ -3,15 +3,25 @@
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 2.4.9 -->
+<!-- project-record-version: 2.4.10 -->
 
-**Source covered: plugin 2.4.9 / client 1.0.3 · Updated: 2026-11-05 · Maintenance: review this record alongside the source with every release.**
+**Source covered: plugin 2.4.10 / client 1.0.3 · Updated: 2026-11-05 · Maintenance: review this record alongside the source with every release.**
 
 This long-term record is for users, maintainers, and future contributors. It explains why the product is built this way, what it can currently do, how its features fit together, where data is stored, and what may come next. “Implemented” refers to source code in this repository. Roadmap items are future directions, not features already delivered. The installed version and build ID must be checked in the client and the corresponding release manifest.
 
 See the [workbench guide](WORKBENCH.en.md) for usage, [release notes](RELEASE.en.md) for changes in each release, and [versioning policy](VERSIONING.en.md) for version comparisons. This record explains the product as a whole; release notes are not an architecture document.
 
 
+
+## 2.4.10: installation confirmation recovery (2026-11-05)
+
+Fix an old missing installation receipt keeping the UI indefinitely uncertain with installation disabled. Reconciliation now checks the installed disk build, active safe operation and profile writer lock. A legacy record clears only after the Host confirms its request is absent and authoritative quiet-writer/build checks pass. Elapsed time and failed requests alone never authorize retry.
+
+A prepared but unstarted safe transaction can resume the same transaction without another preparation. Target files already installed under an old running Host require a restart. Active, unverifiable and damaged states continue to block blind installation.
+
+Seventeen focused checks passed across legacy recovery, locks, active operations, missing journals, installed-but-unloaded files, transaction continuation and completion state. No live user installation, client-cache deletion or forced restart was performed.
+
+An old UI already locked by a pending record cannot load this fix through its disabled button. Use the Host's own Settings → Plugins entry once with this official release, then reload when requested. See the recovery instructions.
 
 ## 2.4.9: kb_flow output contract (2026-11-05)
 

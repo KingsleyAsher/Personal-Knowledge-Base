@@ -25,7 +25,7 @@ function setup(options = {}, data = new Map()) {
   const flow = factory({ api: async (request) => {
     if (request.op === 'status') return { status: { build: installed ? { version: target.latestVersion, buildId: target.buildId } : { version: '1.1.2', buildId: 'd881ed4ff0990f64' } } }
     if(request.op==='updates.install')return (await manager.installBundle('/verified/cache/hash/package.tgz',{enabled:true,requestId:'safe-transaction'})).value
-    if(request.op==='updates.status')return {transactionId:'transaction-fixture',phase:'publishing'}
+    if(request.op==='updates.status')return options.updateStatus||{transactionId:'transaction-fixture',phase:'publishing'}
     prepares++; if (options.downloadFails) throw Error(options.downloadError || 'hash mismatch')
     return { ok: true, spec: '/verified/cache/hash/package.tgz',safeInstall:true,transactionId:'transaction-fixture', ...target, ...(options.prepared || {}) }
   }, manager: () => manager, storage, clientVersion: () => installed && options.clientLoads !== false ? target.latestVersion : '1.1.2', notify: (state) => states.push(state), delay: async () => {} })
@@ -98,3 +98,26 @@ test('late reply from an old module cannot erase a newer installation record', a
 test('a legacy prepare response cannot reach the destructive native installer',async()=>{const s=setup({prepared:{safeInstall:false}});await s.flow.install('1.1.3');assert.equal(s.installs,0);assert.match(s.final.message,/安全更新协议/)});
 
 test("manual recovery help is conditional on failure",async()=>{const ok=setup();await ok.flow.install("1.1.3");assert.notEqual(ok.final.manualHelp,true);const failed=setup({application:"failed",loads:false});await failed.flow.install("1.1.3");assert.equal(failed.final.manualHelp,true)});
+
+const legacyRecord={requestId:'legacy-request',...target,stage:'installing'}
+const quietStatus={confirmationProtocol:1,phase:'none',operationActive:false,writerBusy:false,canRetryLegacy:true,installedBuild:{version:'1.1.2',buildId:'d881ed4ff0990f64'}}
+const pendingData=record=>new Map([[key,JSON.stringify(record)]])
+test('an absent legacy receipt unlocks only after authoritative quiet-writer and installed-build confirmation',async()=>{
+  const s=setup({updateStatus:quietStatus},pendingData(legacyRecord));await s.flow.recover()
+  assert.equal(JSON.parse(s.data.get(key)),null);assert.notEqual(s.final.uncertain,true);assert.equal(s.installs,0)
+  await s.flow.install(target.latestVersion);assert.equal(s.installs,1)
+  for(const status of [{phase:'none'},{...quietStatus,writerBusy:true},{...quietStatus,operationActive:true},{...quietStatus,phase:'publishing'},{...quietStatus,canRetryLegacy:false}]){
+    const busy=setup({updateStatus:status},pendingData(legacyRecord));await busy.flow.recover()
+    assert.equal(busy.final.uncertain,true);assert.equal(busy.installs,0);assert(JSON.parse(busy.data.get(key)).requestId)
+  }
+})
+test('installed target files with an inactive old host request restart rather than endless uncertainty or reinstall',async()=>{
+  const s=setup({updateStatus:{...quietStatus,installedBuild:{version:target.latestVersion,buildId:target.buildId}}},pendingData(legacyRecord))
+  await s.flow.recover();assert.equal(s.final.restartRequired,true);assert.equal(s.installs,0);assert.equal(JSON.parse(s.data.get(key)).stage,'restart-required')
+})
+test('a prepared but never started safe transaction resumes the same transaction without preparing another package',async()=>{
+  const record={...legacyRecord,transactionId:'transaction-fixture'}
+  const s=setup({updateStatus:{...quietStatus,phase:'prepared',transactionId:record.transactionId}},pendingData(record))
+  await s.flow.recover();assert.equal(s.final.resumeAvailable,true);assert.equal(s.installs,0)
+  await s.flow.install(target.latestVersion);assert.equal(s.installs,1);assert.equal(s.prepares,0);assert.equal(JSON.parse(s.data.get(key)),null)
+})
