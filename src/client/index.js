@@ -1896,18 +1896,31 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       document.head.appendChild(tag)
     }
 
-    async function callApi(payload, method) {
-      const response = await fetch('/kb-core/api', {
-        method: method || 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: (method || 'POST') === 'POST' ? JSON.stringify(payload) : undefined,
-      })
-      const text = await response.text()
-      let data = null
-      try { data = JSON.parse(text) } catch (err) { data = { ok: false, error: text.slice(0, 200) } }
-      if (!response.ok) throw new Error((data && data.error) || ('HTTP ' + response.status))
-      return data
+    function createApiTransport({fetch:fetcher,delay=ms=>new Promise(r=>setTimeout(r,ms)),now=Date.now,timeoutMs=90000}) {
+      async function waitReady(deadline){
+        while(now()<deadline){
+          try{const response=await fetcher('/kb-upgrade/status',{cache:'no-store'});if(response.ok){const status=await response.json();if(status.failed)throw Object.assign(Error('知识库服务准备未完成，请查看更新恢复说明'),{code:status.code||'UPGRADE_HANDOFF_FAILED'});if(status.phase==='ready')return}}
+          catch(error){if(error.code)throw error}
+          await delay(1000)
+        }
+        throw Object.assign(Error('知识库服务准备时间较长，请稍后重试或查看更新恢复说明'),{code:'SERVICE_START_TIMEOUT'})
+      }
+      return async(payload,method)=>{
+        const deadline=now()+timeoutMs
+        for(;;){
+          const response=await fetcher('/kb-core/api',{method:method||'POST',headers:{'content-type':'application/json'},body:(method||'POST')==='POST'?JSON.stringify(payload):undefined})
+          const text=await response.text();let data
+          try{data=JSON.parse(text)}catch{data={ok:false,error:text.slice(0,200)}}
+          // Retry only the guard's explicit rejection before execution. Never
+          // replay a mutation after HTTP errors, dropped replies or unknown results.
+          if(response.status===503&&data.code==='SERVICE_STARTING'&&data.requestNotExecuted===true){await waitReady(deadline);continue}
+          if(!response.ok)throw Object.assign(Error(data?.error||('HTTP '+response.status)),{code:data?.code})
+          return data
+        }
+      }
     }
+    const apiTransport=createApiTransport({fetch:(...args)=>fetch(...args)})
+    async function callApi(payload, method) { return apiTransport(payload,method) }
 
     // 重建索引：走宿主 op 'index-rebuild'，与模型工具 kb_check(rebuild=true) 同一条路径。
     // 设置页与顶栏页签各有一个按钮，都调这一个函数，避免两处语义漂移。
@@ -3334,8 +3347,9 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       const [updating, setUpdating] = react.useState(updateViewState)
       const [managerReady, setManagerReady] = react.useState(Boolean(updateManager))
       const [handoffError,setHandoffError]=react.useState(null)
+      const [serviceWaiting,setServiceWaiting]=react.useState(false)
       const [helpClosed,setHelpClosed]=react.useState(false)
-      react.useEffect(()=>{let disposed=false;const controller=new AbortController();const poll=()=>{void fetch('/kb-upgrade/status',{cache:'no-store',signal:controller.signal}).then(r=>r.ok?r.json():null).then(value=>{if(!disposed&&value?.failed)setHandoffError(value.code||'UPGRADE_HANDOFF_FAILED')}).catch(()=>{})};poll();const timer=setInterval(poll,3000);return()=>{disposed=true;controller.abort();clearInterval(timer)}},[])
+      react.useEffect(()=>{let disposed=false;const controller=new AbortController();const poll=()=>{void fetch('/kb-upgrade/status',{cache:'no-store',signal:controller.signal}).then(r=>r.ok?r.json():null).then(value=>{if(!disposed&&value){setServiceWaiting(value.phase==='starting');if(value.failed)setHandoffError(value.code||'UPGRADE_HANDOFF_FAILED')}}).catch(()=>{})};poll();const timer=setInterval(poll,3000);return()=>{disposed=true;controller.abort();clearInterval(timer)}},[])
       react.useEffect(()=>{if(updating.manualHelp||handoffError)setHelpClosed(false)},[updating.manualHelp,handoffError])
       const owner = react.useRef(Symbol('kb-update-prompt'))
       const [restartDeferred, setRestartDeferred] = react.useState(false)
@@ -3374,6 +3388,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         window.addEventListener('keydown', onKeyDown)
         return () => window.removeEventListener('keydown', onKeyDown)
       }, [state.promptOwner, releases.map(release => updateDismissKey(release)).join('|')])
+      if(serviceWaiting&&!updating.manualHelp&&!handoffError)return e('div',{className:'kbw-banner',role:'status','aria-live':'polite',style:{position:'fixed',top:16,left:'50%',transform:'translateX(-50%)',zIndex:10000,padding:'12px 20px',borderRadius:8,background:'var(--bg)',color:'var(--fg)',border:'1px solid var(--line)'}},'知识库服务准备中，请稍候…')
       if((updating.manualHelp||handoffError)&&!helpClosed)return reactDom.createPortal(e('div',{className:'kb-release-backdrop'},e('section',{className:'kb-release-card',role:'alertdialog','aria-modal':'true','aria-label':'更新未完成'},
         e('h2',null,'自动更新未完成'),e('p',null,handoffError?'旧服务交接暂未完成，请等待现有任务结束或按恢复说明处理。':updating.message),
         e('p',null,'请勿反复安装或清空知识库与解析记录。保存工作后，可按说明核对状态并恢复安装。'),
@@ -4284,11 +4299,12 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     // END GENERATED TODO LIFECYCLE UI
 
-    const RELEASE_VERSION = '2.4.6'
+    const RELEASE_VERSION = '2.4.7'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.
     const RELEASE_NOTICES = [
+      {version:'2.4.7',items:['升级交接时显示服务准备提示并自动恢复，避免将接口准备空档显示为 HTTP 405。']},
       {version:'2.4.6',items:['恢复 2.4.3 的直接自动升级；旧服务按原有空闲机制退出后自动交接。','升级或交接失败时提供恢复说明，增加受损 2.4.3 安装的校验修复入口。']},
       { version: '2.4.4', items: ['Windows 更新先校验和准备候选包，安全停服后切换，失败恢复旧包和清单。', '安全更新使用独立协议；旧版首次升级需过渡安装，忙碌或缺少停服能力时延后安装。'] },
       { version: '2.4.3', items: ['原件编辑后同步检索内容与引用范围，保留独立撰写的摘要。', '修复 Windows 解析任务状态写入冲突；后台失败保留记录、报告诊断并支持恢复重试。'] },

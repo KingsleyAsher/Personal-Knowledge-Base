@@ -1,3 +1,9 @@
+## 2.4.7: service preparation during update handoff (2026-11-05)
+
+Keep the workbench API registered during handoff. The client shows a neutral preparation message and continues after readiness. Only requests explicitly rejected before execution may be retried; genuine HTTP 405, lost responses and unknown write outcomes remain errors. Preparation failures and timeouts retain recovery guidance.
+
+Nineteen focused checks passed, including a real local HTTP server, exactly one mutation after readiness, failure/timeout boundaries and service lifecycle checks. No additional full regression or live user-instance/UI verification is claimed.
+
 # 2.4.6：2.4.3 直接自动升级与恢复（2026-11-05）
 
 沿用本次验证的 2.4.3 直接安装、自然退出交接、条件错误提示和固定旧包恢复。补充 Windows 内置管理员 SID 别名的规范化校验，权限仍要求同一组明确的主体与授权。2.4.5 候选未通过发布环境校验，未创建正式 Release；保留其包字节，后续以 2.4.6 为自动更新目标。

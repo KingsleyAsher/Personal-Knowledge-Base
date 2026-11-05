@@ -16,7 +16,7 @@ import {createParseSourceAuthority} from '../kb-core/src/parse-source-authority.
 import {createFlowWorkspaceManager} from '../kb-core/src/flow-workspace.js'
 import {registerHostAssets} from './host-assets.js'
 // Called only by an explicitly configured Host. It never starts an embedded writer.
-export async function mountServiceHost(ctx, config, { isLiveKnowledgeGrant, gatewayApply, createCitationGuard, build, getFlowWorkspace,legacyStateDir,profileDir,library,python='python' }) {
+export async function mountServiceHost(ctx, config, { isLiveKnowledgeGrant, gatewayApply, createCitationGuard, build, getFlowWorkspace,installApi,legacyStateDir,profileDir,library,python='python' }) {
   const definitions = JSON.parse(await readFile(new URL('./tool-definitions.json', import.meta.url),'utf8'))
   const runtime=config.serviceConnection?null:await connectRuntime({library,home:config.shared?.home??defaultServiceHome(),python:config.shared?.python??python,kind:'dsh-adapter',candidateRoot:config.shared?.candidateRoot??process.env.KB_SHARED_CANDIDATE_ROOT,required:['workspace.read','providers.get','host.bridge']})
   const primaryClient=runtime?.client??await connectService({...config.serviceConnection,kind:'dsh-adapter'}),routing=new AsyncLocalStorage();const client=new Proxy(primaryClient,{get(target,key){const source=routing.getStore()??target,value=Reflect.get(source,key);return typeof value==='function'?value.bind(source):value}})
@@ -100,7 +100,7 @@ export async function mountServiceHost(ctx, config, { isLiveKnowledgeGrant, gate
   const server=ctx.get('webServer')
   if(server?.register) {
     await registerHostAssets({ctx,server,root:path.resolve(import.meta.dirname,'../..'),client,send,sameOrigin})
-    ctx.effect(()=>server.register({kind:'exact',path:'/kb-core/api',handler:async(req,res)=>{
+    const apiHandler=async(req,res)=>{
       if(!sameOrigin(req)) return send(res,403,{ok:false,code:'FORBIDDEN'})
       try {
         if(req.method==='GET') return send(res,200,{ok:true,status:{...await sharedStatus(),build}})
@@ -120,7 +120,8 @@ export async function mountServiceHost(ctx, config, { isLiveKnowledgeGrant, gate
         if(body.op==='index.policy.set')return send(res,200,await client.call('policy.setIndexExcluded',{paths:body.paths??[body.path],excluded:body.excluded,expectedRevision:body.expectedPolicyRevision},{requestId:body.requestId??randomUUID()}))
         return send(res,200,await client.call('adapter.dispatch',{operation:body},{requestId:body.requestId??randomUUID()}))
       }catch(e){send(res,200,{ok:false,code:e.code??'HOST_UNAVAILABLE',error:e.message})}
-    }}),'kb-service: existing workbench API')
+    };
+    ctx.effect(()=>installApi?installApi(apiHandler):server.register({kind:'exact',path:'/kb-core/api',handler:apiHandler}),'kb-service: existing workbench API')
     ctx.effect(()=>server.register({kind:'exact',path:'/kb-core/workbench-events',handler:async(req,res)=>{
       if(req.method!=='GET'||!sameOrigin(req))return send(res,403,{ok:false})
       res.writeHead(200,{'content-type':'text/event-stream','cache-control':'no-store'})
