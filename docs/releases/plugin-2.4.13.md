@@ -1,5 +1,9 @@
 # 知识库插件 2.4.13 / Knowledge-base plugin 2.4.13
 
+**正常 2.4.3 可直接升级到 2.4.13，无需先装 2.4.6。** 已补验公开原包、Windows 真实 pnpm 和旧服务交接，合成原件保持不变。测试没有驱动完整 Electron 自动安装界面；已受旧回执阻断的实例及其他更早版本需分别判断，不能把恢复限制推广到所有旧用户。[验证范围](../validation/windows-auto-update-2.4.13.md)
+
+**A normal 2.4.3 installation can migrate directly to 2.4.13 without first installing 2.4.6.** The public old package, real Windows pnpm installation and live service handoff were rechecked. This does not establish complete Electron automation or compatibility for every earlier version or blocked receipt state.
+
 ## 2.4.13：更新不再重解析宿主依赖（2026-11-05）
 
 安全更新只在独立解析目录中解析无依赖的知识库包，将其 importer、package、snapshot 三组记录合并到原 pnpm v9 锁文件。其他插件的来源、锁定版本及记录逐字节保留，不再向注册源查找宿主内置包，也不复制或重装其他插件。未知锁格式、歧义或跨包引用失败时保留旧安装。
