@@ -1,32 +1,43 @@
 {
   "date": "2026-11-07",
   "plugin": {
-    "version": "2.5.4",
-    "buildId": "8e3507273e8dca8c",
-    "sha256": "1c15811895260765bb910643055d7b39893b3120a0868125206c76062a06a547",
-    "sourcePackageFilesVerified": 488,
-    "downloadParts": 41
+    "version": "2.5.5",
+    "buildId": "2b94b268c5dac926",
+    "sha256": "d6afd99ae9cab7a2c39fd1ebc41b37f6d73047e360474eff2dca5329464795d4",
+    "sourcePackageFilesVerified": 491
   },
   "client": {
-    "version": "1.1.1",
-    "rebuilt": false,
-    "pairedPluginVersion": "2.5.3"
+    "version": "1.1.2",
+    "buildId": "17244e3b1341839e",
+    "sha256": "aa8e8a83bf67ce2271182f60e4fae8799b2ffd9342dce94fc33baa4fdc354ec8",
+    "pairedPluginVersion": "2.5.5",
+    "productionBuildPassed": true,
+    "embeddedPluginDigestVerified": true
   },
   "focusedTests": {
-    "updateAndRecovery": 36,
-    "releaseNotice": 12,
-    "distinctPassed": 48,
+    "distinctPassed": 30,
     "unresolvedFailures": 0
   },
-  "liveBefore": {
-    "giteeRawBinary": "HTTP 403",
-    "gitcodeRawBinary": "HTTP 404",
-    "githubRawBinary": "fetch failed",
-    "giteeManifest": "2.5.3"
+  "liveRuntime": {
+    "serviceBuildId": "abbf4b5c83735154",
+    "coreVersion": "2.5.5",
+    "connections": 3,
+    "writers": 1,
+    "dshOnline": true,
+    "hostCount": 1,
+    "actualClientVersion": "1.1.2",
+    "actualClientBuildId": "17244e3b1341839e",
+    "actualPluginVersion": "2.5.5",
+    "actualPluginBuildId": "2b94b268c5dac926",
+    "dshHandoffReady": true,
+    "dshApiHttp": 200,
+    "sameDshApplicationKeptRunning": true,
+    "settingsDraftsGrantsUnchanged": true,
+    "clientConnectedVisible": true
   },
-  "legacyVerifiedCachePrepared": true,
-  "livePartsDownloadVerified": false,
-  "productionInstallationVerified": false,
-  "runningDshActivationVerified": false,
-  "realPrivateLibraryUsed": false
+  "realLibraryDocumentBodiesUsedForTesting": false,
+  "realModelCalled": false,
+  "libraryMigrationPerformed": false,
+  "manualUpdateButtonVisible": true,
+  "manualInstallerLaunchDuringLiveCheck": false
 }

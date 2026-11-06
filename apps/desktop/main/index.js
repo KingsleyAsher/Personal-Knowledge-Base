@@ -64,7 +64,21 @@ async function initialize(){
 }
 function wire(){
  function resourcePreview(p){if(p.resourceHandle){const token=randomUUID();resources.set(token,{handle:p.resourceHandle,size:p.file.size,mime:p.file.mime,path:p.file.path,revision:p.file.revision,originalKey:p.originalKey,trashId:p.trashId,trashPath:p.trashPath,library:clientKey(),refreshAt:Date.now()+14*60000});p.resourceUrl='kb-media://asset/'+token;}return p;}
- register('clientUpdates',async a=>a.action==='download'?clientUpdater.download():clientUpdater.check({force:true}));
+ register('clientUpdates',async a=>{
+  if(a.action==='check')return clientUpdater.check({force:true});
+  if(a.action==='download')return clientUpdater.download();
+  if(a.action==='open-installer'){
+   const file=await clientUpdater.verifiedInstaller(),failure=await shell.openPath(file);
+   if(failure)throw Error('无法启动安装程序：'+failure);
+   return {...clientUpdater.status(),message:'已启动经过校验的安装程序。请保存工作后退出本客户端，再按安装程序提示完成更新。'};
+  }
+  if(a.action==='release-page'){
+   const update=await clientUpdater.check();if(!update.manifest)throw Error('尚未取得可用版本信息');
+   await shell.openExternal('https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/'+encodeURIComponent(update.manifest.tag));
+   return clientUpdater.status();
+  }
+  throw Error('未知客户端更新操作');
+ });
  register('init',async()=>({connection:manager.status(),error:bootError,preferences:await localRead('preferences',{theme:'system',restoreTabs:true,keepDrafts:true}),workspace:(await localRead('workspaces',{}))[clientKey()],drafts:(await localRead('drafts',{}))[clientKey()]??{},pending:await localRead('pending',{})}));
  register('list',a=>manager.call(a.sort?'desktop.listSorted':'desktop.list',a));
  register('inbox',async a=>{

@@ -1,4 +1,4 @@
-> Current release / 当前版本：plugin **2.5.4**, client **1.1.1**. [Release notes](docs/releases/plugin-2.5.4.md)。原件索引迁移须在资料库预览并确认。
+> Current release / 当前版本：plugin **2.5.5**, client **1.1.2**. [Release notes](docs/releases/plugin-2.5.5.md)。原件索引迁移须在资料库预览并确认。
 
 # Shared plugin and client architecture
 

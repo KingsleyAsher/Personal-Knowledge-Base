@@ -8,6 +8,7 @@ import {libraryIdentity} from './service.js';
 import {connectService} from './client.js';
 import {launchService} from './launcher.js';
 import {runtimeBuild} from './build.js';
+import {canShareRuntime} from './compatibility.js';
 
 export const defaultServiceHome=()=>process.env.KB_SHARED_HOME||path.join(os.homedir(),'.dsh','shared-knowledge-services');
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
@@ -23,9 +24,9 @@ async function bootstrapRuntime({library,home=defaultServiceHome(),python='pytho
  try{
   while(Date.now()<until){
    const live=await connect();
-   if(live&&required.every(m=>live.health.supported.includes(m))&&live.health.serviceBuildId===build){client=live.client;break;}
+   if(live&&canShareRuntime(live.health,build,required)){client=live.client;break;}
    if(live&&!live.health.supported.includes('service.prepareUpgrade')&&live.health.serviceBuildId===LEGACY_243_BUILD){await waitForLegacy243({health:live.health,client:live.client,privateDir,python});continue;}
-   if(live){if(live.health.connections>1){live.client.close();throw error('SERVICE_UPGRADE_REQUIRED','同库仍有其他版本在线，请先退出旧候选版本，原窗口与原件未改动。');}if(!live.health.supported.includes('service.prepareUpgrade')){live.client.close();throw error('CAPABILITY_UNSUPPORTED','旧服务没有安全停服协议，请使用过渡安装入口')}
+   if(live){if(live.health.connections>1){live.client.close();throw error('SERVICE_UPGRADE_REQUIRED','当前共享服务与本程序的接口、存储版本或所需能力不兼容。请更新配套插件与客户端；已有连接和任务保持运行，未启动第二个写入者。');}if(!live.health.supported.includes('service.prepareUpgrade')){live.client.close();throw error('CAPABILITY_UNSUPPORTED','旧服务没有安全停服协议，请使用过渡安装入口')}
      let receipt;try{receipt=await live.client.call('service.prepareUpgrade')}finally{live.client.close()}
      const deadline=Date.now()+15000;let stopped=false;
      while(Date.now()<deadline){const done=await readJson(path.join(privateDir,'last-close.json'),null);if(done?.bootId===receipt.bootId&&done.clean&&await native(python,'birth',{pid:receipt.pid})===null){stopped=true;break}await pause(100)}
@@ -43,7 +44,8 @@ async function bootstrapRuntime({library,home=defaultServiceHome(),python='pytho
   if(!client)throw error('HOST_UNAVAILABLE','本地知识库服务启动超时，未启用第二个写入者');
   if(!(await client.call('service.health')).active)await client.call('migration.commit',{planId:'fresh',quiescent:true});
   await client.call('events.subscribe');off=client.subscribe(onEvent);
-  await mkdir(base,{recursive:true});await atomic(path.join(privateDir,'discovery.json'),{schemaVersion:1,...identity,buildId:build,privateDir,kind,updatedAt:Date.now()});
+  const serviceHealth=await client.call('service.health');
+  await mkdir(base,{recursive:true});await atomic(path.join(privateDir,'discovery.json'),{schemaVersion:1,...identity,buildId:serviceHealth.serviceBuildId,clientBuildId:build,privateDir,kind,updatedAt:Date.now()});
   return {client,privateDir,identity,async close(){off?.();client.close();}};
  }catch(e){off?.();client?.close();throw e;}
  finally{await lock?.close();if(lock&&(await readJson(lockFile,null))?.owner===owner)await unlink(lockFile).catch(()=>{});}

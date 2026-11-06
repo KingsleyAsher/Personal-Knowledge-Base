@@ -2,13 +2,13 @@
 
 [中文](VERSIONING.md) · English
 
-Both products share this policy while retaining independent versions: plugin source 2.5.4, client source 1.1.1. Shared implementation: packages/kb-contracts/version-policy.js; the plugin keeps its legacy import entry.
+Both products share this policy while retaining independent versions: plugin source 2.5.5, client source 1.1.2. Shared implementation: packages/kb-contracts/version-policy.js; the plugin keeps its legacy import entry.
 
 ## Names and ordering
 
 Stable versions use x.y.z; previews use x.y-betaN with positive numeric N and no leading zeros. New rc1, x.y.z-betaN and beta0 releases are rejected. Historical x.y.z-betaN is accepted only as migration input for installed versions/old feeds.
 
-Compare major, then minor. Within an iteration, numeric beta order precedes stable; stable patch numbers then apply. For example: 1.1-beta2 < 1.1-beta10 < 1.1.0 < 1.1.1 < 1.2-beta1. Canonical previews outrank equivalent legacy spellings. Equal versions and downgrades are not automatic updates.
+Compare major, then minor. Within an iteration, numeric beta order precedes stable; stable patch numbers then apply. For example: 1.1-beta2 < 1.1-beta10 < 1.1.0 < 1.1.2 < 1.2-beta1. Canonical previews outrank equivalent legacy spellings. Equal versions and downgrades are not automatic updates.
 
 ## Every upgrade is automatic
 
