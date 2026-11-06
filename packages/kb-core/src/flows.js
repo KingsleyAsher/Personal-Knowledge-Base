@@ -22,10 +22,12 @@ import { INBOX_FLOW } from './inbox-flow.js'
 
 export const FLOWS_SCHEMA_VERSION = 1
 function withBuiltinFlows(flows) {
+  const saved = flows.find(f => f.id === INBOX_FLOW.id)
   const flow = normalizeFlow({ id: INBOX_FLOW.id, name: INBOX_FLOW.name,
     triggers: ['整理并归档收件箱'], description: '内置流程：新开知识库 agent 会话，以 High 推理强度整理收件箱。',
     steps: [{ title: '整理并归档收件箱内的文件', instruction: INBOX_FLOW.prompt }],
-    outputRules: { land: false }, enabled: true, revision: 1 })
+    outputRules: { land: false }, enabled: true, execution: saved?.execution || {},
+    revision: Number.isSafeInteger(saved?.revision) && saved.revision > 0 ? saved.revision : 1 })
   return [{ ...flow, builtin: true }, ...flows.filter(f => f.id !== flow.id)]
 }
 export const FLOW_KINDS = ['知识', '项目', '人物', '素材', '画像']
@@ -429,7 +431,8 @@ export function createFlowEngine(opts) {
       schemaVersion: FLOWS_SCHEMA_VERSION,
       kbId: kbId,
       updatedAt: nowIso(),
-      flows: arr(store.flows).filter(f => f.id !== 'builtin-inbox-organize'),
+      flows: arr(store.flows).map(f => f.id === INBOX_FLOW.id
+        ? { id: f.id, execution: f.execution || {}, revision: f.revision } : f),
     }
     await atomicWrite(paths.file, JSON.stringify(payload, null, 2))
     return payload
@@ -530,6 +533,7 @@ export function createFlowEngine(opts) {
         enabled: f.enabled !== false,
         archived: f.archived === true,
         revision: f.revision,
+        execution: f.execution || {},
         stepCount: arr(f.steps).length,
         updatedAt: f.updatedAt,
         lastRun: runsByFlow.get(f.id) ?? null,
@@ -569,7 +573,8 @@ export function createFlowEngine(opts) {
     if (flow.archived === true) return fail('archived', '该流程已归档：恢复后才能运行')
     if (flow.enabled === false) return fail('disabled', '该流程已停用：启用后才能运行')
     if (flow.revision !== input.expectedRevision) return fail('flow-changed', '流程定义已变化，请刷新页面后再运行')
-    const execution = flow.builtin ? (input.execution?.provider && input.execution?.model ? { provider: input.execution.provider, model: input.execution.model, reasoningEffort: 'high' } : {}) : input.execution === undefined ? (flow.execution || {}) : input.execution
+    const configured = input.execution === undefined ? (flow.execution || {}) : input.execution
+    const execution = flow.builtin ? (configured?.provider && configured?.model ? { provider: configured.provider, model: configured.model, reasoningEffort: 'high' } : {}) : configured
     const executionErrors = validateFlow({ ...flow, execution })
     if (executionErrors.length) return fail('invalid-flow', executionErrors.join('；'))
     const running = active.get(flow.id)
@@ -614,6 +619,25 @@ export function createFlowEngine(opts) {
    * 新建或更新。更新必须带 expectedRevision（数字）。
    * conflict 时**不写盘**，并返回当前 revision 与差异摘要。
    */
+  async function setExecution(input = {}) {
+    const b = await boundKb()
+    if (!b.ok) return kbFail(b)
+    if (input.kbId !== b.kbId) return fail('kb-changed', '绑定的知识库已变化，请刷新后再保存配置')
+    const r = await readStore(b.kbId)
+    if (!r.ok) return fail(r.reason, r.error)
+    const flow = r.store.flows.find(f => f.id === str(input.id))
+    if (!flow) return fail('not-found', '没有这个流程')
+    if (flow.revision !== input.expectedRevision) return fail('conflict', '流程已变化，请刷新后重新设置', { conflict: true, currentRevision: flow.revision })
+    if (!isPlainObject(input.execution)) return fail('invalid-flow', '执行配置必须是对象')
+    const errors = validateFlow({ ...flow, execution: input.execution })
+    if (errors.length) return fail('invalid-flow', errors.join('；'))
+    const execution = Object.fromEntries(['provider', 'model', 'reasoningEffort'].filter(key => str(input.execution[key])).map(key => [key, str(input.execution[key])]))
+    if (flow.builtin && execution.model) execution.reasoningEffort = 'high'
+    const next = { ...flow, execution, revision: flow.revision + 1, updatedAt: nowIso() }
+    await writeStore(b.kbId, { flows: r.store.flows.map(f => f.id === next.id ? next : f) }, r.paths)
+    return { ok: true, kbId: b.kbId, flow: next, revision: next.revision }
+  }
+
   async function save(input) {
     const b = await boundKb()
     if (!b.ok) return kbFail(b)
@@ -1098,6 +1122,7 @@ export function createFlowEngine(opts) {
     get: get,
     prepareConversation,
     save: input => serialized(stateDir, () => save(input)),
+    setExecution: input => serialized(stateDir, () => setExecution(input)),
     setEnabled: (id, enabled) => serialized(stateDir, () => setEnabled(id, enabled)),
     archive: (id, restored) => serialized(stateDir, () => archive(id, restored)),
     resolve: resolve,

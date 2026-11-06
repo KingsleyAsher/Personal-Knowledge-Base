@@ -1,3 +1,5 @@
+> Current release / 当前版本：plugin **2.5.3**, client **1.1.1**. [Release notes](../releases/plugin-2.5.3.md)。原件索引迁移须在资料库预览并确认。
+
 > Unified project: [main README](../../README.md) · [shared architecture](../../ARCHITECTURE.en.md).
 
 # Architecture and library boundaries

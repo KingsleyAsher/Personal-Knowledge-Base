@@ -183,10 +183,12 @@
           ]
         },
         "task": {
-          "type": "string"
+          "type": "string",
+          "description": "任务成品下的单层目录名；已有系列目录复用系列名，如 信息报。prepare/register 相同；单期标题用 title。"
         },
         "path": {
-          "type": "string"
+          "type": "string",
+          "description": "库内相对文件路径，如 任务成品/信息报/028.pdf；不是绝对路径或仅文件名。"
         },
         "text": {
           "type": "string"

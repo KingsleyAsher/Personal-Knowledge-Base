@@ -47,7 +47,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
   }
   const phase4=['workspace.read','workspace.write','providers.get','providers.source','providers.syncPlugin','host.bridge','dsh.status',...Object.keys(METHODS).filter(m=>m.startsWith('dsh.'))]
   const supported=[...SUPPORTED,...phase4,...Object.keys(DESKTOP_METHODS)]
-  let desktopFiles,inboxJobs,vectorProfiles,broker,engines,toolRouter,unsubscribe,pendingEvent,clipper,legacyPorts,memoryChannel,desktopPrivateDirs=DEFAULT_PRIVATE_DIRS
+  let desktopFiles,inboxJobs,vectorProfiles,broker,engines,toolRouter,unsubscribe,pendingEvent,clipper,legacyPorts,memoryChannel,desktopPrivateDirs=DEFAULT_PRIVATE_DIRS,desktopCatalog=null,desktopShowPrivate=false
   const location = await libraryIdentity(library), { root, kbId, instanceId } = location, identity = { kbId, instanceId }
   privateDir = path.resolve(privateDir)
   const relativePrivate = path.relative(root,privateDir)
@@ -118,7 +118,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
     return { rel, absolute: await safePath(root, rel), b }
   }
   async function workspaceOperation(operation,mutation,caller,operationId){
-    if(operation?.op?.startsWith('upgrade.framework-')){
+    if(operation?.op?.startsWith('upgrade.framework-')||operation?.op?.startsWith('architecture.')){
       if(!caller.access.includes('admin'))throw error('FORBIDDEN','旧库框架迁移仅供用户设置使用');
       if(operation.expectedKbId!==kbId)throw error('BINDING_CHANGED','知识库身份已改变，请重新预览');
     }
@@ -194,7 +194,9 @@ export async function startService({ library, privateDir, python, sources = {}, 
     if(call.method==='providers.syncPlugin')return vectorProfiles.sync(a)
     if(call.method==='workspace.read'||call.method==='workspace.write')return workspaceOperation(a.operation,call.method==='workspace.write',caller,call.operationId??call.requestId)
     if (call.method.startsWith('desktop.') && desktopFiles) {
-      desktopPrivateDirs=(await kernel.workbench.displayPolicy()).privateDirs
+      const display=await kernel.workbench.libraryState.binding(kbId)
+      desktopPrivateDirs=display.preferences.showPrivate?[]:display.privateDirs
+      desktopCatalog=display.fileCatalog;desktopShowPrivate=display.preferences.showPrivate
       return desktopFiles.call(call.method, a, caller.id, call.operationId)
     }
     if (call.method === 'library.snapshot') { const s = await wb({ op: 'atlas.snapshot' }); return { ...s, library: identity, sharedStateRevision: (await lib.userData(await lib.binding(kbId))).revision } }
@@ -289,7 +291,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
         throw error('RESULT_UNKNOWN', 'Do not repeat a write with an unresolved receipt')
       }
     }
-    if (call.policyVersion !== policy) throw error('POLICY_CHANGED')
+    if (call.policyVersion !== policy) throw Object.assign(error('POLICY_CHANGED'),{requestNotExecuted:true})
     if (!mutation) return route(call, connection)
     const operationId = hash(grant.id + '\0' + call.requestId), journal = { schemaVersion: 1, requestId: call.requestId, principal: grant.id, fingerprint, operationId, state: 'prepared', method: call.method }
     if (['document.save', 'document.create'].includes(call.method)) {
@@ -376,7 +378,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
     inboxJobs=await createInboxJobs({privateDir,connected:owner=>{const c=connections.get(owner);if(!c?.authenticated)return false;try{auth.get(c.grantId);return true}catch{return false}},list:async()=>{
       const files=[];for(let offset=0;;offset+=500){const r=await kernel.dispatch({op:'inbox.list',expectedKbId:kbId,offset,limit:500});files.push(...r.items);if(r.items.length<500)break;if(files.length>=5000)throw error('BAD_REQUEST','单次整理最多 5000 份待整理资料');}return files;
     }})
-    desktopFiles=await createDesktopFiles({root,privateDir,desktopRoot:desktopRoot??path.dirname(root),candidateOnly:!!desktopRoot,core: kernel.core, getPrivateDirs: () => desktopPrivateDirs,
+    desktopFiles=await createDesktopFiles({root,privateDir,desktopRoot:desktopRoot??path.dirname(root),candidateOnly:!!desktopRoot,core: kernel.core, getPrivateDirs: () => desktopPrivateDirs,getCatalog:()=>desktopCatalog,showPrivate:()=>desktopShowPrivate,
       withLock: async fn => { const result = await kernel.core._internal.withMutationLock(root, fn); if (result?.ok === false) throw error('STATE_BUSY'); return result } })
     const bootstrapFile = await auth.provision()
     bridge = spawn(python, ['-I', '-X', 'utf8', path.join(import.meta.dirname, 'native.py'), 'serve', pipe], { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] })
@@ -422,7 +424,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
             if (!connection.authenticated || e.code === 'UNAUTHORIZED') { disconnect(id); return }
             const mapped=({SOURCE_MISMATCH:'BAD_REQUEST',ADMIN_ONLY:'FORBIDDEN',BAD_OPERATION:'BAD_REQUEST',UNKNOWN_OPERATION:'CAPABILITY_UNSUPPORTED',PRIVATE_HIDDEN:'FORBIDDEN',SETTINGS_CHANGED:'POLICY_CHANGED',IDENTITY_REQUIRED:'BINDING_CHANGED',LINK_DENIED:'FORBIDDEN',PATH_ESCAPE:'FORBIDDEN',BAD_PATH:'BAD_REQUEST',UNBOUND:'BINDING_CHANGED',SERVICE_REQUIRED:'RECOVERY_REQUIRED',ENOENT:'NOT_FOUND',EDIT_TOO_LARGE:'BAD_REQUEST',UNSUPPORTED_ENCODING:'READ_ONLY',UNSUPPORTED_EDIT:'READ_ONLY'})[e.code]??e.code
             const code=ERRORS.includes(mapped)?mapped:'RESULT_UNKNOWN'
-            send(id, { requestId: frame.requestId, bootId, ok: false, error: { code, message: String(e.code?e.message:'Operation failed; inspect the local recovery journal').slice(0,1024),retryable:code==='STATE_BUSY',operationState:['BAD_REQUEST','FORBIDDEN','CONFLICT','POLICY_CHANGED','BINDING_CHANGED','CAPABILITY_UNSUPPORTED'].includes(code)?'not-started':'unknown' }, policyVersion: await policyVersion().catch(() => 'recovery-required') })
+            send(id, { requestId: frame.requestId, bootId, ok: false, error: { code, requestNotExecuted:e.requestNotExecuted===true,message: String(e.code?e.message:'Operation failed; inspect the local recovery journal').slice(0,1024),retryable:code==='STATE_BUSY',operationState:['BAD_REQUEST','FORBIDDEN','CONFLICT','POLICY_CHANGED','BINDING_CHANGED','CAPABILITY_UNSUPPORTED'].includes(code)?'not-started':'unknown' }, policyVersion: await policyVersion().catch(() => 'recovery-required') })
           }
         })).catch(() => disconnect(id)).finally(()=>{connection.inflight--})
       })

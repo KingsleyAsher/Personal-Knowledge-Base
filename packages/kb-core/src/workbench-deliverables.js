@@ -53,11 +53,11 @@ export function createDeliverableService({ binding, versionOf, isPrivate, assert
       if (args.op === 'deliverables.prepare') {
         await mkdir(await safePath(b.root, task, { missing: true }), { recursive: true })
         data.tasks[task] = { private: privateValue, sources }; await atomicJson(file, data)
-        return { directory: path.join(b.root, ...task.split('/')), relativeDirectory: task, private: privateValue, instruction: '生成后调用 kb_deliverable register 登记每个文件及检索文字。' }
+        return { directory: path.join(b.root, ...task.split('/')), relativeDirectory: task, private: privateValue, instruction: `生成后调用 kb_deliverable register，task 继续使用 ${JSON.stringify(args.task)}，path 使用库内相对路径 ${task}/文件名。prepare 可复用已有系列目录，无需按日期或期号新建目录；期号标题填 title。` }
       }
       if (args.op === 'deliverables.register') {
         const rel = relativePath(args.path)
-        if (!rel.startsWith(task + '/')) throw fail('OUTSIDE_TASK', '成品必须位于已准备的任务目录下')
+        if (!rel.startsWith(task + '/')) throw fail('OUTSIDE_TASK', `task 对应目录 ${task}/，path 必须是该目录下文件的库内相对路径。已有系列目录请用系列目录名作为 task 重新 prepare/register，无需移动文件；单期标题填 title。`)
         const abs = await safePath(b.root, rel), s = await stat(abs)
         if (!s.isFile() || s.size > 32 * 1024 * 1024) throw fail('BAD_DELIVERABLE', '文件不存在或大于 32 MiB')
         let text = String(args.text || '').slice(0, 2 * 1024 * 1024)

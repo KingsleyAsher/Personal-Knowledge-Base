@@ -45,3 +45,6 @@ installer-design-b/installer/*.ico
 .release-work/
 
 .test-runs/
+
+# Agent scratch and local release backups
+/_scratch/

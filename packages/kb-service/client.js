@@ -16,10 +16,15 @@ export async function connectService({ pipe, python, credential, credentialFile,
       const i = buffer.indexOf(10), line = buffer.subarray(0, i); buffer = buffer.subarray(i + 1)
       if (line.length > MAX_FRAME_BYTES) { socket.destroy(); return }
       let frame; try { frame = JSON.parse(line) } catch { socket.destroy(); return }
-      if (frame.type === 'event') { for (const fn of listeners) fn(frame); continue }
+      if (frame.type === 'event') { if(welcome&&frame.policyVersion)welcome.policyVersion=frame.policyVersion;for (const fn of listeners) fn(frame); continue }
       if (frame.requestId && pending.has(frame.requestId)) {
-        const row = pending.get(frame.requestId); pending.delete(frame.requestId); clearTimeout(row.timer)
+        const row = pending.get(frame.requestId)
         if (frame.policyVersion) welcome.policyVersion = frame.policyVersion
+        // POLICY_CHANGED is emitted before execution/receipt creation. Retry
+        // this explicit rejection once with the same id, never unknown writes
+        // or a caller-specified policy snapshot.
+        if(!frame.ok&&frame.error?.code==='POLICY_CHANGED'&&frame.error.requestNotExecuted===true&&frame.policyVersion&&row.retry&&!row.retried){row.retried=true;row.retry();continue}
+        pending.delete(frame.requestId); clearTimeout(row.timer)
         frame.ok ? row.resolve(frame.value) : row.reject(error(frame.error.code, frame.error.message)); continue
       }
       if (waiters.length) waiters.shift().resolve(frame); else frames.push(frame)
@@ -45,9 +50,11 @@ export async function connectService({ pipe, python, credential, credentialFile,
       const requestId = opts.requestId ?? randomUUID()
       if (pending.has(requestId)) return Promise.reject(error('STATE_BUSY', 'Request already pending'))
       return new Promise((resolve, reject) => {
-        const timer = setTimeout(() => { pending.delete(requestId); reject(error('RESULT_UNKNOWN', 'Use operation.status with the same requestId before retrying')) }, timeoutMs)
-        pending.set(requestId, { resolve, reject, timer })
-        try { send({ protocolMajor: 1, requestId, library: opts.library ?? welcome.library, policyVersion: opts.policyVersion ?? welcome.policyVersion, method, args }) }
+        const callTimeout=['architecture.preview','architecture.apply','architecture.refresh'].includes(args?.operation?.op)?Math.max(timeoutMs,300000):timeoutMs
+        const timer = setTimeout(() => { pending.delete(requestId); reject(error('RESULT_UNKNOWN', 'Use operation.status with the same requestId before retrying')) }, callTimeout)
+        const transmit=()=>send({ protocolMajor: 1, requestId, library: opts.library ?? welcome.library, policyVersion: opts.policyVersion ?? welcome.policyVersion, method, args })
+        pending.set(requestId, { resolve, reject, timer, retry:opts.policyVersion===undefined?transmit:null })
+        try { transmit() }
         catch (e) { clearTimeout(timer); pending.delete(requestId); reject(e) }
       })
     },

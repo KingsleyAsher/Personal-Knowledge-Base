@@ -16,8 +16,9 @@ Alt+F 打开可移动全局搜索；结果可拖入预览栏。关系网络支�
 
 不要把索引快照视为原文件备份。恢复前确认所选备份类型和目标。Office 预览与编辑有格式限制，重要复杂文档应保留原件。
 
-共享源码更新见 [插件 2.4.3](../releases/plugin-2.4.13.md)：原件同步与 Windows 解析任务修复。已发布的客户端 1.0.3 安装器仍包含原先配套的插件 2.4.2，不因源码更新而替换其附件。
 
-See [2.4.4 safe update and legacy transition](../releases/plugin-2.4.13.md). The published client installer remains 1.0.3.
+## 当前版本 / Current release
 
-2.4.3 direct upgrade and conditional error recovery: [release 2.4.13](../releases/plugin-2.4.13.md). Client installer remains independently versioned at 1.0.3.
+客户端 1.1.1，配套插件 2.5.3。原件分类树读取共享索引；在设置中预览并确认索引迁移。系列成品复用已有目录。
+
+Client 1.1.1 pairs with plugin 2.5.3. The original-file tree uses shared classification. Preview and confirm index migration in Settings. Reuse series folders for deliverables. [Release notes](../releases/client-1.1.1.md).

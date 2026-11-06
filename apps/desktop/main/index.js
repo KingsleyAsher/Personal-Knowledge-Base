@@ -157,7 +157,7 @@ function wire(){
  });
  register('pointer',()=>{const point=screen.getCursorScreenPoint(),bounds=window.getContentBounds(),zoom=window.webContents.getZoomFactor();return {x:(point.x-bounds.x)/zoom,y:(point.y-bounds.y)/zoom};});
  register('window',async a=>{if(a.action==='minimize')window.minimize();else if(a.action==='maximize')window.isMaximized()?window.unmaximize():window.maximize();else if(a.action==='close'){allowClose=true;window.close();}});
- register('diagnostics',()=>({candidate:true,dataDir,service:manager.status(),nodeIntegration:false,contextIsolation:true,sandbox:true,dshConnected:false}));
+ register('diagnostics',async()=>({candidate:true,dataDir,service:manager.status(),nodeIntegration:false,contextIsolation:true,sandbox:true,dshConnected:(await manager.call('dsh.status')).online}));
  register('appInfo',appInfo);
  register('feedback',feedback);
  register('copyFeedback',async a=>{if(typeof a.text!=='string'||!a.text.trim()||a.text.length>8000)throw Error('反馈内容应为 1–8000 字符');const info=await appInfo();clipboard.writeText('个人知识库 · 桌面候选版\n版本：'+info.version+'\n构建：'+info.buildId+'\n\n'+a.text.trim());return true;});

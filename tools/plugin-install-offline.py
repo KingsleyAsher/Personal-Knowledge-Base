@@ -13,8 +13,10 @@ def digest(path):return hashlib.sha256(Path(path).read_bytes()).hexdigest()
 
 def verify_package(folder=HERE):
     manifest=json.loads((folder/'manifest.json').read_text(encoding='utf-8'))
-    archive=folder/'local-dsh-knowledge-base-2.4.14.tgz'
-    if manifest['tgz']!=archive.name or manifest['version']!='2.4.14':raise RuntimeError('Unexpected package identity')
+    version=manifest['version']
+    if not re.fullmatch(r'(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)',version):raise RuntimeError('Unexpected package version')
+    archive=folder/('local-dsh-knowledge-base-'+version+'.tgz')
+    if manifest['tgz']!=archive.name or manifest.get('package')!=PACKAGE:raise RuntimeError('Unexpected package identity')
     if archive.stat().st_size!=manifest['bytes'] or digest(archive)!=manifest['sha256']:raise RuntimeError('Archive SHA-256/size mismatch; nothing was installed')
     with tarfile.open(archive) as stream:
         entries=stream.getmembers()
@@ -22,7 +24,7 @@ def verify_package(folder=HERE):
             parts=Path(e.name.replace('\\','/')).parts
             if not parts or parts[0]!='package' or '..' in parts or e.issym() or e.islnk() or not(e.isfile() or e.isdir()):raise RuntimeError('Unsafe archive entry')
         pkg=json.loads(stream.extractfile('package/package.json').read())
-        if pkg['name']!=PACKAGE or pkg['version']!='2.4.14':raise RuntimeError('Incorrect plugin package')
+        if pkg['name']!=PACKAGE or pkg['version']!=version:raise RuntimeError('Incorrect plugin package')
         for row in manifest['files']:
             data=stream.extractfile('package/'+row['path']).read()
             if hashlib.sha256(data).hexdigest()!=row['sha256']:raise RuntimeError('Build inventory mismatch')
@@ -37,7 +39,7 @@ def blockers():
     for row in rows:
         exe=str(row.get('ExecutablePath') or '').lower().replace('/','\\')
         name=str(row.get('Name') or '').lower()
-        if name=='deepseek harness.exe' or ('\\node_modules\\@local\\dsh-knowledge-base\\' in exe) or name in ['knowledge workbench.exe','knowledge-workbench.exe','知识工作台.exe']:
+        if name=='deepseek harness.exe' or ('\\node_modules\\@local\\dsh-knowledge-base\\' in exe) or name in ['knowledge workbench.exe','knowledge-workbench.exe','knowledgeworkbench-candidate.exe','知识工作台.exe']:
             found.append({'pid':row['ProcessId'],'name':row.get('Name'),'executable':row.get('ExecutablePath')})
     return found
 

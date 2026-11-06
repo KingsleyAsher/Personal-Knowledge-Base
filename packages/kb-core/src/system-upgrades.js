@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises'
 import { digest, safePath, readJson, atomicJson, locked, fail } from './workbench-state.js'
 import { atomicText, syncManagedFiles } from './managed-files.js'
 import { createLibraryFramework } from './library-framework.js'
+import {catalogActive} from './file-catalog.js'
 
 export function createSystemUpgrades({ binding, catalog, runtime, retrieval, now = Date.now }) {
   const pending = new Map(), checked = new Set()
@@ -21,7 +22,7 @@ export function createSystemUpgrades({ binding, catalog, runtime, retrieval, now
         await atomicJson(file, next)
         try {
           await checkIdentity(b)
-          const managed = await syncManagedFiles({ root: b.root, items: await catalog(), manifest: '.kbmeta/managed-files.json', backup: '.kbmeta/backups/upgrades', candidates: '.kbmeta/upgrades/candidates', check: () => checkIdentity(b), now })
+          const managed = await syncManagedFiles({ root: b.root, items: catalogActive(b.root)?[]:await catalog(), manifest: '.kbmeta/managed-files.json', backup: '.kbmeta/backups/upgrades', candidates: '.kbmeta/upgrades/candidates', check: () => checkIdentity(b), now })
           next.managed = managed
           const newlyChanged = managed.files.some(r => (['created', 'updated'].includes(r.status)||r.requiresActivation) && r.needsNewSession)
           next.activation = old.activation || 'current'

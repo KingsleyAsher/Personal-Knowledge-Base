@@ -1,3 +1,33 @@
+## 插件 2.5.3 / 客户端 1.1.1（2026-11-07）
+
+本次统一发布此前本地交付的原件索引架构及后续修正，两端继续使用同一共享内核与服务，独立安装、独立版本。
+
+- 原件保持原位；索引层记录身份、路径、分类、标签与指纹。插件和客户端提供迁移预览与确认入口，程序更新不会自动迁移资料库。
+- 客户端增加原件分类文件树及分类操作，分类与隐私筛选由共享服务执行；既有文件、绑定及资料库身份保留。
+- 流程卡保存模型与推理配置，运行使用已保存配置；内置收件箱仍要求 High。自定义流程准备不再误入内置收件箱校验。
+- 任务计划面板修正宽度和向上展开方向；长工具执行期间提示模型核对进度，由模型依据实际结果更新状态。
+- 成品登记说明明确支持复用系列目录：task 填系列目录名，title 填单期标题，path 填库内相对路径。无需按日期拆目录，路径与隐私校验继续生效。
+
+本次验证使用虚构库与针对性检查，发布包核对源码、构建指纹和摘要；不读取真实私有库，不调用收费模型。历史验收记录保留其当时范围；本次打包不代表正式用户安装、DSH 重启激活、真实报告生成或外部发送已经验证。客户端自动覆盖安装与激活尚未接入。
+
+安装：插件使用 v2.5.3 Release 中的 TGZ；客户端使用 client-v1.1.1 Release 中的 Windows x64 Setup.exe（未签名），分别核对清单与 SHA-256。客户端安装目录需为空，先保存工作并退出旧客户端；DSH 插件按宿主提示重新加载或完全退出含托盘后重开，核对版本和构建号。旧 2.4.6 更新受阻时仍使用既有恢复入口。
+
+## 2.5.2: Upward task-plan disclosure (2026-11-07)
+
+Correct the disclosure direction for the task plan above the composer: collapsed points up to expand; expanded points down to collapse.
+
+## 2.5.1: Flow cards and saved execution settings (local update)
+
+Flow text and actions now wrap in separate sections. Each card saves its model and reasoning selection with revision checks; Run uses the saved route and only asks for missing required parameters. Builtin inbox instructions remain protected, with High required. No real report generation or external delivery was performed.
+
+## 2.5.0：原件索引架构（本地交付，2026-11-06）
+
+插件与客户端新增同名“迁移到索引架构”入口，共用预览、确认、文件目录和分类。原件保持原位；索引层登记文件身份、位置、分类和指纹，不保存分类正文副本。迁移后全文索引写入索引层，原地接入和收件箱分类直接登记原件。
+
+识别旧机器引用并在检索中去重，保留用户独立笔记。文件修改、可核验改名及缺失由维护更新；预览后文件变化、原件缺失或链接路径会阻止发布。已有规则、模板和目录保留，原目录补齐功能标为可选。既有库身份和授权事务元数据继续使用 .kbmeta，不执行全量元数据搬迁。
+
+隔离检查覆盖迁移保护、原件检索、分类、文件变化、索引失败待完成及 Windows 两端独立/共享访问；Electron 中验证设置入口、预览确认、启用状态与保存分类。未对真实私有库执行迁移，未验证真实模型或所有二进制正文解析。详见 [原件索引架构](docs/ORIGINAL-FILE-INDEX-ARCHITECTURE.md)。本次为本地交付，尚未发布到远程更新源。
+
 ## 2.4.14：已有知识库框架迁移（2026-11-05）
 
 按用户确认的“补齐新版框架，保留现有资料位置”方案，在设置中增加只读预览、逐项状态、新版参考、确认执行与失败恢复入口。只补缺失的标准目录、模板、手册及缺失的规则/导航文件，保留已有内容与自定义结构。绑定或快照改变时停止；恢复仅撤销可核对的本次新增内容，用户后续修改保留。
@@ -14,9 +44,9 @@
 
 [简体中文](PROJECT-RECORD.md) · [English](PROJECT-RECORD.en.md)
 
-<!-- project-record-version: 2.4.14 -->
+<!-- project-record-version: 2.5.3 -->
 
-**对应源码：插件 2.4.14 / 客户端 1.0.3 · 更新日期：2026-11-05 · 维护方式：随每次发布更新，与源码一起审阅。**
+**对应源码：插件 2.5.3 / 客户端 1.1.1 · 更新日期：2026-11-07 · 维护方式：随每次发布更新，与源码一起审阅。**
 
 这是个人知识库插件的长期记录，面向使用者、维护者和后续开发者。它说明产品为什么这样构建、目前能做什么、功能如何连接、数据放在哪里，以及下一步往哪里走。这里的“已实现”以本仓库源码为依据；路线图属于后续方向，不代表已经提供。实际安装版本与构建号以客户端运行状态和对应发布清单为准。
 
@@ -525,3 +555,8 @@ flowchart TD
 共享版本命名、比较和打包校验；插件跨大版本和预览候选更新均允许自动安装，保留通道偏好、包校验与忙碌/未知结果保护，不再弹更新确认窗口。安装后的版本说明规则不变。客户端在线下载安装尚未接入。本次只更新源码规则，不发布新包。
 
 2026-11-04 正式发布版本调整 / Publication versions: 插件 plugin 2.4.1，客户端 client 1.0.1。
+
+
+### 2.5.1 task plan follow-up (2026-11-07)
+
+Task plan disclosure and list symbols now use vectors/CSS rather than font-dependent characters. During long knowledge tasks, bounded pre-step checkpoints request truthful todo_write progress updates instead of waiting until the final response. No step is automatically marked complete from tool count or elapsed time. Install the local update package and fully restart DSH to load host changes; real long-task behavior remains an installed-host verification step.

@@ -1,0 +1,9 @@
+.tree-view-switch{display:flex;flex-wrap:nowrap;padding:0 12px 10px;gap:6px;flex-shrink:0}
+.tree-view-switch button{flex:1;font-size:12px;padding:4px 8px}
+.tree-view-switch button[aria-pressed=true]{color:var(--accent);background:var(--accent-soft);border-color:var(--accent)}
+.original-categories{display:flex;flex-direction:column;flex:1;min-height:0;overflow:hidden}
+.original-categories>input{width:calc(100% - 24px);margin:0 12px 8px;box-sizing:border-box;font-size:12px;padding:8px;flex-shrink:0}
+.tree-status{font-size:11px;color:var(--muted);margin:6px 0}
+.tree-load-more{border:0;background:transparent;font-size:12px;width:100%;justify-content:flex-start}
+.category-auxiliary{margin:8px 12px;font-size:11px;color:var(--muted);line-height:1.7;flex-shrink:0}
+.category-auxiliary label{display:flex;align-items:center;gap:5px;margin-top:8px}

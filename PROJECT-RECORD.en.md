@@ -1,3 +1,29 @@
+## Plugin 2.5.3 / desktop client 1.1.1 (2026-11-07)
+
+This paired release publishes the previously local original-file index architecture and subsequent fixes. The products share a core and service while retaining independent versions and installations.
+
+- Originals stay in place. The index records identity, path, classification, tags and fingerprints. Both products offer migration preview and confirmation; installing an update does not migrate a library automatically.
+- The client adds the original-file classification tree and classification actions, with shared-service visibility checks.
+- Flow cards save model and reasoning settings. Run uses that saved route; the builtin inbox still requires High. Custom-flow preparation no longer enters the builtin inbox-only gate.
+- The task-plan panel fixes width and upward disclosure. Bounded progress reminders ask the model to reconcile actual results during long runs; the observer does not complete tasks itself.
+- Deliverable instructions support existing series folders: task is the folder name, title identifies the issue, and path is library-relative. No per-date folder is required; path and privacy checks remain enforced.
+
+Validation uses synthetic libraries and focused checks, with source/archive, build and digest verification. No private library or paid model is used. Historical evidence retains its original scope. Packaging does not establish production installation, running DSH activation, real report generation or external delivery. Client automatic in-place installation and activation remain unfinished.
+
+Install the TGZ from v2.5.3 and the unsigned Windows x64 Setup.exe from client-v1.1.1, checking their separate manifests and SHA-256 digests. The client installer requires an empty application directory; save work and exit the old client first. Reload the plugin as directed by DSH or exit including its tray process and reopen, then verify version and build. Existing recovery instructions still apply to blocked legacy 2.4.6 updaters.
+
+## 2.5.2: Upward task-plan disclosure (2026-11-07)
+
+Correct the disclosure direction for the task plan above the composer: collapsed points up to expand; expanded points down to collapse.
+
+## 2.5.1: Flow cards and saved execution settings (local update)
+
+Flow text and actions now wrap in separate sections. Each card saves its model and reasoning selection with revision checks; Run uses the saved route and only asks for missing required parameters. Builtin inbox instructions remain protected, with High required. No real report generation or external delivery was performed.
+
+## 2.5.0: original-file index architecture (local delivery, 2026-11-06)
+
+Plugin 2.5.0 and client 1.1.0 share migration preview, explicit confirmation, original-file identities and classification. Originals remain in place. Classification and fulltext/vector data use the index layer; existing identity and authorization journals remain compatible. Local synthetic checks cover independent and linked service connections and the Electron migration UI. No real private library migration or real model call was performed. This local build is not published to the remote update feed.
+
 ## 2.4.14: existing-library framework migration (2026-11-05)
 
 Implement the user-selected additive migration: preview, per-path decisions, bundled reference text, confirmation and failure recovery. Add missing standard folders, templates, guidance and absent rule/navigation files. Preserve document locations and custom contents. Changed bindings or snapshots stop execution; recovery only removes verified additions and preserves follow-up user edits.
@@ -15,9 +41,9 @@ A separate [2.4.6 migration recovery entry](docs/LEGACY-246-BOOTSTRAP.md) verifi
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 2.4.14 -->
+<!-- project-record-version: 2.5.3 -->
 
-**Source covered: plugin 2.4.14 / client 1.0.3 · Updated: 2026-11-05 · Maintenance: review this record alongside the source with every release.**
+**Source covered: plugin 2.5.3 / client 1.1.1 · Updated: 2026-11-07 · Maintenance: review this record alongside the source with every release.**
 
 This long-term record is for users, maintainers, and future contributors. It explains why the product is built this way, what it can currently do, how its features fit together, where data is stored, and what may come next. “Implemented” refers to source code in this repository. Roadmap items are future directions, not features already delivered. The installed version and build ID must be checked in the client and the corresponding release manifest.
 
@@ -521,3 +547,8 @@ In-client download entry: **Knowledge Base → Inbox → Browser Extension Guide
 Shared naming, ordering and packaging validation. Plugin major/preview candidates are automatically eligible, retaining channel preference, payload checks and busy/uncertain-operation guards. No update-confirmation modal; post-install notes retain their existing rules. The client online executor remains unfinished. Source policy change only; no new binary publication.
 
 2026-11-04 正式发布版本调整 / Publication versions: 插件 plugin 2.4.1，客户端 client 1.0.1。
+
+
+### 2.5.1 task plan follow-up (2026-11-07)
+
+Task plan disclosure and list symbols now use vectors/CSS rather than font-dependent characters. During long knowledge tasks, bounded pre-step checkpoints request truthful todo_write progress updates instead of waiting until the final response. No step is automatically marked complete from tool count or elapsed time. Install the local update package and fully restart DSH to load host changes; real long-task behavior remains an installed-host verification step.
