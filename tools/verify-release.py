@@ -26,7 +26,7 @@ if parts.is_dir():
     assert [p.name for p in rows]==[f'{i:04d}.b64' for i in range((len(b)+384*1024-1)//(384*1024))], 'Incomplete update parts'
     assert all(p.stat().st_size<=512*1024 for p in rows), 'Update part exceeds domestic raw size budget'
     assert b''.join(base64.b64decode(p.read_bytes(),validate=True) for p in rows)==b, 'Update parts differ from release archive'
-elif version=='2.5.4':raise AssertionError('This release requires update parts')
+elif re.fullmatch(r'\d+\.\d+\.\d+',version) and tuple(map(int,version.split('.'))) >= (2,5,4):raise AssertionError('This release requires update parts')
 with tarfile.open(archive,'r:gz') as t:
     files={x.name.removeprefix('package/'):t.extractfile(x).read() for x in t.getmembers() if x.isfile()}
 assert len(files)==len(m['files'])

@@ -4473,11 +4473,12 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     // END GENERATED TODO LIFECYCLE UI
 
-    const RELEASE_VERSION = '2.5.4'
+    const RELEASE_VERSION = '2.5.5'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.
     const RELEASE_NOTICES = [
+      {version:'2.5.5',items:['兼容的插件与客户端补丁版本可共享同一个知识库服务，不再仅因构建指纹不同就要求退出另一端。','仍校验接口契约、存储与引擎兼容代次及所需能力；真正不兼容时不启动第二个写入者。']},
       {version:'2.5.4',items:['更新支持国内镜像分片与备用下载入口，完整校验大小、摘要和插件格式。','慢速下载按传输空闲计时；关闭失败提示后切换界面不再重复弹出。']},
       {version:'2.5.3',items:['原件索引与分类、两端迁移入口：安装更新不会自动迁移资料库。','流程保存模型配置，自定义流程可正常准备；任务计划宽度、展开方向与进度核对修正。','系列成品复用目录：task 填系列目录名，title 填单期标题，path 填库内相对路径。']},
       {version:'2.4.14',items:['新增旧库框架迁移：先预览再确认，补齐缺失目录、模板和管理说明，保留已有资料位置与自定义内容。','迁移失败时恢复可核对的本次新增内容；修正共享机制版本显示。']},

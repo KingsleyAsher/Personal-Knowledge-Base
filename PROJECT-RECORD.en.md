@@ -1,3 +1,11 @@
+## Plugin 2.5.5 / client 1.1.2: compatible shared services and manual updates (2026-11-07)
+
+Compatible patches no longer require identical runtime fingerprints. Both entry points check the protocol major, full method-contract hash, storage and engine epochs, and required capabilities before reusing one shared service. Verified public 2.5.3/2.5.4 runtimes can remain online while the repaired client joins them. Unknown legacy runtimes or incompatible contracts retain fail-closed handoff behavior. Breaking storage or engine semantics require an epoch change.
+
+Help → Updates and manual installation now offers explicit verified download, installer launch and official download-page actions. Cached installers are checked again before launch, with no renderer-supplied executable path. Automatic in-place replacement remains unfinished; save work and close the client before completing the installer. Existing automatic checks/downloads remain available.
+
+Thirty focused checks passed, including real Windows services, reproduction using the old connector, different-build joins in both orders, single-writer/original preservation, safe resume and corrupted manual installers. Synthetic libraries are used; no private document body, library migration or paid model is involved. Actual installation/loading evidence is recorded separately.
+
 ## Plugin 2.5.4: update delivery and failure dialogs (2026-11-07)
 
 A readable version manifest no longer leaves the downloader dependent solely on large raw binary files. Domestic mirrors can serve small base64 parts at fixed digest-addressed paths, with at most three concurrent requests. The assembled archive must pass the existing size, SHA-256 and plugin-format checks. Fixed maintainer-owned GitHub Pages and Release endpoints provide additional fallbacks; arbitrary manifest download URLs are not accepted.
@@ -47,7 +55,7 @@ A separate [2.4.6 migration recovery entry](docs/LEGACY-246-BOOTSTRAP.md) verifi
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 2.5.4 -->
+<!-- project-record-version: 2.5.5 -->
 
 **Source covered: plugin 2.5.3 / client 1.1.1 · Updated: 2026-11-07 · Maintenance: review this record alongside the source with every release.**
 

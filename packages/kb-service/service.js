@@ -17,6 +17,7 @@ import { atomic, bytes, hash, readJson, native, serialQueue, error } from './io.
 import { createAuthorization, nonce, proof, sameProof } from './auth.js'
 import { createMigration } from './migration.js'
 import { runtimeBuild } from './build.js'
+import { SERVICE_COMPATIBILITY } from './compatibility.js'
 import { createDesktopFiles } from './desktop-files.js'
 import { DESKTOP_METHODS } from '../kb-contracts/desktop.js'
 import { createInboxJobs } from './inbox-jobs.js'
@@ -137,7 +138,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
     if(upgradeDraining && call.method!=='service.health')throw error('STATE_BUSY','Service is draining for an update')
     const a = call.args, caller = currentGrant(), lib = kernel.workbench.libraryState
     const wb = operation => kernel.dispatch({ ...operation, expectedKbId: kbId }, caller)
-    if (call.method === 'service.health') return { library: identity, bootId,serviceBuildId:runtimeBuildId, active: await active(), connections: [...connections.values()].filter(c => c.authenticated).length, writers: 1, indexers: maintenance ? 1 : 0, index:maintenance?.status(),dsh:broker?.status(),providers:vectorProfiles?.info(),clipper:clipper?{endpoint:clipper.endpoint}:null,supported }
+    if (call.method === 'service.health') return { library: identity, bootId,serviceBuildId:runtimeBuildId, compatibility:SERVICE_COMPATIBILITY, coreVersion:KERNEL_VERSION, active: await active(), connections: [...connections.values()].filter(c => c.authenticated).length, writers: 1, indexers: maintenance ? 1 : 0, index:maintenance?.status(),dsh:broker?.status(),providers:vectorProfiles?.info(),clipper:clipper?{endpoint:clipper.endpoint}:null,supported }
     if (call.method === 'service.prepareUpgrade') {
       if([...connections.values()].filter(c=>c.authenticated).length>1 || await engines.upgradeBusy() || broker?.status().busy)throw error('STATE_BUSY','知识库仍有其他连接或运行任务，更新已延后，旧版本保持可用')
       upgradeDraining=true
