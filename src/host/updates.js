@@ -28,6 +28,7 @@ export function compareReleaseVersions(a, b) {
 
 const REPO_PATH = 'KingsleyAsher/Personal-Knowledge-Base'
 const MAX_UPDATE_BYTES = 16 * 1024 * 1024
+export const UPDATE_PART_BYTES = 384 * 1024
 export const UPDATE_SOURCES = Object.freeze([
   { id: 'gitee', name: 'Gitee', repository: 'https://gitee.com/' + REPO_PATH,
     file: rel => 'https://gitee.com/' + REPO_PATH + '/raw/main/' + rel,
@@ -48,14 +49,20 @@ function selectedSources(ids) {
 // Follow only a bounded set of HTTPS redirects belonging to the selected service.
 // No cookies, authorization, mirror-provided download URLs or user paths are sent.
 async function sourceBytes(fetchFn, source, rel, limit, timeoutMs) {
-  const controller = new AbortController(), timer = setTimeout(() => controller.abort(), timeoutMs)
+  const controller = new AbortController()
+  let timer = setTimeout(() => controller.abort(), timeoutMs)
+  // Large archives may take longer than a metadata request. Bound idle time
+  // between chunks, and retain a separate hard ceiling for the whole download.
+  const streaming = limit > 1024 * 1024
+  const deadline = streaming ? setTimeout(() => controller.abort(), 5 * 60 * 1000) : null
+  const progress = () => { if (streaming) { clearTimeout(timer); timer = setTimeout(() => controller.abort(), timeoutMs) } }
   let url = source.file(rel)
   try {
     for (let redirects = 0; redirects <= 4; redirects++) {
       const target = new URL(url)
       if (target.protocol !== 'https:' || target.port || target.username || target.password || !source.hosts.includes(target.hostname)) throw Error('更新源跳转不受信任')
       const response = await fetchFn(url, { signal: controller.signal, redirect: source.id === 'github' ? 'error' : 'manual', cache: 'no-store',
-        headers: { accept: '*/*', ...(source.id === 'gitcode' ? { referer: source.repository } : {}) } })
+        headers: { accept: '*/*', ...(source.id.startsWith('gitcode') ? { referer: source.repository } : {}) } })
       if ([301,302,303,307,308].includes(response.status)) {
         const location = response.headers.get('location')
         await response.body?.cancel()
@@ -64,12 +71,14 @@ async function sourceBytes(fetchFn, source, rel, limit, timeoutMs) {
         continue
       }
       if (!response.ok) throw Error('HTTP ' + response.status)
+      progress()
       if (!response.body) throw Error('更新源未返回内容')
       if ((response.headers.get('content-type') || '').toLowerCase().includes('text/html')) { await response.body.cancel(); throw Error('更新源返回网页，无法作为下载文件') }
       const reader = response.body.getReader(), chunks = []; let bytes = 0
       try {
         for (;;) {
           const { done, value } = await reader.read(); if (done) break
+          progress()
           bytes += value.byteLength
           if (bytes > limit) { await reader.cancel(); throw Error('更新文件超过允许大小') }
           chunks.push(Buffer.from(value))
@@ -80,7 +89,7 @@ async function sourceBytes(fetchFn, source, rel, limit, timeoutMs) {
   } catch (error) {
     if (controller.signal.aborted) throw Error('连接超时')
     throw error
-  } finally { clearTimeout(timer) }
+  } finally { clearTimeout(timer); if (deadline) clearTimeout(deadline) }
 }
 
 export function createUpdateChecker({ currentVersion, fetch: fetchFn = globalThis.fetch, now = Date.now, timeoutMs = 6000,
@@ -197,11 +206,43 @@ export function createUpdateDownloader({ checker, cacheDir, fetch: fetchFn = glo
     const temporary = target + '.' + randomUUID() + '.tmp'
     const sources = selectedSources(release.sourceIds || ['github'])
     sources.sort((a,b) => (a.id === release.sourceId ? -1 : b.id === release.sourceId ? 1 : 0))
+    const mirrors = [...sources]
+    // Domestic raw endpoints can reject a large binary but serve small text
+    // files. Parts have fixed, digest-addressed paths and are not executable
+    // until the assembled archive passes the same full preflight below.
+    for (const mirror of mirrors.filter(s => s.id !== 'github')) sources.push({ ...mirror, id: mirror.id + '-parts', name: mirror.name + ' 分片', parts: true })
+    // Raw mirrors can expose a new manifest while denying the larger archive.
+    // Use fixed maintainer-owned distribution endpoints, never manifest URLs.
+    if (sources.some(s => s.id === 'github')) {
+      sources.push({ id: 'github-pages', name: 'GitHub Pages', hosts: ['kingsleyasher.github.io'],
+        file: () => 'https://kingsleyasher.github.io/Personal-Knowledge-Base/downloads/' + encodeURIComponent(release.tgz) })
+      sources.push({ id: 'github-release', name: 'GitHub Release', hosts: ['github.com', 'release-assets.githubusercontent.com', 'objects.githubusercontent.com'],
+        file: () => UPDATE_REPOSITORY + '/releases/download/v' + encodeURIComponent(expectedVersion) + '/' + encodeURIComponent(release.tgz) })
+    }
     const errors = []
     try {
       for (const source of sources) {
         try {
-          const raw = await sourceBytes(fetchFn, source, 'dist/' + encodeURIComponent(release.tgz), release.bytes, timeoutMs)
+          let raw
+          if (source.parts) {
+            const count = Math.ceil(release.bytes / UPDATE_PART_BYTES), parts = new Array(count)
+            let next = 0, failed = false
+            const results = await Promise.allSettled(Array.from({ length: Math.min(3, count) }, async () => {
+              while (!failed && next < count) {
+                const index = next++, bytes = Math.min(UPDATE_PART_BYTES, release.bytes - index * UPDATE_PART_BYTES)
+                const rel = 'dist/update-parts/' + release.sha256 + '/' + String(index).padStart(4, '0') + '.b64'
+                const encoded = await sourceBytes(fetchFn, source, rel, Math.ceil(bytes / 3) * 4 + 1, timeoutMs)
+                const text = encoded.toString('utf8').trim()
+                if (text.length % 4 || !/^[A-Za-z0-9+/]*={0,2}$/.test(text)) throw Error('更新分片编码无效')
+                const part = Buffer.from(text, 'base64')
+                if (part.length !== bytes) throw Error('更新分片大小不符')
+                parts[index] = part
+              }
+            }).map(work => work.catch(error => { failed = true; throw error })))
+            const failure = results.find(r => r.status === 'rejected')
+            if (failure) throw failure.reason
+            raw = Buffer.concat(parts)
+          } else raw = await sourceBytes(fetchFn, source, 'dist/' + encodeURIComponent(release.tgz), release.bytes, timeoutMs)
           verifyUpdateArchive(raw, release)
           await writeFile(temporary, raw, { flag: 'wx', mode: 0o600 })
           try { await unlink(target) } catch (error) { if (error.code !== 'ENOENT') throw error }

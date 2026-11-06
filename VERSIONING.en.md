@@ -2,7 +2,7 @@
 
 [中文](VERSIONING.md) · English
 
-Both products share this policy while retaining independent versions: plugin source 2.5.3, client source 1.1.1. Shared implementation: packages/kb-contracts/version-policy.js; the plugin keeps its legacy import entry.
+Both products share this policy while retaining independent versions: plugin source 2.5.4, client source 1.1.1. Shared implementation: packages/kb-contracts/version-policy.js; the plugin keeps its legacy import entry.
 
 ## Names and ordering
 

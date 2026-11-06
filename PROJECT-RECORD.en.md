@@ -1,3 +1,9 @@
+## Plugin 2.5.4: update delivery and failure dialogs (2026-11-07)
+
+A readable version manifest no longer leaves the downloader dependent solely on large raw binary files. Domestic mirrors can serve small base64 parts at fixed digest-addressed paths, with at most three concurrent requests. The assembled archive must pass the existing size, SHA-256 and plugin-format checks. Fixed maintainer-owned GitHub Pages and Release endpoints provide additional fallbacks; arbitrary manifest download URLs are not accepted.
+
+Progressing large downloads use an idle timeout with a separate five-minute ceiling. Dismissing an update failure survives navigation and remounts in the page session; an explicit retry can report a new failure. Thirty-six focused tests passed, including integrity failures, redirects, bounded concurrency, slow streams and dismissal recovery. No real private library or paid model was used. Desktop client remains 1.1.1; library migration is not automatic. Legacy downloaders need a verified local TGZ or prefilled verified cache to obtain this first repair.
+
 ## Plugin 2.5.3 / desktop client 1.1.1 (2026-11-07)
 
 This paired release publishes the previously local original-file index architecture and subsequent fixes. The products share a core and service while retaining independent versions and installations.
@@ -41,7 +47,7 @@ A separate [2.4.6 migration recovery entry](docs/LEGACY-246-BOOTSTRAP.md) verifi
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 2.5.3 -->
+<!-- project-record-version: 2.5.4 -->
 
 **Source covered: plugin 2.5.3 / client 1.1.1 · Updated: 2026-11-07 · Maintenance: review this record alongside the source with every release.**
 

@@ -84,6 +84,12 @@ else:
             info.compress_type = zipfile.ZIP_DEFLATED
             packed.writestr(info, data)
 assert hashlib.sha256((delivery / '知识库快速收集-浏览器扩展.zip').read_bytes()).hexdigest() == re.search(r"EXTENSION_ARCHIVE_SHA256 = '([a-f0-9]{64})'", (repo / 'src/host/updates.js').read_text(encoding='utf-8')).group(1), 'Update extension archive integrity before publishing'
+parts = repo / 'dist/update-parts' / manifest['sha256']
+parts.mkdir(parents=True, exist_ok=True)
+part_bytes = 384 * 1024
+for index, offset in enumerate(range(0, len(raw), part_bytes)):
+    (parts / (str(index).zfill(4) + '.b64')).write_bytes(base64.b64encode(raw[offset:offset + part_bytes]))
+assert b''.join(base64.b64decode(p.read_bytes(), validate=True) for p in sorted(parts.glob('*.b64'))) == raw
 shutil.copyfile(delivery / '知识库快速收集-浏览器扩展.zip', repo / 'dist/knowledge-base-browser-extension.zip')
 print(json.dumps({k: manifest[k] for k in ['version','buildId','bytes','sha256','packageFileCount']}, ensure_ascii=False, indent=2))
 print(str(delivery))

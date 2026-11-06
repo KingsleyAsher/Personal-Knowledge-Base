@@ -1,5 +1,5 @@
 from pathlib import Path
-import json,hashlib,tarfile,re,os,sys,io,zipfile,urllib.request
+import json,hashlib,tarfile,re,os,sys,io,zipfile,urllib.request,base64
 r=Path(__file__).resolve().parents[1]
 version=json.loads((r/'package.json').read_text(encoding='utf-8'))['version']
 record = (r/'PROJECT-RECORD.md').read_text(encoding='utf-8')
@@ -20,6 +20,13 @@ if not candidate and '-' not in version:
     assert (r/'SHA256SUMS').read_text(encoding='utf-8').strip() == m['sha256']+'  '+m['tgz'], 'SHA256SUMS differs from release manifest'
 b=archive.read_bytes()
 assert len(b)==m['bytes'] and hashlib.sha256(b).hexdigest()==m['sha256']
+parts=r/'dist/update-parts'/m['sha256']
+if parts.is_dir():
+    rows=sorted(parts.glob('*.b64'))
+    assert [p.name for p in rows]==[f'{i:04d}.b64' for i in range((len(b)+384*1024-1)//(384*1024))], 'Incomplete update parts'
+    assert all(p.stat().st_size<=512*1024 for p in rows), 'Update part exceeds domestic raw size budget'
+    assert b''.join(base64.b64decode(p.read_bytes(),validate=True) for p in rows)==b, 'Update parts differ from release archive'
+elif version=='2.5.4':raise AssertionError('This release requires update parts')
 with tarfile.open(archive,'r:gz') as t:
     files={x.name.removeprefix('package/'):t.extractfile(x).read() for x in t.getmembers() if x.isfile()}
 assert len(files)==len(m['files'])
