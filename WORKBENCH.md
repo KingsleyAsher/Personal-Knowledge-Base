@@ -1,4 +1,4 @@
-> Current release / 当前版本：plugin **2.5.3**, client **1.1.1**. [Release notes](docs/releases/plugin-2.5.3.md)。原件索引迁移须在资料库预览并确认。
+> Current release / 当前版本：plugin **2.5.4**, client **1.1.1**. [Release notes](docs/releases/plugin-2.5.4.md)。原件索引迁移须在资料库预览并确认。
 
 # 插件与客户端安装使用
 

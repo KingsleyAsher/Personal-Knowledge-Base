@@ -3212,7 +3212,8 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       let running = null
       const read = () => { try { return JSON.parse(storage.getItem(key)) } catch { return null } }
       const save = (record) => { try { storage.setItem(key, JSON.stringify(record)) } catch { throw Error('无法保存更新状态，请检查客户端存储后重试') } }
-      const show = (message, extra = {}) => notify({ busy: false, uncertain: false, restartRequired: false, refreshRequired: false, deferred:false, manualHelp:false, message, ...extra })
+      const show = (message, extra = {}) => notify({ busy: false, uncertain: false, restartRequired: false, refreshRequired: false, deferred:false, manualHelp:false, message, ...extra,
+        ...(extra.manualHelp ? { failureId: Date.now() + '-' + Math.random().toString(36).slice(2) } : {}) })
       const hostActive = async (record) => {
         try {
           let build = (await api({ op: 'status' }))?.status?.build
@@ -3486,15 +3487,39 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
             onClick: () => { void updateFlow.install(update.latestVersion) } }, updating.busy ? '更新中…' : '安装新版本') : null)
     }
 
+    function createUpdateFailureMemory(storage) {
+      const key = 'dsh-kb-update-dismissed-failures'
+      let entries
+      try { entries = JSON.parse(storage.getItem(key)) } catch {}
+      const dismissed = new Set(Array.isArray(entries) ? entries.filter(x => typeof x === 'string').slice(-64) : [])
+      return {
+        has: id => Boolean(id) && dismissed.has(id),
+        dismiss(id) {
+          if (!id) return
+          dismissed.add(id)
+          try { storage.setItem(key, JSON.stringify([...dismissed].slice(-64))) } catch { /* retain in-memory dismissal */ }
+        },
+      }
+    }
+    const updateFailureMemory = createUpdateFailureMemory({
+      getItem: key => window.sessionStorage.getItem(key), setItem: (key, value) => window.sessionStorage.setItem(key, value),
+    })
+    const updateFailureKey = (state, handoff) => handoff ? 'handoff:' + handoff : state.manualHelp ? 'update:' + (state.failureId || state.message) : null
+
     function UpdatePrompt() {
       const state = react.useSyncExternalStore(subscribeBuildBadge, getBuildBadge, getBuildBadge)
       const [updating, setUpdating] = react.useState(updateViewState)
       const [managerReady, setManagerReady] = react.useState(Boolean(updateManager))
       const [handoffError,setHandoffError]=react.useState(null)
       const [serviceWaiting,setServiceWaiting]=react.useState(false)
-      const [helpClosed,setHelpClosed]=react.useState(false)
+      const failureKey = updateFailureKey(updating, handoffError)
+      const [helpClosed,setHelpClosed]=react.useState(()=>updateFailureMemory.has(failureKey))
       react.useEffect(()=>{let disposed=false;const controller=new AbortController();const poll=()=>{void fetch('/kb-upgrade/status',{cache:'no-store',signal:controller.signal}).then(r=>r.ok?r.json():null).then(value=>{if(!disposed&&value){setServiceWaiting(value.phase==='starting');if(value.failed)setHandoffError(value.code||'UPGRADE_HANDOFF_FAILED')}}).catch(()=>{})};poll();const timer=setInterval(poll,3000);return()=>{disposed=true;controller.abort();clearInterval(timer)}},[])
-      react.useEffect(()=>{if(updating.manualHelp||handoffError)setHelpClosed(false)},[updating.manualHelp,handoffError])
+      react.useEffect(()=>{
+        const changed=()=>setHelpClosed(updateFailureMemory.has(failureKey))
+        changed();window.addEventListener('kb-update-failure-dismissed',changed)
+        return()=>window.removeEventListener('kb-update-failure-dismissed',changed)
+      },[failureKey])
       const owner = react.useRef(Symbol('kb-update-prompt'))
       const [restartDeferred, setRestartDeferred] = react.useState(false)
       const restartCloseRef = react.useRef(null)
@@ -3537,7 +3562,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         e('h2',null,'自动更新未完成'),e('p',null,handoffError?'旧服务交接暂未完成，请等待现有任务结束或按恢复说明处理。':updating.message),
         e('p',null,'请勿反复安装或清空知识库与解析记录。保存工作后，可按说明核对状态并恢复安装。'),
         e('a',{href:'https://github.com/KingsleyAsher/Personal-Knowledge-Base/blob/main/docs/UPDATE-RECOVERY.md',target:'_blank',rel:'noopener noreferrer'},'打开手动更新与恢复说明'),
-        e('button',{className:'kb-update-install',onClick:()=>setHelpClosed(true)},'关闭'))),document.body)
+        e('button',{className:'kb-update-install',onClick:()=>{updateFailureMemory.dismiss(failureKey);setHelpClosed(true);window.dispatchEvent(new CustomEvent('kb-update-failure-dismissed'))}},'关闭'))),document.body)
       if (updating.restartRequired && !restartDeferred) return reactDom.createPortal(e('div', { className: 'kb-release-backdrop', role: 'presentation' },
         e('section', { className: 'kb-release-card', role: 'alertdialog', 'aria-modal': 'true', 'aria-labelledby': 'kb-restart-title', 'aria-describedby': 'kb-restart-intro' },
           e('button', { ref: restartCloseRef, className: 'kb-release-close', type: 'button', 'aria-label': '暂不重启并关闭提示', onClick: deferRestart }, '×'),
@@ -4448,11 +4473,12 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     // END GENERATED TODO LIFECYCLE UI
 
-    const RELEASE_VERSION = '2.5.3'
+    const RELEASE_VERSION = '2.5.4'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.
     const RELEASE_NOTICES = [
+      {version:'2.5.4',items:['更新支持国内镜像分片与备用下载入口，完整校验大小、摘要和插件格式。','慢速下载按传输空闲计时；关闭失败提示后切换界面不再重复弹出。']},
       {version:'2.5.3',items:['原件索引与分类、两端迁移入口：安装更新不会自动迁移资料库。','流程保存模型配置，自定义流程可正常准备；任务计划宽度、展开方向与进度核对修正。','系列成品复用目录：task 填系列目录名，title 填单期标题，path 填库内相对路径。']},
       {version:'2.4.14',items:['新增旧库框架迁移：先预览再确认，补齐缺失目录、模板和管理说明，保留已有资料位置与自定义内容。','迁移失败时恢复可核对的本次新增内容；修正共享机制版本显示。']},
       {version:'2.4.13',items:['安全更新仅解析知识库包并合并对应锁记录，避免重新解析宿主内置插件和其他依赖。']},

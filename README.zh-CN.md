@@ -1,7 +1,7 @@
 # 个人知识库 · 插件与客户端
 
 
-> **插件 2.5.3 / 客户端 1.1.1：** 原件分类与迁移、流程配置、任务计划及系列成品登记提示。[更新说明](docs/releases/plugin-2.5.3.md)。
+> **插件 2.5.4 / 客户端 1.1.1：** 原件分类与迁移、流程配置、任务计划及系列成品登记提示。[更新说明](docs/releases/plugin-2.5.4.md)。
 
 > **2.4.6 旧更新器限制：** 已卡在待确认的原版安装不能只靠新更新源自愈；[通用恢复入口](docs/LEGACY-246-BOOTSTRAP.md) 是一次性外部恢复，不等同于零操作自动迁移。
 
@@ -16,9 +16,9 @@
 | 产品 | 已发布版本 | 直接下载 | 发布说明 |
 |---|---|---|---|
 | **知识库客户端 · Windows x64** | **1.1.1** | **[⬇ 下载客户端安装包（EXE）](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.1.1/KnowledgeWorkbench-1.1.1-Setup.exe)** | [客户端 Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.1.1) |
-| **DSH 知识库插件** | **2.5.3** | **[⬇ 下载插件包（TGZ）](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.5.3/local-dsh-knowledge-base-2.5.3.tgz)** | [插件 Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.5.3) |
+| **DSH 知识库插件** | **2.5.4** | **[⬇ 下载插件包（TGZ）](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.5.4/local-dsh-knowledge-base-2.5.4.tgz)** | [插件 Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.5.4) |
 
-当前发布入口：[客户端 1.1.1](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.1.1) · [插件 2.5.3](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.5.3)。请按产品选择 Windows 安装包或 TGZ，摘要与构建号以各自清单为准。
+当前发布入口：[客户端 1.1.1](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.1.1) · [插件 2.5.4](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.5.4)。请按产品选择 Windows 安装包或 TGZ，摘要与构建号以各自清单为准。
 
 ## 一个知识库，两个入口
 
@@ -36,15 +36,15 @@
 
 下载后运行 EXE 安装。客户端安装包包含运行时的，运行环境随包提供。该文件是独立客户端安装器，不是 DSH 插件。
 
-### 插件 2.5.3 · DSH
+### 插件 2.5.4 · DSH
 
-**[下载 local-dsh-knowledge-base-2.5.3.tgz](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.5.3/local-dsh-knowledge-base-2.5.3.tgz)** · [版本说明与全部附件](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.5.3)
+**[下载 local-dsh-knowledge-base-2.5.4.tgz](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.5.4/local-dsh-knowledge-base-2.5.4.tgz)** · [版本说明与全部附件](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.5.4)
 
 通过 DSH 插件管理器安装 TGZ。GitHub 首页只突出显示一个 Latest，但两个产品都有独立 Release；请使用上面的对应入口或查看 [全部 Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases)。
 
 所有后续源码、问题反馈和发布统一放在本仓库。访问 [Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases)，按产品名称选择文件：客户端使用 Windows Setup.exe，插件使用 TGZ。不要将插件包当作客户端安装程序。
 
-已发布插件 2.5.3：[GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.5.3) · [直接安装包](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.5.3/local-dsh-knowledge-base-2.5.3.tgz)。浏览器扩展及地区镜像见 [插件使用说明](WORKBENCH.md) 和 [镜像说明](MIRROR-RELEASES.md)。镜像可能延迟，以实际校验结果为准。
+已发布插件 2.5.4：[GitHub Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.5.4) · [直接安装包](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.5.4/local-dsh-knowledge-base-2.5.4.tgz)。浏览器扩展及地区镜像见 [插件使用说明](WORKBENCH.md) 和 [镜像说明](MIRROR-RELEASES.md)。镜像可能延迟，以实际校验结果为准。
 
 客户端现有安装器保留纸页绿界面与动画，要求空的应用安装目录；卸载保留个人资料与设置。客户端已接入在线检查与校验下载；自动覆盖安装和自动激活尚未完成。插件继续使用既有插件更新清单与安装流程。
 
