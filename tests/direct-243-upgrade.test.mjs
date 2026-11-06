@@ -6,7 +6,8 @@ import test from 'node:test';import assert from 'node:assert/strict';
 test('Windows 2.4.3 direct pnpm upgrade, natural service handoff and legacy repair', {skip:process.platform!=='win32',timeout:120000},async()=>{
 const repo=path.resolve(import.meta.dirname,'..'),parent=path.join(repo,'.test-runs');await mkdir(parent,{recursive:true});const root=await mkdtemp(path.join(parent,'direct243-'));
 const profile=path.join(root,'profile'),plugin=path.join(profile,'node_modules/@local/dsh-knowledge-base'),library=path.join(root,'library');await mkdir(plugin,{recursive:true});await mkdir(library);
-const targetVersion=JSON.parse(await readFile(path.join(repo,'package.json'),'utf8')).version;
+// This regression exercises published archives, not the unreleased working tree.
+const targetVersion=JSON.parse(await readFile(path.join(repo,'release-manifest.json'),'utf8')).version;
 const old=path.join(repo,'dist/local-dsh-knowledge-base-2.4.3.tgz'),next=path.join(repo,'dist','local-dsh-knowledge-base-'+targetVersion+'.tgz');
 execFileSync('python',['-X','utf8','-c',"import tarfile,sys,pathlib;t=tarfile.open(sys.argv[1]);d=pathlib.Path(sys.argv[2]);[(d.joinpath(*pathlib.PurePosixPath(m.name).parts[1:]).parent.mkdir(parents=True,exist_ok=True),d.joinpath(*pathlib.PurePosixPath(m.name).parts[1:]).write_bytes(t.extractfile(m).read())) for m in t if m.isfile()]",old,plugin],{windowsHide:true});
 await writeFile(path.join(profile,'package.json'),JSON.stringify({private:true,dependencies:{'@local/dsh-knowledge-base':'file:'+old.replaceAll('\\','/')},dsh:{profile:{bundles:['@local/dsh-knowledge-base']}}}));await writeFile(path.join(profile,'.npmrc'),'node-linker=hoisted\n');

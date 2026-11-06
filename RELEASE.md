@@ -1,3 +1,31 @@
+## 插件 2.5.3 / 客户端 1.1.1（2026-11-07）
+
+本次统一发布此前本地交付的原件索引架构及后续修正，两端继续使用同一共享内核与服务，独立安装、独立版本。
+
+- 原件保持原位；索引层记录身份、路径、分类、标签与指纹。插件和客户端提供迁移预览与确认入口，程序更新不会自动迁移资料库。
+- 客户端增加原件分类文件树及分类操作，分类与隐私筛选由共享服务执行；既有文件、绑定及资料库身份保留。
+- 流程卡保存模型与推理配置，运行使用已保存配置；内置收件箱仍要求 High。自定义流程准备不再误入内置收件箱校验。
+- 任务计划面板修正宽度和向上展开方向；长工具执行期间提示模型核对进度，由模型依据实际结果更新状态。
+- 成品登记说明明确支持复用系列目录：task 填系列目录名，title 填单期标题，path 填库内相对路径。无需按日期拆目录，路径与隐私校验继续生效。
+
+本次验证使用虚构库与针对性检查，发布包核对源码、构建指纹和摘要；不读取真实私有库，不调用收费模型。历史验收记录保留其当时范围；本次打包不代表正式用户安装、DSH 重启激活、真实报告生成或外部发送已经验证。客户端自动覆盖安装与激活尚未接入。
+
+安装：插件使用 v2.5.3 Release 中的 TGZ；客户端使用 client-v1.1.1 Release 中的 Windows x64 Setup.exe（未签名），分别核对清单与 SHA-256。客户端安装目录需为空，先保存工作并退出旧客户端；DSH 插件按宿主提示重新加载或完全退出含托盘后重开，核对版本和构建号。旧 2.4.6 更新受阻时仍使用既有恢复入口。
+
+## 2.5.x：任务计划面板宽度修复（源码补丁，未发布，2026-11-06）
+
+任务计划面板沿用官方 composer 的宽度与居中公式，补齐 border-box 和 CSS 变量兜底；变量缺失时卡片上限取 952px，面板上限取 920px，极窄容器下计算宽度不小于零。保留原有边框、圆角、字号、默认收起、状态映射及隐藏官方面板的规则。未根据未经测量的状态滞后报告修改状态源、文案或 Host 收尾核对机制。
+
+独立源码修改后运行 `python -X utf8 tools/sync-todo-lifecycle-client.py` 同步 index.js 的标记区块，再运行 `node --test tests/todo-lifecycle.test.mjs`。本次未变更 package.json 版本、未生成安装包或修改发布清单；发布时仍须按 VERSIONING.md 选择新版本，并通过既有打包流程重新计算构建指纹与摘要。测量范围和缺口见 [面板验收记录](docs/TODO-LIFECYCLE-VALIDATION.md)。
+
+## 2.5.0：原件索引架构（本地交付，2026-11-06）
+
+插件与客户端新增同名“迁移到索引架构”入口，共用预览、确认、文件目录和分类。原件保持原位；索引层登记文件身份、位置、分类和指纹，不保存分类正文副本。迁移后全文索引写入索引层，原地接入和收件箱分类直接登记原件。
+
+识别旧机器引用并在检索中去重，保留用户独立笔记。文件修改、可核验改名及缺失由维护更新；预览后文件变化、原件缺失或链接路径会阻止发布。已有规则、模板和目录保留，原目录补齐功能标为可选。既有库身份和授权事务元数据继续使用 .kbmeta，不执行全量元数据搬迁。
+
+隔离检查覆盖迁移保护、原件检索、分类、文件变化、索引失败待完成及 Windows 两端独立/共享访问；Electron 中验证设置入口、预览确认、启用状态与保存分类。未对真实私有库执行迁移，未验证真实模型或所有二进制正文解析。详见 [原件索引架构](docs/ORIGINAL-FILE-INDEX-ARCHITECTURE.md)。本次为本地交付，尚未发布到远程更新源。
+
 ## 2.4.14：旧库框架迁移（2026-11-05）
 
 新增“版本与诊断 → 旧库框架迁移”：先只读预览，再确认补齐缺失的标准目录、条目模板和框架管理说明。已有资料位置、自定义目录、AGENTS 正文、人工 INDEX 和不同内容的模板保留；可查看新版参考。迁移不自动搬移资料、重写笔记或调用模型。
@@ -409,3 +437,13 @@ Windows 定向复验 73/73 通过（原有 68 项及新增 5 项故障测试）�
 ## 2026-11-04：同步版本与全自动更新策略
 
 共享版本命名、比较和打包校验；插件跨大版本和预览候选更新均允许自动安装，保留通道偏好、包校验与忙碌/未知结果保护，不再弹更新确认窗口。安装后的版本说明规则不变。客户端在线下载安装尚未接入。本次只更新源码规则，不发布新包。
+
+
+### 2.5.1 task plan follow-up (2026-11-07)
+
+Task plan disclosure and list symbols now use vectors/CSS rather than font-dependent characters. During long knowledge tasks, bounded pre-step checkpoints request truthful todo_write progress updates instead of waiting until the final response. No step is automatically marked complete from tool count or elapsed time. Install the local update package and fully restart DSH to load host changes; real long-task behavior remains an installed-host verification step.
+
+
+### Local update 2.5.2 (2026-11-07)
+
+The task plan expands upward above the composer: its arrow now points up when collapsed and down when expanded.

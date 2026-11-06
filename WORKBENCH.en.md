@@ -1,3 +1,5 @@
+> Current release / 当前版本：plugin **2.5.3**, client **1.1.1**. [Release notes](docs/releases/plugin-2.5.3.md)。原件索引迁移须在资料库预览并确认。
+
 # Unified installation and usage
 
 The 2.4.14 [existing-library framework migration](docs/LIBRARY-FRAMEWORK-MIGRATION.md#english) adds a preview and confirmation flow under version settings. It fills missing standard folders, templates and guidance while keeping document locations and custom content. Plugin installation and library migration are separate; the new entry ships in 2.4.14.

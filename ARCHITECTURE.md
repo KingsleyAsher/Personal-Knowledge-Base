@@ -1,3 +1,5 @@
+> Current release / 当前版本：plugin **2.5.3**, client **1.1.1**. [Release notes](docs/releases/plugin-2.5.3.md)。原件索引迁移须在资料库预览并确认。
+
 # 插件与客户端统一架构
 
 [English](ARCHITECTURE.en.md) · 中文
@@ -32,3 +34,7 @@ DSH 或可选记忆插件离线时，客户端本地文件与知识库能力继�
 
 验证使用真实公开 2.4.3 TGZ、Windows 上的运行服务与真实 pnpm，覆盖直接安装、自然退出后交接、原件保留及受损旧安装恢复；事务失败回退沿用并补验现有检查。验证范围不包含正式用户 profile 安装或完整 Electron 界面操作。旧 2.4.3 首次安装仍由宿主旧安装器执行，不能获得新版事务器在安装前的保护；异常时走恢复入口。旧更新源不能按客户端运行状态筛选，2.4.3 以外的旧版不属于本次定向保证。
 
+
+## 原件索引模式
+
+插件和客户端复用 file-catalog.js 与 index-architecture.js。文件目录只保存原件指向和分类，不保存正文；库身份与权限事务继续沿用既有元数据。迁移为管理操作，先预览再确认。详见 [完整说明](docs/ORIGINAL-FILE-INDEX-ARCHITECTURE.md)。

@@ -1266,6 +1266,84 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
       btn('刷新当前知识库',refresh,false,{className:'kbc-btn kbc-btn-ghost',style:{marginTop:12}}))
   }
 
+  function IndexArchitectureMigration({snapshot:provided}={}) {
+    const [status,setStatus]=R.useState(null),[plan,setPlan]=R.useState(null),[files,setFiles]=R.useState([]),[page,setPage]=R.useState(null),[revision,setRevision]=R.useState(null),[busy,setBusy]=R.useState(false),[message,setMessage]=R.useState(''),[filter,setFilter]=R.useState(''),[categories,setCategories]=R.useState({})
+    const generation=R.useRef(0)
+    const run=async(op,extra={})=>{
+      const token=++generation.current;setBusy(true);setMessage('')
+      try{
+        const kbId=provided?.kbId||(await api({op:'preferences.get'})).kbId
+        if(!kbId)throw Error('请先打开资料库')
+        const out=await api({op,expectedKbId:kbId,...extra})
+        if(out.ok!==true)throw Error(out.error||out.detail||'操作未完成')
+        if(token!==generation.current)return
+        if(op==='architecture.preview'){setPlan(out.architecture);return}
+        if(op==='architecture.preview-files'){setPlan(old=>({...old,...out.architecture}));return}
+        if(op==='architecture.files'){setFiles(out.architecture.files||[]);setPage(out.architecture);setRevision(out.architecture.revision);setCategories({});return}
+        if(op==='architecture.apply'){setPlan(null);setMessage(out.architecture.phase==='completed'?'已切换为索引架构，原件保持原位。':'文件目录已启用，全文索引待完成，请点击刷新文件与索引。')}
+        if(op==='architecture.classify')setMessage('分类已保存到索引层，原文件未改写。')
+        if(op==='architecture.reclassify')setMessage('已整理主题分类；手工分类保留，原文件未改写。原分类目录已备份。')
+        const s=op==='architecture.status'?out:await api({op:'architecture.status',expectedKbId:kbId})
+        if(s.ok!==true)throw Error(s.error||s.detail||'读取迁移状态失败')
+        if(token!==generation.current)return
+        setStatus(s.architecture)
+        if(s.architecture.active){const f=await api({op:'architecture.files',expectedKbId:kbId,q:filter});if(f.ok!==true)throw Error(f.error||f.detail||'读取分类失败');if(token!==generation.current)return;setFiles(f.architecture.files||[]);setPage(f.architecture);setRevision(f.architecture.revision);setCategories({})}
+      }catch(error){if(token===generation.current)setMessage(error.message)}finally{if(token===generation.current)setBusy(false)}
+    }
+    R.useEffect(()=>{void run('architecture.status');return()=>{generation.current++}},[provided?.kbId])
+    return e('section',{className:'kbw-panel','aria-label':'迁移到索引架构'},e('h3',null,'迁移到索引架构'),
+      e('p',null,'真实文件保留原位；分类、文件指向、全文与向量索引保存在索引层。检索定位后按需读取原件，不生成分类正文副本。'),
+      e('p',{className:'kbw-meta'},'插件和客户端使用同一个资料库身份与索引；两端均可独立迁移和管理。已有目录、模板、规则文件保持原样。'),
+      e('p',null,status?(status.active?'当前资料库已启用索引架构':'当前资料库尚未迁移到索引架构'):(busy?'正在读取迁移状态…':'迁移状态读取失败，请重试')),
+      e('div',{className:'kbw-actions'},btn('预览索引架构迁移',()=>run('architecture.preview'),busy),
+        plan?btn('确认迁移到索引架构',()=>run('architecture.apply',{planId:plan.planId,revision:plan.revision,confirm:true}),busy||!plan.canApply,{className:'kbw-button kbw-primary'}):null,
+        status?.active?btn('刷新文件与索引',()=>run('architecture.refresh'),busy):null,status?.active?btn('重新整理主题分类',()=>run('architecture.reclassify'),busy):null,!status?btn('重试读取状态',()=>run('architecture.status'),busy):null),
+      plan?e('div',null,e('p',null,'资料库：'+plan.root),e('p',null,'真实文件 '+plan.coverage.originals+' 个；识别旧引用 '+plan.coverage.references+' 个。确认后写入 '+plan.storage+'，已有资料不搬移。'),
+        e('details',null,e('summary',null,'查看文件与分类预览（共 '+plan.total+' 项）'),plan.files.map(f=>e('p',{key:f.id,className:'kbw-meta'},f.path+' → '+f.category+' · '+f.kind)),e('p',null,'本页 '+plan.files.length+' 项'),
+          btn('预览上一页',()=>run('architecture.preview-files',{planId:plan.planId,offset:Math.max(0,plan.offset-100)}),busy||!plan.offset),
+          btn('预览下一页',()=>run('architecture.preview-files',{planId:plan.planId,offset:plan.nextOffset}),busy||plan.nextOffset===undefined))):null,
+      status?.active?e('div',null,e('h4',null,'真实文件分类'),e('p',{className:'kbw-meta'},'按资料主题分类，保留手工分类。名称与标签不足以判断的资料放入“待分类”；解析底稿和管理文件不列入原件清单。'),e('input',{'aria-label':'筛选真实文件分类',placeholder:'按资料名称、分类或标签筛选',value:filter,onChange:event=>setFilter(event.target.value)}),
+        btn('筛选文件',()=>run('architecture.files',{q:filter}),busy),
+        e('p',{className:'kbw-meta'},'本页 '+files.length+' / 共 '+(page?.total??0)+' 项；按路径、分类或标签筛选可查找全部原件。'),
+        files.map(f=>e('div',{key:f.id,className:'kbw-panel'},e('strong',null,f.path),e('p',{className:'kbw-meta'},f.status==='missing'?'原件已缺失，请恢复或重新定位原件':f.kind+' · 原件可用'),
+          e('label',null,'分类 ',e('input',{'aria-label':'文件分类 '+f.path,value:categories[f.id]??f.category,disabled:busy||f.status==='missing',onChange:event=>setCategories(old=>({...old,[f.id]:event.target.value}))})),
+          btn('保存分类',()=>run('architecture.classify',{path:f.path,category:categories[f.id]??f.category,revision}),busy||f.status==='missing'||categories[f.id]===undefined))),
+        btn('分类上一页',()=>run('architecture.files',{q:filter,offset:Math.max(0,(page?.offset??0)-100),catalogRevision:revision}),busy||!page?.offset),
+        btn('分类下一页',()=>run('architecture.files',{q:filter,offset:page?.nextOffset,catalogRevision:revision}),busy||page?.nextOffset===undefined)):null,
+      message?e('p',{role:'status'},message):null)
+  }
+
+  function FrameworkMigration({snapshot:provided}={}) {
+    const [plan,setPlan]=R.useState(null),[receipt,setReceipt]=R.useState(null),[busy,setBusy]=R.useState(false),[message,setMessage]=R.useState('')
+    const generation=R.useRef(0)
+    const run=async(op,extra={})=>{
+      const token=++generation.current;setBusy(true);setMessage('')
+      let kbId
+      try{
+        kbId=extra.expectedKbId||provided?.kbId||(await api({op:'preferences.get'})).kbId
+        if(!kbId)throw Error('请先绑定已有知识库')
+        const out=await api({op,expectedKbId:kbId,...extra})
+        if(out.ok!==true)throw Error(out.error||out.detail||'框架迁移未完成')
+        if(token!==generation.current)return
+        if(op==='upgrade.framework-preview')setPlan(out.framework)
+        else{setReceipt(out.framework);if(op==='upgrade.framework-apply'){setPlan(null);setMessage('已补齐 '+out.framework.created.length+' 项；已有资料和自定义文件保持原位。')}if(op==='upgrade.framework-recover'){setPlan(null);setMessage('已核对并撤销未完成迁移的新增内容，请重新预览。')}}
+      }catch(err){if(token===generation.current){setMessage(err.message);if(kbId&&['upgrade.framework-apply','upgrade.framework-recover'].includes(op))try{const out=await api({op:'upgrade.framework-status',expectedKbId:kbId});if(token===generation.current&&out.ok)setReceipt(out.framework)}catch{}}}
+      finally{if(token===generation.current)setBusy(false)}
+    }
+    R.useEffect(()=>{setPlan(null);setReceipt(null);void run('upgrade.framework-status');return()=>{generation.current++}},[provided?.kbId])
+    const names={create:'将新增',current:'已具备',preserved:'保留已有内容',blocked:'同名文件或目录冲突'}
+    return e('section',{className:'kbw-panel','aria-label':'旧库框架迁移'},e('h3',null,'旧库框架迁移'),
+      e('p',{className:'kbw-meta'},'补齐当前版本的标准目录、缺失模板和框架手册。资料位置、自定义目录、已有 AGENTS.md 和人工 INDEX.md 保留。'),
+      e('div',{className:'kbw-actions'},btn('预览旧库迁移',()=>run('upgrade.framework-preview'),busy),
+        plan?btn('确认补齐新版框架',()=>run('upgrade.framework-apply',{expectedKbId:plan.kbId,planId:plan.planId,revision:plan.revision,confirm:true}),busy||!plan.canApply||plan.creates===0,{className:'kbw-button kbw-primary'}):null,
+        receipt?.needsRecovery?btn('恢复未完成迁移',()=>run('upgrade.framework-recover'),busy):null),
+      plan?e('div',null,e('p',null,'将新增 '+plan.creates+' 项，保留 '+plan.preserved+' 项已有不同内容。'),
+        plan.rows.map(row=>e('div',{key:row.path,className:'kbw-meta'},(row.kind==='directory'?row.path+'/':row.path)+' · '+names[row.status],row.candidate?e('details',null,e('summary',null,'查看新版参考'),e('pre',{style:{whiteSpace:'pre-wrap',overflowWrap:'anywhere',maxHeight:240,overflow:'auto'}},row.candidate)):null)),
+        !plan.canApply?e('p',{role:'alert'},plan.previous?.needsRecovery?'请先恢复未完成的迁移，再重新预览。':'存在同名文件或目录冲突，请先处理后重新预览。'):plan.creates===0?e('p',null,'标准框架已齐全；不同的已有内容继续保留，可在下方查看托管模板差异。'):null):null,
+      receipt?e('p',{className:'kbw-meta'},'最近迁移：'+({completed:'已完成','rolled-back':'已撤销本次新增',failed:'待恢复',applying:'未完成','rolling-back':'恢复未完成'}[receipt.phase]||receipt.phase)):null,
+      message?e('p',{role:'status'},message):null)
+  }
+
   function UpgradeSettings({snapshot:provided}={}) {
     const [snapshot,setSnapshot]=R.useState(provided||null),[data,setData]=R.useState(null),[busy,setBusy]=R.useState(false),[message,setMessage]=R.useState(''),[diff,setDiff]=R.useState(null)
     const request=async(op='upgrade.get',extra={})=>{setBusy(true);setMessage('');try{
@@ -1277,7 +1355,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
     R.useEffect(()=>{void request()},[provided?.kbId])
     const labels={current:'已检查，机制兼容',attention:'有自定义文件待处理',failed:'升级未完成，可重试',checking:'检查中','index-building':'新索引后台构建中','index-paused':'索引尚未就绪，保留暂停或失败状态，可在检索设置中继续'}
     const activation={'new-session-required':'已有会话请新建会话以加载当前规则；新会话使用当前机制','restart-required':'托管预设已更新，重启宿主后生效',current:'当前运行机制已加载'}
-    return e('section',{className:'kbw-panel'},e('h3',null,'系统版本与机制升级'),
+    return e('section',{className:'kbw-panel'},e(IndexArchitectureMigration,{snapshot:provided}),e('details',null,e('summary',null,'旧目录框架补齐（可选）'),e(FrameworkMigration,{snapshot:provided})),e('h3',null,'系统版本与机制升级'),
       data?e('div',null,e('p',null,'版本 '+data.program.version),e('p',null,labels[data.status]||data.status),
         e('p',{className:'kbw-meta'},activation[data.activation]||data.activation),
         data.mechanisms?e('p',{className:'kbw-meta'},'全文 '+data.mechanisms.fulltext.format+' / '+data.mechanisms.fulltext.tokenizer+' · 向量 '+data.mechanisms.vector.format+' / '+data.mechanisms.vector.chunkVersion+' · 问答协议 '+data.mechanisms.questionProtocol):null,
@@ -1330,7 +1408,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
 
   function SettingsHub({ snapshot, navigate }) {
     const [section, setSection] = R.useState('preferences')
-    const sections = [['preferences', '使用偏好与隐私'], ['retrieval', '协同检索与向量 API'], ['parsing', '解析服务'], ['capture', '采集与连接'], ['backup', '备份与恢复'], ['version', '版本与诊断']]
+    const sections = [['preferences', '使用偏好与隐私'], ['retrieval', '协同检索与向量 API'], ['parsing', '解析服务'], ['capture', '采集与连接'], ['backup', '备份与恢复'], ['version', '索引架构迁移与版本']]
     return e('section', { className: 'kbw-content' }, e('div', { className: 'kbw-home-head' }, e('div', null, e('h2', null, '知识库设置'), e('p', { className: 'kbw-meta' }, '管理当前知识库的使用方式、连接与数据保护。')), e('a', { className: 'kbw-button', href: projectRecordUrl, target: '_blank', rel: 'noopener noreferrer' }, '插件设计与演进记录 ↗')), e('div', { className: 'kbw-settings-layout' }, e('nav', { className: 'kbw-settings-nav', 'aria-label': '设置分类' }, sections.map(([id, label]) => btn(label, () => setSection(id), false, { key: id, 'aria-current': section === id }))), e('div', { className: 'kbw-settings-panel' },
       section === 'preferences' ? e(PreferencesSettings) : null,
       section === 'parsing' ? e(R.Fragment, null, e('h3', null, '解析服务'), e(ParseSummary)) : null,

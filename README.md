@@ -1,6 +1,7 @@
 # Personal Knowledge Base · Plugin and Desktop Client
 
-> **New in 2.4.14:** [existing-library framework migration](docs/LIBRARY-FRAMEWORK-MIGRATION.md#english) previews and adds missing standard folders, templates and guidance after confirmation, preserving document locations and custom content.
+
+> **Plugin 2.5.3 / client 1.1.1:** original-file classification and migration, saved flow execution settings, task-plan fixes and series deliverable guidance. [Release notes](docs/releases/plugin-2.5.3.md).
 
 > **2.4.6 updater limitation:** a pristine installation stuck on a pending receipt cannot self-repair from the feed alone. The [general recovery entry](docs/LEGACY-246-BOOTSTRAP.md) is a one-time external migration, not a zero-intervention update.
 
@@ -14,10 +15,10 @@
 
 | Product | Published version | Direct download | Release notes |
 |---|---|---|---|
-| **Desktop client · Windows x64** | **1.0.3** | **[⬇ Download client installer (EXE)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.3/KnowledgeWorkbench-1.0.3-Setup.exe)** | [Client Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.3) |
-| **DSH knowledge-base plugin** | **2.4.14** | **[⬇ Download plugin (TGZ)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.14/local-dsh-knowledge-base-2.4.14.tgz)** | [Plugin Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.14) |
+| **Desktop client · Windows x64** | **1.1.1** | **[⬇ Download client installer (EXE)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.1.1/KnowledgeWorkbench-1.1.1-Setup.exe)** | [Client Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.1.1) |
+| **DSH knowledge-base plugin** | **2.5.3** | **[⬇ Download plugin (TGZ)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.5.3/local-dsh-knowledge-base-2.5.3.tgz)** | [Plugin Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.5.3) |
 
-Release entries: [client 1.0.3](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.3) · [plugin 2.4.14](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.14). Choose the correct installer/TGZ and verify its product-specific manifest and digest.
+Release entries: [client 1.1.1](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.1.1) · [plugin 2.5.3](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.5.3). Choose the correct installer/TGZ and verify its product-specific manifest and digest.
 
 ## One library, two entry points
 
@@ -29,21 +30,21 @@ Release entries: [client 1.0.3](https://github.com/KingsleyAsher/Personal-Knowle
 
 ## Download and installation
 
-### Desktop client 1.0.3 · Windows x64
+### Desktop client 1.1.1 · Windows x64
 
-**[Download KnowledgeWorkbench-1.0.3-Setup.exe](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.3/KnowledgeWorkbench-1.0.3-Setup.exe)** · [Release notes and assets](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.3) · [SHA-256 checksums](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.3/client-SHA256SUMS)
+**[Download KnowledgeWorkbench-1.1.1-Setup.exe](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.1.1/KnowledgeWorkbench-1.1.1-Setup.exe)** · [Release notes and assets](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.1.1) · [SHA-256 checksums](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.1.1/client-SHA256SUMS)
 
-Run the EXE to install. The approximately 186 MiB package includes its runtime. This is the standalone client installer, not a DSH plugin bundle.
+Run the EXE to install. The bundled-runtime package includes its runtime. This is the standalone client installer, not a DSH plugin bundle.
 
-### DSH plugin 2.4.14
+### DSH plugin 2.5.3
 
-**[Download local-dsh-knowledge-base-2.4.14.tgz](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.14/local-dsh-knowledge-base-2.4.14.tgz)** · [Release notes and assets](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.14)
+**[Download local-dsh-knowledge-base-2.5.3.tgz](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.5.3/local-dsh-knowledge-base-2.5.3.tgz)** · [Release notes and assets](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.5.3)
 
 Install the TGZ through DSH plugin management. GitHub highlights only one Latest release, but both products have independent releases. Use the product links above or browse [all Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases).
 
 Source, issues and future releases are maintained here. In [Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases), choose the correct product: Windows Setup.exe for the client, TGZ for the plugin.
 
-Published plugin 2.4.14: [Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.4.14) · [TGZ](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.4.14/local-dsh-knowledge-base-2.4.14.tgz). See [plugin usage](WORKBENCH.en.md) and [mirror information](MIRROR-RELEASES.md) for extensions and regional sources. Mirror availability can vary.
+Published plugin 2.5.3: [Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.5.3) · [TGZ](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.5.3/local-dsh-knowledge-base-2.5.3.tgz). See [plugin usage](WORKBENCH.en.md) and [mirror information](MIRROR-RELEASES.md) for extensions and regional sources. Mirror availability can vary.
 
 The existing client installer retains its paper-green interface and animations, requires an empty application directory and preserves personal data on uninstall. Client online checks and verified downloads are implemented; automatic in-place installation and activation remain unfinished. The plugin keeps its existing update manifests and installation flow.
 
@@ -84,3 +85,18 @@ The new client shows recovery help only after an installation or handoff error. 
 
 Windows evidence uses the actual public 2.4.3 archive, a live service and real pnpm. Initial legacy installation still runs through the old Host installer and cannot retroactively acquire transaction protection. Recovery is the fallback on failure. No live user profile installation or complete Electron UI automation is claimed; other legacy versions are outside this targeted verification.
 
+
+
+### Local update 2.5.1
+
+Flow cards now keep text, execution settings, and actions in separate sections. Save the model and reasoning effort in the card; Run uses that configuration directly. Only missing required task parameters need an extra form.
+
+
+### 2.5.1 task plan follow-up (2026-11-07)
+
+Task plan disclosure and list symbols now use vectors/CSS rather than font-dependent characters. During long knowledge tasks, bounded pre-step checkpoints request truthful todo_write progress updates instead of waiting until the final response. No step is automatically marked complete from tool count or elapsed time. Install the local update package and fully restart DSH to load host changes; real long-task behavior remains an installed-host verification step.
+
+
+### Local update 2.5.2 (2026-11-07)
+
+The task plan expands upward above the composer: its arrow now points up when collapsed and down when expanded.

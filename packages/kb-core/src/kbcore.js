@@ -21,9 +21,10 @@ import { createByteCache } from './retrieval-cache.js'
 import { policyExcludes, readIndexPolicy, policyExcluded, excludedSource, EXCLUDED_PARTITION, registerDerived, resolveAssetPath } from './index-policy.js'
 import { readImportSources, derivedPrivatePartitions, effectivePrivateDirs, foldGeneratedPairs } from './fsindex.js'
 import { sourceReferences, reconcileImportedSources, SOURCE_TEXT } from './source-references.js'
+import {catalogActive,readCatalog,refreshCatalog,classifyOriginal} from './file-catalog.js'
 
 // 版本单一来源：package.json 的 version 必须与此一致（详见 INSTALL 说明）
-export const VERSION = '2.4.14'
+export const VERSION = '2.5.3'
 
 export const REQUIRED_FIELDS = ['title', 'type', 'tags', 'status', 'updated']
 export const SCHEMA_VERSION = 1
@@ -1100,10 +1101,12 @@ export function createCore(cfg, logger) {
       return { healthy: false, reason: 'unsupported-meta-schema', detail: `kb.json schemaVersion=${m.schemaVersion}，本版支持 ${SCHEMA_VERSION}` }
     }
     const bad = []
+    if (!catalogActive(root)) {
     for (const category of conf.categories ?? []) {
       const st = await stat(path.join(root, category)).catch(() => null)
       if (st === null) bad.push(`${category}（缺）`)
       else if (!st.isDirectory()) bad.push(`${category}（不是目录）`)
+    }
     }
     if (bad.length > 0) {
       return { healthy: false, reason: 'invalid-categories', detail: bad.join('、') }
@@ -1360,6 +1363,7 @@ export function createCore(cfg, logger) {
     } else {
       skipped.push('.kbmeta/kb.json')
     }
+    if (!catalogActive(root)) {
     for (const category of conf.categories ?? []) {
       const dir = path.join(root, category)
       if (existsSync(dir)) skipped.push(category)
@@ -1393,6 +1397,7 @@ export function createCore(cfg, logger) {
       for (const [name, text] of Object.entries(TEMPLATES)) await atomicWrite(path.join(tplDir, name), text)
       created.push('_模板/（3 个模板）')
     }
+    }
     state.installState = 'complete'
     state.completedAt = nowIso()
     await atomicWrite(metaFile, JSON.stringify(state, null, 2))
@@ -1418,9 +1423,9 @@ export function createCore(cfg, logger) {
   }
 
   // ── 索引 ────────────────────────────────────────────────────────────
-  const indexPath = (root) => path.join(root, '.kbmeta', 'index', 'entries.json')
+  const indexPath = (root) => catalogActive(root) ? path.join(root,'索引层','全文','entries.json') : path.join(root, '.kbmeta', 'index', 'entries.json')
   async function indexStorageGuard(root) {
-    for (const file of [indexPath(root), path.join(root, '.kbmeta', 'index', 'snapshots')]) {
+    for (const file of [indexPath(root), path.join(path.dirname(indexPath(root)), 'snapshots')]) {
       const guard = await checkRealPath(root, file)
       if (!guard.ok) return guard
     }
@@ -1457,13 +1462,14 @@ export function createCore(cfg, logger) {
       throw Object.assign(new Error('条目数量明显下降，已保留旧索引；请核对差异后确认'), { code: 'index-drop-confirmation', confirmationToken: token, oldCount, newCount: entries.length })
     }
     if (options.snapshot !== false && old.state === 'ok' && validIndexPayload(old.value) && old.value.meta?.kbId === payload.meta.kbId) {
-      const directory = path.join(root, '.kbmeta', 'index', 'snapshots')
+      const directory = path.join(path.dirname(indexPath(root)), 'snapshots')
       await mkdir(directory, { recursive: true })
       const name = `${Date.now()}-${crypto.randomBytes(4).toString('hex')}.json`
       await atomicJsonStream(path.join(directory, name), old.value)
       const snapshots = (await readdir(directory)).filter(n => /^\d+-[a-f0-9]+\.json$/.test(n)).sort().reverse()
       for (const file of snapshots.slice(3)) await rm(path.join(directory, file), { force: true }).catch(() => {})
     }
+    await mkdir(path.dirname(indexPath(root)),{recursive:true})
     await atomicJsonStream(indexPath(root), payload, { beforePublish: async () => {
       const current = await getConfigFresh(), live = await diskFingerprint(conf, true)
       if (kbRootOf(current) !== root || current.revision !== conf.revision || live.error || live.fingerprint !== payload.meta.fingerprint) throw Object.assign(new Error('提交前资料或配置已改变，旧索引已保留'), { code: 'source-unstable' })
@@ -1487,7 +1493,7 @@ export function createCore(cfg, logger) {
         await commitIndex(indexPath(root), { generatedAt: nowIso(), entries, meta: await indexMetaOf(conf, entries) })
       }
       // Disposable index history must not retain excluded text or restore it later.
-      const directory = path.join(root, '.kbmeta', 'index', 'snapshots')
+      const directory = path.join(path.dirname(indexPath(root)), 'snapshots')
       for (const name of await readdir(directory).catch(e => { if (e.code === 'ENOENT') return []; throw e })) {
         if (!/^\d+-[a-f0-9]+\.json$/.test(name)) continue
         const checked = await checkRealPath(root, path.join(directory, name))
@@ -1517,6 +1523,7 @@ export function createCore(cfg, logger) {
         if (kbRootOf(current) !== root || current.revision !== conf.revision || expectedRevision != null && expectedRevision !== current.revision || expectedKbId && meta.value?.kbId !== expectedKbId) return { ok: false, reason: 'binding-changed' }
         if (!health.healthy || current.degraded || automatic && current.autoIndex === false) return { ok: false, reason: 'maintenance-disabled-or-unhealthy' }
         await reconcileImportedSources(root, meta.value?.kbId)
+        if(catalogActive(root))await refreshCatalog({root,st:{kbId:meta.value.kbId},privateDirs:effectivePrivateDirs(conf.privateDirs,derivedPrivatePartitions(await readImportSources(root))),core:{_internal:{parseFrontmatter}}})
         maintenanceState = { ...maintenanceState, state: 'running', reason: null }
         const snap = await indexSnapshot(conf)
         if (snap.freshness.reason === 'index-kbid-mismatch') throw Object.assign(new Error('索引身份不一致，未自动替换'), { code: 'index-kbid-mismatch' })
@@ -1578,7 +1585,7 @@ export function createCore(cfg, logger) {
     try { return await withLock(root, () => withKbLock(root, 'index-snapshot', async () => {
       const meta = await readMeta(root)
       if (expectedKbId && expectedKbId !== meta.value?.kbId) return { ok: false, reason: 'binding-changed' }
-      const directory = path.join(root, '.kbmeta', 'index', 'snapshots')
+      const directory = path.join(path.dirname(indexPath(root)), 'snapshots')
       const names = await readdir(directory).catch(e => { if (e.code === 'ENOENT') return []; throw e })
       const files = names.filter(n => /^\d+-[a-f0-9]+\.json$/.test(n)).sort().reverse()
       for (const file of files) { const guard = await checkRealPath(root, path.join(directory, file)); if (!guard.ok) return guard }
@@ -1650,6 +1657,8 @@ export function createCore(cfg, logger) {
   }
 
   async function walkMd(root, exclude, dir = root, acc = [], errors = [], links = [], policy = readIndexPolicy(root)) {
+    const originalMode=catalogActive(root)
+    if(dir===root&&originalMode)exclude=[...exclude,...(await readCatalog(root)).references.map(r=>r.path)]
     let items = []
     try {
       items = await readdir(dir, { withFileTypes: true })
@@ -1673,7 +1682,7 @@ export function createCore(cfg, logger) {
         continue
       }
       if (item.isDirectory()) await walkMd(root, exclude, full, acc, errors, links, policy)
-      else if ((item.name.endsWith('.md') || rel.startsWith('90-收件箱/') && SOURCE_TEXT.test(rel)) && !item.name.includes('.tmp-') && !policyExcluded(policy, rel)) acc.push(full)
+      else if ((item.name.endsWith('.md') || (originalMode || rel.startsWith('90-收件箱/')) && SOURCE_TEXT.test(rel)) && !item.name.includes('.tmp-') && !policyExcluded(policy, rel)) acc.push(full)
     }
     return acc
   }
@@ -2138,6 +2147,10 @@ export function createCore(cfg, logger) {
       } catch { /* Missing sources cannot fall back to stale mirror text. */ }
     }
     entries = [...canonical.values()]
+    if(catalogActive(root)){
+      const catalog=await readCatalog(root),records=new Map(catalog.files.filter(f=>f.status==='available').map(f=>[f.path,f]))
+      entries=entries.filter(e=>records.has(e.path)).map(e=>{const f=records.get(e.path);return {...e,title:f.title,kind:f.kind,category:f.category,tags:f.tags}})
+    }
     const metaHits = []
     const bodyHits = []
     const metaPaths = new Set()
@@ -2145,7 +2158,7 @@ export function createCore(cfg, logger) {
       const inMeta =
         String(e.title).toLowerCase().includes(lower) ||
         (e.tags ?? []).some((t) => String(t).toLowerCase().includes(lower)) ||
-        String(e.kind ?? '').toLowerCase().includes(lower)
+        String(e.kind ?? '').toLowerCase().includes(lower) || String(e.category ?? '').toLowerCase().includes(lower)
       if (!inMeta) continue
       metaHits.push({ entryId: e.entryId, path: e.path, title: e.title, snippet: `（标题/标签命中）tags=${(e.tags ?? []).join(',') || '-'}`, revision: e.revision })
       metaPaths.add(e.path)
@@ -2425,6 +2438,7 @@ export function createCore(cfg, logger) {
 
   return {
     maintainIndex, maintenanceStatus, indexSnapshots, purgePolicyIndex,
+    registerOriginal: async args => {const conf=await getConfigFresh(),root=kbRootOf(conf);if(!catalogActive(root))return null;const b={root,st:{kbId:(await readMeta(root)).value.kbId},privateDirs:effectivePrivateDirs(conf.privateDirs,derivedPrivatePartitions(await readImportSources(root))),core:{_internal:{parseFrontmatter}}};await refreshCatalog(b);return classifyOriginal(b,args)},
     loadConfig,
     getConfig,
     getConfigHealth,

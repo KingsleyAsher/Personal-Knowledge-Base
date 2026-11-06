@@ -16,8 +16,9 @@ The DSH sidebar offers reconnect, sessions, Agent presets and model/reasoning co
 
 Index snapshots are not backups of original files. Confirm backup type and restore target. Preserve originals when editing complex Office documents.
 
-Shared source update: see [plugin 2.4.3](../releases/plugin-2.4.13.md) for source synchronization and Windows parsing fixes. The published client 1.0.3 installer still contains its original paired plugin 2.4.2 payload.
 
-See [2.4.4 safe update and legacy transition](../releases/plugin-2.4.13.md). The published client installer remains 1.0.3.
+## 当前版本 / Current release
 
-2.4.3 direct upgrade and conditional error recovery: [release 2.4.13](../releases/plugin-2.4.13.md). Client installer remains independently versioned at 1.0.3.
+客户端 1.1.1，配套插件 2.5.3。原件分类树读取共享索引；在设置中预览并确认索引迁移。系列成品复用已有目录。
+
+Client 1.1.1 pairs with plugin 2.5.3. The original-file tree uses shared classification. Preview and confirm index migration in Settings. Reuse series folders for deliverables. [Release notes](../releases/client-1.1.1.md).

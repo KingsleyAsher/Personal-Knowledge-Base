@@ -18,7 +18,7 @@ const mimeOf=p=>OFFICE.test(p)?(/\.docx$/i.test(p)?'application/vnd.openxmlforma
 const version=s=>'fs:'+hash([String(s.dev),String(s.ino),String(s.size),String(s.mtimeNs),String(s.ctimeNs)]);
 const uuid=/^[a-f0-9-]{32,64}$/;
 const osName=n=>{if(typeof n!=='string'||!n||/[<>:"|?*\x00-\x1f\\/]/.test(n)||/[. ]$/.test(n)||/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\.|$)/i.test(n))throw error('BAD_REQUEST','文件名无效');return n.normalize('NFC');};
-export async function createDesktopFiles({root,privateDir,desktopRoot,core,withLock,getPrivateDirs=()=>DEFAULT_PRIVATE_DIRS,candidateOnly=true}){
+export async function createDesktopFiles({root,privateDir,desktopRoot,core,withLock,getPrivateDirs=()=>DEFAULT_PRIVATE_DIRS,getCatalog=()=>null,showPrivate=()=>false,candidateOnly=true}){
  const sandbox=await realpath(desktopRoot),base=await realpath(root);
  if(!inside(sandbox,base)||base===sandbox)throw error('FORBIDDEN','候选客户端只能访问隔离的虚构库');
  const marker=await readJson(path.join(base,'.desktop-preview.json'),null);
@@ -26,6 +26,8 @@ export async function createDesktopFiles({root,privateDir,desktopRoot,core,withL
  const storage=path.join(privateDir,'desktop');
  await mkdir(storage,{recursive:true});
  const plans=new Map(),resources=new Map(),stages=new Map();
+ let catalogSnapshot,catalogRows=new Map();
+ const records=()=>{const c=getCatalog();if(c!==catalogSnapshot){catalogSnapshot=c;catalogRows=new Map((c?.files??[]).map(f=>[f.path,f]));}return catalogRows;};
   const localTrash=await safePath(base,'.kbmeta/desktop-trash',{missing:true});
   async function trashDir(id,{create=false}={}){
    if(!uuid.test(id??''))throw error('BAD_REQUEST','回收项目标识无效');
@@ -39,6 +41,7 @@ export async function createDesktopFiles({root,privateDir,desktopRoot,core,withL
  async function checked(p,{missing=false,write=false}={}){
   p=relativePath(p);
   if(p.split('/').some(s=>s.startsWith('.')||['node_modules','索引层'].includes(s))||privatePath(p))throw error('FORBIDDEN','资料路径不在当前浏览授权范围内');
+  if(!showPrivate()&&records().get(p)?.private)throw error('FORBIDDEN','资料路径不在当前浏览授权范围内');
   if(write&&(fileRole(p)!=='document'||/^(_模板|_手册)\//.test(p)))throw error('READ_ONLY','系统资料受保护');
   return safePath(base,p,{missing});
  }
@@ -51,7 +54,8 @@ export async function createDesktopFiles({root,privateDir,desktopRoot,core,withL
   const accessInfo={canBrowse:true,canEdit:s.isFile()&&(OFFICE.test(p)?s.size<=BigInt(MAX_OFFICE):TEXT.test(p)&&s.size<=BigInt(MAX_TEXT))&&writable&&!system,
    canRename:writable&&!system,canMove:writable&&!system,canTrash:writable&&!system,canSendToModel:false,
    indexExcluded:policyExcluded(readIndexPolicy(base),p),reasons:system?['系统资料受保护']:!writable?['文件或目录只读']:s.size>BigInt(OFFICE.test(p)?MAX_OFFICE:MAX_TEXT)?['文件超过完整编辑上限']:[]};
-  return {id:p,path:p,name:path.posix.basename(p),type:s.isDirectory()?'directory':'file',mime:s.isFile()?mimeOf(p):undefined,size:Number(s.size),modifiedAt:Number(s.mtimeMs),revision:version(s),access:accessInfo,protected:system,hasChildren:s.isDirectory()};
+  const record=records().get(p),original=record?.status==='available'?record:null;
+  return {id:p,path:p,name:path.posix.basename(p),type:s.isDirectory()?'directory':'file',mime:s.isFile()?mimeOf(p):undefined,size:Number(s.size),modifiedAt:Number(s.mtimeMs),revision:version(s),access:accessInfo,protected:system,hasChildren:s.isDirectory(),...(original?{category:original.category,kind:original.kind,original:true}:{})};
  }
  async function list(parent='',offset=0,limit=500,sort='name-asc'){
   const folder=parent?await checked(parent):base,rows=[];

@@ -1,0 +1,35 @@
+{
+  "date": "2026-11-07",
+  "plugin": {
+    "version": "2.5.3",
+    "buildId": "1bc2f75a06f7cc29",
+    "sourcePackageFilesVerified": 487,
+    "sha256": "e6da9a51056eae672b2301c7ed45c537bb50029e21000f2ba673167b55e7e059"
+  },
+  "client": {
+    "version": "1.1.1",
+    "buildId": "32aef15a75c2b442",
+    "productionBuildPassed": true,
+    "installerIntegrityPassed": true,
+    "embeddedPluginDigestVerified": true,
+    "sha256": "aa7b980661ace8f09e10c3b6913aea259dc8b402d45582835fd05ccb1492ac09"
+  },
+  "focusedTests": {
+    "distinctTests": 81,
+    "finalPass": 81,
+    "unresolvedFailures": 0,
+    "firstRun": {
+      "passed": 80,
+      "failed": 1
+    },
+    "targetedRerun": {
+      "passed": 3,
+      "failed": 0
+    },
+    "fix": "Updated the synthetic inbox Host to forward flows.get through the adapter, matching production routing."
+  },
+  "productionInstallationVerified": false,
+  "runningDshActivationVerified": false,
+  "realPrivateLibraryUsed": false,
+  "realModelCalled": false
+}

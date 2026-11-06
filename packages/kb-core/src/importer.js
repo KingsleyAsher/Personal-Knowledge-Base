@@ -689,8 +689,10 @@ export async function runImport({ core, stateDir, importId, log = () => {}, onPr
       // F1：同一来源（目标身份+源根+相对路径）再导入 → 受控 update；不再静默转 create
       const key = sourceKey(targetKbId, manifest.source, item.rel)
       const prev = sourceMap.entries[key]
+      const originalRegistration = typeof core.registerOriginal==='function' ? await core.registerOriginal({path:originalRef,kind:mapped.kind,category:CATEGORY_OF[mapped.kind]||mapped.kind,tags}) : null
       let done = false
-      if (prev && typeof prev.entryPath === 'string' && prev.entryId) {
+      if(originalRegistration){if(!originalRegistration.ok)throw Error('原件分类未完成');item.status='done';item.entryId=originalRegistration.entryId;item.entryPath=originalRef;item.entryRevision=originalRegistration.revision;item.error=null;results.created++;done=true}
+      if (!done && prev && typeof prev.entryPath === 'string' && prev.entryId) {
         const prevAbs = path.join(manifest.target, ...prev.entryPath.split('/'))
         const lastRev = typeof prev.entryRevision === 'string' && prev.entryRevision.trim() !== '' ? prev.entryRevision : null
         if (!existsSync(prevAbs)) {

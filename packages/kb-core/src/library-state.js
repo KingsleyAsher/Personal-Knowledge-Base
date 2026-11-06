@@ -2,6 +2,7 @@ import path from 'node:path'
 import { stat, realpath } from 'node:fs/promises'
 import { effectivePrivateDirs, derivedPrivatePartitions, readImportSources } from './fsindex.js'
 import { deliverablesOf } from './workbench-deliverables.js'
+import {readCatalog} from './file-catalog.js'
 import { readIndexPolicy, resolveAssetPath } from './index-policy.js'
 import { digest, fail, safePath, readJson, atomicJson, locked, DEFAULT_PREFERENCES, validatePreferences } from './workbench-state.js'
 
@@ -29,10 +30,11 @@ export function createLibraryState({ stateDir, getCore, onMutation = () => {}, s
     const deliverables = await deliverablesOf(root)
     const privateDirs = effectivePrivateDirs(conf.privateDirs, derivedPrivatePartitions(sources))
     const needsConfirmation = !stored && JSON.stringify(validatePreferences(prefs.defaults)) !== JSON.stringify(validatePreferences(DEFAULT_PREFERENCES))
-    return { core, st, root, key, preferences, needsConfirmation, preferencesRevision: stored?.revision ?? 0, profile: prefs, conf, sources, privateDirs,
+    const fileCatalog=await readCatalog(root,st.kbId)
+    return { core, st, root, key, preferences, needsConfirmation, preferencesRevision: stored?.revision ?? 0, profile: prefs, conf, sources, privateDirs,fileCatalog,
       deliverables, indexPolicy: readIndexPolicy(root), dataFile: sharedState ? path.join(root, '.kbmeta/shared-state.json') : path.join(stateDir, 'workbench', 'libraries', key + '.json') }
   }
-  const versionOf = b => digest([b.key, b.preferencesRevision, b.conf.revision, b.indexPolicy?.revision || 0, ...(policyScope() ? [policyScope()] : [])].join('|')).slice(0, 20)
+  const versionOf = b => digest([b.key, b.preferencesRevision, b.conf.revision, b.indexPolicy?.revision || 0, b.fileCatalog?.policyRevision || 0, ...(policyScope() ? [policyScope()] : [])].join('|')).slice(0, 20)
   const userData = async b => {
     try { await stat(b.dataFile); const data = await readJson(b.dataFile, LIBRARY), policy = readIndexPolicy(b.root); for (const c of data.captures) { c.path = resolveAssetPath(b.root, c.path, policy); if (c.entryPath) c.entryPath = resolveAssetPath(b.root, c.entryPath, policy) }; return data }
     catch (error) { if (error.code !== 'ENOENT') throw error }

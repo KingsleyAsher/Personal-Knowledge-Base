@@ -1289,6 +1289,53 @@ window.__ModuleLoader__.load({
           btn('刷新当前知识库',refresh,false,{className:'kbc-btn kbc-btn-ghost',style:{marginTop:12}}))
       }
 
+      function IndexArchitectureMigration({snapshot:provided}={}) {
+        const [status,setStatus]=R.useState(null),[plan,setPlan]=R.useState(null),[files,setFiles]=R.useState([]),[page,setPage]=R.useState(null),[revision,setRevision]=R.useState(null),[busy,setBusy]=R.useState(false),[message,setMessage]=R.useState(''),[filter,setFilter]=R.useState(''),[categories,setCategories]=R.useState({})
+        const generation=R.useRef(0)
+        const run=async(op,extra={})=>{
+          const token=++generation.current;setBusy(true);setMessage('')
+          try{
+            const kbId=provided?.kbId||(await api({op:'preferences.get'})).kbId
+            if(!kbId)throw Error('请先打开资料库')
+            const out=await api({op,expectedKbId:kbId,...extra})
+            if(out.ok!==true)throw Error(out.error||out.detail||'操作未完成')
+            if(token!==generation.current)return
+            if(op==='architecture.preview'){setPlan(out.architecture);return}
+            if(op==='architecture.preview-files'){setPlan(old=>({...old,...out.architecture}));return}
+            if(op==='architecture.files'){setFiles(out.architecture.files||[]);setPage(out.architecture);setRevision(out.architecture.revision);setCategories({});return}
+            if(op==='architecture.apply'){setPlan(null);setMessage(out.architecture.phase==='completed'?'已切换为索引架构，原件保持原位。':'文件目录已启用，全文索引待完成，请点击刷新文件与索引。')}
+            if(op==='architecture.classify')setMessage('分类已保存到索引层，原文件未改写。')
+            if(op==='architecture.reclassify')setMessage('已整理主题分类；手工分类保留，原文件未改写。原分类目录已备份。')
+            const s=op==='architecture.status'?out:await api({op:'architecture.status',expectedKbId:kbId})
+            if(s.ok!==true)throw Error(s.error||s.detail||'读取迁移状态失败')
+            if(token!==generation.current)return
+            setStatus(s.architecture)
+            if(s.architecture.active){const f=await api({op:'architecture.files',expectedKbId:kbId,q:filter});if(f.ok!==true)throw Error(f.error||f.detail||'读取分类失败');if(token!==generation.current)return;setFiles(f.architecture.files||[]);setPage(f.architecture);setRevision(f.architecture.revision);setCategories({})}
+          }catch(error){if(token===generation.current)setMessage(error.message)}finally{if(token===generation.current)setBusy(false)}
+        }
+        R.useEffect(()=>{void run('architecture.status');return()=>{generation.current++}},[provided?.kbId])
+        return e('section',{className:'kbw-panel','aria-label':'迁移到索引架构'},e('h3',null,'迁移到索引架构'),
+          e('p',null,'真实文件保留原位；分类、文件指向、全文与向量索引保存在索引层。检索定位后按需读取原件，不生成分类正文副本。'),
+          e('p',{className:'kbw-meta'},'插件和客户端使用同一个资料库身份与索引；两端均可独立迁移和管理。已有目录、模板、规则文件保持原样。'),
+          e('p',null,status?(status.active?'当前资料库已启用索引架构':'当前资料库尚未迁移到索引架构'):(busy?'正在读取迁移状态…':'迁移状态读取失败，请重试')),
+          e('div',{className:'kbw-actions'},btn('预览索引架构迁移',()=>run('architecture.preview'),busy),
+            plan?btn('确认迁移到索引架构',()=>run('architecture.apply',{planId:plan.planId,revision:plan.revision,confirm:true}),busy||!plan.canApply,{className:'kbw-button kbw-primary'}):null,
+            status?.active?btn('刷新文件与索引',()=>run('architecture.refresh'),busy):null,status?.active?btn('重新整理主题分类',()=>run('architecture.reclassify'),busy):null,!status?btn('重试读取状态',()=>run('architecture.status'),busy):null),
+          plan?e('div',null,e('p',null,'资料库：'+plan.root),e('p',null,'真实文件 '+plan.coverage.originals+' 个；识别旧引用 '+plan.coverage.references+' 个。确认后写入 '+plan.storage+'，已有资料不搬移。'),
+            e('details',null,e('summary',null,'查看文件与分类预览（共 '+plan.total+' 项）'),plan.files.map(f=>e('p',{key:f.id,className:'kbw-meta'},f.path+' → '+f.category+' · '+f.kind)),e('p',null,'本页 '+plan.files.length+' 项'),
+              btn('预览上一页',()=>run('architecture.preview-files',{planId:plan.planId,offset:Math.max(0,plan.offset-100)}),busy||!plan.offset),
+              btn('预览下一页',()=>run('architecture.preview-files',{planId:plan.planId,offset:plan.nextOffset}),busy||plan.nextOffset===undefined))):null,
+          status?.active?e('div',null,e('h4',null,'真实文件分类'),e('p',{className:'kbw-meta'},'按资料主题分类，保留手工分类。名称与标签不足以判断的资料放入“待分类”；解析底稿和管理文件不列入原件清单。'),e('input',{'aria-label':'筛选真实文件分类',placeholder:'按资料名称、分类或标签筛选',value:filter,onChange:event=>setFilter(event.target.value)}),
+            btn('筛选文件',()=>run('architecture.files',{q:filter}),busy),
+            e('p',{className:'kbw-meta'},'本页 '+files.length+' / 共 '+(page?.total??0)+' 项；按路径、分类或标签筛选可查找全部原件。'),
+            files.map(f=>e('div',{key:f.id,className:'kbw-panel'},e('strong',null,f.path),e('p',{className:'kbw-meta'},f.status==='missing'?'原件已缺失，请恢复或重新定位原件':f.kind+' · 原件可用'),
+              e('label',null,'分类 ',e('input',{'aria-label':'文件分类 '+f.path,value:categories[f.id]??f.category,disabled:busy||f.status==='missing',onChange:event=>setCategories(old=>({...old,[f.id]:event.target.value}))})),
+              btn('保存分类',()=>run('architecture.classify',{path:f.path,category:categories[f.id]??f.category,revision}),busy||f.status==='missing'||categories[f.id]===undefined))),
+            btn('分类上一页',()=>run('architecture.files',{q:filter,offset:Math.max(0,(page?.offset??0)-100),catalogRevision:revision}),busy||!page?.offset),
+            btn('分类下一页',()=>run('architecture.files',{q:filter,offset:page?.nextOffset,catalogRevision:revision}),busy||page?.nextOffset===undefined)):null,
+          message?e('p',{role:'status'},message):null)
+      }
+
       function FrameworkMigration({snapshot:provided}={}) {
         const [plan,setPlan]=R.useState(null),[receipt,setReceipt]=R.useState(null),[busy,setBusy]=R.useState(false),[message,setMessage]=R.useState('')
         const generation=R.useRef(0)
@@ -1331,7 +1378,7 @@ window.__ModuleLoader__.load({
         R.useEffect(()=>{void request()},[provided?.kbId])
         const labels={current:'已检查，机制兼容',attention:'有自定义文件待处理',failed:'升级未完成，可重试',checking:'检查中','index-building':'新索引后台构建中','index-paused':'索引尚未就绪，保留暂停或失败状态，可在检索设置中继续'}
         const activation={'new-session-required':'已有会话请新建会话以加载当前规则；新会话使用当前机制','restart-required':'托管预设已更新，重启宿主后生效',current:'当前运行机制已加载'}
-        return e('section',{className:'kbw-panel'},e(FrameworkMigration,{snapshot:provided}),e('h3',null,'系统版本与机制升级'),
+        return e('section',{className:'kbw-panel'},e(IndexArchitectureMigration,{snapshot:provided}),e('details',null,e('summary',null,'旧目录框架补齐（可选）'),e(FrameworkMigration,{snapshot:provided})),e('h3',null,'系统版本与机制升级'),
           data?e('div',null,e('p',null,'版本 '+data.program.version),e('p',null,labels[data.status]||data.status),
             e('p',{className:'kbw-meta'},activation[data.activation]||data.activation),
             data.mechanisms?e('p',{className:'kbw-meta'},'全文 '+data.mechanisms.fulltext.format+' / '+data.mechanisms.fulltext.tokenizer+' · 向量 '+data.mechanisms.vector.format+' / '+data.mechanisms.vector.chunkVersion+' · 问答协议 '+data.mechanisms.questionProtocol):null,
@@ -1384,7 +1431,7 @@ window.__ModuleLoader__.load({
 
       function SettingsHub({ snapshot, navigate }) {
         const [section, setSection] = R.useState('preferences')
-        const sections = [['preferences', '使用偏好与隐私'], ['retrieval', '协同检索与向量 API'], ['parsing', '解析服务'], ['capture', '采集与连接'], ['backup', '备份与恢复'], ['version', '版本与诊断']]
+        const sections = [['preferences', '使用偏好与隐私'], ['retrieval', '协同检索与向量 API'], ['parsing', '解析服务'], ['capture', '采集与连接'], ['backup', '备份与恢复'], ['version', '索引架构迁移与版本']]
         return e('section', { className: 'kbw-content' }, e('div', { className: 'kbw-home-head' }, e('div', null, e('h2', null, '知识库设置'), e('p', { className: 'kbw-meta' }, '管理当前知识库的使用方式、连接与数据保护。')), e('a', { className: 'kbw-button', href: projectRecordUrl, target: '_blank', rel: 'noopener noreferrer' }, '插件设计与演进记录 ↗')), e('div', { className: 'kbw-settings-layout' }, e('nav', { className: 'kbw-settings-nav', 'aria-label': '设置分类' }, sections.map(([id, label]) => btn(label, () => setSection(id), false, { key: id, 'aria-current': section === id }))), e('div', { className: 'kbw-settings-panel' },
           section === 'preferences' ? e(PreferencesSettings) : null,
           section === 'parsing' ? e(R.Fragment, null, e('h3', null, '解析服务'), e(ParseSummary)) : null,
@@ -1784,6 +1831,18 @@ window.__ModuleLoader__.load({
 .kbf-window{display:flex;gap:6px;align-items:center;min-width:0}
 .kbf-window > span{white-space:nowrap}
 .kbf-name,.kbf-trig{overflow-wrap:anywhere;min-width:0}
+.kbm.kbf-flows .kbf-row{display:grid;grid-template-columns:minmax(0,1fr);align-items:stretch;gap:10px;margin:12px 0;padding:16px;min-width:0;height:auto;overflow:visible;border:1px solid var(--kbw-line,rgba(128,128,128,.18));line-height:1.65}
+.kbf-card-head,.kbf-card-status,.kbf-card-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;min-width:0}
+.kbf-card-head{justify-content:space-between;align-items:flex-start}
+.kbm.kbf-flows .kbf-name{min-width:0;flex:1 1 200px;font-size:14px;line-height:1.6;white-space:normal;overflow-wrap:anywhere}
+.kbm.kbf-flows .kbf-trig,.kbm.kbf-flows .kbf-desc{margin:0;min-width:0;white-space:normal;word-break:normal;overflow-wrap:anywhere;overflow:visible;line-height:1.7}
+.kbm.kbf-flows .kbf-state{white-space:normal;overflow-wrap:anywhere}
+.kbf-execution{display:flex;align-items:flex-end;gap:10px 16px;flex-wrap:wrap;min-width:0;padding:12px 0;border-top:1px solid var(--kbw-line,rgba(128,128,128,.18))}
+.kbf-execution>.kbf-field{flex:1 1 220px;min-width:0;margin:0;max-width:420px}
+.kbf-execution .kbc-set-input{box-sizing:border-box;width:100%;min-width:0}
+.kbf-execution>.kbc-set-hint{flex-basis:100%;overflow-wrap:anywhere}
+.kbf-config-note{font-size:12px;color:var(--kbw-muted);align-self:center}
+.kbm.kbf-flows .kbf-card-actions>.kbc-btn{height:auto;min-height:34px;max-width:100%;white-space:normal;overflow-wrap:anywhere;line-height:1.5;padding:6px 12px}
 @media(max-width:600px){.kbf-grid{grid-template-columns:minmax(0,1fr)}.kbm{padding-left:16px;padding-right:16px}}
 .kbf-step{padding:8px 10px;border:1px solid rgba(255,255,255,.1);border-radius:8px;margin-bottom:8px;background:rgba(255,255,255,.03)}
 .kbf-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}
@@ -2716,7 +2775,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
        const r=await call({action:'claim'});if(!r.ok||!r.task||stopped)return;
        const task=r.task;let report;
        const pulse=setInterval(()=>{if(!stopped)void call({action:'heartbeat',execution:task.execution}).catch(()=>{});},3000);
-       try{const sessionId=await launch({id:'builtin-inbox-organize',revision:1},context.kbId,{},task.execution);report={state:'launched',sessionId,message:'已在 DSH 发起知识库会话；实际归档进度以会话及收件箱清单为准。'};}
+       try{const definition=await api({op:'flows.get',id:'builtin-inbox-organize'});if(!definition.ok||definition.kbId!==context.kbId)throw Error('整理流程或知识库身份已变化');const sessionId=await launch(definition.flow,context.kbId,{},task.execution);report={state:'launched',sessionId,message:'已在 DSH 发起知识库会话；实际归档进度以会话及收件箱清单为准。'};}
        catch(e){report={state:e.sendAttempted?'unknown':'failed',sessionId:e.sessionId??'',message:String(e.message).slice(0,600)};}
        finally{clearInterval(pulse);}
        await call({action:'report',taskId:task.id,token:task.token,...report});
@@ -2795,6 +2854,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       const [busy, setBusy] = react.useState(false)
       const [draft, setDraft] = react.useState(null)
       const [runRequest, setRunRequest] = react.useState(null)
+      const [executionDrafts, setExecutionDrafts] = react.useState({})
       const [modelDirectory, setModelDirectory] = react.useState({ groups: [], failures: [] })
       const [modelError, setModelError] = react.useState('')
       const launching = react.useRef(false)
@@ -2911,8 +2971,16 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           const flow = result.flow
           if (flow.revision !== summary.revision) throw new Error('流程定义已变化，请刷新页面后再运行')
           setMsg('')
-          setRunRequest({ flow, kbId: result.kbId, execution: { ...(flow.execution || {}) }, params: Object.fromEntries((flow.params || []).map(p => [p.name, String(p.default ?? '')])) })
           setDraft(null)
+          const params = Object.fromEntries((flow.params || []).map(p => [p.name, String(p.default ?? '')]))
+          if (flow.builtin && !flow.execution?.model) {
+            setMsg('请先在「' + flow.name + '」卡片中选择执行模型并保存配置')
+          } else if ((flow.params || []).some(p => p.required && !params[p.name].trim())) {
+            setRunRequest({ flow, kbId: result.kbId, params })
+          } else {
+            setRunRequest(null)
+            await startRun(flow, result.kbId, params)
+          }
         } catch (err) {
           setMsg('未能启动：' + String((err && err.message) || err))
         } finally {
@@ -2953,6 +3021,18 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         }
       }
 
+      const saveExecution = async (flow, execution) => {
+        setBusy(true)
+        try {
+          const result = await callApi({ op: 'flows.execution', id: flow.id, kbId: data.kbId, expectedRevision: flow.revision, execution })
+          if (!result?.ok) throw new Error(result?.error || result?.reason || '保存失败')
+          setExecutionDrafts(prev => { const next = { ...prev }; delete next[flow.id]; return next })
+          setMsg('已保存「' + flow.name + '」的执行配置，运行时会直接使用')
+          await load()
+        } catch (err) { setMsg('执行配置未保存：' + String(err.message || err)) }
+        finally { setBusy(false) }
+      }
+
       const patch = (p) => setDraft((prev) => (prev === null ? prev : Object.assign({}, prev, p)))
       const patchRules = (p) => setDraft((prev) => (prev === null ? prev : Object.assign({}, prev, { outputRules: Object.assign({}, prev.outputRules, p) })))
       const updateStep = (i, p) => setDraft((prev) => prev === null ? prev : Object.assign({}, prev, { steps: prev.steps.map((s, k) => (k === i ? Object.assign({}, s, p) : s)) }))
@@ -2978,7 +3058,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
             onChange: ev => { const next = { ...value }; delete next.reasoningEffort; if (ev.target.value) next.reasoningEffort = ev.target.value; change(next) } },
           e('option', { value: '' }, value.model ? (efforts.length ? '使用该模型默认强度' : '该模型未提供可选推理强度') : '请先选择模型'),
           value.reasoningEffort && !efforts.some(x => x.id === value.reasoningEffort) ? e('option', { value: value.reasoningEffort }, value.reasoningEffort + '（当前不可用，请重新选择模型）') : null,
-          efforts.map(effort => e('option', { key: effort.id, value: effort.id }, effort.name)))),
+          efforts.map(effort => e('option', { key: effort.id, value: effort.id }, effort.name || effort.id)))),
           modelError ? e('p', { className: 'kbc-set-hint', role: 'status' }, modelError) : null,
           e('button', { type: 'button', className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: loadModels }, '刷新可用模型'))
       }
@@ -3013,11 +3093,10 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
 
       const runPanel = runRequest === null ? null : e('form', {
         className: 'kbf-run', 'aria-label': '流程运行参数',
-        onSubmit: ev => { ev.preventDefault(); void startRun(runRequest.flow, runRequest.kbId, runRequest.params, runRequest.execution) },
+        onSubmit: ev => { ev.preventDefault(); void startRun(runRequest.flow, runRequest.kbId, runRequest.params) },
       },
       e('div', { className: 'kbf-run-row' }, '运行参数 · ' + runRequest.flow.name),
-      e('p', { className: 'kbc-set-hint' }, '选择本次运行的模型、推理强度和参数；不会修改流程的默认值。确认后才会新建会话。'),
-      executionFields(runRequest.execution, execution => setRunRequest(prev => prev && ({ ...prev, execution })), runRequest.flow.builtin),
+      e('p', { className: 'kbc-set-hint' }, '补全本次任务的必填参数。执行模型和推理强度使用流程卡中保存的配置。'),
       (runRequest.flow.params || []).map((p, i) => e('div', { className: 'kbf-field', key: p.name },
         e('label', { htmlFor: 'kbf-run-param-' + i }, p.name + (p.required ? '（必填）' : '（可选）')),
         e('input', { id: 'kbf-run-param-' + i, className: 'kbc-set-input', required: p.required === true,
@@ -3085,22 +3164,32 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         ? e('div', { className: 'kbm-empty' }, error || '正在读取流程…')
         : data.flows.length === 0
           ? e('div', { className: 'kbm-empty' }, '还没有自定义流程。点「新增流程」把一串固定步骤存下来；以后说它的触发语就能运行。')
-          : data.flows.map((f) => e('div', { key: f.id, className: 'kbf-row' },
-            e('span', { className: 'kbf-name' }, f.name),
-            e('span', { className: 'kbf-trig' }, (f.triggers || []).join(' / ') || '（无触发语）'),
-            e('span', { className: 'kbf-desc' }, f.description || '—'),
+          : data.flows.map((f) => {
+            const pending = executionDrafts[f.id]
+            const execution = pending?.revision === f.revision ? pending.execution : f.execution || {}
+            const dirty = JSON.stringify(execution) !== JSON.stringify(f.execution || {})
+            return e('section', { key: f.id, className: 'kbf-row', 'aria-label': '流程：' + f.name },
+            e('div', { className: 'kbf-card-head' },
+              e('strong', { className: 'kbf-name' }, f.name),
+              e('div', { className: 'kbf-card-status' },
             e('span', { className: 'kbf-state' + (f.enabled && !f.archived ? ' on' : '') }, f.archived ? '已归档' : f.enabled ? '启用' : '停用'),
-            e('span', { className: 'kbf-state' }, f.lastRun ? ('后台：' + f.lastRun.status + ' · ' + String(f.lastRun.startedAt || '').slice(5, 16)) : '无后台记录'),
-            e('span', { style: { display: 'flex', gap: 6, flexWrap: 'wrap' } },
+            e('span', { className: 'kbf-state' }, f.lastRun ? ('后台：' + f.lastRun.status + ' · ' + String(f.lastRun.startedAt || '').slice(5, 16)) : '无后台记录'))),
+            e('p', { className: 'kbf-trig' }, '触发语：' + ((f.triggers || []).join(' / ') || '无')),
+            e('p', { className: 'kbf-desc' }, f.description || '—'),
+            e('div', { className: 'kbf-execution', role: 'group', 'aria-label': f.name + '执行配置' },
+              executionFields(execution, value => setExecutionDrafts(prev => ({ ...prev, [f.id]: { revision: f.revision, execution: value } })), f.builtin),
+              dirty ? e('button', { className: 'kbc-btn kbc-btn-primary', disabled: busy, onClick: () => saveExecution(f, execution) }, '保存配置') : e('span', { className: 'kbf-config-note' }, '运行时直接使用此配置')),
+            e('div', { className: 'kbf-card-actions' },
               f.builtin ? e('span', null, '内置 · High') : e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: () => openEdit(f) }, '编辑'),
               f.builtin ? null : e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy || f.archived, onClick: () => toggle(f) }, f.enabled ? '停用' : '启用'),
-              e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy || !f.enabled || f.archived, onClick: () => requestRun(f) }, '立即运行（新会话）'),
+              e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy || dirty || !f.enabled || f.archived, title: dirty ? '请先保存执行配置' : undefined, onClick: () => requestRun(f) }, '立即运行（新会话）'),
               e('button', { className: 'kbc-btn kbc-btn-ghost', onClick: () => loadRecords(f) }, '后台记录'),
               f.builtin ? null : f.archived
                 ? e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: () => archive(f, true) }, '恢复')
-                : e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: () => archive(f, false) }, '删除'))))
+                : e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: () => archive(f, false) }, '删除')))
+          })
 
-      return e('div', { className: 'kbm' },
+      return e('div', { className: 'kbm kbf-flows' },
         head,
         e('div', { className: 'kbm-sub' }, '点击运行会新建知识库会话，自动发送完整流程提示词，并切换到对话查看实时回复、工具调用和执行结果；可在会话中停止。新运行保存在会话历史中，后台记录保留旧执行器的历史。'),
         e('div', { className: 'kbf-bar', style: { marginTop: 10 } },
@@ -4302,22 +4391,25 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     function createTodoLifecycleUI(React) {
       const h = React.createElement
       const NS = 'localTodoLifecycle'
-      const zh = { title: '任务计划', completed: '已完成', active: '执行中', pending: '待处理', waiting: '等待确认', unconfirmed: '未确认完成', syncing: '状态同步中', stopped: '会话已停止，剩余步骤未确认完成', progress: '{done}/{total} 已完成' }
-      const en = { title: 'Task plan', completed: 'Completed', active: 'In progress', pending: 'Pending', waiting: 'Waiting for confirmation', unconfirmed: 'Completion unconfirmed', syncing: 'Syncing status', stopped: 'Session stopped; remaining steps are not confirmed complete', progress: '{done}/{total} completed' }
+      const zh = { title: '任务计划', expand: '展开任务计划', collapse: '收起任务计划', completed: '已完成', active: '执行中', pending: '待处理', waiting: '等待确认', unconfirmed: '未确认完成', syncing: '状态同步中', stopped: '会话已停止，剩余步骤未确认完成', progress: '{done}/{total} 已完成' }
+      const en = { title: 'Task plan', expand: 'Expand task plan', collapse: 'Collapse task plan', completed: 'Completed', active: 'In progress', pending: 'Pending', waiting: 'Waiting for confirmation', unconfirmed: 'Completion unconfirmed', syncing: 'Syncing status', stopped: 'Session stopped; remaining steps are not confirmed complete', progress: '{done}/{total} completed' }
       const css = `body:has([data-todo-lifecycle-panel]) section[data-testid="todo-panel"]{display:none}
-        [data-todo-lifecycle-panel]{margin:0 0 8px;border:.5px solid var(--dsw-alias-border-l1,#d1d5db);border-radius:12px;color:var(--dsw-alias-label-primary,inherit);font-size:13px;overflow:hidden}
+        [data-todo-lifecycle-panel]{box-sizing:border-box;width:max(0px,calc(100% - var(--dsh-composer-side-clearance,16px)*2 - var(--dsh-composer-dock-inset,8px)*4));max-width:max(0px,calc(var(--dsh-composer-card-max-width,952px) - var(--dsh-composer-dock-inset,8px)*4));margin:0 auto;margin-bottom:8px;border:.5px solid var(--dsw-alias-border-l1,#d1d5db);border-radius:12px;color:var(--dsw-alias-label-primary,inherit);font-size:13px;overflow:hidden}
         [data-todo-lifecycle-panel] .tl-head{display:flex;align-items:center;gap:10px;width:100%;border:0;background:transparent;color:inherit;font:inherit;padding:10px 14px;text-align:left;cursor:pointer}
         [data-todo-lifecycle-panel] .tl-count{margin-left:auto;color:var(--dsw-alias-label-secondary,#888);font-size:12px}
+        [data-todo-lifecycle-panel] .tl-glyph{flex:none;width:16px;height:16px}
+        [data-todo-lifecycle-panel] .tl-chevron{flex:none;width:16px;height:16px;transition:transform 160ms ease-out}
+        [data-todo-lifecycle-panel] [aria-expanded=true] .tl-chevron{transform:rotate(180deg)}
         [data-todo-lifecycle-panel] ul{list-style:none;margin:0;padding:0 14px 12px;max-height:240px;overflow:auto}
         [data-todo-lifecycle-panel] li{display:flex;align-items:flex-start;gap:9px;padding:5px 0;overflow-wrap:anywhere}
         [data-todo-lifecycle-panel] .tl-dot{flex:none;box-sizing:border-box;width:13px;height:13px;border:1.5px solid currentColor;border-radius:50%;margin-top:3px;opacity:.5}
         [data-todo-lifecycle-panel] [data-status=completed] .tl-dot{border:0;opacity:1;color:var(--dsw-alias-state-success-primary,#22a06b)}
-        [data-todo-lifecycle-panel] [data-status=completed] .tl-dot:before{content:'✓';font-size:14px;line-height:13px}
+        [data-todo-lifecycle-panel] [data-status=completed] .tl-dot:before{content:'';display:block;width:7px;height:4px;border-left:2px solid currentColor;border-bottom:2px solid currentColor;transform:translate(2px,2px) rotate(-45deg)}
         [data-todo-lifecycle-panel] [data-status=active] .tl-dot{opacity:1;border-color:var(--dsw-alias-state-business-primary,#6d5ee9);border-right-color:transparent;animation:tl-spin .8s linear infinite}
         [data-todo-lifecycle-panel] [data-status=completed] .tl-content{opacity:.65}
         [data-todo-lifecycle-panel] .tl-note{margin:0;padding:0 14px 10px;color:var(--dsw-alias-label-tertiary,#888);font-size:12px}
         @keyframes tl-spin{to{transform:rotate(360deg)}}
-        @media(prefers-reduced-motion:reduce){[data-todo-lifecycle-panel] .tl-dot{animation:none!important}}`
+        @media(prefers-reduced-motion:reduce){[data-todo-lifecycle-panel] .tl-dot{animation:none!important}[data-todo-lifecycle-panel] .tl-chevron{transition:none}}`
 
       function viewOf(todos, running, waiting = false) {
         return (todos || []).map(item => ({ ...item, displayStatus: item.status === 'completed' ? 'completed'
@@ -4337,8 +4429,10 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         const stopped = running === false && !waiting && done < items.length
         const t = props.t
         return h('section', { 'data-todo-lifecycle-panel': '', 'data-testid': 'todo-lifecycle-panel', 'aria-label': t('title') },
-          h('button', { className: 'tl-head', type: 'button', 'aria-expanded': !collapsed, onClick: () => setCollapsed(value => !value) },
-            h('span', null, '☷'), h('span', null, t('title')), h('span', { className: 'tl-count' }, t('progress', { done, total: items.length })), h('span', { 'aria-hidden': true }, collapsed ? '⌃' : '⌄')),
+          h('button', { className: 'tl-head', type: 'button', 'aria-label': t(collapsed ? 'expand' : 'collapse'), 'aria-expanded': !collapsed, onClick: () => setCollapsed(value => !value) },
+            h('svg', { className: 'tl-glyph', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, 'aria-hidden': true }, h('path', { d: 'M9 6h12M9 12h12M9 18h12M3 6h1M3 12h1M3 18h1', strokeLinecap: 'round' })),
+            h('span', null, t('title')), h('span', { className: 'tl-count', 'aria-live': 'polite' }, t('progress', { done, total: items.length })),
+            h('svg', { className: 'tl-chevron', viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, 'aria-hidden': true }, h('path', { d: 'm6 15 6-6 6 6', strokeLinecap: 'round', strokeLinejoin: 'round' }))),
           !collapsed && h('ul', null, items.map(item => h('li', { key: item.content, 'data-status': item.displayStatus, title: t(item.displayStatus) },
             h('span', { className: 'tl-dot', role: 'img', 'aria-label': t(item.displayStatus) }), h('span', { className: 'tl-content' }, item.content)))),
           stopped && h('p', { className: 'tl-note' }, t('stopped')))
@@ -4354,11 +4448,12 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     // END GENERATED TODO LIFECYCLE UI
 
-    const RELEASE_VERSION = '2.4.14'
+    const RELEASE_VERSION = '2.5.3'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.
     const RELEASE_NOTICES = [
+      {version:'2.5.3',items:['原件索引与分类、两端迁移入口：安装更新不会自动迁移资料库。','流程保存模型配置，自定义流程可正常准备；任务计划宽度、展开方向与进度核对修正。','系列成品复用目录：task 填系列目录名，title 填单期标题，path 填库内相对路径。']},
       {version:'2.4.14',items:['新增旧库框架迁移：先预览再确认，补齐缺失目录、模板和管理说明，保留已有资料位置与自定义内容。','迁移失败时恢复可核对的本次新增内容；修正共享机制版本显示。']},
       {version:'2.4.13',items:['安全更新仅解析知识库包并合并对应锁记录，避免重新解析宿主内置插件和其他依赖。']},
       {version:'2.4.12',items:['安全更新兼容宿主 profile 内的相对路径本地插件，仅复制到隔离准备目录，保持其他插件来源和原件不变。']},
@@ -4522,7 +4617,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
 
     function WorkbenchSettings() {
       const [section, setSection] = react.useState('library')
-      const sections = [['library', '知识库与导入'], ['preferences', '使用偏好与隐私'], ['retrieval', '全文与向量检索'], ['parsing', '解析服务'], ['capture', '采集与连接'], ['backup', '备份与恢复'], ['version', '版本与诊断']]
+      const sections = [['library', '知识库与导入'], ['preferences', '使用偏好与隐私'], ['retrieval', '全文与向量检索'], ['parsing', '解析服务'], ['capture', '采集与连接'], ['backup', '备份与恢复'], ['version', '索引架构迁移与版本']]
       return e('div', { className: 'kbw kbw-global-settings kbu-settings', style: { height: 'auto', display: 'block', overflow: 'visible' } },
         e('header', { className: 'kbu-page-head' }, e('div', null, e('h2', null, '知识库设置'), e('p', null, '管理知识库连接、隐私与索引，让每项设置清楚可控。')), e('span', { className: 'kbu-chip' }, RELEASE_VERSION)),
         e(UpdatePrompt), e(workbenchUI.Guide),

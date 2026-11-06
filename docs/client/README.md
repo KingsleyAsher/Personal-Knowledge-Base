@@ -1,5 +1,5 @@
 
-**[Download Windows client 1.0.3 (EXE)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.0.3/KnowledgeWorkbench-1.0.3-Setup.exe)** · [Release notes](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.0.3)
+**[Download Windows client 1.1.1 (EXE)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.1.1/KnowledgeWorkbench-1.1.1-Setup.exe)** · [Release notes](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.1.1)
 
 > Client-specific guide in the unified repository. See the [main README](../../README.md) and [shared release policy](../../VERSIONING.en.md).
 
@@ -9,7 +9,7 @@
 
 A local-first Windows knowledge workspace for reading, editing and connecting your files. Use it independently, or connect it to DeepSeek Harness (DSH) and the [Personal Knowledge Base plugin](https://github.com/KingsleyAsher/Personal-Knowledge-Base).
 
-**Client 1.0.3 · Shared plugin source 2.4.13 · Windows x64**
+**Client 1.1.1 · Shared plugin source 2.5.3 · Windows x64**
 
 ## Your files, in one workspace
 
@@ -35,7 +35,7 @@ A local-first Windows knowledge workspace for reading, editing and connecting yo
 
 ## Installation
 
-Install a maintainer-provided Windows installer and launch the application from its shortcut. Public downloads, when published, are listed in [Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases). Client 1.0.3 is published with the installer linked above. Keep the application directory separate from your document libraries.
+Install a maintainer-provided Windows installer and launch the application from its shortcut. Public downloads, when published, are listed in [Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases). Client 1.1.1 is published with the installer linked above. Keep the application directory separate from your document libraries.
 
 The current installer keeps the existing paper-green interface and animations. It requires an empty target directory; in-place automatic upgrades are not implemented. Uninstall preserves user data. Online client update checking/download/install is not connected yet.
 
@@ -45,14 +45,11 @@ See [build instructions](DEVELOPMENT.en.md). The repository includes the Electro
 
 ## Verification boundaries
 
-The 1.0.3 local delivery passed a production build, version/payload checks and an installer-UI smoke check. Theme work was checked with synthetic libraries across seven palettes in both modes. These checks do not establish full regression coverage, model quality, cloud availability or compatibility with every DSH release. Tests must not use personal libraries or paid model calls by default.
+Validation scope / 验证范围：[本次发布说明](../releases/client-1.1.1.md)。历史界面验收不等于本次正式安装验证。
 
 MIT licensed; bundled third-party components retain their own licenses. See [third-party notices](THIRD-PARTY-NOTICES.md).
 
 Update policy: every eligible version in the selected channel updates automatically, including majors and previews. The client online executor remains unfinished; see [version policy](../../VERSIONING.en.md).
 
-Shared source update: see [plugin 2.4.3](../releases/plugin-2.4.13.md) for source synchronization and Windows parsing fixes. The published client 1.0.3 installer still contains its original paired plugin 2.4.2 payload.
 
-See [2.4.4 safe update and legacy transition](../releases/plugin-2.4.13.md). The published client installer remains 1.0.3.
-
-2.4.3 direct upgrade and conditional error recovery: [release 2.4.13](../releases/plugin-2.4.13.md). Client installer remains independently versioned at 1.0.3.
+Paired payload / 配套插件：**2.5.3**。[原件索引架构](../ORIGINAL-FILE-INDEX-ARCHITECTURE.md)。

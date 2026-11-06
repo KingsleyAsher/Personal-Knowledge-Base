@@ -11,7 +11,7 @@ function createInboxOrganizeBridge({api,launch,clientId,intervalMs=3000}) {
    const r=await call({action:'claim'});if(!r.ok||!r.task||stopped)return;
    const task=r.task;let report;
    const pulse=setInterval(()=>{if(!stopped)void call({action:'heartbeat',execution:task.execution}).catch(()=>{});},3000);
-   try{const sessionId=await launch({id:'builtin-inbox-organize',revision:1},context.kbId,{},task.execution);report={state:'launched',sessionId,message:'已在 DSH 发起知识库会话；实际归档进度以会话及收件箱清单为准。'};}
+   try{const definition=await api({op:'flows.get',id:'builtin-inbox-organize'});if(!definition.ok||definition.kbId!==context.kbId)throw Error('整理流程或知识库身份已变化');const sessionId=await launch(definition.flow,context.kbId,{},task.execution);report={state:'launched',sessionId,message:'已在 DSH 发起知识库会话；实际归档进度以会话及收件箱清单为准。'};}
    catch(e){report={state:e.sendAttempted?'unknown':'failed',sessionId:e.sessionId??'',message:String(e.message).slice(0,600)};}
    finally{clearInterval(pulse);}
    await call({action:'report',taskId:task.id,token:task.token,...report});

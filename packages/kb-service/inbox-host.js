@@ -1,11 +1,16 @@
 import {INBOX_FLOW} from '../kb-core/src/inbox-flow.js';
+import {prepareFlowConversation} from '../kb-core/src/flow-workspace.js';
 export function createInboxHost({client,getLLM,getWorkspace}){
  let catalog,expires=0;
- async function models(){
+ async function directory(){
   if(catalog&&Date.now()<expires)return catalog;
-  const llm=getLLM(),items=[];if(!llm?.listProviders||!llm?.listModels||!llm?.resolveModelInfo)throw Error('DSH 模型目录尚未就绪');
-  for(const p of llm.listProviders())try{for(const m of await llm.listModels(p.id))try{const info=await llm.resolveModelInfo(p.id,m.id);if(info.reasoning?.efforts?.some(e=>e.id==='high'))items.push({provider:p.id,model:m.id,reasoningEffort:'high'});}catch{}}catch{}
-  if(!items.length)throw Error('没有支持 High 的可用模型');catalog=items;expires=Date.now()+10000;return items;
+  const llm=getLLM(),groups=[],failures=[];if(!llm?.listProviders||!llm?.listModels||!llm?.resolveModelInfo)throw Error('DSH 模型目录尚未就绪');
+  for(const p of llm.listProviders())try{const items=[];for(const m of await llm.listModels(p.id))try{const info=await llm.resolveModelInfo(p.id,m.id);items.push({id:m.id,name:info.name||m.name||m.id,reasoning:info.reasoning});}catch{failures.push({name:(p.name||p.id)+' / '+m.id});}groups.push({id:p.id,name:p.name||p.id,models:items});}catch{failures.push({name:p.name||p.id});}
+  catalog={ok:true,groups,failures};expires=Date.now()+10000;return catalog;
+ }
+ async function models(){
+  const rows=(await directory()).groups.flatMap(p=>p.models.filter(m=>m.reasoning?.efforts?.some(e=>e.id==='high')).map(m=>({provider:p.id,model:m.id,reasoningEffort:'high'})));
+  if(!rows.length)throw Error('没有支持 High 的可用模型');return rows;
  }
  async function status(){return {...await client.call('host.tool',{name:'kb_status',input:{}}),runtimeMode:'service'};}
  return async function handle(body){
@@ -16,13 +21,21 @@ export function createInboxHost({client,getLLM,getWorkspace}){
    return {ok:true,...await client.call('inbox.organizeBridge',a)};
   }
   if(body.op==='flows.prepare-conversation'){
-   const s=await status();if(body.id!==INBOX_FLOW.id||body.expectedRevision!==INBOX_FLOW.revision||body.kbId!==s.kbId)throw Error('整理流程或知识库身份已变化');
-   const execution=(await models()).find(m=>m.provider===body.execution?.provider&&m.model===body.execution?.model);if(!execution||!(await getLLM().resolveModelInfo(execution.provider,execution.model)).reasoning?.efforts?.some(e=>e.id==='high'))throw Error('请选择支持 High 的可用模型');
+   // Custom definitions belong to the shared engine, not the builtin inbox gate.
+   if(body.id!==INBOX_FLOW.id){
+    return prepareFlowConversation({prepareConversation:input=>client.call('adapter.dispatch',{operation:input})},
+     {ensure:async root=>{if(!getWorkspace)throw Error('DSH 流程工作区尚未就绪');return getWorkspace(root);}},body);
+   }
+   const s=await status();if(body.kbId!==s.kbId)throw Error('整理流程或知识库身份已变化');
+   const saved=await client.call('adapter.dispatch',{operation:{op:'flows.get',id:INBOX_FLOW.id}});
+   if(!saved?.ok||saved.kbId!==s.kbId||body.expectedRevision!==saved.flow.revision)throw Error('整理流程或知识库身份已变化');
+   const selected=body.execution===undefined?saved.flow.execution:body.execution;
+   const execution=(await models()).find(m=>m.provider===selected?.provider&&m.model===selected?.model);if(!execution||!(await getLLM().resolveModelInfo(execution.provider,execution.model)).reasoning?.efforts?.some(e=>e.id==='high'))throw Error('请先在流程卡中保存支持 High 的可用模型');
    if(!getWorkspace)throw Error('DSH 流程工作区尚未就绪');const workspace=await getWorkspace(s.kbPath);
-   return {ok:true,kbId:s.kbId,kbPath:s.kbPath,...workspace,cwd:workspace.workspacePath,flowId:INBOX_FLOW.id,flowRevision:INBOX_FLOW.revision,prompt:INBOX_FLOW.prompt,requiredReasoningEffort:'high',execution};
+   return {ok:true,kbId:s.kbId,kbPath:s.kbPath,...workspace,cwd:workspace.workspacePath,flowId:INBOX_FLOW.id,flowRevision:saved.flow.revision,prompt:INBOX_FLOW.prompt,requiredReasoningEffort:'high',execution};
   }
   if(body.op==='flows.models'){
-   const rows=await models(),groups=[];for(const m of rows){let g=groups.find(g=>g.id===m.provider);if(!g){g={id:m.provider,name:m.provider,models:[]};groups.push(g);}g.models.push({id:m.model,name:m.model,reasoning:{efforts:[{id:'high'}]}});}return {ok:true,groups,failures:[]};
+   return directory();
   }
   return null;
  };

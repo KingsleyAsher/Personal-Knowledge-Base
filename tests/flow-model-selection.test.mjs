@@ -11,6 +11,29 @@ const editor = vm.runInNewContext(client.slice(client.indexOf('    const FLOW_TE
 const route = { provider: 'fixture-provider', model: 'fixture-model', reasoningEffort: 'high' }
 const plain = value => JSON.parse(JSON.stringify(value))
 
+test('card execution settings persist for custom and builtin flows with revision and library guards', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'kb-flow-card-'))
+  try {
+    const options = { stateDir: root, core: { status: async () => ({ bound: true, kbId: 'fixture', kbPath: root }) } }
+    const engine = createFlowEngine(options)
+    const custom = await engine.save({ flow: { name: 'Card', triggers: ['card'], steps: [{ title: 'test', instruction: 'Fixture only' }] } })
+    assert.equal(custom.ok, true)
+    for (const id of [custom.flow.id, 'builtin-inbox-organize']) {
+      const before = (await engine.get(id)).flow
+      const updated = await engine.setExecution({ id, kbId: 'fixture', expectedRevision: before.revision, execution: route })
+      assert.equal(updated.ok, true)
+      const loaded = (await createFlowEngine(options).get(id)).flow
+      assert.deepEqual(loaded.execution, route)
+      assert.deepEqual(loaded.steps, before.steps)
+      assert.deepEqual((await engine.list()).flows.find(f => f.id === id).execution, route)
+      const prepared = await engine.prepareConversation({ id, kbId: 'fixture', expectedRevision: loaded.revision })
+      assert.deepEqual(prepared.execution, route)
+      assert.equal((await engine.setExecution({ id, kbId: 'fixture', expectedRevision: before.revision, execution: {} })).conflict, true)
+      assert.equal((await engine.setExecution({ id, kbId: 'other', expectedRevision: loaded.revision, execution: {} })).reason, 'kb-changed')
+    }
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+
 test('saved model survives editor, disk reload and run override without changing defaults', async () => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'kb-flow-model-'))
   try {

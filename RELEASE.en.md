@@ -1,3 +1,21 @@
+## Plugin 2.5.3 / desktop client 1.1.1 (2026-11-07)
+
+This paired release publishes the previously local original-file index architecture and subsequent fixes. The products share a core and service while retaining independent versions and installations.
+
+- Originals stay in place. The index records identity, path, classification, tags and fingerprints. Both products offer migration preview and confirmation; installing an update does not migrate a library automatically.
+- The client adds the original-file classification tree and classification actions, with shared-service visibility checks.
+- Flow cards save model and reasoning settings. Run uses that saved route; the builtin inbox still requires High. Custom-flow preparation no longer enters the builtin inbox-only gate.
+- The task-plan panel fixes width and upward disclosure. Bounded progress reminders ask the model to reconcile actual results during long runs; the observer does not complete tasks itself.
+- Deliverable instructions support existing series folders: task is the folder name, title identifies the issue, and path is library-relative. No per-date folder is required; path and privacy checks remain enforced.
+
+Validation uses synthetic libraries and focused checks, with source/archive, build and digest verification. No private library or paid model is used. Historical evidence retains its original scope. Packaging does not establish production installation, running DSH activation, real report generation or external delivery. Client automatic in-place installation and activation remain unfinished.
+
+Install the TGZ from v2.5.3 and the unsigned Windows x64 Setup.exe from client-v1.1.1, checking their separate manifests and SHA-256 digests. The client installer requires an empty application directory; save work and exit the old client first. Reload the plugin as directed by DSH or exit including its tray process and reopen, then verify version and build. Existing recovery instructions still apply to blocked legacy 2.4.6 updaters.
+
+## 2.5.0: original-file index architecture (local delivery, 2026-11-06)
+
+Plugin 2.5.0 and client 1.1.0 share migration preview, explicit confirmation, original-file identities and classification. Originals remain in place. Classification and fulltext/vector data use the index layer; existing identity and authorization journals remain compatible. Local synthetic checks cover independent and linked service connections and the Electron migration UI. No real private library migration or real model call was performed. This local build is not published to the remote update feed.
+
 ## 2.4.14: existing-library framework migration (2026-11-05)
 
 Add a read-only preview and explicit confirmation under version settings. Fill missing standard folders, entry templates and framework guidance. Preserve document locations, custom folders, AGENTS rules, manual INDEX and differing templates; bundled reference text is available for review. No automatic reorganization, note rewriting or model calls.
@@ -410,3 +428,13 @@ One-click update validation used an isolated temporary directory and simulated n
 ## 2026-11-04: shared versions and fully automatic update policy
 
 Shared naming, ordering and packaging validation. Plugin major/preview candidates are automatically eligible, retaining channel preference, payload checks and busy/uncertain-operation guards. No update-confirmation modal; post-install notes retain their existing rules. The client online executor remains unfinished. Source policy change only; no new binary publication.
+
+
+### 2.5.1 task plan follow-up (2026-11-07)
+
+Task plan disclosure and list symbols now use vectors/CSS rather than font-dependent characters. During long knowledge tasks, bounded pre-step checkpoints request truthful todo_write progress updates instead of waiting until the final response. No step is automatically marked complete from tool count or elapsed time. Install the local update package and fully restart DSH to load host changes; real long-task behavior remains an installed-host verification step.
+
+
+### Local update 2.5.2 (2026-11-07)
+
+The task plan expands upward above the composer: its arrow now points up when collapsed and down when expanded.

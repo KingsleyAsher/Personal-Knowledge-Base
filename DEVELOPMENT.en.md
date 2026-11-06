@@ -2,7 +2,7 @@
 
 [中文](DEVELOPMENT.md) · English
 
-Start at the repository root. Follow the [client build guide](docs/client/DEVELOPMENT.en.md) for dependencies, production build, isolated checks and installer commands. Root package metadata describes plugin 2.4.13; apps/desktop/package.json describes client 1.0.3.
+Start at the repository root. Follow the [client build guide](docs/client/DEVELOPMENT.en.md) for dependencies, production build, isolated checks and installer commands. Root package metadata describes plugin 2.5.3; apps/desktop/package.json describes client 1.1.1.
 
 Edit shared logic in packages and inspect both consumers. Do not duplicate it in another repository. After plugin UI changes, run tools/sync-workbench-client.py; refresh loaded-file inventory with tools/sync-workbench-build.py. Client build regenerates desktop management views.
 

@@ -24,6 +24,7 @@ import { readIndexPolicy, policyExcluded, policyExcludes, groupFor, resolveAsset
 import { createIndexPolicyService } from './index-policy-service.js'
 import { inboxSource, moveInboxFile } from './workbench-inbox.js'
 import { sourceReferences, sourceReferenceBody, SOURCE_TEXT } from './source-references.js'
+import {createIndexArchitecture} from './index-architecture.js'
 
 export const GUIDE_ID = 'knowledge-workbench-v1'
 const TEXT = /\.(md|txt|csv|json|log|ya?ml)$/i
@@ -67,6 +68,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
   }
   const libraryState = createLibraryState({ stateDir, getCore, sharedState, restrictPreferences, policyScope, onMutation: args => { if (!/^(reading\.(progress|annotate|delete)|review\.)/.test(args.op)) cache = null } })
   const { profileFile, profile, binding, versionOf, userData, mutate } = libraryState
+  const architecture=createIndexArchitecture({binding,now})
   const relationIndex = createRelationIndex({ stateDir, readText: (b, file) => textOf(b, file, 8 * 1024 * 1024), now, notify, resources })
   const metadataText = createByteCache({maxBytes:32*1024*1024,sizeOf:v=>Buffer.byteLength(v.text)*2+256})
   const retrievalText = createByteCache({maxBytes:64*1024*1024,sizeOf:v=>Buffer.byteLength(v.text)*2+256})
@@ -93,7 +95,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     await relations(await binding(b.st.kbId), { force: true }); await retrieval.automatic()
   }
   const upgrades=createSystemUpgrades({binding,catalog:async()=>Object.entries(TEMPLATES).map(([name,content])=>({path:'_模板/'+name,content,version:VERSION})),runtime:getUpgradeContext,retrieval,now})
-  const isPrivate = (b, file) => privateRootOf(file, b.privateDirs) !== null || deliverablePrivate(b.deliverables, file) || Boolean(groupFor(b.indexPolicy, file)?.files.some(f => privateRootOf(f.normal, b.privateDirs) !== null))
+  const isPrivate = (b, file) => b.fileCatalog?.files.some(f=>f.path===file&&f.private) || privateRootOf(file, b.privateDirs) !== null || deliverablePrivate(b.deliverables, file) || Boolean(groupFor(b.indexPolicy, file)?.files.some(f => privateRootOf(f.normal, b.privateDirs) !== null))
   const visible = (b, file, question = false, includePrivate = false) => (!question || !policyExcluded(b.indexPolicy, file)) && (!isPrivate(b, file) || (question ? b.preferences.showPrivate && b.preferences.allowPrivateQuestions && includePrivate : b.preferences.showPrivate))
   const indexable = (b, file) => !policyExcluded(b.indexPolicy, file)
   function redactReferences(b, file, text, allowPrivate = b.preferences.showPrivate) {
@@ -213,10 +215,13 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
         }
         if (item || text) indexed.set(f.path, { path: f.path, title: item?.title || path.posix.basename(f.path), kind: '任务成品', tags: ['任务成品'], text: [item?.description, text].filter(Boolean).join('\n'), status: '已完成' })
       }
-      const files = walk.files.map(f => {
-        const e = indexed.get(f.path)
+      const catalogRows=new Map((b.fileCatalog?.files??[]).map(f=>[f.path,f])),references=new Set((b.fileCatalog?.references??[]).map(r=>r.path))
+      const files = walk.files.filter(f=>!references.has(f.path)).map(f => {
+        let e = indexed.get(f.path)
+        const record=catalogRows.get(f.path)
+        if(record){e={...e,path:f.path,title:record.title,kind:record.kind,tags:record.tags,entryId:record.id,category:record.category};indexed.set(f.path,e)}
         return { path: f.path, excludedFromIndex: policyExcluded(b.indexPolicy, f.path, false), policyState: groupFor(b.indexPolicy, f.path)?.state, bytes: f.bytes ?? f.size ?? 0, mtimeMs: f.mtimeMs, ctimeMs: f.ctimeMs, title: e?.title ?? path.posix.basename(f.path),
-          tags: e?.tags ?? [], kind: e?.kind ?? null, status: e?.status ?? null, entryId: e?.entryId ?? null,
+          tags: e?.tags ?? [], kind: e?.kind ?? null, category:e?.category??null,status: e?.status ?? null, entryId: e?.entryId ?? null,
           ...fileCapabilities(f.path, f.writable !== false), extension: path.posix.extname(f.path).slice(1).toLowerCase(), private: isPrivate(b, f.path),
           summary: redactReferences(b, f.path, e?.text || '').replace(/^---[\s\S]*?---\s*/, '').replace(/[#*`>|]/g, '').trim().slice(0, 160),
           layer: f.path.startsWith('任务成品/') ? 'deliverable' : f.path.startsWith('90-收件箱/') ? 'original' : f.path.startsWith('50-底稿/') ? 'draft' : e ? 'knowledge' : 'file' }
@@ -454,6 +459,34 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     if (args.op.startsWith('onboarding.')) return { ok: true, ...await onboarding(args) }
     const b = await binding(args.expectedKbId)
     if (args.policyVersion && args.policyVersion !== versionOf(b)) throw fail('SETTINGS_CHANGED', '隐私或知识库设置已改变，请刷新')
+    if(args.op.startsWith('architecture.')){
+      if(caller)throw fail('ADMIN_ONLY','架构迁移与分类仅供用户设置使用')
+      if(args.path)assertVisible(b,args.path)
+      const result=await architecture.dispatch(b,args)
+      if(result.architecture?.files){
+        const a=result.architecture,q=String(args.q??'').trim().toLowerCase()
+        let rows=a.files.filter(f=>visible(b,f.path)&&(!f.private||b.preferences.showPrivate)&&(!args.availableOnly||f.status==='available'))
+        a.auxiliaryCount=rows.filter(f=>f.presentationRole&&f.presentationRole!=='original').length
+        if(['architecture.files','architecture.categories'].includes(args.op)&&args.includeAuxiliary!==true)rows=rows.filter(f=>!f.presentationRole||f.presentationRole==='original')
+        if(args.includeAuxiliary===true&&args.auxiliaryOnly===true)rows=rows.filter(f=>f.presentationRole&&f.presentationRole!=='original')
+        if(args.op==='architecture.categories'){
+          const groups=new Map();for(const f of rows.filter(f=>f.status==='available'))groups.set(f.category,(groups.get(f.category)??0)+1)
+          rows=[...groups].map(([category,count])=>({category,count})).filter(f=>!q||f.category.toLowerCase().includes(q)).sort((a,b)=>a.category.localeCompare(b.category,'zh-CN'))
+          if(args.hierarchical===true){const parent=String(args.parent??''),prefix=parent?parent+'/':'',children=new Map();for(const row of rows){if(!row.category.startsWith(prefix)||row.category===parent)continue;const label=row.category.slice(prefix.length).split('/')[0],key=prefix+label,old=children.get(key)??{category:key,label,count:0,hasChildren:false};old.count+=row.count;old.hasChildren ||=row.category!==key;children.set(key,old)}rows=[...children.values()].sort((a,b)=>a.label==='待分类'?1:b.label==='待分类'?-1:a.label.localeCompare(b.label,'zh-CN'))}
+        }else rows=rows.filter(f=>(args.category===undefined||f.category===args.category)&&(!q||[f.path,f.title,f.category,f.kind,...(f.tags??[])].some(v=>String(v).toLowerCase().includes(q)))).map(f=>({id:f.id,path:f.path,title:String(f.title??'').slice(0,512),category:String(f.category??'待分类').slice(0,200),kind:String(f.kind??'').slice(0,200),tags:(f.tags??[]).slice(0,32).map(t=>String(t).slice(0,100)),status:f.status,presentationRole:f.presentationRole,classificationSource:f.classificationSource}))
+        if(args.catalogRevision!==undefined&&args.catalogRevision!==a.revision)throw fail('CONFLICT','文件分类已改变，请刷新列表')
+        const offset=Number.isSafeInteger(args.offset)&&args.offset>=0?args.offset:0,limit=Math.max(1,Math.min(100,Number.isSafeInteger(args.limit)?args.limit:100))
+        const items=[];let bytes=0
+        for(const row of rows.slice(offset,offset+limit)){const size=Buffer.byteLength(JSON.stringify(row));if(items.length&&bytes+size>192*1024)break;items.push(row);bytes+=size}
+        a.total=rows.length;a.offset=offset;a.nextOffset=offset+items.length<rows.length?offset+items.length:undefined
+        delete a.files;if(args.op==='architecture.categories')a.categories=items;else a.files=items
+      }
+      // Reference aliases and filesystem diagnostics stay server-side. Sending
+      // entire scans exceeded the shared protocol frame budget on real libraries.
+      if(result.architecture){delete result.architecture.references;if(result.architecture.coverage)result.architecture.coverage={...result.architecture.coverage,errors:result.architecture.coverage.errors?.length??0}}
+      if(['architecture.apply','architecture.refresh','architecture.classify','architecture.reclassify'].includes(args.op)){invalidatePolicyCaches();notify({type:'files-changed',kbId:b.st.kbId})}
+      return {ok:true,...result}
+    }
     if (args.op.startsWith('upgrade.'))return {ok:true,...await upgrades.dispatch(b,args,caller)}
     if (args.op === 'index.policy.set') {
       if (caller) throw fail('ADMIN_ONLY', '排除索引规则只能由用户在界面修改')
@@ -645,7 +678,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       assertVisible(b, source); assertVisible(b, entryPath)
       const text = await textOf(b, entryPath, Number.MAX_SAFE_INTEGER), meta = b.core._internal.parseFrontmatter(text.text).data
       const provenance = Array.isArray(meta.source) ? meta.source : [meta.source]
-      if (!provenance.some(p => typeof p === 'string' && resolveAssetPath(b.root, p) === source)) throw fail('SOURCE_MISMATCH', '归档产物必须明确记录该原件的 source')
+      if (!(b.fileCatalog && entryPath===source) && !provenance.some(p => typeof p === 'string' && resolveAssetPath(b.root, p) === source)) throw fail('SOURCE_MISMATCH', '归档产物必须明确记录该原件的 source')
       let item = data.captures.find(c => c.path === source)
       if (!item) { item = { id: randomUUID(), path: source, title: path.posix.basename(source), createdAt: stamp() }; data.captures.push(item) }
       item.status = 'done'; item.entryPath = entryPath; item.entryId = meta.id
@@ -720,7 +753,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       if (!item) throw fail('NOT_FOUND', '采集项不存在')
       assertVisible(b, item.path)
       if (item.entryId) return { capture: item, duplicate: true }
-      if (!TEXT.test(item.path)) {
+      if (!b.fileCatalog && !TEXT.test(item.path)) {
         const parser = getParsing()
         if (!parser) throw fail('PARSE_UNAVAILABLE', '解析服务尚未就绪')
         const kind = /\.(wav|mp3|m4a|mp4|ogg|flac)$/i.test(item.path) ? 'asr' : 'ocr'
@@ -730,7 +763,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       }
       const kinds = { '20-知识笔记': '知识', '10-项目': '项目', '30-人物关系': '人物', '40-素材资源': '素材', '00-画像': '画像' }
       if (args.dir && !kinds[args.dir]) throw fail('BAD_CATEGORY', '请选择现有知识分类分区')
-      const result = await b.core.createEntry({ title: item.title, kind: args.kind || kinds[args.dir] || '知识', tags: args.tags || [], content: sourceReferenceBody(item.path), source: item.path,
+      const result = b.fileCatalog ? await b.core.registerOriginal({path:item.path,kind:args.kind || kinds[args.dir] || '知识',category:args.dir || '知识',tags:args.tags || []}) : await b.core.createEntry({ title: item.title, kind: args.kind || kinds[args.dir] || '知识', tags: args.tags || [], content: sourceReferenceBody(item.path), source: item.path,
         requestId: 'capture-' + item.id, expectedBinding: { kbId: b.st.kbId, kbPath: b.root, revision: b.conf.revision } })
       if (!result.ok) throw fail(result.reason || 'LAND_FAILED', result.detail || result.reason)
       item.status = 'done'; item.entryId = result.entryId; item.entryPath = result.path; delete item.error
@@ -807,7 +840,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     const result = await sourceReader.run(() => execute(args, caller))
     if (before) {
       const after = await binding(before.st.kbId)
-      const policyMutation = ['index.policy.set','inbox.complete','capture.complete','capture.organize','capture.list','reading.note'].includes(args.op)
+      const policyMutation = ['architecture.apply','architecture.refresh','architecture.classify','architecture.reclassify','index.policy.set','inbox.complete','capture.complete','capture.organize','capture.list','reading.note'].includes(args.op)
       if (versionOf(before) !== versionOf(after) && !(policyMutation && before.key === after.key && before.conf.revision === after.conf.revision && before.preferencesRevision === after.preferencesRevision)) throw fail('SETTINGS_CHANGED', '设置已改变，本次旧结果已作废')
     }
     return result
