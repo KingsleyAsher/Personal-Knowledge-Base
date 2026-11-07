@@ -64,7 +64,11 @@ Flow text and actions now wrap in separate sections. Each card saves its model a
 
 [简体中文](PROJECT-RECORD.md) · [English](PROJECT-RECORD.en.md)
 
-<!-- project-record-version: 2.5.6 -->
+<!-- project-record-version: 2.5.7 -->
+
+## 插件 2.5.7 · 修复 ASAR 索引误报
+
+知识库服务按磁盘上的真实文件扫描，整份 ASAR 安装包作为一个原件登记。包内虚拟文件不再触发「文件在读取期间发生变化」，索引维护可正常完成。此版仅更新 DSH 插件，客户端版本仍为 1.1.2。
 
 **对应源码：插件 2.5.3 / 客户端 1.1.1 · 更新日期：2026-11-07 · 维护方式：随每次发布更新，与源码一起审阅。**
 

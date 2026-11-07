@@ -154,3 +154,35 @@ test('large-library migration and classification stay within frame budget and en
   assert.equal((await client.call('desktop.stat',{path:paths.at(-1)})).category,'课程')
  }finally{try{await client.call('service.prepareUpgrade')}finally{await runtime.close()}}
 })
+
+test('DSH Electron service indexes an ASAR as one physical original', {skip:!process.env.KB_TEST_ELECTRON,timeout:60000},async t=>{
+ const f=await fixture(t)
+ const content=Buffer.from('{"synthetic":true}')
+ const json=Buffer.from(JSON.stringify({files:{'inside.json':{size:content.length,offset:'0'}}}))
+ // An ASAR starts with a pickle containing the header size, then the header pickle.
+ const header=Buffer.alloc(8+Math.ceil(json.length/4)*4)
+ header.writeUInt32LE(header.length-4,0)
+ header.writeUInt32LE(json.length,4)
+ json.copy(header,8)
+ const prefix=Buffer.alloc(8)
+ prefix.writeUInt32LE(4,0)
+ prefix.writeUInt32LE(header.length,4)
+ const archive=Buffer.concat([prefix,header,content])
+ const target=path.join(f.root,'fixture.asar')
+ await writeFile(target,archive)
+ await writeFile(path.join(f.root,'.desktop-preview.json'),JSON.stringify({schemaVersion:1,synthetic:true}))
+ const runtime=await connectRuntime({library:f.root,home:path.join(f.base,'services'),python:'python',node:process.env.KB_TEST_ELECTRON,kind:'desktop',candidateRoot:f.base})
+ const client=runtime.client
+ const call=(method,operation)=>client.call(method,{operation:{expectedKbId:f.kbId,...operation}})
+ try{
+  const {architecture:preview}=await call('workspace.read',{op:'architecture.preview'})
+  assert.deepEqual(preview.files.map(f=>f.path),['fixture.asar'])
+  const {architecture:applied}=await call('workspace.write',{op:'architecture.apply',planId:preview.planId,revision:preview.revision,confirm:true})
+  assert.equal(applied.phase,'completed')
+  const result=await call('adapter.dispatch',{op:'index-rebuild'})
+  assert.equal(result.ok,true,result.error)
+  const catalog=JSON.parse(await readFile(path.join(f.root,CATALOG_PATH),'utf8'))
+  assert.deepEqual(catalog.files.map(f=>f.path),['fixture.asar'])
+  assert.deepEqual(await readFile(target),archive)
+ }finally{try{await client.call('service.prepareUpgrade')}finally{await runtime.close()}}
+})

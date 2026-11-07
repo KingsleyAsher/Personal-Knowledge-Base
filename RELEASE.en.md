@@ -1,3 +1,7 @@
+## Plugin 2.5.7 · ASAR indexing fix
+
+The knowledge-base service treats Electron ASAR archives as physical files. Virtual entries no longer cause repeated file-change errors during index maintenance. Desktop client 1.1.2 remains compatible.
+
 ## Plugin 2.5.6 · Linked memory for historical sessions
 
 The knowledge bridge uses stored library ownership to read linked memories for historical sessions. A disconnected secondary library returns an explicit status. Pair with DSH Memory 1.0.12. The desktop client remains on 1.1.2.
