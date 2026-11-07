@@ -3,6 +3,7 @@ import { DEFAULT_PRIVATE_DIRS } from '../kb-core/src/fsindex.js'
 import {createMemoryChannel} from './memory-channel.js';
 import {createKnowledgeMemoryProvider} from './memory-sync.js';
 import path from 'node:path'
+import { watch } from 'node:fs'
 import { realpath, stat, mkdir, open, unlink, readdir, readFile, link } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
 import { createInterface } from 'node:readline'
@@ -70,6 +71,30 @@ export async function startService({ library, privateDir, python, sources = {}, 
   try { ownerHandle = await open(ownerFile, 'wx'); await ownerHandle.writeFile(JSON.stringify({ pid: process.pid, birth, bootId, instanceId })); await ownerHandle.sync() }
   catch (e) { if (e.code === 'EEXIST') throw error('STATE_BUSY'); throw e } finally { await ownerHandle?.close() }
   let upgradeDraining = false;
+  let fileWatcher, fileEventTimer
+  const filePolicyPaths = new Set(['.kbmeta/kb.json', '.kbmeta/shared-policy.json', '.kbmeta/index-policy.json', '索引层/文件目录.json'])
+  function fileChanged(_event, filename) {
+    if (closing) return
+    const relative = String(filename ?? '').replaceAll('\\', '/')
+    if (!filePolicyPaths.has(relative) && relative.split('/').some(part => part.startsWith('.') || part === '索引层' || part === 'node_modules')) return
+    kernel.workbench.invalidateBrowse()
+    clearTimeout(fileEventTimer)
+    fileEventTimer = setTimeout(() => { void queue(event).catch(() => {}) }, 150)
+    fileEventTimer.unref?.()
+  }
+  function watchFiles() {
+    try {
+      const watcher = watch(root, { recursive: true }, fileChanged)
+      fileWatcher = watcher
+      watcher.unref()
+      watcher.on('error', () => {
+        if (fileWatcher !== watcher) return
+        watcher.close()
+        fileWatcher = null
+        fileChanged()
+      })
+    } catch { fileWatcher = null }
+  }
   let bridge, kernel, maintenance, automaticTimer, closing = false, closePromise, ready = false, sequence = 0, timer
   const queue = serialQueue(), connections = new Map(), contexts = new AsyncLocalStorage(), ring = []
   const send = (id, frame) => { if (bridge?.stdin.writable) {const payload=JSON.stringify({ id, frame })+'\n'; if(Buffer.byteLength(JSON.stringify(frame))>1048576) throw error('BAD_REQUEST','Response exceeds frame limit'); bridge.stdin.write(payload)}  }
@@ -100,7 +125,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
     if (closePromise) return closePromise
     closing = true
     closePromise = queue(async () => {
-      await clipper?.close();clearInterval(timer);clearInterval(automaticTimer);clearTimeout(pendingEvent);unsubscribe?.();broker?.dispose();engines?.dispose();maintenance?.dispose();kernel?.dispose();
+      fileWatcher?.close();fileWatcher = null;clearTimeout(fileEventTimer);await clipper?.close();clearInterval(timer);clearInterval(automaticTimer);clearTimeout(pendingEvent);unsubscribe?.();broker?.dispose();engines?.dispose();maintenance?.dispose();kernel?.dispose();
       if(bridge && bridge.exitCode===null){
         await new Promise((resolve,reject)=>{const timeout=setTimeout(()=>reject(error('STATE_BUSY','Python helper has not exited')),10000);bridge.once('exit',()=>{clearTimeout(timeout);resolve()});bridge.stdin.end()})
       }
@@ -351,14 +376,14 @@ export async function startService({ library, privateDir, python, sources = {}, 
     const changed = await kernel.core.setConfig({ categories: policy.categories ?? conf.categories, privateDirs: policy.privateDirs ?? conf.privateDirs ?? DEFAULT_PRIVATE_DIRS, excludeFromSearch: policy.excludeFromSearch ?? conf.excludeFromSearch, autoIndex: policy.autoIndex??conf.autoIndex??true }); if (!changed.ok) throw error('RECOVERY_REQUIRED', changed.reason)
   }
   function startMaintenance() {
-    if (!maintenance) maintenance = createIndexMaintenance({ getCore: () => ({ ...kernel.core, maintainIndex: args => queue(async () => closing || !await active() ? { ok: false, reason: 'service-inactive' } : kernel.core.maintainIndex(args)) }), onChange: () => {void queue(event)}, resources: kernel.workbench.resources })
+    if (!maintenance) maintenance = createIndexMaintenance({ getCore: () => ({ ...kernel.core, maintainIndex: args => queue(async () => closing || !await active() ? { ok: false, reason: 'service-inactive' } : kernel.core.maintainIndex(args)) }), onChange: result => {if(result.indexWritten)kernel.workbench.invalidateBrowse();void queue(event)}, resources: kernel.workbench.resources })
     if(!automaticTimer){automaticTimer=setInterval(()=>{void queue(async()=>{if(closing||!await active())return;const before=hash(await bytes(path.join(root,'.kbmeta/shared-state.json')));await kernel.workbench.runAutomatic();if(before!==hash(await bytes(path.join(root,'.kbmeta/shared-state.json')))){writeSequence++;await atomic(path.join(privateDir,'sequence.json'),{value:writeSequence});await event();}}).catch(e=>console.warn('[kb-service] automatic maintenance: '+String(e.code??'failed')));},60000);automaticTimer.unref?.()}
   }
   try {
     // Service state is wholly separate from all existing DSH profile directories.
     await atomic(runtimeFile, { ...identity, ownerToken, pipe, bootId })
     kernel = createEmbeddedKernel({ stateDir: path.join(privateDir, 'kernel'), config: { kbPath: root, serviceOwnerToken: ownerToken, autoIndex: false }, ports: {
-      sharedState:true,policyScope:()=> 'phase4-shared-library',getParsing:()=>engines?.parsing,getImports:()=>engines?.imports,getFlows:()=>engines?.flows,
+      sharedState:true,watchingFiles:()=>Boolean(fileWatcher),policyScope:()=> 'phase4-shared-library',getParsing:()=>engines?.parsing,getImports:()=>engines?.imports,getFlows:()=>engines?.flows,
       getUpgradeContext:async()=>({version:KERNEL_VERSION,buildId:runtimeBuildId,runtimeId:bootId}),downloadExtension:()=>extensionArchive(path.resolve(import.meta.dirname,'../../browser-extension')),
       getAIWorkspace:()=>{const h=broker.status().hosts[0];if(!h)throw error('HOST_UNAVAILABLE','DSH 离线');return {workspaceId:h.workspaceId,workspaceName:'知识库流程',workspacePath:h.workspacePath,cwd:h.workspacePath};},
       retrievalProfile:()=>vectorProfiles?.profile(contexts.getStore()?.kind??'desktop')??'plugin',retrievalProfiles:()=>['plugin','desktop'],
@@ -431,6 +456,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
       })
     })
     bridge.once('exit', () => { if (!closing) void close() })
+    watchFiles()
     await recoverReceipts()
     if (await active()) { await applySharedPolicy(); startMaintenance();await engines.recover() }
     clipper=await startClipper({privateDir,dispatch:args=>queue(async()=>{await requireActive();const result=await kernel.workbench.clipper(args);writeSequence++;await atomic(path.join(privateDir,'sequence.json'),{value:writeSequence});kernel.workbench.invalidate();await event();maintenance?.notify('');return result;})});

@@ -24,7 +24,7 @@ import { sourceReferences, reconcileImportedSources, SOURCE_TEXT } from './sourc
 import {catalogActive,readCatalog,refreshCatalog,classifyOriginal} from './file-catalog.js'
 
 // 版本单一来源：package.json 的 version 必须与此一致（详见 INSTALL 说明）
-export const VERSION = '2.5.7'
+export const VERSION = '2.5.8'
 
 export const REQUIRED_FIELDS = ['title', 'type', 'tags', 'status', 'updated']
 export const SCHEMA_VERSION = 1
@@ -2349,10 +2349,14 @@ export function createCore(cfg, logger) {
     })
   }
 
-  async function status() {
+  async function status({ bindingOnly = false } = {}) {
     const conf = await getConfigFresh()
     const cfgHealth = await getConfigHealth()
     const root = kbRootOf(conf)
+    if (bindingOnly) {
+      const meta = root === null ? null : await readMeta(root)
+      return { kbPath: root === null ? null : toPosix(root), kbId: meta?.state === 'ok' ? meta.value.kbId ?? null : null }
+    }
     // R6：未绑定 → bound=false / kbPath=null，绝不扫描 cwd、绝不报成"某个真实目录"
     if (root === null) {
       return {

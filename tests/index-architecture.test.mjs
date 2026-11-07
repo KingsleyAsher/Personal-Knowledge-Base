@@ -186,3 +186,36 @@ test('DSH Electron service indexes an ASAR as one physical original', {skip:!pro
   assert.deepEqual(await readFile(target),archive)
  }finally{try{await client.call('service.prepareUpgrade')}finally{await runtime.close()}}
 })
+
+test('browse snapshots reuse the scan until an external change or manual refresh', {skip:process.platform!=='win32',timeout:30000},async t=>{
+ const f=await fixture(t)
+ await writeFile(path.join(f.root,'first.md'),'first')
+ await writeFile(path.join(f.root,'.desktop-preview.json'),JSON.stringify({schemaVersion:1,synthetic:true}))
+ const runtime=await connectRuntime({library:f.root,home:path.join(f.base,'services'),python:'python',kind:'desktop',candidateRoot:f.base})
+ const client=runtime.client
+ const snapshot=(fresh=false)=>client.call('workspace.read',{operation:{op:'atlas.snapshot',expectedKbId:f.kbId,fresh}})
+ try{
+  await client.call('adapter.dispatch',{operation:{op:'index-maintenance.configure',enabled:false}})
+  const first=await snapshot()
+  assert.equal(first.watchingFiles,true)
+  await new Promise(resolve=>setTimeout(resolve,5100))
+  const second=await snapshot()
+  assert.equal(second.scanMetrics.scans,first.scanMetrics.scans)
+  assert.equal(second.scanMetrics.cacheHits,first.scanMetrics.cacheHits+1)
+  const manual=await snapshot(true)
+  assert.equal(manual.scanMetrics.scans,second.scanMetrics.scans+1)
+  const event=AbortSignal.timeout(5000)
+  await new Promise((resolve,reject)=>{
+   const off=client.subscribe(frame=>{if(frame.event==='snapshot.required'){off();resolve()}})
+   event.addEventListener('abort',()=>{off();reject(event.reason)},{once:true})
+   writeFile(path.join(f.root,'external.bin'),'external original').catch(reject)
+  })
+  const changed=await snapshot()
+  assert.equal(changed.totals.files,manual.totals.files+1)
+  assert.equal(changed.scanMetrics.scans,manual.scanMetrics.scans+1)
+  const policy=JSON.parse(await readFile(path.join(f.root,'.kbmeta/shared-policy.json'),'utf8'))
+  await writeFile(path.join(f.root,'.kbmeta/shared-policy.json'),JSON.stringify({...policy,revision:policy.revision+1}))
+  const updated=await snapshot()
+  assert.notEqual(updated.policyVersion,changed.policyVersion)
+ }finally{try{await client.call('service.prepareUpgrade')}finally{await runtime.close()}}
+})

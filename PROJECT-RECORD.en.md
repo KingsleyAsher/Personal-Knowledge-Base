@@ -59,7 +59,11 @@ A separate [2.4.6 migration recovery entry](docs/LEGACY-246-BOOTSTRAP.md) verifi
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 2.5.7 -->
+<!-- project-record-version: 2.5.8 -->
+
+## Plugin 2.5.8 · Faster library reopening
+
+Reopening the same library reuses the current view. File changes and manual refresh update it, and permission changes discard the old view.
 
 ## Plugin 2.5.7 · ASAR indexing fix
 
