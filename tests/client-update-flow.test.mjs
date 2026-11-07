@@ -23,12 +23,15 @@ function setup(options = {}, data = new Map()) {
     async waitForInstall() { waits++; return { ok: true, value: null } },
   }
   const flow = factory({ api: async (request,method) => {
-    if (method==='GET'||request.op === 'status') return { status: { build: method!=='GET'&&options.postOmitsBuild?undefined:installed ? { version: target.latestVersion, buildId: target.buildId } : { version: '1.1.2', buildId: 'd881ed4ff0990f64' } } }
-    if(request.op==='updates.install')return (await manager.installBundle('/verified/cache/hash/package.tgz',{enabled:true,requestId:'safe-transaction'})).value
+    if (method==='GET'||request.op === 'status') return { status: { serviceRuntimeVersion: options.serviceRuntimeVersion, build: method!=='GET'&&options.postOmitsBuild?undefined:installed ? { version: target.latestVersion, buildId: target.buildId } : { version: '1.1.2', buildId: 'd881ed4ff0990f64' } } }
+    if(request.op==='updates.install'){
+      if(options.deferFirst && installs===0){installs++;return {application:'deferred',retryable:true}}
+      return (await manager.installBundle('/verified/cache/hash/package.tgz',{enabled:true,requestId:'safe-transaction'})).value
+    }
     if(request.op==='updates.status')return options.updateStatus||{transactionId:'transaction-fixture',phase:'publishing'}
     prepares++; if (options.downloadFails) throw Error(options.downloadError || 'hash mismatch')
     return { ok: true, spec: '/verified/cache/hash/package.tgz',safeInstall:true,transactionId:'transaction-fixture', ...target, ...(options.prepared || {}) }
-  }, manager: () => manager, storage, clientVersion: () => installed && options.clientLoads !== false ? target.latestVersion : '1.1.2', notify: (state) => states.push(state), delay: async () => {} })
+  }, manager: () => manager, storage, clientVersion: () => installed && options.clientLoads !== false ? target.latestVersion : '1.1.2', notify: (state) => states.push(state), retryLater:options.retryLater, delay: async () => {} })
   return { flow, states, data, get installs() { return installs }, get prepares() { return prepares }, get waits() { return waits }, get final() { return states.at(-1) } }
 }
 test('one click downloads, delegates to native manager and verifies the active build; concurrent clicks deduplicate', async () => {
@@ -76,6 +79,22 @@ test('native applied alone cannot report success while old build is still active
   const s = setup({ loads: false }); await s.flow.install('1.1.3')
   assert.equal(s.final.uncertain, true); assert.ok(JSON.parse(s.data.get(key)).requestId)
 })
+test('busy handoff retries the prepared package and verifies the worker version', async () => {
+  let retry
+  const options={deferFirst:true,retryLater:fn=>{retry=fn},prepared:{hotActivation:true},serviceRuntimeVersion:'1.1.2'}
+  const s=setup(options)
+  await s.flow.install(target.latestVersion)
+  assert.equal(s.final.deferred,true)
+  assert.equal(JSON.parse(s.data.get(key)).stage,'waiting-for-idle')
+  retry()
+  await s.flow.recover()
+  assert.equal(s.prepares,1)
+  assert.equal(s.installs,2)
+  assert.equal(s.final.uncertain,true)
+  options.serviceRuntimeVersion=target.latestVersion
+  await s.flow.recover()
+  assert.equal(s.final.completedVersion,target.latestVersion)
+})
 test('host activation without client replacement requests a page refresh, not a host restart or false success', async () => {
   const s = setup({ clientLoads: false }); await s.flow.install('1.1.3')
   assert.equal(s.final.refreshRequired, true); assert.equal(s.final.restartRequired, false)
@@ -120,6 +139,15 @@ test('a prepared but never started safe transaction resumes the same transaction
   const s=setup({updateStatus:{...quietStatus,phase:'prepared',transactionId:record.transactionId}},pendingData(record))
   await s.flow.recover();assert.equal(s.final.resumeAvailable,true);assert.equal(s.installs,0)
   await s.flow.install(target.latestVersion);assert.equal(s.installs,1);assert.equal(s.prepares,0);assert.equal(JSON.parse(s.data.get(key)),null)
+})
+
+test('a lost hot-reload reply resumes activation of the committed transaction',async()=>{
+  const record={...legacyRecord,transactionId:'transaction-fixture',hotActivation:true}
+  const s=setup({serviceRuntimeVersion:target.latestVersion,updateStatus:{...quietStatus,phase:'committed',transactionId:record.transactionId,installedBuild:{version:target.latestVersion,buildId:target.buildId}}},pendingData(record))
+  await s.flow.recover()
+  assert.equal(s.prepares,0)
+  assert.equal(s.installs,1)
+  assert.equal(s.final.completedVersion,target.latestVersion)
 })
 
 test('legacy shared Host missing POST build is confirmed through its read-only GET status',async()=>{

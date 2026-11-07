@@ -203,6 +203,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
     if(eventSubscribe){const off=eventSubscribe(data=>event('kbw-policy',data));eventSource={close:off};return}
     const source = new EventSource('/kb-core/workbench-events')
     eventSource = source
+    source.onopen = () => event('kbw-policy', { type: 'connection-restored' })
     source.onmessage = ev => { try { const data = JSON.parse(ev.data); event('kbw-policy', data) } catch {} }
     source.onerror = () => event('kbw-policy', { type: 'connection-lost' })
     window.addEventListener('pagehide', () => source.close(), { once: true })
@@ -1690,9 +1691,24 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
   // This factory is embedded into the shared workbench UI at build time.
   function MemoryPanel({navigate}) {
     const [data,setData]=R.useState(null),[error,setError]=R.useState(''),[busy,setBusy]=R.useState(false),[title,setTitle]=R.useState(''),[text,setText]=R.useState(''),[removeId,setRemoveId]=R.useState('');
-    const live=R.useRef(true),sequence=R.useRef(0);
-    const refresh=R.useCallback(async()=>{const id=++sequence.current;try{const value=await api({op:'memory.list'});if(live.current&&id===sequence.current){setData(value);setError('')}}catch(err){if(live.current&&id===sequence.current){setData(null);setError(err.message)}}},[]);
-    R.useEffect(()=>{live.current=true;connectEvents();const updates=refreshSchedule(refresh,15000);updates.schedule(0);const changed=()=>updates.schedule();window.addEventListener('kbw-policy',changed);return()=>{live.current=false;sequence.current++;updates.dispose();window.removeEventListener('kbw-policy',changed)}},[refresh]);
+    const live=R.useRef(true),sequence=R.useRef(0),changeEvents=R.useRef(false);
+    const refresh=R.useCallback(async()=>{const id=++sequence.current;try{const value=await api({op:'memory.list'});if(live.current&&id===sequence.current){changeEvents.current=value.memory?.changeEvents===true;setData(value);setError('')}}catch(err){if(live.current&&id===sequence.current){changeEvents.current=false;setData(null);setError(err.message)}}},[]);
+    R.useEffect(()=>{
+      live.current=true;connectEvents();
+      let offline=false;
+      const updates=refreshSchedule(refresh,15000,()=>offline||!changeEvents.current);
+      const changed=ev=>{
+        const detail=ev.detail;
+        const type=detail?.event??detail?.type;
+        if(type==='connection-lost'||type==='service-unavailable')offline=true;
+        if(type==='connection-restored')offline=false;
+        if(type==='connection.changed')offline=(detail.state??detail.data?.state)!=='ready';
+        if(['connection-lost','connection-restored','service-unavailable','connection.changed','memory.changed','memory-changed',
+          'snapshot.required','snapshot-dirty','files-changed','links-changed','preferences'].includes(type))updates.schedule();
+      };
+      updates.schedule(0);window.addEventListener('kbw-policy',changed);
+      return()=>{live.current=false;sequence.current++;updates.dispose();window.removeEventListener('kbw-policy',changed)};
+    },[refresh]);
     async function mutate(body){if(busy)return;setBusy(true);setError('');try{await api({...body,requestId:crypto.randomUUID()});if(body.op==='memory.add'){setText('');setTitle('')}setRemoveId('');await refresh()}catch(err){setError(err.message)}finally{if(live.current)setBusy(false)}}
     return e('section',{'data-memory-panel':true},e('h2',null,data?.memory?.mode==='independent'?'知识库记忆':'全局记忆'),e('p',{className:'kbw-meta'},data?.memory?.mode==='independent'?'独立知识库模式：显示本库已有的记忆文档，可打开原文维护。':'与记忆插件共享全局记录。知识库记忆保留原文来源，修改原文后自动更新。'),
       e('div',{className:'kbw-actions'},btn('刷新',refresh,busy),e('span',{role:'status',className:'kbw-meta'},data?(data.memory?.globalAvailable?'共享模式':'独立知识库模式')+' · '+data.entries.length+' 条':error?'暂不可用':'正在读取记忆…')),

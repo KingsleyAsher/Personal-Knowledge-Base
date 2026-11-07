@@ -19,22 +19,28 @@ import {registerHostAssets} from './host-assets.js'
 // Called only by an explicitly configured Host. It never starts an embedded writer.
 export async function mountServiceHost(ctx, config, { isLiveKnowledgeGrant, gatewayApply, createCitationGuard, build, getFlowWorkspace,installApi,legacyStateDir,profileDir,library,python='python' }) {
   const definitions = JSON.parse(await readFile(new URL('./tool-definitions.json', import.meta.url),'utf8'))
-  const runtime=config.serviceConnection?null:await connectRuntime({library,home:config.shared?.home??defaultServiceHome(),python:config.shared?.python??python,kind:'dsh-adapter',candidateRoot:config.shared?.candidateRoot??process.env.KB_SHARED_CANDIDATE_ROOT,required:['workspace.read','providers.get','host.bridge']})
+  const runtime=config.serviceConnection?null:await connectRuntime({library,home:config.shared?.home??defaultServiceHome(),python:config.shared?.python??python,kind:'dsh-adapter',preferredVersion:build.version,candidateRoot:config.shared?.candidateRoot??process.env.KB_SHARED_CANDIDATE_ROOT,required:['workspace.read','providers.get','host.bridge']})
   const primaryClient=runtime?.client??await connectService({...config.serviceConnection,kind:'dsh-adapter'}),routing=new AsyncLocalStorage();const client=new Proxy(primaryClient,{get(target,key){const source=routing.getStore()??target,value=Reflect.get(source,key);return typeof value==='function'?value.bind(source):value}})
   if(createCitationGuard){const guard=createCitationGuard({validate:(operation,agentId)=>{const target=desktopLinks?.clientForAgent(ctx.get('agents')?.get(agentId));if(target===null)throw Error('该会话知识库已断开');return (target??primaryClient).call('workspace.read',{operation});},log:message=>console.warn('[kb-citations] '+message)});ctx.effect(()=>ctx.on('agent/turn-stopping',guard),'kb-service: final citation check')}
   if(legacyStateDir)try{const s=await client.call('host.tool',{name:'kb_status',input:{}}),provider=await exportPluginVector({stateDir:legacyStateDir,root:s.kbPath,kbId:s.kbId,sourceId:'profile:'+path.basename(profileDir??legacyStateDir)});if(provider)await client.call('providers.syncPlugin',provider)}catch{/* Existing shared settings remain authoritative. */}
   const inboxHost=createInboxHost({client,getLLM:()=>ctx.get('llm'),getWorkspace:getFlowWorkspace})
   const routeFile=path.join(legacyStateDir??profileDir??path.join(os.homedir(),'.dsh/knowledge-desktop-client'),'desktop-session-libraries.json'),sessionOwners=await readJson(routeFile,{}),saveRoute=serialQueue();
   const primaryId=primaryClient.welcome.library.instanceId;
-  const recordSession=(instanceId,id)=>saveRoute(async()=>{sessionOwners[id]=instanceId;await atomic(routeFile,sessionOwners);});
+  const memoryListeners=new Set();
+  const notifyMemory=event=>{if(event.event!=='memory.changed')for(const listener of memoryListeners)listener(event)};
+  const recordSession=(instanceId,id)=>saveRoute(async()=>{
+    const previous=ownerFor(id);
+    sessionOwners[id]=instanceId;
+    if(previous!==ownerFor(id))notifyMemory({event:'connection.changed'});
+    await atomic(routeFile,sessionOwners);
+  });
   const ownerFor=id=>sessionOwners[id]&&sessionOwners[id]!==primaryId?sessionOwners[id]:undefined;
   const workspaceManager=createFlowWorkspaceManager({getRegistry:()=>controllerScope.get('workspaceRegistry'),isolated:true,displayName:'知识库客户端',singleName:true});
   let nativeBridge,desktopLinks,bridgeTimer,bridgeError='',controllerScope
-  const memoryListeners=new Set();
-  const sharedStatus=async()=>({...await client.call('host.tool',{name:'kb_status',input:{}}),build,runtimeMode:'service',inboxServerManaged:!!nativeBridge,dshConnection:{controller:!!controllerScope,error:bridgeError}})
+  const sharedStatus=async()=>({...await client.call('host.tool',{name:'kb_status',input:{}}),serviceRuntimeVersion:(await client.call('service.health')).coreVersion,build,runtimeMode:'service',inboxServerManaged:!!nativeBridge,dshConnection:{controller:!!controllerScope,error:bridgeError}})
   let starting=false
   async function ensureBridge(){if(starting||nativeBridge||!controllerScope)return;starting=true;try{const s=await sharedStatus(),workspace=await workspaceManager.ensure(library);nativeBridge=startDshHostBridge({client,ctx:controllerScope,workspace,ensureWorkspace:()=>workspaceManager.ensure(library),ownsSession:id=>!sessionOwners[id]||sessionOwners[id]===primaryId,onSessionCreated:id=>recordSession(primaryId,id),libraryRoot:s.kbPath,label:'DSH · '+path.basename(profileDir??'当前 Host'),onError:e=>{bridgeError=e.code??e.message;}});bridgeError=''}catch(e){if(bridgeError!==e.message)console.warn('[kb-service] DSH bridge pending:',e.message);bridgeError=e.message;}finally{starting=false}}
-  ctx.inject(['sessionController','workspaceRegistry','llm'],scope=>{controllerScope=scope;void ensureBridge();desktopLinks=startDesktopHostLinks({ctx:scope,python,connectRuntime,startBridge:startDshHostBridge,primaryRoot:library,ownerFor,recordSession,workspaceFor:()=>workspaceManager.ensure(library),onLibraryEvent:event=>{if(event.event!=='memory.changed')for(const listener of memoryListeners)listener(event)},onError:e=>{bridgeError=e.code??e.message;}});scope.effect(()=>()=>{void desktopLinks?.dispose();nativeBridge?.dispose();nativeBridge=null;controllerScope=null},'kb-service: detach native Host')})
+  ctx.inject(['sessionController','workspaceRegistry','llm'],scope=>{controllerScope=scope;void ensureBridge();desktopLinks=startDesktopHostLinks({ctx:scope,python,connectRuntime,startBridge:startDshHostBridge,primaryRoot:library,ownerFor,recordSession,workspaceFor:()=>workspaceManager.ensure(library),onLibraryEvent:notifyMemory,onError:e=>{bridgeError=e.code??e.message;}});scope.effect(()=>()=>{void desktopLinks?.dispose();nativeBridge?.dispose();nativeBridge=null;controllerScope=null},'kb-service: detach native Host')})
   bridgeTimer=setInterval(()=>void ensureBridge(),1000);bridgeTimer.unref?.();void ensureBridge()
   ctx.effect(()=>()=>{clearInterval(bridgeTimer);nativeBridge?.dispose()},'kb-service: native DSH bridge')
   publishKnowledgeMemory(ctx,(operation,context)=>{
@@ -50,7 +56,7 @@ export async function mountServiceHost(ctx, config, { isLiveKnowledgeGrant, gate
     const target=agent?desktopLinks?.clientForAgent(agent):undefined;
     if(target===null)throw Error('knowledge_memory_library_disconnected');
     return (target??primaryClient).call('workspace.read',{operation});
-  },listener=>{memoryListeners.add(listener);const off=primaryClient.subscribe(ev=>{if(ev.event!=='memory.changed')listener(ev)});return()=>{off();memoryListeners.delete(listener)}});
+  },listener=>{memoryListeners.add(listener);const off=primaryClient.subscribe(ev=>{if(ev.event!=='memory.changed')listener(ev)});return()=>{off();memoryListeners.delete(listener)}},!!runtime);
   let connected = true
   ctx.effect(() => () => { connected=false;nativeBridge?.dispose();void runtime?.close();client.close() }, 'kb-service: close Host connection')
   function trusted(exec,name,input) {
@@ -103,7 +109,7 @@ export async function mountServiceHost(ctx, config, { isLiveKnowledgeGrant, gate
   }
   const send=(res,status,value)=>{res.statusCode=status;res.setHeader('content-type','application/json; charset=utf-8');res.end(JSON.stringify(value))}
   const sameOrigin=req=>req.headers['sec-fetch-site']!=='cross-site' && (!req.headers.origin || (()=>{try{return new URL(req.headers.origin).host===req.headers.host}catch{return false}})())
-  const updates=createHostUpdates({ctx,build,profileDir,quiesce:runtime?()=>runtime.prepareUpgrade():null,resume:runtime?()=>runtime.resume():null});
+  const updates=createHostUpdates({ctx,build,profileDir,quiesce:runtime?()=>runtime.prepareUpgrade():null,resume:runtime?()=>runtime.resume():null,withUpdateLock:runtime?task=>runtime.withUpdateLock(task):undefined});
   const server=ctx.get('webServer')
   if(server?.register) {
     await registerHostAssets({ctx,server,root:path.resolve(import.meta.dirname,'../..'),client,send,sameOrigin})

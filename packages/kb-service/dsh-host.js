@@ -1,4 +1,4 @@
-import {handleMemoryHost} from './memory-channel.js';
+import {handleMemoryHost,hasMemoryHost} from './memory-channel.js';
 import {randomUUID} from 'node:crypto';import path from 'node:path';import {readFile,stat} from 'node:fs/promises';import {safePath} from '../kb-core/src/workbench-state.js';import {hash} from './io.js';
 import {INBOX_FLOW} from '../kb-core/src/inbox-flow.js';
 import {relayDshStream,chatHistoryFrame} from './dsh-stream-relay.js';
@@ -123,7 +123,7 @@ export function createDshHostPort({ctx,workspace,libraryRoot,send,ownsSession=()
 function textParts(value){return typeof value==='string'?value:Array.isArray(value)?value.filter(p=>p.type==='text').map(p=>p.text??'').join(''):'';}
 
 export function startDshHostBridge({client,ctx,workspace,libraryRoot,label,ensureWorkspace,ownsSession,onSessionCreated,onError=()=>{}}){
- let memoryRevision;
+ let memoryRevision,memoryAvailable,memoryApi,unsubscribeMemory,pendingMemoryRevision;
  const hostInstanceId=randomUUID(),jobs=new Set(),inboxId='host-'+hostInstanceId;let disposed=false,timer,pumping=false,inboxChecking=false,nextInbox=0,nextRegister=0;
  const call=async(method,args)=>{try{return await client.call(method,args);}catch(e){if(e.code!=='POLICY_CHANGED')throw e;return client.call(method,args);}};
  const port=createDshHostPort({ctx,workspace,libraryRoot,ownsSession,onSessionCreated,send:(sessionId,data)=>call('host.bridge',{action:'event',hostInstanceId,sessionId,data})});
@@ -146,8 +146,16 @@ export function startDshHostBridge({client,ctx,workspace,libraryRoot,label,ensur
     await call('host.bridge',{action:'leave',hostInstanceId}).catch(()=>{});
     const refreshed=await ensureWorkspace();Object.assign(workspace,refreshed);nextRegister=0;
    }
-   if(Date.now()>=nextRegister){await call('host.bridge',{action:'register',hostInstanceId,label,workspaceId:workspace.workspaceId,workspacePath:workspace.workspacePath,capabilities:[...(ctx.get('memoryStore')?.globalRequest?['memory-v1']:[]),'sessions','history','prompt','cancel','models','stream','reasoning','presets','skills','attachments','interactions','knowledge-flows']});nextRegister=Date.now()+2000;}
-   const revision=ctx.get('memoryStore')?.revision;
+   const memory=ctx.get('memoryStore');
+   const available=hasMemoryHost(memory);
+   if(available!==memoryAvailable){memoryAvailable=available;nextRegister=0;memoryRevision=undefined;}
+   const api=memory?.memoryApi?.version===1?memory.memoryApi:undefined;
+   if(api!==memoryApi){
+    unsubscribeMemory?.();pendingMemoryRevision=undefined;memoryApi=api;
+    unsubscribeMemory=api?.subscribe(({revision})=>{pendingMemoryRevision=revision;});
+   }
+   if(Date.now()>=nextRegister){await call('host.bridge',{action:'register',hostInstanceId,label,workspaceId:workspace.workspaceId,workspacePath:workspace.workspacePath,capabilities:[...(available?['memory-v1']:[]),'sessions','history','prompt','cancel','models','stream','reasoning','presets','skills','attachments','interactions','knowledge-flows']});nextRegister=Date.now()+2000;}
+   const revision=api?pendingMemoryRevision:memory?.revision;
    if(revision&&revision!==memoryRevision){await call('host.bridge',{action:'memory-changed',hostInstanceId,revision});memoryRevision=revision;}
    while(jobs.size<4){const {task}=await call('host.bridge',{action:'poll',hostInstanceId});if(!task)break;jobs.add(task.id);void dispatch(task).then(v=>result(task,v),e=>result(task,null,e)).catch(onError).finally(()=>jobs.delete(task.id));}
    if(!inboxChecking&&Date.now()>nextInbox){inboxChecking=true;nextInbox=Date.now()+5000;void(async()=>{
@@ -156,5 +164,5 @@ export function startDshHostBridge({client,ctx,workspace,libraryRoot,label,ensur
    })().catch(onError).finally(()=>{inboxChecking=false;});}
   }catch(e){nextRegister=0;onError(e)}finally{pumping=false;if(!disposed)timer=setTimeout(pump,200);}
  }
- void pump();return {hostInstanceId,port,dispose(){disposed=true;clearTimeout(timer);port.dispose();void call('host.bridge',{action:'leave',hostInstanceId}).catch(()=>{});void call('inbox.organizeBridge',{action:'leave',clientId:inboxId}).catch(()=>{});}};
+ void pump();return {hostInstanceId,port,dispose(){disposed=true;clearTimeout(timer);unsubscribeMemory?.();port.dispose();void call('host.bridge',{action:'leave',hostInstanceId}).catch(()=>{});void call('inbox.organizeBridge',{action:'leave',clientId:inboxId}).catch(()=>{});}};
 }

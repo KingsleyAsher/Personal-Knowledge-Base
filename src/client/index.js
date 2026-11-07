@@ -227,6 +227,7 @@ window.__ModuleLoader__.load({
         if(eventSubscribe){const off=eventSubscribe(data=>event('kbw-policy',data));eventSource={close:off};return}
         const source = new EventSource('/kb-core/workbench-events')
         eventSource = source
+        source.onopen = () => event('kbw-policy', { type: 'connection-restored' })
         source.onmessage = ev => { try { const data = JSON.parse(ev.data); event('kbw-policy', data) } catch {} }
         source.onerror = () => event('kbw-policy', { type: 'connection-lost' })
         window.addEventListener('pagehide', () => source.close(), { once: true })
@@ -1714,9 +1715,24 @@ window.__ModuleLoader__.load({
       // This factory is embedded into the shared workbench UI at build time.
       function MemoryPanel({navigate}) {
         const [data,setData]=R.useState(null),[error,setError]=R.useState(''),[busy,setBusy]=R.useState(false),[title,setTitle]=R.useState(''),[text,setText]=R.useState(''),[removeId,setRemoveId]=R.useState('');
-        const live=R.useRef(true),sequence=R.useRef(0);
-        const refresh=R.useCallback(async()=>{const id=++sequence.current;try{const value=await api({op:'memory.list'});if(live.current&&id===sequence.current){setData(value);setError('')}}catch(err){if(live.current&&id===sequence.current){setData(null);setError(err.message)}}},[]);
-        R.useEffect(()=>{live.current=true;connectEvents();const updates=refreshSchedule(refresh,15000);updates.schedule(0);const changed=()=>updates.schedule();window.addEventListener('kbw-policy',changed);return()=>{live.current=false;sequence.current++;updates.dispose();window.removeEventListener('kbw-policy',changed)}},[refresh]);
+        const live=R.useRef(true),sequence=R.useRef(0),changeEvents=R.useRef(false);
+        const refresh=R.useCallback(async()=>{const id=++sequence.current;try{const value=await api({op:'memory.list'});if(live.current&&id===sequence.current){changeEvents.current=value.memory?.changeEvents===true;setData(value);setError('')}}catch(err){if(live.current&&id===sequence.current){changeEvents.current=false;setData(null);setError(err.message)}}},[]);
+        R.useEffect(()=>{
+          live.current=true;connectEvents();
+          let offline=false;
+          const updates=refreshSchedule(refresh,15000,()=>offline||!changeEvents.current);
+          const changed=ev=>{
+            const detail=ev.detail;
+            const type=detail?.event??detail?.type;
+            if(type==='connection-lost'||type==='service-unavailable')offline=true;
+            if(type==='connection-restored')offline=false;
+            if(type==='connection.changed')offline=(detail.state??detail.data?.state)!=='ready';
+            if(['connection-lost','connection-restored','service-unavailable','connection.changed','memory.changed','memory-changed',
+              'snapshot.required','snapshot-dirty','files-changed','links-changed','preferences'].includes(type))updates.schedule();
+          };
+          updates.schedule(0);window.addEventListener('kbw-policy',changed);
+          return()=>{live.current=false;sequence.current++;updates.dispose();window.removeEventListener('kbw-policy',changed)};
+        },[refresh]);
         async function mutate(body){if(busy)return;setBusy(true);setError('');try{await api({...body,requestId:crypto.randomUUID()});if(body.op==='memory.add'){setText('');setTitle('')}setRemoveId('');await refresh()}catch(err){setError(err.message)}finally{if(live.current)setBusy(false)}}
         return e('section',{'data-memory-panel':true},e('h2',null,data?.memory?.mode==='independent'?'知识库记忆':'全局记忆'),e('p',{className:'kbw-meta'},data?.memory?.mode==='independent'?'独立知识库模式：显示本库已有的记忆文档，可打开原文维护。':'与记忆插件共享全局记录。知识库记忆保留原文来源，修改原文后自动更新。'),
           e('div',{className:'kbw-actions'},btn('刷新',refresh,busy),e('span',{role:'status',className:'kbw-meta'},data?(data.memory?.globalAvailable?'共享模式':'独立知识库模式')+' · '+data.entries.length+' 条':error?'暂不可用':'正在读取记忆…')),
@@ -3234,18 +3250,19 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     // 知识库页签的容器：「概览」与「流程」是两个内部二级页签，不把概览堆成长页
     // A host-owned installation can outlive this module during HMR. Persist its
     // request ID, then reconcile via the native manager and the active build.
-    function createClientUpdateFlow({ api, manager, storage, notify, clientVersion = () => null, delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms)) }) {
+    function createClientUpdateFlow({ api, manager, storage, notify, clientVersion = () => null, retryLater, delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms)) }) {
       const key = 'dsh-kb-update-operation'
-      let running = null
+      let running = null, retryQueued = false
       const read = () => { try { return JSON.parse(storage.getItem(key)) } catch { return null } }
       const save = (record) => { try { storage.setItem(key, JSON.stringify(record)) } catch { throw Error('无法保存更新状态，请检查客户端存储后重试') } }
       const show = (message, extra = {}) => notify({ busy: false, uncertain: false, restartRequired: false, refreshRequired: false, deferred:false, manualHelp:false, message, ...extra,
         ...(extra.manualHelp ? { failureId: Date.now() + '-' + Math.random().toString(36).slice(2) } : {}) })
       const hostActive = async (record) => {
         try {
-          let build = (await api({ op: 'status' }))?.status?.build
-          if(!build)build=(await api({},'GET'))?.status?.build
-          return build?.version === record.latestVersion && build?.buildId === record.buildId
+          let status = (await api({ op: 'status' }))?.status
+          if (!status?.build) status = (await api({},'GET'))?.status
+          return status?.build?.version === record.latestVersion && status.build.buildId === record.buildId &&
+            (!record.hotActivation || status.serviceRuntimeVersion === record.latestVersion)
         } catch { return false }
       }
       const active = async (record) => clientVersion() === record.latestVersion && await hostActive(record)
@@ -3253,15 +3270,35 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       const complete = (record) => { if (owns(record)) { save(null); show('更新完成，新版本已加载', { completedVersion: record.latestVersion }) } }
       const uncertain = (record) => { if (owns(record)) show('安装状态待确认，请点击核对更新状态；请勿重复安装', { uncertain: true }) }
       const sameBuild=(build,record)=>build?.version===record.latestVersion&&build?.buildId===record.buildId
+      function waitForIdle(record, message) {
+        save({ ...record, stage: 'waiting-for-idle' })
+        show(message || '知识库任务结束后将自动继续更新', { deferred: true, resumeAvailable: true })
+        if (!retryLater || retryQueued) return
+        retryQueued = true
+        retryLater(() => {
+          retryQueued = false
+          const latest = read()
+          if (owns(record) && latest.stage === 'waiting-for-idle') void serialized(() => continueInstall(latest))
+        })
+      }
+      async function continueInstall(record) {
+        save({ ...record, stage: 'installing' })
+        show('正在安全交接知识库服务…', { busy: true })
+        try { await settle(await api({op:'updates.install',expectedVersion:record.latestVersion,transactionId:record.transactionId}),record) }
+        catch { await reconcile() }
+      }
       async function inspectPending(record,legacyAbsent=false){
         const status=await api({op:'updates.status'})
         if(!owns(record)||status.confirmationProtocol!==1)return {status}
         const settled=status.operationActive===false&&status.writerBusy===false&&['none','committed','aborted','rolled-back'].includes(status.phase)
         if(settled&&sameBuild(status.installedBuild,record)){
+          if(record.hotActivation&&status.phase==='committed'&&status.transactionId===record.transactionId) return {status,resolution:'activate'}
           save({...record,stage:'restart-required'});show('新版文件已安装，当前宿主尚未加载，请保存工作后重启',{restartRequired:true});return {status,resolution:'resolved'}
         }
         if(record.transactionId&&status.transactionId===record.transactionId&&status.phase==='prepared'&&status.operationActive===false&&status.writerBusy===false){
-          show('候选包已准备，安装尚未开始，可继续更新',{resumeAvailable:true});return {status,resolution:'resume'}
+          if (record.stage==='waiting-for-idle') waitForIdle(record)
+          else show('候选包已准备，安装尚未开始，可继续更新',{resumeAvailable:true})
+          return {status,resolution:'resume'}
         }
         if(legacyAbsent&&settled&&status.canRetryLegacy===true&&status.installedBuild){
           save(null);show('旧安装请求已失效，已核对当前包与安装锁，可重新安装新版');return {status,resolution:'resolved'}
@@ -3279,7 +3316,11 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       }
       async function settle(value, record) {
         if (!owns(record)) return
-        if(value?.application==='deferred'){save(null);show(value.error || '更新已延后，旧版本保持可用',{deferred:value.retryable===true});return}
+        if(value?.application==='deferred'){
+          if (value.retryable && record.transactionId) waitForIdle(record, '知识库暂时忙，空闲后将自动继续更新')
+          else { save(null); show(value.error || '更新已延后，旧版本保持可用') }
+          return
+        }
         if (value?.application === 'failed' || value?.application === 'cancelled') {
           save(null)
           show(value.application === 'cancelled' ? '更新已取消' : '安装失败：' + (value.error?.diagnostic || value.error?.code || value.packageResult?.kind || '请在宿主插件管理器查看详情'),{manualHelp:true})
@@ -3295,7 +3336,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         }
         if (value?.application === 'applied') {
           show('安装完成，正在核对新版加载状态…', { busy: true })
-          for (let i = 0; i < 20; i++) {
+          for (let i = 0; i < (record.hotActivation ? 60 : 20); i++) {
             if (await active(record)) { complete(record); return }
             await delay(500)
           }
@@ -3310,7 +3351,17 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         if (record.stage === 'restart-required') { show('新版已安装，宿主要求重启后生效', { restartRequired: true }); return }
         if (record.stage === 'client-refresh') { await resolveLoaded(record); return }
         if(record.transactionId){
-          try{const checked=await inspectPending(record);if(checked.resolution)return checked.resolution;const status=checked.status;if(status.transactionId!==record.transactionId){uncertain(record);return}if(status.phase==='committed')await settle({application:'restart-required'},record);else if(['rolled-back','aborted'].includes(status.phase)){save(null);show('更新未完成，旧版本已保留或恢复',{manualHelp:true})}else uncertain(record)}catch{uncertain(record)}
+          try {
+            const {status,resolution}=await inspectPending(record)
+            if (resolution==='activate') {
+              show('安装包已提交，正在确认新版服务接管…', { busy:true })
+              await settle(await api({op:'updates.install',expectedVersion:record.latestVersion,transactionId:record.transactionId}),record)
+            } else if (resolution) return resolution
+            else if (status.transactionId!==record.transactionId) uncertain(record)
+            else if (status.phase==='committed') await settle({application:'restart-required'},record)
+            else if (['rolled-back','aborted'].includes(status.phase)) { save(null);show('更新未完成，旧版本已保留或恢复',{manualHelp:true}) }
+            else uncertain(record)
+          } catch { uncertain(record) }
           return
         }
         const remote = manager()
@@ -3336,8 +3387,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           if (read()?.requestId) {
             const record=read(),resolution=await reconcile()
             if(resolution==='resume'&&owns(record)){
-              show('正在继续已准备的更新…',{busy:true})
-              try{await settle(await api({op:'updates.install',expectedVersion:record.latestVersion,transactionId:record.transactionId}),record)}catch{await reconcile()}
+              await continueInstall(record)
             }
             return
           }
@@ -3347,7 +3397,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           const prepared = await api({ op: 'updates.prepare', expectedVersion })
           if (!prepared?.ok || prepared.latestVersion !== expectedVersion || !/^[a-f0-9]{16}$/.test(prepared.buildId || '') || typeof prepared.spec !== 'string') throw Error(prepared?.error || '下载结果无效')
           if(prepared.safeInstall!==true || !prepared.transactionId)throw Error('当前宿主没有安全更新协议，旧版本保持不变，请使用过渡安装入口。')
-          const record = { requestId: 'kb-update-' + Date.now() + '-' + Math.random().toString(36).slice(2), latestVersion: prepared.latestVersion, buildId: prepared.buildId, stage: 'installing', transactionId:prepared.transactionId }
+          const record = { requestId: 'kb-update-' + Date.now() + '-' + Math.random().toString(36).slice(2), latestVersion: prepared.latestVersion, buildId: prepared.buildId, stage: 'installing', transactionId:prepared.transactionId, hotActivation:prepared.hotActivation===true }
           save(record)
           show('正在安装并重新加载插件…', { busy: true })
           try {
@@ -3361,6 +3411,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     let updateViewState = { busy: false, message: '' }
     const updateFlow = createClientUpdateFlow({ api: callApi, manager: () => updateManager,
       clientVersion: () => document.documentElement.getAttribute('data-kb-client-version'),
+      retryLater: callback => window.setTimeout(callback, 15000),
       storage: { getItem: (key) => window.localStorage.getItem(key), setItem: (key, value) => window.localStorage.setItem(key, value) },
       notify: (state) => {
         updateViewState = state
@@ -4500,7 +4551,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     // END GENERATED TODO LIFECYCLE UI
 
-    const RELEASE_VERSION = '2.5.8'
+    const RELEASE_VERSION = '2.5.10'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.

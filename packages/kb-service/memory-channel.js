@@ -2,9 +2,10 @@
 // knowledge memories are merged, through this library's authorized dispatcher.
 import {randomUUID} from 'node:crypto';
 const fail=(code,message)=>{throw Object.assign(new Error(message),{code})};
+export const hasMemoryHost=store=>store?.memoryApi?.version===1||typeof store?.globalRequest==='function';
 function memoryView(local,knowledge,shared){
   if(knowledge?.protocol!=='dsh-memory/v1'||knowledge.complete!==true)fail('RESULT_UNKNOWN','知识库记忆快照未完整读取，请重试');
-  return {ok:true,...local,entries:[...(local.entries??[]),...knowledge.entries],knowledge:{state:'connected',libraryId:knowledge.libraryId},memory:{mode:shared?'shared':'independent',globalAvailable:shared}};
+  return {ok:true,...local,entries:[...(local.entries??[]),...knowledge.entries],knowledge:{state:'connected',libraryId:knowledge.libraryId},memory:{mode:shared?'shared':'independent',globalAvailable:shared,changeEvents:true}};
 }
 export function createMemoryChannel({broker,snapshot}){
   const independent=async()=>memoryView({},await snapshot(),false);
@@ -40,14 +41,15 @@ export function createMemoryChannel({broker,snapshot}){
 
 export async function handleMemoryHost(getStore,method,args={},requestId){
   const store=getStore();
-  if(!store?.globalRequest)fail('HOST_UNAVAILABLE','记忆插件尚未加载');
+  if(!hasMemoryHost(store))fail('HOST_UNAVAILABLE','记忆插件尚未加载');
   const op=({'memory.list':'list','memory.add':'add','memory.remove':'remove'})[method];
   if(!op)fail('BAD_REQUEST','未知记忆操作');
+  if(store.memoryApi?.version===1)return store.memoryApi.request('global.'+op,args,requestId);
   return store.globalRequest(op,args,requestId);
 }
 
 export async function handleEmbeddedMemory(ctx,operation){
-  if(operation.op==='memory.list'&&!ctx.get('memoryStore')?.globalRequest)return memoryView({},await ctx.get('knowledgeMemory').snapshot(),false);
+  if(operation.op==='memory.list'&&!hasMemoryHost(ctx.get('memoryStore')))return memoryView({},await ctx.get('knowledgeMemory').snapshot(),false);
   const value=await handleMemoryHost(()=>ctx.get('memoryStore'),operation.op,operation,operation.requestId);
   if(operation.op!=='memory.list')return value;
   const knowledge=await ctx.get('knowledgeMemory').snapshot();

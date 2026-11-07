@@ -12,7 +12,7 @@ export function createWorkbenchUI({ react: R, e, api: rawApi, ctx: getContext, O
   }
   const event = (name, detail) => window.dispatchEvent(new CustomEvent(name, { detail }))
   // One request at a time; burst events collapse into one follow-up refresh.
-  function refreshSchedule(run, fallbackMs = 60000) {
+  function refreshSchedule(run, fallbackMs = 60000, shouldWake = () => true) {
     let timer = null, running = false, pending = false, disposed = false
     const flush = async () => {
       timer = null
@@ -21,7 +21,7 @@ export function createWorkbenchUI({ react: R, e, api: rawApi, ctx: getContext, O
       try { await run() } catch {} finally { running = false; if (pending && !disposed) schedule() }
     }
     const schedule = (delay = 200) => { if (disposed) return; pending = true; if (!timer && !running && !document.hidden) timer = setTimeout(flush, delay) }
-    const wake = () => { if (!document.hidden) schedule(0) }
+    const wake = () => { if (!document.hidden && (pending || shouldWake())) schedule(0) }
     const fallback = setInterval(wake, fallbackMs)
     window.addEventListener('focus', wake); document.addEventListener('visibilitychange', wake)
     return { schedule, dispose() { disposed = true;clearTimeout(timer);clearInterval(fallback);window.removeEventListener('focus', wake);document.removeEventListener('visibilitychange', wake) } }
@@ -174,12 +174,37 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
     document.head.appendChild(style)
   }
   let eventsStarted = false, eventSource = null
+  let cachedSnapshot = null, snapshotDirty = true
+  const snapshotEvents = ['links-changed', 'files-changed', 'snapshot-dirty']
+  const connectionEvents = ['connection-lost', 'connection-restored', 'service-unavailable']
+  const ignoreSnapshotEvent = detail => detail?.event === 'memory.changed' || ['memory-changed', 'parse-jobs-changed', 'relations-progress', 'retrieval', 'review-due'].includes(detail?.type)
+  function invalidatesScope(detail, snapshot) {
+    if (connectionEvents.includes(detail?.type) || detail?.event === 'connection.changed') return true
+    if (!snapshot) return false
+    if ((detail?.kbId || detail?.library?.kbId) && (detail.kbId || detail.library.kbId) !== snapshot.kbId) return true
+    if (detail?.policyVersion && detail.policyVersion !== snapshot.policyVersion) return true
+    return !ignoreSnapshotEvent(detail) && detail?.event !== 'snapshot.required' && !snapshotEvents.includes(detail?.type)
+  }
+  function rememberSnapshotEvent({ detail }) {
+    if (invalidatesScope(detail, cachedSnapshot)) cachedSnapshot = null
+    if (!ignoreSnapshotEvent(detail)) snapshotDirty = true
+  }
+  function landingTab(snapshot) {
+    if (!snapshot) return 'map'
+    let chosen = snapshot.preferences.landing
+    if (chosen === 'remember') {
+      try { chosen = localStorage.getItem('kbw-tab:' + snapshot.kbId) || 'map' } catch { chosen = 'map' }
+    }
+    return ['overview', 'map', 'relations', 'inbox', 'reading', 'review', 'flows', 'memory'].includes(chosen) ? chosen : 'map'
+  }
   function connectEvents() {
     if (eventsStarted) return
     eventsStarted = true
+    window.addEventListener('kbw-policy', rememberSnapshotEvent)
     if(eventSubscribe){const off=eventSubscribe(data=>event('kbw-policy',data));eventSource={close:off};return}
     const source = new EventSource('/kb-core/workbench-events')
     eventSource = source
+    source.onopen = () => event('kbw-policy', { type: 'connection-restored' })
     source.onmessage = ev => { try { const data = JSON.parse(ev.data); event('kbw-policy', data) } catch {} }
     source.onerror = () => event('kbw-policy', { type: 'connection-lost' })
     window.addEventListener('pagehide', () => source.close(), { once: true })
@@ -1463,15 +1488,16 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
       window.addEventListener('resize', updateInset)
       return () => { observer.disconnect(); mutation.disconnect(); window.removeEventListener('resize', updateInset) }
     }, [])
-    const [snapshot, setSnapshot] = R.useState(null), [tab, setTab] = R.useState('map'), [prefix, setPrefix] = R.useState(''), [selected, setSelected] = R.useState(''), [relationFocus, setRelationFocus] = R.useState(''), [annotationId, setAnnotationId] = R.useState(''), [toast, setToast] = R.useState('')
+    const [snapshot, setSnapshot] = R.useState(() => cachedSnapshot), [tab, setTab] = R.useState(() => landingTab(cachedSnapshot)), [prefix, setPrefix] = R.useState(''), [selected, setSelected] = R.useState(''), [relationFocus, setRelationFocus] = R.useState(''), [annotationId, setAnnotationId] = R.useState(''), [toast, setToast] = R.useState('')
     const [query, setQuery] = R.useState(''), [mode, setMode] = R.useState('hybrid'), [layer, setLayer] = R.useState(''), [extension, setExtension] = R.useState(''), [tag, setTag] = R.useState(''), [after, setAfter] = R.useState(''), [before, setBefore] = R.useState(''), [sort, setSort] = R.useState('relevance'), [direct, setDirect] = R.useState(false)
     const [view, setView] = R.useState('list'), [browse, setBrowse] = R.useState(false)
     const [list, setList] = R.useState(null), [offset, setOffset] = R.useState(0), [error, setError] = R.useState(''), [busy, setBusy] = R.useState(false), [deferred, setDeferred] = R.useState(false), [tasks, setTasks] = R.useState(null), [reminder, setReminder] = R.useState(null), [canGoBack, setCanGoBack] = R.useState(false), [routeRestore, setRouteRestore] = R.useState(null)
-    const current = R.useRef(null), generation = R.useRef(0), first = R.useRef(true), request = R.useRef(0), routeHistory = R.useRef([]), routePushRef = R.useRef(null)
-    const refresh = R.useCallback(async ({ revealPath } = {}) => {
+    const current = R.useRef(snapshot), generation = R.useRef(0), first = R.useRef(!snapshot), request = R.useRef(0), routeHistory = R.useRef([]), routePushRef = R.useRef(null)
+    const refresh = R.useCallback(async ({ revealPath, fresh = false } = {}) => {
       const gen = generation.current
+      snapshotDirty = false
       try {
-        const next = await api({ op: 'atlas.snapshot' })
+        const next = await api({ op: 'atlas.snapshot', ...(fresh ? { fresh: true } : {}) })
         if (gen !== generation.current) return
         // A policy operation moves the open file. Restore its new location only
         // in the same library with unchanged viewing permissions.
@@ -1480,24 +1506,26 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
         if (reveal) { setTab('map'); setBrowse(true); setQuery(''); setOffset(0); setSelected(revealPath); setPrefix(revealPath.includes('/') ? revealPath.slice(0, revealPath.lastIndexOf('/')) : '') }
         if (first.current) {
           first.current = false
-          let chosen = next.preferences.landing
-          if (chosen === 'remember') { try { chosen = localStorage.getItem('kbw-tab:' + next.kbId) || 'map' } catch { chosen = 'map' } }
-          setTab(chosen === 'overview' ? 'overview' : ['map', 'relations', 'inbox', 'reading', 'review', 'flows', 'memory'].includes(chosen) ? chosen : 'map')
+          setTab(landingTab(next))
         }
+        cachedSnapshot = next.watchingFiles ? next : null
         current.current = next; setSnapshot(next); setError('')
         if (next.guideComplete) setDeferred(false)
-      } catch (err) { if (gen === generation.current) { setError(err.message); setSnapshot(null); setList(null); setSelected('') } }
+      } catch (err) { if (gen === generation.current) { cachedSnapshot = null; snapshotDirty = true; current.current = null; setError(err.message); setSnapshot(null); setList(null); setSelected('') } }
     }, [])
     R.useEffect(() => {
-      connectEvents(); const updates=refreshSchedule(refresh);updates.schedule(0)
-      const policy = ev => {
-        // Transport retries refresh in place; keep the snapshot and pending reads.
-        if (['connection-lost', 'connection-restored'].includes(ev.detail?.type) || ['connection.changed', 'snapshot.required'].includes(ev.detail?.event)) { updates.schedule(); return }
-        if(ev.detail?.event==='memory.changed'||ev.detail?.type==='memory-changed')return
-        if (['parse-jobs-changed', 'relations-progress', 'retrieval'].includes(ev.detail?.type)) return
-        if (['links-changed', 'files-changed','snapshot-dirty'].includes(ev.detail?.type)) { if (ev.detail.kbId&&ev.detail.kbId!==current.current?.kbId)return; if (ev.detail.type === 'files-changed' && ev.detail.operation !== 'trash.restore') setSelected(old => old === ev.detail.path ? '' : old); updates.schedule(); return }
-        if (ev.detail?.type === 'review-due') { if (ev.detail.kbId === current.current?.kbId) setReminder(ev.detail.count); return }
-        generation.current++; request.current++; current.current = null; setSnapshot(null); setList(null); setSelected(''); setRelationFocus(''); setTasks(null); routeHistory.current = []; setCanGoBack(false); updates.schedule(0)
+      connectEvents()
+      const updates = refreshSchedule(refresh, 60000, () => snapshotDirty || !current.current?.watchingFiles)
+      if (snapshotDirty || !current.current) updates.schedule(0)
+      const policy = ({ detail }) => {
+        if (invalidatesScope(detail, current.current) || (!current.current && detail?.policyVersion)) {
+          generation.current++; request.current++; current.current = null; setSnapshot(null); setList(null); setSelected(''); setRelationFocus(''); setTasks(null); routeHistory.current = []; setCanGoBack(false); updates.schedule(0)
+          return
+        }
+        if (detail?.type === 'review-due' && detail.kbId === current.current?.kbId) setReminder(detail.count)
+        if (ignoreSnapshotEvent(detail)) return
+        if (detail?.type === 'files-changed' && detail.operation !== 'trash.restore') setSelected(old => old === detail.path ? '' : old)
+        updates.schedule()
       }
       const toastListener = ev => setToast(String(ev.detail || '')); window.addEventListener('kbw-toast', toastListener)
       const defer = () => setDeferred(true)
@@ -1572,7 +1600,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
         tab === 'map' || tab === 'reading' && selected ? e(R.Fragment, null,
           e('form', { className: 'kbw-toolbar', onSubmit: searchSubmit }, e('input', { 'aria-label': '搜索知识库', placeholder: '搜索资料标题、文件或正文', value: query, onChange: ev => { setQuery(ev.target.value); setBrowse(Boolean(ev.target.value)) } }),
             e('select', { 'aria-label': '搜索方式', value: mode, onChange: ev => { setMode(ev.target.value); setOffset(0) } }, e('option', { value: 'hybrid' }, '全文与向量协同'), e('option', { value: 'fulltext' }, '全文相关性'), e('option', { value: 'semantic' }, '语义向量'), e('option', { value: 'exact' }, '精确匹配'), e('option', { value: 'path' }, '文件名与路径')),
-            e('button', { type: 'submit', className: 'kbw-button', disabled: busy }, busy ? '查询中…' : '搜索'), btn('刷新', () => { void refresh(); void loadList() }), btn(browse ? '返回目录首页' : '浏览全部资料', () => { pushRoute(); setBrowse(!browse); setPrefix(''); setQuery(''); setSelected('') })),
+            e('button', { type: 'submit', className: 'kbw-button', disabled: busy }, busy ? '查询中…' : '搜索'), btn('刷新', () => { void refresh({ fresh: true }) }), btn(browse ? '返回目录首页' : '浏览全部资料', () => { pushRoute(); setBrowse(!browse); setPrefix(''); setQuery(''); setSelected('') })),
           browse || selected ? e('details', { style: { padding: '0 18px 10px' } }, e('summary', null, '筛选与排序'), e('div', { className: 'kbw-toolbar' },
             select('范围', layer, v => { setLayer(v); setOffset(0) }, [['', '全部文件'], ['knowledge', '知识条目'], ['deliverable', '任务成品'], ['original', '原件附件'], ['draft', '底稿']]),
             field('扩展名', extension, setExtension), field('标签', tag, setTag), field('起始日期', after, setAfter, { type: 'date' }), field('截止日期', before, setBefore, { type: 'date' }),
@@ -1664,9 +1692,24 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
   // This factory is embedded into the shared workbench UI at build time.
   function MemoryPanel({navigate}) {
     const [data,setData]=R.useState(null),[error,setError]=R.useState(''),[busy,setBusy]=R.useState(false),[title,setTitle]=R.useState(''),[text,setText]=R.useState(''),[removeId,setRemoveId]=R.useState('');
-    const live=R.useRef(true),sequence=R.useRef(0);
-    const refresh=R.useCallback(async()=>{const id=++sequence.current;try{const value=await api({op:'memory.list'});if(live.current&&id===sequence.current){setData(value);setError('')}}catch(err){if(live.current&&id===sequence.current){setData(null);setError(err.message)}}},[]);
-    R.useEffect(()=>{live.current=true;connectEvents();const updates=refreshSchedule(refresh,15000);updates.schedule(0);const changed=()=>updates.schedule();window.addEventListener('kbw-policy',changed);return()=>{live.current=false;sequence.current++;updates.dispose();window.removeEventListener('kbw-policy',changed)}},[refresh]);
+    const live=R.useRef(true),sequence=R.useRef(0),changeEvents=R.useRef(false);
+    const refresh=R.useCallback(async()=>{const id=++sequence.current;try{const value=await api({op:'memory.list'});if(live.current&&id===sequence.current){changeEvents.current=value.memory?.changeEvents===true;setData(value);setError('')}}catch(err){if(live.current&&id===sequence.current){changeEvents.current=false;setData(null);setError(err.message)}}},[]);
+    R.useEffect(()=>{
+      live.current=true;connectEvents();
+      let offline=false;
+      const updates=refreshSchedule(refresh,15000,()=>offline||!changeEvents.current);
+      const changed=ev=>{
+        const detail=ev.detail;
+        const type=detail?.event??detail?.type;
+        if(type==='connection-lost'||type==='service-unavailable')offline=true;
+        if(type==='connection-restored')offline=false;
+        if(type==='connection.changed')offline=(detail.state??detail.data?.state)!=='ready';
+        if(['connection-lost','connection-restored','service-unavailable','connection.changed','memory.changed','memory-changed',
+          'snapshot.required','snapshot-dirty','files-changed','links-changed','preferences'].includes(type))updates.schedule();
+      };
+      updates.schedule(0);window.addEventListener('kbw-policy',changed);
+      return()=>{live.current=false;sequence.current++;updates.dispose();window.removeEventListener('kbw-policy',changed)};
+    },[refresh]);
     async function mutate(body){if(busy)return;setBusy(true);setError('');try{await api({...body,requestId:crypto.randomUUID()});if(body.op==='memory.add'){setText('');setTitle('')}setRemoveId('');await refresh()}catch(err){setError(err.message)}finally{if(live.current)setBusy(false)}}
     return e('section',{'data-memory-panel':true},e('h2',null,data?.memory?.mode==='independent'?'知识库记忆':'全局记忆'),e('p',{className:'kbw-meta'},data?.memory?.mode==='independent'?'独立知识库模式：显示本库已有的记忆文档，可打开原文维护。':'与记忆插件共享全局记录。知识库记忆保留原文来源，修改原文后自动更新。'),
       e('div',{className:'kbw-actions'},btn('刷新',refresh,busy),e('span',{role:'status',className:'kbw-meta'},data?(data.memory?.globalAvailable?'共享模式':'独立知识库模式')+' · '+data.entries.length+' 条':error?'暂不可用':'正在读取记忆…')),

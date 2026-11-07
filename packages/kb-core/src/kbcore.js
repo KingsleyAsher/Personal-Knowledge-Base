@@ -24,7 +24,7 @@ import { sourceReferences, reconcileImportedSources, SOURCE_TEXT } from './sourc
 import {catalogActive,readCatalog,refreshCatalog,classifyOriginal} from './file-catalog.js'
 
 // 版本单一来源：package.json 的 version 必须与此一致（详见 INSTALL 说明）
-export const VERSION = '2.5.8'
+export const VERSION = '2.5.10'
 
 export const REQUIRED_FIELDS = ['title', 'type', 'tags', 'status', 'updated']
 export const SCHEMA_VERSION = 1
