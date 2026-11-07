@@ -1,7 +1,7 @@
 # Personal Knowledge Base · Plugin and Desktop Client
 
 
-> **Plugin 2.5.5 / client 1.1.2:** original-file classification and migration, saved flow execution settings, task-plan fixes and series deliverable guidance. [Release notes](docs/releases/plugin-2.5.5.md).
+> **Plugin 2.5.6 / client 1.1.2:** original-file classification and migration, saved flow execution settings, task-plan fixes and series deliverable guidance. [Release notes](docs/releases/plugin-2.5.6.md).
 
 > **2.4.6 updater limitation:** a pristine installation stuck on a pending receipt cannot self-repair from the feed alone. The [general recovery entry](docs/LEGACY-246-BOOTSTRAP.md) is a one-time external migration, not a zero-intervention update.
 
@@ -16,9 +16,9 @@
 | Product | Published version | Direct download | Release notes |
 |---|---|---|---|
 | **Desktop client · Windows x64** | **1.1.2** | **[⬇ Download client installer (EXE)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.1.2/KnowledgeWorkbench-1.1.2-Setup.exe)** | [Client Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.1.2) |
-| **DSH knowledge-base plugin** | **2.5.5** | **[⬇ Download plugin (TGZ)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.5.5/local-dsh-knowledge-base-2.5.5.tgz)** | [Plugin Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.5.5) |
+| **DSH knowledge-base plugin** | **2.5.6** | **[⬇ Download plugin (TGZ)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.5.6/local-dsh-knowledge-base-2.5.6.tgz)** | [Plugin Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.5.6) |
 
-Release entries: [client 1.1.2](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.1.2) · [plugin 2.5.5](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.5.5). Choose the correct installer/TGZ and verify its product-specific manifest and digest.
+Release entries: [client 1.1.2](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.1.2) · [plugin 2.5.6](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.5.6). Choose the correct installer/TGZ and verify its product-specific manifest and digest.
 
 ## One library, two entry points
 
@@ -36,15 +36,15 @@ Release entries: [client 1.1.2](https://github.com/KingsleyAsher/Personal-Knowle
 
 Run the EXE to install. The bundled-runtime package includes its runtime. This is the standalone client installer, not a DSH plugin bundle.
 
-### DSH plugin 2.5.5
+### DSH plugin 2.5.6
 
-**[Download local-dsh-knowledge-base-2.5.5.tgz](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.5.5/local-dsh-knowledge-base-2.5.5.tgz)** · [Release notes and assets](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.5.5)
+**[Download local-dsh-knowledge-base-2.5.6.tgz](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.5.6/local-dsh-knowledge-base-2.5.6.tgz)** · [Release notes and assets](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.5.6)
 
 Install the TGZ through DSH plugin management. GitHub highlights only one Latest release, but both products have independent releases. Use the product links above or browse [all Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases).
 
 Source, issues and future releases are maintained here. In [Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases), choose the correct product: Windows Setup.exe for the client, TGZ for the plugin.
 
-Published plugin 2.5.5: [Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.5.5) · [TGZ](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.5.5/local-dsh-knowledge-base-2.5.5.tgz). See [plugin usage](WORKBENCH.en.md) and [mirror information](MIRROR-RELEASES.md) for extensions and regional sources. Mirror availability can vary.
+Published plugin 2.5.6: [Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.5.6) · [TGZ](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v2.5.6/local-dsh-knowledge-base-2.5.6.tgz). See [plugin usage](WORKBENCH.en.md) and [mirror information](MIRROR-RELEASES.md) for extensions and regional sources. Mirror availability can vary.
 
 The existing client installer retains its paper-green interface and animations, requires an empty application directory and preserves personal data on uninstall. Client online checks and verified downloads are implemented; automatic in-place installation and activation remain unfinished. The plugin keeps its existing update manifests and installation flow.
 

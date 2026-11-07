@@ -1,3 +1,7 @@
+## Plugin 2.5.6 · Historical-session memory linking
+
+Memory management uses persisted ownership to select the primary or an authorized connected secondary library.
+
 ## Plugin 2.5.5 / client 1.1.2: compatible shared services and manual updates (2026-11-07)
 
 Compatible patches no longer require identical runtime fingerprints. Both entry points check the protocol major, full method-contract hash, storage and engine epochs, and required capabilities before reusing one shared service. Verified public 2.5.3/2.5.4 runtimes can remain online while the repaired client joins them. Unknown legacy runtimes or incompatible contracts retain fail-closed handoff behavior. Breaking storage or engine semantics require an epoch change.
@@ -55,7 +59,7 @@ A separate [2.4.6 migration recovery entry](docs/LEGACY-246-BOOTSTRAP.md) verifi
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 2.5.5 -->
+<!-- project-record-version: 2.5.6 -->
 
 **Source covered: plugin 2.5.3 / client 1.1.1 · Updated: 2026-11-07 · Maintenance: review this record alongside the source with every release.**
 

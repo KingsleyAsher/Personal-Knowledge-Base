@@ -1,3 +1,7 @@
+## Plugin 2.5.6 · Linked memory for historical sessions
+
+The knowledge bridge uses stored library ownership to read linked memories for historical sessions. A disconnected secondary library returns an explicit status. Pair with DSH Memory 1.0.12. The desktop client remains on 1.1.2.
+
 ## Plugin 2.5.5 / client 1.1.2: compatible shared services and manual updates (2026-11-07)
 
 Compatible patches no longer require identical runtime fingerprints. Both entry points check the protocol major, full method-contract hash, storage and engine epochs, and required capabilities before reusing one shared service. Verified public 2.5.3/2.5.4 runtimes can remain online while the repaired client joins them. Unknown legacy runtimes or incompatible contracts retain fail-closed handoff behavior. Breaking storage or engine semantics require an epoch change.
