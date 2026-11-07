@@ -35,7 +35,7 @@ window.__ModuleLoader__.load({
       }
       const event = (name, detail) => window.dispatchEvent(new CustomEvent(name, { detail }))
       // One request at a time; burst events collapse into one follow-up refresh.
-      function refreshSchedule(run, fallbackMs = 60000) {
+      function refreshSchedule(run, fallbackMs = 60000, shouldWake = () => true) {
         let timer = null, running = false, pending = false, disposed = false
         const flush = async () => {
           timer = null
@@ -44,7 +44,7 @@ window.__ModuleLoader__.load({
           try { await run() } catch {} finally { running = false; if (pending && !disposed) schedule() }
         }
         const schedule = (delay = 200) => { if (disposed) return; pending = true; if (!timer && !running && !document.hidden) timer = setTimeout(flush, delay) }
-        const wake = () => { if (!document.hidden) schedule(0) }
+        const wake = () => { if (!document.hidden && (pending || shouldWake())) schedule(0) }
         const fallback = setInterval(wake, fallbackMs)
         window.addEventListener('focus', wake); document.addEventListener('visibilitychange', wake)
         return { schedule, dispose() { disposed = true;clearTimeout(timer);clearInterval(fallback);window.removeEventListener('focus', wake);document.removeEventListener('visibilitychange', wake) } }
@@ -197,9 +197,33 @@ window.__ModuleLoader__.load({
         document.head.appendChild(style)
       }
       let eventsStarted = false, eventSource = null
+      let cachedSnapshot = null, snapshotDirty = true
+      const snapshotEvents = ['links-changed', 'files-changed', 'snapshot-dirty']
+      const connectionEvents = ['connection-lost', 'connection-restored', 'service-unavailable']
+      const ignoreSnapshotEvent = detail => detail?.event === 'memory.changed' || ['memory-changed', 'parse-jobs-changed', 'relations-progress', 'retrieval', 'review-due'].includes(detail?.type)
+      function invalidatesScope(detail, snapshot) {
+        if (connectionEvents.includes(detail?.type) || detail?.event === 'connection.changed') return true
+        if (!snapshot) return false
+        if ((detail?.kbId || detail?.library?.kbId) && (detail.kbId || detail.library.kbId) !== snapshot.kbId) return true
+        if (detail?.policyVersion && detail.policyVersion !== snapshot.policyVersion) return true
+        return !ignoreSnapshotEvent(detail) && detail?.event !== 'snapshot.required' && !snapshotEvents.includes(detail?.type)
+      }
+      function rememberSnapshotEvent({ detail }) {
+        if (invalidatesScope(detail, cachedSnapshot)) cachedSnapshot = null
+        if (!ignoreSnapshotEvent(detail)) snapshotDirty = true
+      }
+      function landingTab(snapshot) {
+        if (!snapshot) return 'map'
+        let chosen = snapshot.preferences.landing
+        if (chosen === 'remember') {
+          try { chosen = localStorage.getItem('kbw-tab:' + snapshot.kbId) || 'map' } catch { chosen = 'map' }
+        }
+        return ['overview', 'map', 'relations', 'inbox', 'reading', 'review', 'flows', 'memory'].includes(chosen) ? chosen : 'map'
+      }
       function connectEvents() {
         if (eventsStarted) return
         eventsStarted = true
+        window.addEventListener('kbw-policy', rememberSnapshotEvent)
         if(eventSubscribe){const off=eventSubscribe(data=>event('kbw-policy',data));eventSource={close:off};return}
         const source = new EventSource('/kb-core/workbench-events')
         eventSource = source
@@ -1486,15 +1510,16 @@ window.__ModuleLoader__.load({
           window.addEventListener('resize', updateInset)
           return () => { observer.disconnect(); mutation.disconnect(); window.removeEventListener('resize', updateInset) }
         }, [])
-        const [snapshot, setSnapshot] = R.useState(null), [tab, setTab] = R.useState('map'), [prefix, setPrefix] = R.useState(''), [selected, setSelected] = R.useState(''), [relationFocus, setRelationFocus] = R.useState(''), [annotationId, setAnnotationId] = R.useState(''), [toast, setToast] = R.useState('')
+        const [snapshot, setSnapshot] = R.useState(() => cachedSnapshot), [tab, setTab] = R.useState(() => landingTab(cachedSnapshot)), [prefix, setPrefix] = R.useState(''), [selected, setSelected] = R.useState(''), [relationFocus, setRelationFocus] = R.useState(''), [annotationId, setAnnotationId] = R.useState(''), [toast, setToast] = R.useState('')
         const [query, setQuery] = R.useState(''), [mode, setMode] = R.useState('hybrid'), [layer, setLayer] = R.useState(''), [extension, setExtension] = R.useState(''), [tag, setTag] = R.useState(''), [after, setAfter] = R.useState(''), [before, setBefore] = R.useState(''), [sort, setSort] = R.useState('relevance'), [direct, setDirect] = R.useState(false)
         const [view, setView] = R.useState('list'), [browse, setBrowse] = R.useState(false)
         const [list, setList] = R.useState(null), [offset, setOffset] = R.useState(0), [error, setError] = R.useState(''), [busy, setBusy] = R.useState(false), [deferred, setDeferred] = R.useState(false), [tasks, setTasks] = R.useState(null), [reminder, setReminder] = R.useState(null), [canGoBack, setCanGoBack] = R.useState(false), [routeRestore, setRouteRestore] = R.useState(null)
-        const current = R.useRef(null), generation = R.useRef(0), first = R.useRef(true), request = R.useRef(0), routeHistory = R.useRef([]), routePushRef = R.useRef(null)
-        const refresh = R.useCallback(async ({ revealPath } = {}) => {
+        const current = R.useRef(snapshot), generation = R.useRef(0), first = R.useRef(!snapshot), request = R.useRef(0), routeHistory = R.useRef([]), routePushRef = R.useRef(null)
+        const refresh = R.useCallback(async ({ revealPath, fresh = false } = {}) => {
           const gen = generation.current
+          snapshotDirty = false
           try {
-            const next = await api({ op: 'atlas.snapshot' })
+            const next = await api({ op: 'atlas.snapshot', ...(fresh ? { fresh: true } : {}) })
             if (gen !== generation.current) return
             // A policy operation moves the open file. Restore its new location only
             // in the same library with unchanged viewing permissions.
@@ -1503,24 +1528,26 @@ window.__ModuleLoader__.load({
             if (reveal) { setTab('map'); setBrowse(true); setQuery(''); setOffset(0); setSelected(revealPath); setPrefix(revealPath.includes('/') ? revealPath.slice(0, revealPath.lastIndexOf('/')) : '') }
             if (first.current) {
               first.current = false
-              let chosen = next.preferences.landing
-              if (chosen === 'remember') { try { chosen = localStorage.getItem('kbw-tab:' + next.kbId) || 'map' } catch { chosen = 'map' } }
-              setTab(chosen === 'overview' ? 'overview' : ['map', 'relations', 'inbox', 'reading', 'review', 'flows', 'memory'].includes(chosen) ? chosen : 'map')
+              setTab(landingTab(next))
             }
+            cachedSnapshot = next.watchingFiles ? next : null
             current.current = next; setSnapshot(next); setError('')
             if (next.guideComplete) setDeferred(false)
-          } catch (err) { if (gen === generation.current) { setError(err.message); setSnapshot(null); setList(null); setSelected('') } }
+          } catch (err) { if (gen === generation.current) { cachedSnapshot = null; snapshotDirty = true; current.current = null; setError(err.message); setSnapshot(null); setList(null); setSelected('') } }
         }, [])
         R.useEffect(() => {
-          connectEvents(); const updates=refreshSchedule(refresh);updates.schedule(0)
-          const policy = ev => {
-            // Transport retries refresh in place; keep the snapshot and pending reads.
-            if (['connection-lost', 'connection-restored'].includes(ev.detail?.type) || ['connection.changed', 'snapshot.required'].includes(ev.detail?.event)) { updates.schedule(); return }
-            if(ev.detail?.event==='memory.changed'||ev.detail?.type==='memory-changed')return
-            if (['parse-jobs-changed', 'relations-progress', 'retrieval'].includes(ev.detail?.type)) return
-            if (['links-changed', 'files-changed','snapshot-dirty'].includes(ev.detail?.type)) { if (ev.detail.kbId&&ev.detail.kbId!==current.current?.kbId)return; if (ev.detail.type === 'files-changed' && ev.detail.operation !== 'trash.restore') setSelected(old => old === ev.detail.path ? '' : old); updates.schedule(); return }
-            if (ev.detail?.type === 'review-due') { if (ev.detail.kbId === current.current?.kbId) setReminder(ev.detail.count); return }
-            generation.current++; request.current++; current.current = null; setSnapshot(null); setList(null); setSelected(''); setRelationFocus(''); setTasks(null); routeHistory.current = []; setCanGoBack(false); updates.schedule(0)
+          connectEvents()
+          const updates = refreshSchedule(refresh, 60000, () => snapshotDirty || !current.current?.watchingFiles)
+          if (snapshotDirty || !current.current) updates.schedule(0)
+          const policy = ({ detail }) => {
+            if (invalidatesScope(detail, current.current) || (!current.current && detail?.policyVersion)) {
+              generation.current++; request.current++; current.current = null; setSnapshot(null); setList(null); setSelected(''); setRelationFocus(''); setTasks(null); routeHistory.current = []; setCanGoBack(false); updates.schedule(0)
+              return
+            }
+            if (detail?.type === 'review-due' && detail.kbId === current.current?.kbId) setReminder(detail.count)
+            if (ignoreSnapshotEvent(detail)) return
+            if (detail?.type === 'files-changed' && detail.operation !== 'trash.restore') setSelected(old => old === detail.path ? '' : old)
+            updates.schedule()
           }
           const toastListener = ev => setToast(String(ev.detail || '')); window.addEventListener('kbw-toast', toastListener)
           const defer = () => setDeferred(true)
@@ -1595,7 +1622,7 @@ window.__ModuleLoader__.load({
             tab === 'map' || tab === 'reading' && selected ? e(R.Fragment, null,
               e('form', { className: 'kbw-toolbar', onSubmit: searchSubmit }, e('input', { 'aria-label': '搜索知识库', placeholder: '搜索资料标题、文件或正文', value: query, onChange: ev => { setQuery(ev.target.value); setBrowse(Boolean(ev.target.value)) } }),
                 e('select', { 'aria-label': '搜索方式', value: mode, onChange: ev => { setMode(ev.target.value); setOffset(0) } }, e('option', { value: 'hybrid' }, '全文与向量协同'), e('option', { value: 'fulltext' }, '全文相关性'), e('option', { value: 'semantic' }, '语义向量'), e('option', { value: 'exact' }, '精确匹配'), e('option', { value: 'path' }, '文件名与路径')),
-                e('button', { type: 'submit', className: 'kbw-button', disabled: busy }, busy ? '查询中…' : '搜索'), btn('刷新', () => { void refresh(); void loadList() }), btn(browse ? '返回目录首页' : '浏览全部资料', () => { pushRoute(); setBrowse(!browse); setPrefix(''); setQuery(''); setSelected('') })),
+                e('button', { type: 'submit', className: 'kbw-button', disabled: busy }, busy ? '查询中…' : '搜索'), btn('刷新', () => { void refresh({ fresh: true }) }), btn(browse ? '返回目录首页' : '浏览全部资料', () => { pushRoute(); setBrowse(!browse); setPrefix(''); setQuery(''); setSelected('') })),
               browse || selected ? e('details', { style: { padding: '0 18px 10px' } }, e('summary', null, '筛选与排序'), e('div', { className: 'kbw-toolbar' },
                 select('范围', layer, v => { setLayer(v); setOffset(0) }, [['', '全部文件'], ['knowledge', '知识条目'], ['deliverable', '任务成品'], ['original', '原件附件'], ['draft', '底稿']]),
                 field('扩展名', extension, setExtension), field('标签', tag, setTag), field('起始日期', after, setAfter, { type: 'date' }), field('截止日期', before, setBefore, { type: 'date' }),
@@ -4473,7 +4500,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     // END GENERATED TODO LIFECYCLE UI
 
-    const RELEASE_VERSION = '2.5.7'
+    const RELEASE_VERSION = '2.5.8'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.

@@ -54,7 +54,7 @@ export function extractLinks(text) {
   return refs
 }
 
-export function createWorkbench({ stateDir, getCore, getParsing = () => null, getFlows = () => null, getImports = () => null, getFileActions = () => null, getAIWorkspace = () => null, log = () => {}, now = Date.now, getUpgradeContext = async()=>({version:VERSION,buildId:'development'}), downloadExtension = async () => { throw fail('CAPABILITY_UNSUPPORTED', 'Browser extension download needs a Host adapter') }, authorizeDocument = async () => false, sharedState = false, restrictPreferences = x => x, policyScope = () => "", retrievalProfile=()=> 'plugin',retrievalProfiles=()=>['plugin'] }) {
+export function createWorkbench({ stateDir, getCore, getParsing = () => null, getFlows = () => null, getImports = () => null, getFileActions = () => null, getAIWorkspace = () => null, log = () => {}, now = Date.now, getUpgradeContext = async()=>({version:VERSION,buildId:'development'}), downloadExtension = async () => { throw fail('CAPABILITY_UNSUPPORTED', 'Browser extension download needs a Host adapter') }, authorizeDocument = async () => false, sharedState = false, restrictPreferences = x => x, policyScope = () => "", watchingFiles = () => false, retrievalProfile=()=> 'plugin',retrievalProfiles=()=>['plugin'] }) {
   let cache = null, scanPending = null
   let scanEpoch = 0
   const scanMetrics = { scans:0, cacheHits:0, merged:0 }
@@ -181,9 +181,9 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     })
   }
 
-  async function scan(b, fresh = false, verifyContent = false) {
+  async function scan(b, fresh = false, verifyContent = false, browse = false) {
     const key = versionOf(b) + ':' + digest(JSON.stringify(b.deliverables))
-    if (!fresh && cache?.key === key && now() - cache.at < 5000) { scanMetrics.cacheHits++;return cache.value }
+    if (!fresh && cache?.key === key && (browse && watchingFiles() || now() - cache.at < 5000)) { scanMetrics.cacheHits++;return cache.value }
     if (scanPending?.key === key && scanPending.epoch===scanEpoch && (!verifyContent || scanPending.verifyContent)) { scanMetrics.merged++;return scanPending.promise }
     const epoch=scanEpoch,started=performance.now()
     const promise = (async () => {
@@ -259,7 +259,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       }
       return { ...found, items:[...grouped.values()], kbId: b.st.kbId, policyVersion: versionOf(b) }
     }
-    const snap = await scan(b, args.fresh === true)
+    const snap = await scan(b, args.fresh === true, false, args.op === 'atlas.list' && !args.q)
     let files = snap.files.filter(f => visible(b, f.path) && scopeMatch(f.path, args.prefix))
     if (String(args.q || '').trim() || args.question) files = files.filter(f => indexable(b, f.path))
     if (args.direct && args.prefix !== undefined) files = files.filter(f => path.posix.dirname(f.path) === (args.prefix || '.'))
@@ -513,17 +513,17 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     if (args.op.startsWith('links.')) { const result = ['links.apply','links.undo'].includes(args.op) ? await b.core._internal.withMutationLock(b.root, () => repairs.dispatch(b, args, caller)) : await repairs.dispatch(b, args, caller); if (['links.apply','links.undo'].includes(args.op)) { cache = null; await b.core.maintainIndex({ expectedKbId: b.st.kbId }); notify({ type: 'links-changed', kbId: b.st.kbId }) }; return { ok: true, ...result } }
     if (args.op.startsWith('deliverables.')) { const result = await deliverables.dispatch(b, args); cache = null; return { ok: true, ...result } }
     if (args.op === 'atlas.snapshot') {
-      const snap = await scan(b, args.fresh), data = await userData(b)
+      const snap = await scan(b, args.fresh, false, true), data = await userData(b)
       const knowledge = knowledgeCount(snap.files.filter(f => snap.indexed.has(f.path)).map(f => f.path), b.sources, { kbId: b.st.kbId, root: b.root })
       const sectionNames = [...new Set([...snap.dirs.map(d => typeof d === 'string' ? d : d.path).filter(p => p && !p.includes('/')), ...snap.files.filter(f => f.path.includes('/')).map(f => f.path.split('/')[0])])].sort()
-      return { ok: true, kbId: b.st.kbId, root: b.root, policyVersion: versionOf(b), version: snap.version, relationVersion: digest(snap.version + JSON.stringify(data.links)), revision: data.revision, preferences: b.preferences, guideComplete: Boolean(b.profile.onboarding[GUIDE_ID]?.completedAt), needsConfirmation: b.needsConfirmation,scanMetrics:{...scanMetrics},
+      return { ok: true, kbId: b.st.kbId, root: b.root, policyVersion: versionOf(b), version: snap.version, relationVersion: digest(snap.version + JSON.stringify(data.links)), revision: data.revision, preferences: b.preferences, guideComplete: Boolean(b.profile.onboarding[GUIDE_ID]?.completedAt), needsConfirmation: b.needsConfirmation, watchingFiles: watchingFiles(),scanMetrics:{...scanMetrics},
         totals: { files: snap.files.length, knowledge: knowledge.knowledge, visible: snap.files.filter(f => visible(b, f.path)).length, private: snap.files.filter(f => f.private).length }, coverage: snap.coverage,
         recentSystem: snap.files.filter(f => visible(b, f.path) && f.system).sort((a, z) => z.mtimeMs - a.mtimeMs).slice(0, 12),
         recent: snap.files.filter(f => visible(b, f.path) && !f.system).sort((a, z) => z.mtimeMs - a.mtimeMs).slice(0, 12).map(f => ({ ...f })),
         sections: sectionNames.map(name => ({ name, private: isPrivate(b, name), files: snap.files.filter(f => scopeMatch(f.path, name)).length })) }
     }
     if (args.op === 'atlas.tree') {
-      const snap = await scan(b), dirs = snap.dirs.map(d => typeof d === 'string' ? d : d.path).filter(Boolean)
+      const snap = await scan(b, false, false, true), dirs = snap.dirs.map(d => typeof d === 'string' ? d : d.path).filter(Boolean)
       const prefix = args.prefix || ''
       return { ok: true, policyVersion: versionOf(b), items: dirs.filter(p => visible(b, p) && (path.posix.dirname(p) === (prefix || '.'))).map(p => ({ path: p, name: path.posix.basename(p), files: snap.files.filter(f => visible(b, f.path) && scopeMatch(f.path, p)).length })) }
     }
@@ -926,6 +926,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
   const documents = createDocumentService({ binding, versionOf, assertVisible, authorize: authorizeDocument, notify, invalidate: invalidatePolicyCaches })
   return { documents, libraryState, dispatch, binding, versionOf, profile, preferences, runAutomatic, activeTasks, invalidate: () => { cache = null;scanEpoch++; retrieval.invalidate() }, backups,
     retrieval, resources, runtimeStats: () => ({ resources: resources.stats(), sourceReads: sourceReader.stats() }),
+    invalidateBrowse: () => { cache = null; scanEpoch++ },
     dispose: () => {retrieval.dispose();resources.dispose();retrievalText.clear();metadataText.clear();cache=null},
     displayPolicy: async () => { const b = await binding(); return { privateDirs: b.preferences.showPrivate ? [] : b.privateDirs, revision: b.preferencesRevision } },
     notify,

@@ -1,3 +1,7 @@
+## Plugin 2.5.8 · Faster library reopening
+
+Reopening the same library reuses the current view. File changes and manual refresh update it, and permission changes discard the old view.
+
 ## Plugin 2.5.7 · ASAR indexing fix
 
 The knowledge-base service treats Electron ASAR archives as physical files. Virtual entries no longer cause repeated file-change errors during index maintenance. Desktop client 1.1.2 remains compatible.

@@ -64,7 +64,11 @@ Flow text and actions now wrap in separate sections. Each card saves its model a
 
 [简体中文](PROJECT-RECORD.md) · [English](PROJECT-RECORD.en.md)
 
-<!-- project-record-version: 2.5.7 -->
+<!-- project-record-version: 2.5.8 -->
+
+## 插件 2.5.8 · 加快知识库重开
+
+切回同一个知识库时直接显示已有视图。文件变化或手动刷新时更新，权限变化时清除旧缓存。
 
 ## 插件 2.5.7 · 修复 ASAR 索引误报
 

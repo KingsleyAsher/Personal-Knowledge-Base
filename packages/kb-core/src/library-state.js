@@ -15,7 +15,7 @@ export function createLibraryState({ stateDir, getCore, onMutation = () => {}, s
   async function binding(expected) {
     const core = getCore()
     if (!core) throw fail('NOT_READY', '知识库服务尚未就绪')
-    const st = await core.status()
+    const st = await core.status({ bindingOnly: true })
     if (!st.kbPath || !st.kbId) throw fail('UNBOUND', '请先绑定并初始化知识库')
     if (expected != null && expected !== st.kbId) throw fail('BINDING_CHANGED', '知识库已切换，请刷新')
     const root = await realpath(st.kbPath)
