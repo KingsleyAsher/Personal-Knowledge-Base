@@ -1,12 +1,12 @@
 {
   "package": "@local/dsh-knowledge-base",
-  "version": "2.5.6",
-  "buildId": "9fe3fd8517f15631",
-  "tgz": "local-dsh-knowledge-base-2.5.6.tgz",
-  "bytes": 15827020,
-  "sha256": "321d595f9dbdb0dc88122a6994cf8770a49f65f61c70c99ff1d72a4aa3a7d4f3",
-  "integrity": "sha512-OjUa4+t4DNKlhkEZRLl3zrf+gXVSReiFP6KO0wZ8ZxgU8e0Av85r7F4OEmiF9gcmAg7K3fTj1bnmzAniglvYBQ==",
-  "packageFileCount": 492,
+  "version": "2.5.7",
+  "buildId": "d69721a6fd804147",
+  "tgz": "local-dsh-knowledge-base-2.5.7.tgz",
+  "bytes": 15827618,
+  "sha256": "30e8e2ac6856021e881758fdbd5949bcdc4524327eaa73f056f760c5ddf63d18",
+  "integrity": "sha512-Lt+Ft+SC6FSzFlzNkouv6jJC697DRXEs4G4nqcMtzUW+QZJLepvh/aRZ19RGj5EjhbupnXVfDj5O91vm8Ds4SQ==",
+  "packageFileCount": 493,
   "buildFileCount": 376,
   "files": [
     {
@@ -86,33 +86,33 @@
     },
     {
       "path": "PROJECT-RECORD.en.md",
-      "bytes": 77452,
-      "sha256": "ea809bc996e7ddf05d4f69e9a4ffcd9867edf5804115695dc968cc808c60a851"
+      "bytes": 77694,
+      "sha256": "f88eec1a22565d47d75c89859b72b78da76f7be86987ff8c9df43824bc546470"
     },
     {
       "path": "PROJECT-RECORD.md",
-      "bytes": 67957,
-      "sha256": "7303e05bb5fee2f4645cac0315c67fbbc3e415d938825733ed45d32f938d4df6"
+      "bytes": 68264,
+      "sha256": "1ba222dc91b1e749b3079c28ab4f92b2331e148bcbbe39e0e2fdd334099de2ed"
     },
     {
       "path": "README.md",
-      "bytes": 9908,
-      "sha256": "1f2ef0448313e25e3b4a69fda6fc0020b439245bb1b5f3f2efa1df88930b95b2"
+      "bytes": 9874,
+      "sha256": "757b591594b9836bee7796b5d7dd08d80a4a9d1fb6a9618572e1fa8709c5b5bf"
     },
     {
       "path": "README.zh-CN.md",
-      "bytes": 10111,
-      "sha256": "9908582c81ee9b10b380f8b7bffd22b4e50fcd30d3706647f92195b203450d10"
+      "bytes": 10117,
+      "sha256": "7c61bff0d72e761d1882895001bbf444b05561314843de831dc7f2e1c92c16b4"
     },
     {
       "path": "RELEASE.en.md",
-      "bytes": 56034,
-      "sha256": "abdc3e6aff43458b584714a148b4535933c7512198b641aa18da0daeb72d76c7"
+      "bytes": 56276,
+      "sha256": "153b2f3b7da61a0e3d134870a82ba783a533bf910426f5ca1213794e86227f8e"
     },
     {
       "path": "RELEASE.md",
-      "bytes": 51151,
-      "sha256": "7fe43a24fbb3f37e7fe9e0ab347bf17b43260e824d488d4c88bf0b08238c17d5"
+      "bytes": 51458,
+      "sha256": "25f817a87aacca19066e3f7a27a8cfdf943d0b56616ba975e6143f50764eaf5c"
     },
     {
       "path": "RETRIEVAL.md",
@@ -132,12 +132,12 @@
     {
       "path": "VERSIONING.en.md",
       "bytes": 5913,
-      "sha256": "8333595e6769a8b66ffec73b35661b01b9c590d5ed16f7333e46518153778431"
+      "sha256": "eb023931ef567f8451cafc640060936466009d3bd88a4793f0006c023f6f5e4e"
     },
     {
       "path": "VERSIONING.md",
       "bytes": 6060,
-      "sha256": "7a7c34a196adcec7292fc81ccb155ffc714be0ce4e4882a9c8413914738ddab6"
+      "sha256": "29fc1b5a3c3ff8d8ed4f3c0afa895aaf7d2865b7dcd28e6be1f260a701417ef0"
     },
     {
       "path": "WORKBENCH.en.md",
@@ -207,7 +207,7 @@
     {
       "path": "cordis.patch.yml",
       "bytes": 5147,
-      "sha256": "060603429c568803e9a5c09a40b99cab7262f00e4bae91b61cfe27ecc93f1f17"
+      "sha256": "fb913bbf68248951d651e53cdb1da33fb67e292fb6c462d7414e8db4a8d8f378"
     },
     {
       "path": "docs/LEGACY-246-BOOTSTRAP.md",
@@ -465,6 +465,11 @@
       "sha256": "668aca3c3c06d49c2e214ad5dd6ac9e5acbb3550207827609f374af6abb055ee"
     },
     {
+      "path": "docs/releases/plugin-2.5.7.md",
+      "bytes": 548,
+      "sha256": "7740af41adb306c4874a52719b5a1ecd22a8ad2c68cc499c38efa820eba9d255"
+    },
+    {
       "path": "docs/validation/windows-auto-update-2.4.13.md",
       "bytes": 3805,
       "sha256": "02822cc5ddeac8cdc59e89c2445166551325bce0b962ca44129ed405c9615738"
@@ -477,7 +482,7 @@
     {
       "path": "package.json",
       "bytes": 1760,
-      "sha256": "fb65183d22be3e28dbd0f7ec477abcddb48b6aa64169df2d2b68fcf83471c0f1"
+      "sha256": "5e50a8c3cf202fae6bf87f05f4cde2059dc66d54be2c6084989bd5b3440785cb"
     },
     {
       "path": "packages/kb-contracts/desktop.js",
@@ -602,7 +607,7 @@
     {
       "path": "packages/kb-core/src/kbcore.js",
       "bytes": 130989,
-      "sha256": "f977b0cd2e23bdaff16d222d6da6f48fb3d5cb39e49a5f3985363dfd71fa85a6"
+      "sha256": "29bf64c64e0204431bb15da983839f856ed3b3e2a59d65e8c7a88c2012b16db9"
     },
     {
       "path": "packages/kb-core/src/library-framework.js",
@@ -896,8 +901,8 @@
     },
     {
       "path": "packages/kb-service/main.js",
-      "bytes": 710,
-      "sha256": "bb87285ed343d61a537b88a41624da777ae55eb8391d88cf4182f19fc03b3677"
+      "bytes": 921,
+      "sha256": "6719a904fa56c8c7e70c03a304a6a2fcccc0188a3f522967062035c796df292a"
     },
     {
       "path": "packages/kb-service/memory-channel.js",
@@ -1202,7 +1207,7 @@
     {
       "path": "src/client/index.js",
       "bytes": 490971,
-      "sha256": "b1674fd24a64ed29d401d48200a1bffd0f3d7383dcaccdef3c45ed8383bd37fa"
+      "sha256": "d3586e718ce649b6f72a6506624f60c7b46a5a8390dd4e28e4dc7ab1a191ab4a"
     },
     {
       "path": "src/client/knowledge-ui.css",

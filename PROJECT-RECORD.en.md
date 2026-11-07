@@ -59,7 +59,11 @@ A separate [2.4.6 migration recovery entry](docs/LEGACY-246-BOOTSTRAP.md) verifi
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 2.5.6 -->
+<!-- project-record-version: 2.5.7 -->
+
+## Plugin 2.5.7 · ASAR indexing fix
+
+The knowledge-base service treats Electron ASAR archives as physical files. Virtual entries no longer cause repeated file-change errors during index maintenance. Desktop client 1.1.2 remains compatible.
 
 **Source covered: plugin 2.5.3 / client 1.1.1 · Updated: 2026-11-07 · Maintenance: review this record alongside the source with every release.**
 
