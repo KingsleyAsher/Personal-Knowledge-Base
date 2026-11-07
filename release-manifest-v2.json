@@ -3,9 +3,9 @@
   "version": "2.5.6",
   "buildId": "9fe3fd8517f15631",
   "tgz": "local-dsh-knowledge-base-2.5.6.tgz",
-  "bytes": 15794673,
-  "sha256": "88006deea1cecfc95031567e1a9f1878dee54abafa6fb70cbc7b636765a93de8",
-  "integrity": "sha512-Y2HvhZSi5Mw2Czll5WKGb2t3Vyqw/cHtbuQVpHGlFVuNj4VFXvkt/UyC9JvBe4242gHaA+YOIKUc/B5RMTrlYg==",
+  "bytes": 15827020,
+  "sha256": "321d595f9dbdb0dc88122a6994cf8770a49f65f61c70c99ff1d72a4aa3a7d4f3",
+  "integrity": "sha512-OjUa4+t4DNKlhkEZRLl3zrf+gXVSReiFP6KO0wZ8ZxgU8e0Av85r7F4OEmiF9gcmAg7K3fTj1bnmzAniglvYBQ==",
   "packageFileCount": 492,
   "buildFileCount": 376,
   "files": [
@@ -106,13 +106,13 @@
     },
     {
       "path": "RELEASE.en.md",
-      "bytes": 285,
-      "sha256": "46c77da534f7c1baa961ba4ca5f938b71f02e555b0a26b8afde0b5891c4b93c8"
+      "bytes": 56034,
+      "sha256": "abdc3e6aff43458b584714a148b4535933c7512198b641aa18da0daeb72d76c7"
     },
     {
       "path": "RELEASE.md",
-      "bytes": 221,
-      "sha256": "668aca3c3c06d49c2e214ad5dd6ac9e5acbb3550207827609f374af6abb055ee"
+      "bytes": 51151,
+      "sha256": "7fe43a24fbb3f37e7fe9e0ab347bf17b43260e824d488d4c88bf0b08238c17d5"
     },
     {
       "path": "RETRIEVAL.md",
