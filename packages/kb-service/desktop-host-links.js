@@ -18,13 +18,22 @@ export function startDesktopHostLinks({ctx,python,connectRuntime,startBridge,wor
  const links=new Map(),knownWorkspaces=new Map();let disposed=false,busy=false;
  async function refresh(){if(disposed||busy)return;busy=true;try{
   const rows=(await desktopHostSelections(home)).filter(r=>path.resolve(r.root).toLowerCase()!==path.resolve(primaryRoot).toLowerCase()),wanted=new Set(rows.map(r=>r.instanceId));
-  for(const [id,link]of links)if(!wanted.has(id)){link.bridge.dispose();await link.runtime.close();links.delete(id);}
-  for(const row of rows){if(links.has(row.instanceId)||disposed)continue;let runtime;try{runtime=await connectRuntime({library:row.root,home:row.serviceHome,python,onEvent:onLibraryEvent,kind:'dsh-adapter',allowFreshSynthetic:false,required:['host.bridge']});const workspace=await workspaceFor(row.root);if(disposed){await runtime.close();continue;}knownWorkspaces.set(path.resolve(workspace.workspacePath).toLowerCase(),row.instanceId);const bridge=startBridge({client:runtime.client,ctx,workspace,ensureWorkspace:()=>workspaceFor(row.root),libraryRoot:row.root,ownsSession:ownerFor?(id=>ownerFor(id)===row.instanceId):undefined,onSessionCreated:recordSession?(id=>recordSession(row.instanceId,id)):undefined,label:'DSH · '+path.basename(row.root),onError});links.set(row.instanceId,{runtime,bridge});}catch(e){await runtime?.close();onError(e);}}
+  for(const [id,link]of links)if(!wanted.has(id)){
+    links.delete(id);
+    onLibraryEvent({event:'connection.changed',data:{state:'offline'}});
+    link.bridge.dispose();await link.runtime.close();
+  }
+  for(const row of rows){if(links.has(row.instanceId)||disposed)continue;let runtime;try{runtime=await connectRuntime({library:row.root,home:row.serviceHome,python,onEvent:onLibraryEvent,kind:'dsh-adapter',allowFreshSynthetic:false,required:['host.bridge']});const workspace=await workspaceFor(row.root);if(disposed){await runtime.close();continue;}knownWorkspaces.set(path.resolve(workspace.workspacePath).toLowerCase(),row.instanceId);const bridge=startBridge({client:runtime.client,ctx,workspace,ensureWorkspace:()=>workspaceFor(row.root),libraryRoot:row.root,ownsSession:ownerFor?(id=>ownerFor(id)===row.instanceId):undefined,onSessionCreated:recordSession?(id=>recordSession(row.instanceId,id)):undefined,label:'DSH · '+path.basename(row.root),onError});links.set(row.instanceId,{runtime,bridge});onLibraryEvent({event:'connection.changed',data:{state:'ready'}});}catch(e){await runtime?.close();onError(e);}}
  }finally{busy=false;}}
  const timer=setInterval(()=>void refresh().catch(onError),1000);timer.unref?.();void refresh().catch(onError);
  return {
   clientForLibrary(instanceId){return links.get(instanceId)?.runtime.client??null;},
   clientForAgent(agent){if(!agent||ctx.get('agents')?.get(agent.id)!==agent)return undefined;if(ownerFor){const owner=ownerFor(agent.id);return owner?links.get(owner)?.runtime.client??null:undefined;}const cwd=agent.session?.header?.cwd;if(!cwd)return undefined;const id=knownWorkspaces.get(path.resolve(cwd).toLowerCase());return id?links.get(id)?.runtime.client??null:undefined;},
-  async dispose(){disposed=true;clearInterval(timer);for(const link of links.values()){link.bridge.dispose();await link.runtime.close();}links.clear();}
+  async dispose(){
+   disposed=true;clearInterval(timer);
+   const detached=[...links.values()];links.clear();
+   if(detached.length)onLibraryEvent({event:'connection.changed',data:{state:'offline'}});
+   for(const link of detached){link.bridge.dispose();await link.runtime.close();}
+  }
  };
 }

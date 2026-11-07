@@ -1,3 +1,13 @@
+## Plugin 2.5.10 · Unified memory integration
+
+The workbench uses the versioned interface to read and modify DSH global memory. Linked entries follow their source documents. The Memory panel refreshes on change notifications while connected and returns to library-only entries if the DSH host disconnects.
+
+This release includes the safe service handoff from 2.5.9. Pair it with DSH Memory 1.0.14.
+
+## Plugin 2.5.9 · Safe service handoff
+
+The updater reuses its verified package while knowledge-base work is active. When idle, it drains the old service, applies the package and uses DSH hot reload where available. Completion requires the new Host and worker to be active.
+
 ## Plugin 2.5.8 · Faster library reopening
 
 Reopening the same library reuses the current view. File changes and manual refresh update it, and permission changes discard the old view.

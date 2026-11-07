@@ -9,30 +9,77 @@ import {connectService} from './client.js';
 import {launchService} from './launcher.js';
 import {runtimeBuild} from './build.js';
 import {canShareRuntime} from './compatibility.js';
+import {compareKnowledgeVersions,parseKnowledgeVersion} from '../kb-contracts/version-policy.js';
 
 export const defaultServiceHome=()=>process.env.KB_SHARED_HOME||path.join(os.homedir(),'.dsh','shared-knowledge-services');
 const pause=ms=>new Promise(r=>setTimeout(r,ms));
+const olderWorker=(health,preferredVersion)=>Boolean(parseKnowledgeVersion(preferredVersion)&&
+ parseKnowledgeVersion(health.coreVersion,{allowLegacyPreview:true})&&compareKnowledgeVersions(preferredVersion,health.coreVersion)>0);
+
+async function waitForClose(dir,python,receipt){
+ const deadline=Date.now()+20000;
+ while(Date.now()<deadline){
+  const done=await readJson(path.join(dir,'last-close.json'),null);
+  if(done?.bootId===receipt.bootId&&done.clean&&await native(python,'birth',{pid:receipt.pid})===null)return receipt;
+  await pause(150);
+ }
+ throw error('STATE_BUSY','旧知识库服务尚未确认安全退出，未启动第二个服务');
+}
 // Both applications use this owner election and the same SID-protected home.
 // Discovery is never authorization: every connection authenticates the library.
-async function bootstrapRuntime({library,home=defaultServiceHome(),python='python',node=process.execPath,kind='desktop',candidateRoot,allowFreshSynthetic=true,required=[],sources={},onEvent=()=>{}}){
+async function bootstrapRuntime({library,home=defaultServiceHome(),python='python',node=process.execPath,kind='desktop',candidateRoot,allowFreshSynthetic=true,required=[],sources={},preferredVersion,onEvent=()=>{}}){
  const identity=await libraryIdentity(library),base=path.resolve(home),privateDir=path.join(base,identity.instanceId),readyFile=path.join(privateDir,'ready.json');
  await mkdir(base,{recursive:true});await native(python,'private-dir',{path:privateDir});
- const build=await runtimeBuild(),lockFile=path.join(privateDir,'launch.lock'),owner=randomUUID();
+ const build=await runtimeBuild(),ownerFile=path.join(identity.root,'.kbmeta/service-owner.json'),lockFile=path.join(privateDir,'launch.lock'),owner=randomUUID();
  let lock,client,off;
  async function connect(){const ready=await readJson(readyFile,null);if(!ready)return null;let c;try{c=await connectService({pipe:ready.pipe,python,credentialFile:path.join(privateDir,'bootstrap.dpapi.json'),kind});const h=await c.call('service.health');if(h.library.instanceId!==identity.instanceId)throw error('BINDING_CHANGED');return {client:c,health:h};}catch(e){c?.close();if(['BINDING_CHANGED','UNAUTHORIZED'].includes(e.code))throw e;return null;}}
  const until=Date.now()+90000;
+ let occupied=false;
+ async function releaseLock(){
+   if(!lock)return;
+   const handle=lock;lock=null;
+   await handle.close();
+   if((await readJson(lockFile,null))?.owner===owner)await unlink(lockFile).catch(()=>{});
+ }
+ async function claimLock(){
+   const birth=await native(python,'birth',{pid:process.pid});
+   try{lock=await open(lockFile,'wx');await lock.writeFile(JSON.stringify({owner,pid:process.pid,birth}));await lock.sync();return true;}
+   catch(e){
+     if(e.code!=='EEXIST')throw e;
+     const held=await readJson(lockFile,null).catch(e=>{if(e instanceof SyntaxError)return null;throw e});
+     if(held&&await native(python,'birth',{pid:held.pid})!==held.birth){
+       const latest=await readJson(lockFile,null);
+       if(latest?.owner===held.owner)await unlink(lockFile).catch(()=>{});
+     }
+     return false;
+   }
+ }
  try{
   while(Date.now()<until){
    const live=await connect();
-   if(live&&canShareRuntime(live.health,build,required)){client=live.client;break;}
+   if(live&&canShareRuntime(live.health,build,required)&&!olderWorker(live.health,preferredVersion)){client=live.client;break;}
    if(live&&!live.health.supported.includes('service.prepareUpgrade')&&live.health.serviceBuildId===LEGACY_243_BUILD){await waitForLegacy243({health:live.health,client:live.client,privateDir,python});continue;}
-   if(live){if(live.health.connections>1){live.client.close();throw error('SERVICE_UPGRADE_REQUIRED','当前共享服务与本程序的接口、存储版本或所需能力不兼容。请更新配套插件与客户端；已有连接和任务保持运行，未启动第二个写入者。');}if(!live.health.supported.includes('service.prepareUpgrade')){live.client.close();throw error('CAPABILITY_UNSUPPORTED','旧服务没有安全停服协议，请使用过渡安装入口')}
-     let receipt;try{receipt=await live.client.call('service.prepareUpgrade')}finally{live.client.close()}
-     const deadline=Date.now()+15000;let stopped=false;
-     while(Date.now()<deadline){const done=await readJson(path.join(privateDir,'last-close.json'),null);if(done?.bootId===receipt.bootId&&done.clean&&await native(python,'birth',{pid:receipt.pid})===null){stopped=true;break}await pause(100)}
-     if(!stopped)throw error('STATE_BUSY','旧服务未确认退出，未启动替换服务');continue;}
-   try{lock=await open(lockFile,'wx');await lock.writeFile(JSON.stringify({owner,pid:process.pid,birth:await native(python,'birth',{pid:process.pid})}));await lock.sync();break;}
-   catch(e){if(e.code!=='EEXIST')throw e;const held=await readJson(lockFile,null).catch(e=>{if(e instanceof SyntaxError)return null;throw e});if(held&&await native(python,'birth',{pid:held.pid})!==held.birth){const latest=await readJson(lockFile,null);if(latest?.owner===held.owner)await unlink(lockFile).catch(()=>{});}await pause(100);}
+   if(live){
+     const preferred=olderWorker(live.health,preferredVersion);
+     let receipt;
+     try {
+       if(live.health.connections>1&&!(kind==='dsh-adapter'&&live.health.upgradeHandoff===1)){
+         if(!preferred)throw error('SERVICE_UPGRADE_REQUIRED','当前共享服务与本程序不兼容，其他连接仍在使用旧服务');
+       }else if(!live.health.supported.includes('service.prepareUpgrade')){
+         throw error('CAPABILITY_UNSUPPORTED','旧服务没有安全停服协议，请使用过渡安装入口');
+       }else if(await claimLock()){
+         try{receipt=await live.client.call('service.prepareUpgrade')}catch(e){
+           if(e.code!=='STATE_BUSY'||!preferred)throw e;
+         }
+       }
+     }finally{live.client.close()}
+     if(receipt){await waitForClose(privateDir,python,receipt);break;}
+     await releaseLock();occupied=true;await pause(750);continue;
+   }
+   const heldOwner=await readJson(ownerFile,null);
+   if(heldOwner&&await native(python,'birth',{pid:heldOwner.pid})===heldOwner.birth){occupied=true;await pause(500);continue;}
+   if(await claimLock())break;
+   await pause(150);
   }
   if(!client&&lock){
    const marker=await readJson(path.join(identity.root,'.desktop-preview.json'),null),managed=await readJson(path.join(identity.root,'.kbmeta/service-mode.json'),null);
@@ -41,40 +88,55 @@ async function bootstrapRuntime({library,home=defaultServiceHome(),python='pytho
    await launchService({configurationPath,logDirectory:privateDir,node});
    while(Date.now()<until){const live=await connect();if(live){client=live.client;break;}await pause(100);}
   }
-  if(!client)throw error('HOST_UNAVAILABLE','本地知识库服务启动超时，未启用第二个写入者');
+  if(!client)throw occupied?error('STATE_BUSY','旧知识库服务仍在处理任务或退出中，暂未接管'):error('HOST_UNAVAILABLE','本地知识库服务启动超时，未启用第二个写入者');
   if(!(await client.call('service.health')).active)await client.call('migration.commit',{planId:'fresh',quiescent:true});
   await client.call('events.subscribe');off=client.subscribe(onEvent);
   const serviceHealth=await client.call('service.health');
   await mkdir(base,{recursive:true});await atomic(path.join(privateDir,'discovery.json'),{schemaVersion:1,...identity,buildId:serviceHealth.serviceBuildId,clientBuildId:build,privateDir,kind,updatedAt:Date.now()});
   return {client,privateDir,identity,async close(){off?.();client.close();}};
  }catch(e){off?.();client?.close();throw e;}
- finally{await lock?.close();if(lock&&(await readJson(lockFile,null))?.owner===owner)await unlink(lockFile).catch(()=>{});}
+ finally{await releaseLock();}
 }
 
 export async function connectRuntime(options){
  const listeners=new Set(),notify=frame=>{options.onEvent?.(frame);for(const fn of listeners)try{fn(frame)}catch{}},opts={...options,onEvent:notify};
- let link=await bootstrapRuntime(opts),lastWelcome=link.client.welcome,reconnecting,closed=false;
+ let link=await bootstrapRuntime(opts),lastWelcome=link.client.welcome,reconnecting,closed=false,disposed=false,probing=false,draining=false,reconnectError;
  const signal=(state,code)=>notify({event:'connection.changed',data:{state,...(code?{code}:{})}});
  async function reconnect(){
   if(closed||reconnecting)return reconnecting;
-  reconnecting=(async()=>{await link?.close().catch(()=>{});link=null;signal('offline');try{const next=await bootstrapRuntime(opts);if(closed){await next.close();return;}link=next;lastWelcome=next.client.welcome;signal('ready');notify({event:'snapshot.required',data:{}});}catch(e){signal('offline',e.code);}finally{reconnecting=null;}})();return reconnecting;
+  reconnecting=(async()=>{await link?.close().catch(()=>{});link=null;signal('offline');try{const next=await bootstrapRuntime(opts);if(closed){await next.close();return;}link=next;lastWelcome=next.client.welcome;reconnectError=undefined;signal('ready');notify({event:'snapshot.required',data:{}});}catch(e){reconnectError=e;signal('offline',e.code);}finally{reconnecting=null;}})();return reconnecting;
  }
- const tick=()=>{if(closed)return;if(!link){void reconnect();return;}void link.client.call('service.health').catch(()=>void reconnect());};let timer=setInterval(tick,2000);timer.unref?.();
+ const tick=()=>{if(closed||probing||draining)return;if(!link){void reconnect();return;}probing=true;void link.client.call('service.health').catch(e=>{if(e.transport)void reconnect()}).finally(()=>{probing=false});};let timer=setInterval(tick,5000);timer.unref?.();
  const runtime={
-  async resume(){if(!closed)return;closed=false;await reconnect();timer=setInterval(tick,2000);timer.unref?.();},
+  async resume(){if(disposed||!closed)return;closed=false;await reconnect();timer=setInterval(tick,5000);timer.unref?.();},
+   async withUpdateLock(task){
+     if(!link||closed)throw error('HOST_UNAVAILABLE','知识库连接尚未就绪');
+     const file=path.join(link.privateDir,'launch.lock'),owner=randomUUID(),python=options.python??'python';
+     const birth=await native(python,'birth',{pid:process.pid});
+     let handle;
+     try{
+       try{handle=await open(file,'wx')}catch(e){if(e.code==='EEXIST')throw error('STATE_BUSY','另一个客户端正在交接知识库服务');throw e}
+       await handle.writeFile(JSON.stringify({owner,pid:process.pid,birth}));await handle.sync();
+       return await task();
+     }finally{
+       if(handle){await handle.close();if((await readJson(file,null))?.owner===owner)await unlink(file)}
+     }
+   },
    async prepareUpgrade(){
      if(!link||closed)throw error('HOST_UNAVAILABLE');
-     const health=await link.client.call('service.health');
-     if(!health.supported.includes('service.prepareUpgrade'))throw error('CAPABILITY_UNSUPPORTED','旧服务不支持安全停服，请通过过渡安装入口升级');
-     const receipt=await link.client.call('service.prepareUpgrade');
-     const dir=link.privateDir;closed=true;clearInterval(timer);await link.close();link=null;
-     const deadline=Date.now()+15000;
-     while(Date.now()<deadline){const done=await readJson(path.join(dir,'last-close.json'),null);if(done?.bootId===receipt.bootId&&done.clean&&await native(options.python??'python','birth',{pid:receipt.pid})===null)return receipt;await pause(100)}
-     throw error('STATE_BUSY','旧服务未确认完全退出，安装未开始，旧版本保留')
+     if(draining)throw error('STATE_BUSY','知识库服务正在安全交接');
+     draining=true;
+     try{
+       const health=await link.client.call('service.health');
+       if(!health.supported.includes('service.prepareUpgrade'))throw error('CAPABILITY_UNSUPPORTED','旧服务不支持安全停服，请使用过渡安装入口');
+       const receipt=await link.client.call('service.prepareUpgrade');
+       const dir=link.privateDir;closed=true;clearInterval(timer);signal('offline');await link.close();link=null;
+       return await waitForClose(dir,options.python??'python',receipt);
+     }finally{draining=false;}
    },
    get privateDir(){return link?.privateDir??path.join(path.resolve(options.home??defaultServiceHome()),lastWelcome.library.instanceId)},
   get identity(){return lastWelcome.library},
-  client:{get welcome(){return link?.client.welcome??structuredClone(lastWelcome)},async call(method,args={},opts={}){if(!link||closed){if(!closed)void reconnect();throw Object.assign(error('HOST_UNAVAILABLE','本地服务正在重新连接，原文与草稿已保留'),{transport:true});}try{return await link.client.call(method,args,opts);}catch(e){if(e.transport||e.code==='UNAUTHORIZED')void reconnect();throw e;}},subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},close(){void runtime.close();}},
-  async close(){closed=true;clearInterval(timer);listeners.clear();await link?.close();link=null;},
+  client:{get welcome(){return link?.client.welcome??structuredClone(lastWelcome)},async call(method,args={},opts={}){if(!link||closed){if(!closed)void reconnect();throw Object.assign(error(reconnectError?.code??'SERVICE_STARTING',reconnectError?.message??(closed?'知识库正在安全更新，正在等待新版接管':'知识库服务正在建立连接')),{transport:true});}try{return await link.client.call(method,args,opts);}catch(e){if(!draining&&(e.transport||e.code==='UNAUTHORIZED'))void reconnect();throw e;}},subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},close(){void runtime.close();}},
+  async close(){disposed=true;closed=true;clearInterval(timer);listeners.clear();await link?.close();link=null;},
  };return runtime;
 }

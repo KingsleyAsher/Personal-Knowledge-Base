@@ -9,6 +9,14 @@ export async function createDshBroker({privateDir,alive,emit,now=Date.now}){
  const persist=()=>{for(const j of [...jobs.values()].slice(0,-200))if(!['queued','running'].includes(j.state))jobs.delete(j.id);return atomic(file,[...jobs.values()].map(({args,token,result,...j})=>({...j,result:['dsh.createSession','dsh.prompt','dsh.selectModel','dsh.cancel','dsh.follow'].includes(j.method)?result??null:null})).slice(-200));};
  const publicJob=j=>{const {args,token,...out}=j;return out};
  const live=h=>h&&h.until>now()&&alive(h.owner);
+ let memoryHostId=null;
+ async function publishMemoryHost(){
+  const id=[...hosts.values()].find(h=>live(h)&&h.capabilities.includes('memory-v1'))?.id??null;
+  if(id===memoryHostId)return;
+  const previous=memoryHostId;memoryHostId=id;
+  try{await emit({type:'memory-changed',hostInstanceId:id,available:id!==null});}
+  catch(error){if(memoryHostId===id)memoryHostId=previous;throw error;}
+ }
  function selected(id){const h=id?hosts.get(id):[...hosts.values()].find(live);if(!live(h))throw error('HOST_UNAVAILABLE','DSH 未连接，依赖模型的操作暂不可用');return h;}
  function authorizeSession(h,id){if(id&&!sessions.get(h.id)?.has(id))throw error('FORBIDDEN','会话不属于该知识库的已授权工作区');}
  return {
@@ -29,14 +37,14 @@ export async function createDshBroker({privateDir,alive,emit,now=Date.now}){
     timer.unref?.();waiters.set(j.id,{resolve,reject,timer,cleanup});signal?.addEventListener('abort',cancel,{once:true});if(signal?.aborted)cancel();
    });
   },
-  async audit(){let changed=false;for(const j of jobs.values())if(['queued','running'].includes(j.state)&&!live(hosts.get(j.hostId))){const running=j.state==='running';j.state=running?'unknown':'failed';j.error={code:running?'RESULT_UNKNOWN':'HOST_UNAVAILABLE',message:running?'DSH 已断线，请核对会话；未自动重发':'DSH 离线，任务尚未发送'};delete j.args;const w=waiters.get(j.id);if(w){clearTimeout(w.timer);w.cleanup?.();waiters.delete(j.id);w.reject(error(j.error.code,j.error.message));}changed=true;}if(changed)await persist();return changed;},
+  async audit(){let changed=false;for(const j of jobs.values())if(['queued','running'].includes(j.state)&&!live(hosts.get(j.hostId))){const running=j.state==='running';j.state=running?'unknown':'failed';j.error={code:running?'RESULT_UNKNOWN':'HOST_UNAVAILABLE',message:running?'DSH 已断线，请核对会话；未自动重发':'DSH 离线，任务尚未发送'};delete j.args;const w=waiters.get(j.id);if(w){clearTimeout(w.timer);w.cleanup?.();waiters.delete(j.id);w.reject(error(j.error.code,j.error.message));}changed=true;}if(changed)await persist();await publishMemoryHost();return changed;},
   async bridge(a,owner){
    if(a.action==='register'){
     if(!a.workspaceId||!a.label||!Array.isArray(a.capabilities))throw error('BAD_REQUEST');const old=hosts.get(a.hostInstanceId);if(live(old)&&old.owner!==owner)throw error('FORBIDDEN');
-    hosts.set(a.hostInstanceId,{id:a.hostInstanceId,label:a.label,workspaceId:a.workspaceId,workspacePath:a.workspacePath,capabilities:a.capabilities,owner,until:now()+8000});sessions.set(a.hostInstanceId,old?.workspaceId===a.workspaceId?sessions.get(a.hostInstanceId)??new Set():new Set());return {registered:true};
+    hosts.set(a.hostInstanceId,{id:a.hostInstanceId,label:a.label,workspaceId:a.workspaceId,workspacePath:a.workspacePath,capabilities:a.capabilities,owner,until:now()+8000});sessions.set(a.hostInstanceId,old?.workspaceId===a.workspaceId?sessions.get(a.hostInstanceId)??new Set():new Set());await publishMemoryHost();return {registered:true};
    }
    const h=hosts.get(a.hostInstanceId);if(!h||h.owner!==owner)throw error('FORBIDDEN');
-   if(a.action==='leave'){hosts.delete(h.id);return {left:true};}
+   if(a.action==='leave'){hosts.delete(h.id);await publishMemoryHost();return {left:true};}
    h.until=now()+8000;
    if(a.action==='poll'){
     const j=[...jobs.values()].find(j=>j.hostId===h.id&&j.state==='queued');if(!j)return {task:null};j.state='running';j.token=randomUUID();await persist();return {task:{id:j.id,method:j.method,args:j.args,token:j.token}};

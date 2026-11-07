@@ -8,7 +8,7 @@ import { readCandidateBuild } from './build.js'
 
 // The worker and Python live outside the replaceable package. The receipt is
 // durable, so losing the HTTP/HMR reply never means installation is repeated.
-export function createSafeUpdate({ profileDir, packageRoot, quiesce, resume }) {
+export function createSafeUpdate({ profileDir, packageRoot, quiesce, resume, withUpdateLock = task => task(), activate, activeBuild }) {
   let operation
   const home = path.join(profileDir, '.kb-safe-updates')
   async function ensureHome(){const python=await resolveHostPython(packageRoot,{home:path.join(profileDir,'.kb-update-python')});await native(python,'private-dir',{path:home});return python}
@@ -30,25 +30,54 @@ export function createSafeUpdate({ profileDir, packageRoot, quiesce, resume }) {
       })
     })
   }
+  async function activateCommitted(committed) {
+    if (activeBuild?.buildId === committed.buildId && activeBuild.version === committed.version) {
+      return { ...committed, application:'applied' }
+    }
+    if (activate) {
+      try {
+        const result = await activate()
+        if (result && !result.restartReason && !result.pending?.length) return { ...committed, application:'applied' }
+      } catch {
+        // A committed candidate never goes through package installation again.
+      }
+    }
+    // Keep the existing adapter available if the Host did not replace it.
+    await resume?.()
+    return committed
+  }
   return {
     async prepare(prepared) {
       if (operation) throw Error('另一个安全更新正在进行')
       const expected = path.join(home, 'expected-' + prepared.buildId + '.json')
       await ensureHome(); await writeFile(expected, JSON.stringify(prepared), { mode: 0o600 })
       const plan = await invoke('prepare', ['--archive', prepared.spec, '--expected', expected])
-      return { ...prepared, safeInstall: true, transactionId: plan.transactionId }
+      return { ...prepared, safeInstall: true, hotActivation: Boolean(activate), transactionId: plan.transactionId }
     },
     install({ transactionId, expectedVersion }) {
       if (operation) return operation
       operation = (async () => {
         const plan = JSON.parse(await readFile(path.join(home, 'transaction.json'), 'utf8'))
         if (plan.work !== transactionId || plan.version !== expectedVersion) throw Error('更新事务已变化，请重新检查')
-        if (plan.phase === 'committed') return { application: 'restart-required', version: plan.version, buildId: plan.buildId }
+        if (plan.phase === 'committed') return activateCommitted({ application:'restart-required', version:plan.version, buildId:plan.buildId, transactionId:plan.work })
         if (plan.phase !== 'prepared') throw Error('该事务需要恢复，未重新开始安装')
         // Must fail closed when the current runtime cannot prove quiescence.
         if (!quiesce) throw Error('当前运行模式不支持安全停服，更新已延后，旧版未改动')
-        try{await quiesce()}catch(error){await invoke('recover');await resume?.();return {application:'deferred',error:error.message,retryable:error.code==='STATE_BUSY'}}
-        try{return await invoke('commit',['--transaction',transactionId])}catch(error){const state=JSON.parse(await readFile(path.join(home,'transaction.json'),'utf8'));if(['rolled-back','prepared','aborted'].includes(state.phase))await resume?.();throw error}
+        let committed
+        try {
+          committed = await withUpdateLock(async () => {
+            await quiesce()
+            return invoke('commit',['--transaction',transactionId])
+          })
+        } catch (error) {
+          const state = JSON.parse(await readFile(path.join(home,'transaction.json'),'utf8'))
+          if (['rolled-back','prepared','aborted'].includes(state.phase)) await resume?.()
+          if (state.phase === 'prepared' && error.code === 'STATE_BUSY') {
+            return { application:'deferred', error:error.message, retryable:true }
+          }
+          throw error
+        }
+        return activateCommitted(committed)
       })().finally(() => { operation = null })
       return operation
     },

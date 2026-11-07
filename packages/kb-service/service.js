@@ -70,7 +70,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
   let ownerHandle
   try { ownerHandle = await open(ownerFile, 'wx'); await ownerHandle.writeFile(JSON.stringify({ pid: process.pid, birth, bootId, instanceId })); await ownerHandle.sync() }
   catch (e) { if (e.code === 'EEXIST') throw error('STATE_BUSY'); throw e } finally { await ownerHandle?.close() }
-  let upgradeDraining = false;
+  let upgradeDraining = false, heavyReads = 0;
   let fileWatcher, fileEventTimer
   const filePolicyPaths = new Set(['.kbmeta/kb.json', '.kbmeta/shared-policy.json', '.kbmeta/index-policy.json', '索引层/文件目录.json'])
   function fileChanged(_event, filename) {
@@ -163,10 +163,17 @@ export async function startService({ library, privateDir, python, sources = {}, 
     if(upgradeDraining && call.method!=='service.health')throw error('STATE_BUSY','Service is draining for an update')
     const a = call.args, caller = currentGrant(), lib = kernel.workbench.libraryState
     const wb = operation => kernel.dispatch({ ...operation, expectedKbId: kbId }, caller)
-    if (call.method === 'service.health') return { library: identity, bootId,serviceBuildId:runtimeBuildId, compatibility:SERVICE_COMPATIBILITY, coreVersion:KERNEL_VERSION, active: await active(), connections: [...connections.values()].filter(c => c.authenticated).length, writers: 1, indexers: maintenance ? 1 : 0, index:maintenance?.status(),dsh:broker?.status(),providers:vectorProfiles?.info(),clipper:clipper?{endpoint:clipper.endpoint}:null,supported }
+    if (call.method === 'service.health') return { library: identity, bootId,upgradeHandoff:1,serviceBuildId:runtimeBuildId, compatibility:SERVICE_COMPATIBILITY, coreVersion:KERNEL_VERSION, active: await active(), connections: [...connections.values()].filter(c => c.authenticated).length, writers: 1, indexers: maintenance ? 1 : 0, index:maintenance?.status(),dsh:broker?.status(),providers:vectorProfiles?.info(),clipper:clipper?{endpoint:clipper.endpoint}:null,supported }
     if (call.method === 'service.prepareUpgrade') {
-      if([...connections.values()].filter(c=>c.authenticated).length>1 || await engines.upgradeBusy() || broker?.status().busy)throw error('STATE_BUSY','知识库仍有其他连接或运行任务，更新已延后，旧版本保持可用')
+      const hasOtherClients = [...connections.values()].filter(c=>c.authenticated).length>1
+      if (hasOtherClients && connection.kind!=='dsh-adapter') throw error('STATE_BUSY','知识库仍有其他连接，更新已延后，旧版本保持可用')
       upgradeDraining=true
+      try {
+        const inboxBusy = ['pending','launching','running'].includes(inboxJobs?.status()?.task?.state)
+        if (heavyReads || inboxBusy || await engines.upgradeBusy() || broker?.status().busy || kernel.workbench.activeTasks.size || kernel.workbench.backups.running.size) {
+          throw error('STATE_BUSY','知识库还有任务，完成后可继续安全更新')
+        }
+      } catch (e) { upgradeDraining=false; throw e }
       setTimeout(()=>{void close().catch(e=>console.warn('[kb-upgrade] '+e.code))},100)
       return {closing:true,bootId,pid:process.pid}
     }
@@ -302,6 +309,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
   async function dispatch(call, connection) {
     if(call?.protocolMajor!==1)throw error('PROTOCOL_UNSUPPORTED')
     validateCall(call)
+    if(upgradeDraining && call.method!=='service.health')throw error('STATE_BUSY','知识库正在安全交接')
     if ((await libraryIdentity(root)).instanceId !== instanceId) throw error('BINDING_CHANGED','Library directory identity changed')
     const grant = auth.get(connection.grantId), policy = await policyVersion()
     // Exact duplicate lookup is permitted after a policy-changing operation; never before grant checks.
@@ -426,6 +434,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
         connection.lastSeen = Date.now()
         const heavyRead=connection.authenticated&&(frame.method==='workspace.read'&&['search.list','search.expand','search.context','retrieval.get','flows.models'].includes(frame.args?.operation?.op)||frame.method==='adapter.dispatch'&&frame.args?.operation?.op==='flows.models'||frame.method==='host.tool'&&frame.args?.name==='kb_search');
         const schedule=heavyRead?fn=>Promise.resolve().then(fn):queue;
+        if(heavyRead)heavyReads++;
         void schedule(() => contexts.run({grantId:connection.grantId,kind:connection.kind},async()=> {
           try {
             if (!connection.authenticated) {
@@ -452,7 +461,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
             const code=ERRORS.includes(mapped)?mapped:'RESULT_UNKNOWN'
             send(id, { requestId: frame.requestId, bootId, ok: false, error: { code, requestNotExecuted:e.requestNotExecuted===true,message: String(e.code?e.message:'Operation failed; inspect the local recovery journal').slice(0,1024),retryable:code==='STATE_BUSY',operationState:['BAD_REQUEST','FORBIDDEN','CONFLICT','POLICY_CHANGED','BINDING_CHANGED','CAPABILITY_UNSUPPORTED'].includes(code)?'not-started':'unknown' }, policyVersion: await policyVersion().catch(() => 'recovery-required') })
           }
-        })).catch(() => disconnect(id)).finally(()=>{connection.inflight--})
+        })).catch(() => disconnect(id)).finally(()=>{connection.inflight--;if(heavyRead)heavyReads--})
       })
     })
     bridge.once('exit', () => { if (!closing) void close() })

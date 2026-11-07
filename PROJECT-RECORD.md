@@ -64,7 +64,17 @@ Flow text and actions now wrap in separate sections. Each card saves its model a
 
 [简体中文](PROJECT-RECORD.md) · [English](PROJECT-RECORD.en.md)
 
-<!-- project-record-version: 2.5.8 -->
+<!-- project-record-version: 2.5.10 -->
+
+## 插件 2.5.10 · 统一记忆接口
+
+知识库工作台通过版本化接口读写 DSH 的全局记忆。原文维护的联动条目随知识库更新。正常连接时，记忆页收到变更才重新读取。DSH 宿主断开后切回本库记忆，恢复连接后再显示共享条目。
+
+本版包含 2.5.9 的服务安全交接修复。建议搭配 DSH Memory 1.0.14。
+
+## 插件 2.5.9 · 安全接管知识库服务
+
+更新器等待知识库任务结束，继续使用已校验的安装包。旧服务正常退出后才切换插件，并在支持热重载的 DSH 中自动加载。新版宿主和服务都就绪后才确认完成。
 
 ## 插件 2.5.8 · 加快知识库重开
 

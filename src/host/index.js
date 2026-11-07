@@ -264,6 +264,10 @@ export function apply(ctx, config) {
   const workbench = embeddedKernel.workbench
   publishKnowledgeMemory(ctx,operation=>workbench.dispatch(operation),listener=>workbench.subscribe(ev=>{if(ev.type!=='memory-changed')listener(ev)}));
   ctx.on('memory/changed',()=>workbench.notify({type:'memory-changed'}));
+  ctx.inject(['memoryStore'],scope=>{
+    const notify=()=>workbench.notify({type:'memory-changed'});
+    notify();scope.effect(()=>notify,'kb: notify memory availability');
+  });
   const citationGuard = createCitationGuard({validate:(args,caller)=>workbench.dispatch(args,caller),log:message=>console.warn('[kb-citations] '+message)})
   ctx.effect(() => ctx.on('agent/turn-stopping', citationGuard), 'kb: final citation check')
   ctx.effect(() => {

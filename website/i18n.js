@@ -122,9 +122,9 @@
   text['2.4.3 用户可在设置中检查更新并直接升级，等待旧服务交接。仅在升级报错时，按更新说明中的恢复文档处理；新装用户可直接安装 TGZ。'] = 'Users on 2.4.3 can check for updates and upgrade directly, then wait for the legacy service handoff. Use recovery instructions only after an error; fresh installations can use the TGZ.';
   text['下载客户端 1.0.3'] = 'Download client 1.0.3';
   text['下载客户端 1.1.2'] = 'Download client 1.1.2';
-  text['下载插件 2.5.8'] = 'Download plugin 2.5.8';
-  text['个人知识库 2.5.8'] = 'Personal Knowledge Base 2.5.8';
-  text['插件 2.5.8：切回同一知识库时复用视图，文件变化后更新。客户端独立版本为 1.1.2。'] = 'Plugin 2.5.8: reopens the library from cache and updates when files change. Desktop client 1.1.2 is independently versioned.';
+  text['下载插件 2.5.10'] = 'Download plugin 2.5.10';
+  text['个人知识库 2.5.10'] = 'Personal Knowledge Base 2.5.10';
+  text['插件 2.5.10：接入统一记忆接口，支持安全交接知识库服务。客户端独立版本为 1.1.2。'] = 'Plugin 2.5.10: unifies memory integration and preserves safe service handoff. Desktop client 1.1.2 is independently versioned.';
   const attributes = {
     '主导航': 'Primary navigation',
     '知识库的组织方式': 'How the knowledge base is organized',

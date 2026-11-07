@@ -1,12 +1,12 @@
 {
   "package": "@local/dsh-knowledge-base",
-  "version": "2.5.8",
-  "buildId": "a2c7025c6d7c0da7",
-  "tgz": "local-dsh-knowledge-base-2.5.8.tgz",
-  "bytes": 15828404,
-  "sha256": "f1f79b00ee1f100226a9009d644fde2f9b60170b7770b2e009e84a34ee1e8a6e",
-  "integrity": "sha512-mvHw+q/6pqYHR8f2z/2ZFNIQZszL/ubOl++WMjq0Vpzqdq6yge1tvC+0mXKhGB5cyXUprJwhA3/TOamF5BQ5NQ==",
-  "packageFileCount": 494,
+  "version": "2.5.10",
+  "buildId": "ba363ca65d4b784f",
+  "tgz": "local-dsh-knowledge-base-2.5.10.tgz",
+  "bytes": 15834792,
+  "sha256": "5e3d2eed2079d4567b1823a82c03c43e9a719a53cb29a5e8a0d6953bfd513415",
+  "integrity": "sha512-AnARdk4rPmtojrNt0QpHXDlwG8g1EifTEAzVTzpKq6y/+FI/oZxJOj9rkA8Q+rAUTKQUt0cr0e483KtVbIHOAA==",
+  "packageFileCount": 496,
   "buildFileCount": 376,
   "files": [
     {
@@ -86,33 +86,33 @@
     },
     {
       "path": "PROJECT-RECORD.en.md",
-      "bytes": 77880,
-      "sha256": "bb8c1450f64782aebbdeb0c5620fea03b69961d76ace538ba528718071e947df"
+      "bytes": 78557,
+      "sha256": "df289daccc29625fa3a5647767c5776114e85e422643baf05cf2b4ecb783b77d"
     },
     {
       "path": "PROJECT-RECORD.md",
-      "bytes": 68434,
-      "sha256": "186045aecded631c7059d3c342bb7d1b6b96f3522027d26b6a19250424643dfb"
+      "bytes": 69078,
+      "sha256": "6554debc81e59f270b39ce7219f0b2d2f0d878fbbf478b3c6dc1711cc1ba5d28"
     },
     {
       "path": "README.md",
-      "bytes": 9863,
-      "sha256": "d19cc142b857201acc45649e9c0140a82cbf5508ca50e8db7dc7cabd5cb0681e"
+      "bytes": 9864,
+      "sha256": "c878b7ec66809ed8e364a24bff1117898aaf2b2b72e2c4fc00175f37e31bf42d"
     },
     {
       "path": "README.zh-CN.md",
-      "bytes": 10102,
-      "sha256": "e59973bbc18ec2d2c282e258dae5b9947b1720b8b434779fbcfe9b7bd3852e58"
+      "bytes": 10116,
+      "sha256": "ea77830a8b0dbd2e5ae36831ae2e68d4caa74fe686a5fb729914afc09840a89b"
     },
     {
       "path": "RELEASE.en.md",
-      "bytes": 56462,
-      "sha256": "f34abbb40a3c16b01f9a58776a000d7b0dde9b0c354ee25efa53342fcd8c936a"
+      "bytes": 57138,
+      "sha256": "8dffa30e67eb75407eb1795ab6f27413ac9f1d9d9897074f6f537577a1514b30"
     },
     {
       "path": "RELEASE.md",
-      "bytes": 51628,
-      "sha256": "7ec21a43788a405cbea444ca7869ae2097e36d98e69d57271bff565a54c2633c"
+      "bytes": 52271,
+      "sha256": "d8ccc382673077d19cb5f7d225272cc33536dd90ed15bce0013601baf6bdc897"
     },
     {
       "path": "RETRIEVAL.md",
@@ -131,13 +131,13 @@
     },
     {
       "path": "VERSIONING.en.md",
-      "bytes": 5913,
-      "sha256": "4967cf9da5dfb3f36e93cb234fdc055659b1be93f144f692cd5b718e237fb032"
+      "bytes": 5914,
+      "sha256": "108c03847f0a9d719d959bef1dee7824886addae190972e95218efcc542fcc01"
     },
     {
       "path": "VERSIONING.md",
-      "bytes": 6060,
-      "sha256": "37a780457283a281d85c19bee25d54dad766f6ce55afe0b95799c4623ae59b0c"
+      "bytes": 6061,
+      "sha256": "60138df0f0f1f44b77efee2e3f4e35f399e647c47927b098e4c5e0699f7bac6d"
     },
     {
       "path": "WORKBENCH.en.md",
@@ -206,8 +206,8 @@
     },
     {
       "path": "cordis.patch.yml",
-      "bytes": 5147,
-      "sha256": "b274ecc36a0b7f34f5c739877de5ace51f636e2ddddec7fff40ddee3ae38b207"
+      "bytes": 5148,
+      "sha256": "6c84810a9e9129db3d701ae9ed9d5d61694d99fe891fc8ad09ad5e2c9ed018ae"
     },
     {
       "path": "docs/LEGACY-246-BOOTSTRAP.md",
@@ -445,6 +445,11 @@
       "sha256": "b854422490fe7021e32e840c64126d4d836ad1a305286e24a1899ea0b143e442"
     },
     {
+      "path": "docs/releases/plugin-2.5.10.md",
+      "bytes": 777,
+      "sha256": "25b21446f7fbd92be4c5a0845ac3dbe6d15e7db310f1dcaf7e16b793955c5e71"
+    },
+    {
       "path": "docs/releases/plugin-2.5.3.md",
       "bytes": 3806,
       "sha256": "a001859630aa387a7fac183c80bddebb520e0aeb1872f97557a9a59995feac49"
@@ -475,6 +480,11 @@
       "sha256": "7044b299949bcb084160ebeafcfe3c3e8fbc97d29e4e3bbe5c8ce99ef539e29c"
     },
     {
+      "path": "docs/releases/plugin-2.5.9.md",
+      "bytes": 540,
+      "sha256": "cc48fbe362faf38106646addedd48994e1bc3d553990b8edfc9eab113e647278"
+    },
+    {
       "path": "docs/validation/windows-auto-update-2.4.13.md",
       "bytes": 3805,
       "sha256": "02822cc5ddeac8cdc59e89c2445166551325bce0b962ca44129ed405c9615738"
@@ -486,8 +496,8 @@
     },
     {
       "path": "package.json",
-      "bytes": 1760,
-      "sha256": "ea1a7e161e278caa533c96ae57a0d455c6177b5032c26d91c421b33d82bef32a"
+      "bytes": 1761,
+      "sha256": "e3be84b99127f0dfcc7caced54d5de9355725e0873ca2fb4a753f59e133d9cbb"
     },
     {
       "path": "packages/kb-contracts/desktop.js",
@@ -611,8 +621,8 @@
     },
     {
       "path": "packages/kb-core/src/kbcore.js",
-      "bytes": 131232,
-      "sha256": "d5e3dc1aa868c31d07678497aba820428a74bc0715bbf08579212eb2b4db69bc"
+      "bytes": 131233,
+      "sha256": "5ae6ed1724f0ac049667d7cb7a89e7a8ff449f111e8a182f0e1affa876d48d56"
     },
     {
       "path": "packages/kb-core/src/library-framework.js",
@@ -816,18 +826,18 @@
     },
     {
       "path": "packages/kb-service/desktop-host-links.js",
-      "bytes": 3838,
-      "sha256": "543676600ac383c9845d7f8eb3232fb54bc2da88e8c8d4350ed59755e6b23d12"
+      "bytes": 4134,
+      "sha256": "a5cbfb48fcc5ea146b9760a586f0e04b25f725556e4399e3cb3fe052c2319e2f"
     },
     {
       "path": "packages/kb-service/dsh-broker.js",
-      "bytes": 6767,
-      "sha256": "32e02c39df6cbb68fac68f5b5ebb423585557daa66d22ebc376f7680fe30b0fc"
+      "bytes": 7238,
+      "sha256": "983ddd70df0eeeb36207074cf46bd1a22a3d300227340295447ddaff6554b056"
     },
     {
       "path": "packages/kb-service/dsh-host.js",
-      "bytes": 18645,
-      "sha256": "3b79d1bf83bb9e67b1a922132743a0b5f5f280078c4e4fdd05cbf605254ce6fb"
+      "bytes": 19175,
+      "sha256": "958a1ee7d839404e792e09ee3063d2cbfb9acf161aae72a825d0e8076e13fb3d"
     },
     {
       "path": "packages/kb-service/dsh-stream-relay.js",
@@ -851,8 +861,8 @@
     },
     {
       "path": "packages/kb-service/host-adapter.js",
-      "bytes": 15548,
-      "sha256": "f133e2f363a9b01af6b99799c643f00475f103fc5edabe0b2c8a73d7449ae54e"
+      "bytes": 15891,
+      "sha256": "c779d0bc6379fe085e1ce1fe5dd61d1c527faacc006def95a372572ab86aeb8b"
     },
     {
       "path": "packages/kb-service/host-assets.js",
@@ -866,8 +876,8 @@
     },
     {
       "path": "packages/kb-service/host-updates.js",
-      "bytes": 1499,
-      "sha256": "3ab74709fecb975583a45eaa9d27cfb2a82c3c8e33f89a2cc5545a18ee01f4d5"
+      "bytes": 1752,
+      "sha256": "834eccd07ebabcc22b60ec06ac23ffacde634ad4cee6e29d3455bdf44d72abdf"
     },
     {
       "path": "packages/kb-service/inbox-host.js",
@@ -911,13 +921,13 @@
     },
     {
       "path": "packages/kb-service/memory-channel.js",
-      "bytes": 3601,
-      "sha256": "13a17e61af0106af3eb13699689a8918fdecdb258ce345f7659a74cdd9910cd2"
+      "bytes": 3821,
+      "sha256": "737aa794fee601ba6e85e43c9e2ed73f7f9c30adb228edf9fb14458f55a3d68e"
     },
     {
       "path": "packages/kb-service/memory-sync.js",
-      "bytes": 3445,
-      "sha256": "1d6d33d338502996b343066287c1efccf9292d11c2fadc15cb6b54fceeb750e3"
+      "bytes": 3527,
+      "sha256": "10a81dfb13bb7bf47494ba5c2e12df5729c310f8b01750fd29e33f1ed49a4329"
     },
     {
       "path": "packages/kb-service/migration.js",
@@ -941,18 +951,18 @@
     },
     {
       "path": "packages/kb-service/runtime.js",
-      "bytes": 8345,
-      "sha256": "f9d711c5f5e110710e2d3c152a38fa9295cb797f589a90ea336d40cf290af2dc"
+      "bytes": 10637,
+      "sha256": "35422f0167348c120de63bd44b6d5da8d72c97a11b7d6f51e6f9ae2ca782ba45"
     },
     {
       "path": "packages/kb-service/safe-update.js",
-      "bytes": 5287,
-      "sha256": "9db50904ab2fe85d542d3fbec6c4715b6ac01f25b70d89b651f475dcb4ef8088"
+      "bytes": 6302,
+      "sha256": "67481967aa3688169c37c4f42c53fa84be65211a7889de9c7e05842e2691a5bb"
     },
     {
       "path": "packages/kb-service/service.js",
-      "bytes": 43557,
-      "sha256": "477b4ec52c6409cde97879cc121287e3aaea8367cd21c950897db14f340041ac"
+      "bytes": 44220,
+      "sha256": "d45c5109f07c4ae6242fd3a97d784e5b08a85913837f7a44959a970116a8e5a6"
     },
     {
       "path": "packages/kb-service/tool-definitions.json",
@@ -1211,8 +1221,8 @@
     },
     {
       "path": "src/client/index.js",
-      "bytes": 492304,
-      "sha256": "3a632850684659f1e427e09e3c0aded9e590517cc6fe70670dcd55ef29ca640d"
+      "bytes": 494892,
+      "sha256": "19e9fff5fd42f42dbaf94a8b0137d7dde647ef89ba2166f02b7af66ba3429230"
     },
     {
       "path": "src/client/knowledge-ui.css",
@@ -2231,8 +2241,8 @@
     },
     {
       "path": "src/client/workbench-ui.js",
-      "bytes": 238996,
-      "sha256": "2ef308c7562d4873fa8aca295de1ef8dead6773599a7da825199a0b7c9de3247"
+      "bytes": 239861,
+      "sha256": "4ae472242eebde1cfd24d2cd1668af483aa63a0e7b9fbd43608d9a352f7b70e0"
     },
     {
       "path": "src/host/capture-surface.js",
@@ -2296,8 +2306,8 @@
     },
     {
       "path": "src/host/index.js",
-      "bytes": 164573,
-      "sha256": "263ad5a1c9713a0bcd5fcd9125383550a422c44d12f3ca60eaada8525c0461f5"
+      "bytes": 164753,
+      "sha256": "546bf73a7c20af8e45081a56d7349085f3fd69d67d06a946f33770c31435ed2e"
     },
     {
       "path": "src/host/kbcore.js",

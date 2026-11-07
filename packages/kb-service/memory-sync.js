@@ -5,8 +5,8 @@ export function isMemoryRecord(file){
   const marker=v=>marks.has(String(v??'').trim().toLowerCase());
   return marker(file.kind)||marker(file.type)||(file.tags??[]).some(marker)||String(file.path??'').split('/').slice(0,-1).some(marker);
 }
-export function createKnowledgeMemoryProvider(dispatch,subscribe){
-  return {protocol:'dsh-memory/v1',subscribe,async snapshot(context={}){
+export function createKnowledgeMemoryProvider(dispatch,subscribe,cacheInvalidations=false){
+  return {protocol:'dsh-memory/v1',subscribe,cacheInvalidations,async snapshot(context={}){
     const read=operation=>dispatch(operation,context);
     const selected=[];let offset=0,libraryId=null,policy=null;
     for(;;){
@@ -37,6 +37,6 @@ export function createKnowledgeMemoryProvider(dispatch,subscribe){
     return {protocol:'dsh-memory/v1',libraryId,complete:true,entries};
   }};
 }
-export function publishKnowledgeMemory(ctx,dispatch,subscribe){
-  ctx.provide('knowledgeMemory',createKnowledgeMemoryProvider(dispatch,subscribe));
+export function publishKnowledgeMemory(ctx,dispatch,subscribe,cacheInvalidations){
+  ctx.provide('knowledgeMemory',createKnowledgeMemoryProvider(dispatch,subscribe,cacheInvalidations));
 }
