@@ -39,7 +39,13 @@ export async function mountServiceHost(ctx, config, { isLiveKnowledgeGrant, gate
   ctx.effect(()=>()=>{clearInterval(bridgeTimer);nativeBridge?.dispose()},'kb-service: native DSH bridge')
   publishKnowledgeMemory(ctx,(operation,context)=>{
     const agent=context?.session?ctx.get('agents')?.get(context.session):null;
-    if(context?.session&&!agent)throw Error('knowledge_memory_session_unavailable');
+    if(context?.session&&!agent){
+      if(context.purpose!=='memory-management')throw Error('knowledge_memory_session_unavailable');
+      const owner=ownerFor(context.session);
+      const historicalClient=owner?desktopLinks?.clientForLibrary(owner):primaryClient;
+      if(!historicalClient)throw Error('knowledge_memory_library_disconnected');
+      return historicalClient.call('workspace.read',{operation});
+    }
     if(agent&&ownerFor(agent.id)&&!desktopLinks)throw Error('knowledge_memory_library_disconnected');
     const target=agent?desktopLinks?.clientForAgent(agent):undefined;
     if(target===null)throw Error('knowledge_memory_library_disconnected');
