@@ -1,3 +1,42 @@
+# Personal Knowledge Base · Unified Design and Evolution
+
+
+[English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
+
+<!-- project-record-version: 2.5.12 -->
+
+**Source covered: plugin 2.5.12 / Windows client 1.1.3 source · Updated: 2026-11-09**
+
+## Plugin 2.5.12 · First shared library and inbox workflow refresh
+
+On Windows, a new shared library created in an empty folder enables original-file indexing by default. The plugin and desktop client can operate independently or connect to one library. Fully exit and reopen DSH after its first shared-library binding. Existing embedded libraries still require explicit migration.
+
+The workflow view refreshes after an update or service reconnect. Inbox organization reads the current workflow revision before starting. A same-library revision conflict retries preparation once, before a session or prompt is created. A library change stops the old request and displays a notice.
+
+Windows tests covered creating a library from either side, independent use, one writer for a shared library, and stopping requests when the selected library changes. The Windows 1.1.3 installer was built locally and checked against the packaged plugin.
+
+## Plugin 2.5.10 · Unified memory integration
+
+The workbench uses the versioned interface to read and modify DSH global memory. Linked entries follow their source documents. The Memory panel refreshes on change notifications while connected and returns to library-only entries if the DSH host disconnects.
+
+This release includes the safe service handoff from 2.5.9. Pair it with DSH Memory 1.0.14.
+
+## Plugin 2.5.9 · Safe service handoff
+
+The updater reuses its verified package while knowledge-base work is active. When idle, it drains the old service, applies the package and uses DSH hot reload where available. Completion requires the new Host and worker to be active.
+
+## Plugin 2.5.8 · Faster library reopening
+
+Reopening the same library reuses the current view. File changes and manual refresh update it, and permission changes discard the old view.
+
+## Plugin 2.5.7 · ASAR indexing fix
+
+The knowledge-base service treats Electron ASAR archives as physical files. Virtual entries no longer cause repeated file-change errors during index maintenance. Desktop client 1.1.2 remains compatible.
+
+This long-term record is for users, maintainers, and future contributors. It explains why the product is built this way, what it can currently do, how its features fit together, where data is stored, and what may come next. “Implemented” refers to source code in this repository. Roadmap items are future directions, not features already delivered. The installed version and build ID must be checked in the client and the corresponding release manifest.
+
+See the [workbench guide](WORKBENCH.en.md) for usage, [release notes](RELEASE.en.md) for changes in each release, and [versioning policy](VERSIONING.en.md) for version comparisons. This record explains the product as a whole; release notes are not an architecture document.
+
 ## Plugin 2.5.6 · Historical-session memory linking
 
 Memory management uses persisted ownership to select the primary or an authorized connected secondary library.
@@ -48,51 +87,6 @@ Implement the user-selected additive migration: preview, per-path decisions, bun
 
 The shared service enforces management access and library identity. Mechanism status now reports the core program version instead of a fixed 0.5.0. Seven new focused checks and two related regression checks passed, including a real Windows service. No real private library was migrated or complete Electron UI verified. The feature ships in the 2.4.14 stable package and update manifest. [Details](docs/LIBRARY-FRAMEWORK-MIGRATION.md#english)
 
-## 2.4.6 migration boundary (2026-11-05)
-
-The pristine 2.4.6 updater can block on a missing legacy receipt before downloading any new or transition payload. Its old preparation worker may also resolve unrelated Host dependencies. Publishing 2.4.13 cannot repair that already-running code. Success after a one-time local recovery does not prove zero-intervention upgrades for other users.
-
-A separate [2.4.6 migration recovery entry](docs/LEGACY-246-BOOTSTRAP.md) verifies the public old package and transactionally installs the unchanged official 2.4.13 package. It discovers one profile or requires an explicit choice. This is one-time external recovery, not silent automatic migration. Four Windows entry/real-pnpm checks and two client-boundary checks cover dependency preservation, EPERM rollback, busy processes, profile selection and bundled Python. Mismatched historical safe transactions remain a limitation. Universal zero-intervention migration requires an independent Host recovery channel and is not claimed complete.
-
-# Personal Knowledge Base · Unified Design and Evolution
-
-
-[English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
-
-<!-- project-record-version: 2.5.12 -->
-
-## Plugin 2.5.12 · First shared library and inbox workflow refresh
-
-On Windows, a new shared library created in an empty folder enables original-file indexing by default. The plugin and desktop client can operate independently or connect to one library. Fully exit and reopen DSH after its first shared-library binding. Existing embedded libraries still require explicit migration.
-
-The workflow view refreshes after an update or service reconnect. Inbox organization reads the current workflow revision before starting. A same-library revision conflict retries preparation once, before a session or prompt is created. A library change stops the old request and displays a notice.
-
-## Plugin 2.5.10 · Unified memory integration
-
-The workbench uses the versioned interface to read and modify DSH global memory. Linked entries follow their source documents. The Memory panel refreshes on change notifications while connected and returns to library-only entries if the DSH host disconnects.
-
-This release includes the safe service handoff from 2.5.9. Pair it with DSH Memory 1.0.14.
-
-## Plugin 2.5.9 · Safe service handoff
-
-The updater reuses its verified package while knowledge-base work is active. When idle, it drains the old service, applies the package and uses DSH hot reload where available. Completion requires the new Host and worker to be active.
-
-## Plugin 2.5.8 · Faster library reopening
-
-Reopening the same library reuses the current view. File changes and manual refresh update it, and permission changes discard the old view.
-
-## Plugin 2.5.7 · ASAR indexing fix
-
-The knowledge-base service treats Electron ASAR archives as physical files. Virtual entries no longer cause repeated file-change errors during index maintenance. Desktop client 1.1.2 remains compatible.
-
-**Source covered: plugin 2.5.3 / client 1.1.1 · Updated: 2026-11-07 · Maintenance: review this record alongside the source with every release.**
-
-This long-term record is for users, maintainers, and future contributors. It explains why the product is built this way, what it can currently do, how its features fit together, where data is stored, and what may come next. “Implemented” refers to source code in this repository. Roadmap items are future directions, not features already delivered. The installed version and build ID must be checked in the client and the corresponding release manifest.
-
-See the [workbench guide](WORKBENCH.en.md) for usage, [release notes](RELEASE.en.md) for changes in each release, and [versioning policy](VERSIONING.en.md) for version comparisons. This record explains the product as a whole; release notes are not an architecture document.
-
-
-
 ## 2.4.13: preserve unrelated Host dependency locks (2026-11-05)
 
 Resolve only the dependency-free knowledge package in an isolated resolver, then merge its importer, package and snapshot entries into the original pnpm v9 lockfile. Other source specifiers, pinned versions and records remain byte-for-byte intact. Host-internal packages are not looked up, copied or reinstalled. Unsupported or ambiguous locks and cross-package references fail closed.
@@ -140,6 +134,12 @@ Three focused tests passed. An isolated real Windows shared service uses synthet
 Keep the workbench API registered during handoff. The client shows a neutral preparation message and continues after readiness. Only requests explicitly rejected before execution may be retried; genuine HTTP 405, lost responses and unknown write outcomes remain errors. Preparation failures and timeouts retain recovery guidance.
 
 Nineteen focused checks passed, including a real local HTTP server, exactly one mutation after readiness, failure/timeout boundaries and service lifecycle checks. No additional full regression or live user-instance/UI verification is claimed.
+
+## 2.4.6 migration boundary (2026-11-05)
+
+The pristine 2.4.6 updater can block on a missing legacy receipt before downloading any new or transition payload. Its old preparation worker may also resolve unrelated Host dependencies. Publishing 2.4.13 cannot repair that already-running code. Success after a one-time local recovery does not prove zero-intervention upgrades for other users.
+
+A separate [2.4.6 migration recovery entry](docs/LEGACY-246-BOOTSTRAP.md) verifies the public old package and transactionally installs the unchanged official 2.4.13 package. It discovers one profile or requires an explicit choice. This is one-time external recovery, not silent automatic migration. Four Windows entry/real-pnpm checks and two client-boundary checks cover dependency preservation, EPERM rollback, busy processes, profile selection and bundled Python. Mismatched historical safe transactions remain a limitation. Universal zero-intervention migration requires an independent Host recovery channel and is not claimed complete.
 
 ## 2.4.5: direct 2.4.3 updates and legacy service handoff (2026-11-05)
 
