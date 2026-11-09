@@ -35,7 +35,9 @@ test('custom conversation uses its definition, validates revisions, and resolves
 
 test('builtin inbox retains its identity gate', async () => {
   const handle = createInboxHost({ client: { call: async () => ({ kbId: 'fixture' }) } })
-  await assert.rejects(handle({ op: 'flows.prepare-conversation', id: 'builtin-inbox-organize', kbId: 'other', expectedRevision: 1 }), /身份已变化/)
+  const result = await handle({ op: 'flows.prepare-conversation', id: 'builtin-inbox-organize', kbId: 'other', expectedRevision: 1 })
+  assert.equal(result.reason, 'kb-changed')
+  assert.match(result.error, /知识库已切换/)
 })
 
 test('builtin launch uses saved card route and updated revision; custom model catalog is not High-only', async () => {
@@ -55,6 +57,7 @@ test('builtin launch uses saved card route and updated revision; custom model ca
     assert.deepEqual(prepared.execution, route)
     assert.equal(prepared.flowRevision, saved.revision)
     assert.equal((await handle({ op: 'flows.models' })).groups[0].models.length, 2)
-    await assert.rejects(handle({ op: 'flows.prepare-conversation', id: 'builtin-inbox-organize', kbId: 'fixture', expectedRevision: 1 }), /身份已变化/)
+    const stale = await handle({ op: 'flows.prepare-conversation', id: 'builtin-inbox-organize', kbId: 'fixture', expectedRevision: 1 })
+    assert.equal(stale.reason, 'flow-changed')
   } finally { await rm(stateDir, { recursive: true, force: true }) }
 })

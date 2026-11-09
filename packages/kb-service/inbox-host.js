@@ -26,9 +26,14 @@ export function createInboxHost({client,getLLM,getWorkspace}){
     return prepareFlowConversation({prepareConversation:input=>client.call('adapter.dispatch',{operation:input})},
      {ensure:async root=>{if(!getWorkspace)throw Error('DSH 流程工作区尚未就绪');return getWorkspace(root);}},body);
    }
-   const s=await status();if(body.kbId!==s.kbId)throw Error('整理流程或知识库身份已变化');
+   const s=await status();
+   const changed={ok:false,reason:'kb-changed',error:'当前知识库已切换，原库的整理请求已停止。请确认当前库后再发起整理。'};
+   if(!s.kbId)return {ok:false,reason:'kb-unbound',error:'当前没有已绑定的知识库，未启动整理。'};
+   if(body.kbId!==s.kbId)return changed;
    const saved=await client.call('adapter.dispatch',{operation:{op:'flows.get',id:INBOX_FLOW.id}});
-   if(!saved?.ok||saved.kbId!==s.kbId||body.expectedRevision!==saved.flow.revision)throw Error('整理流程或知识库身份已变化');
+   if(!saved?.ok||!saved.flow)return {ok:false,reason:saved?.reason??'flow-unavailable',error:saved?.error??'暂时无法读取整理流程，未启动整理。'};
+   if(saved.kbId!==s.kbId)return changed;
+   if(body.expectedRevision!==saved.flow.revision)return {ok:false,reason:'flow-changed',error:'整理流程配置已更新，请使用最新配置。'};
    const selected=body.execution===undefined?saved.flow.execution:body.execution;
    const execution=(await models()).find(m=>m.provider===selected?.provider&&m.model===selected?.model);if(!execution||!(await getLLM().resolveModelInfo(execution.provider,execution.model)).reasoning?.efforts?.some(e=>e.id==='high'))throw Error('请先在流程卡中保存支持 High 的可用模型');
    if(!getWorkspace)throw Error('DSH 流程工作区尚未就绪');const workspace=await getWorkspace(s.kbPath);

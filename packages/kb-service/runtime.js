@@ -27,12 +27,17 @@ async function waitForClose(dir,python,receipt){
 }
 // Both applications use this owner election and the same SID-protected home.
 // Discovery is never authorization: every connection authenticates the library.
-async function bootstrapRuntime({library,home=defaultServiceHome(),python='python',node=process.execPath,kind='desktop',candidateRoot,allowFreshSynthetic=true,required=[],sources={},preferredVersion,onEvent=()=>{}}){
+async function bootstrapRuntime({library,home=defaultServiceHome(),python='python',node=process.execPath,kind='desktop',candidateRoot,allowFreshSynthetic=true,allowFreshShared=false,freshPolicy,required=[],sources={},preferredVersion,onEvent=()=>{}}){
  const identity=await libraryIdentity(library),base=path.resolve(home),privateDir=path.join(base,identity.instanceId),readyFile=path.join(privateDir,'ready.json');
  await mkdir(base,{recursive:true});await native(python,'private-dir',{path:privateDir});
  const build=await runtimeBuild(),ownerFile=path.join(identity.root,'.kbmeta/service-owner.json'),lockFile=path.join(privateDir,'launch.lock'),owner=randomUUID();
  let lock,client,off;
  async function connect(){const ready=await readJson(readyFile,null);if(!ready)return null;let c;try{c=await connectService({pipe:ready.pipe,python,credentialFile:path.join(privateDir,'bootstrap.dpapi.json'),kind});const h=await c.call('service.health');if(h.library.instanceId!==identity.instanceId)throw error('BINDING_CHANGED');return {client:c,health:h};}catch(e){c?.close();if(['BINDING_CHANGED','UNAUTHORIZED'].includes(e.code))throw e;return null;}}
+ const freshShared=async()=>{
+  if(!allowFreshShared)return false;
+  const meta=await readJson(path.join(identity.root,'.kbmeta/kb.json'),null);
+  return meta?.kbId===identity.kbId&&meta.installState==='complete'&&meta.freshSharedSetup===true;
+ };
  const until=Date.now()+90000;
  let occupied=false;
  async function releaseLock(){
@@ -83,13 +88,17 @@ async function bootstrapRuntime({library,home=defaultServiceHome(),python='pytho
   }
   if(!client&&lock){
    const marker=await readJson(path.join(identity.root,'.desktop-preview.json'),null),managed=await readJson(path.join(identity.root,'.kbmeta/service-mode.json'),null);
-   if(!managed&&!(allowFreshSynthetic&&marker?.synthetic===true))throw error('RECOVERY_REQUIRED','已有知识库需先完成可审阅的共库迁移；未自动切换旧插件写入者。');
-   const configurationPath=path.join(privateDir,'launch.json');await atomic(configurationPath,{library:identity.root,privateDir,python,sources,recoverOwner:true,idleMs:30000,...(candidateRoot?{desktopRoot:await realpath(candidateRoot)}:{})});
+   if(!managed&&!(allowFreshSynthetic&&marker?.synthetic===true)&&!await freshShared())throw error('RECOVERY_REQUIRED','已有知识库需先完成可审阅的共库迁移；未自动切换旧插件写入者。');
+   const configurationPath=path.join(privateDir,'launch.json');await atomic(configurationPath,{library:identity.root,privateDir,python,sources,recoverOwner:true,idleMs:30000,...(await freshShared()&&freshPolicy?{freshPolicy}:{}),...(candidateRoot?{desktopRoot:await realpath(candidateRoot)}:{})});
    await launchService({configurationPath,logDirectory:privateDir,node});
    while(Date.now()<until){const live=await connect();if(live){client=live.client;break;}await pause(100);}
   }
   if(!client)throw occupied?error('STATE_BUSY','旧知识库服务仍在处理任务或退出中，暂未接管'):error('HOST_UNAVAILABLE','本地知识库服务启动超时，未启用第二个写入者');
-  if(!(await client.call('service.health')).active)await client.call('migration.commit',{planId:'fresh',quiescent:true});
+  if(!(await client.call('service.health')).active){
+   const marker=await readJson(path.join(identity.root,'.desktop-preview.json'),null);
+   if(!(allowFreshSynthetic&&marker?.synthetic===true)&&!await freshShared())throw error('RECOVERY_REQUIRED','未完成的共库交接需要从原入口继续');
+   await client.call('migration.commit',{planId:'fresh',quiescent:true});
+  }
   await client.call('events.subscribe');off=client.subscribe(onEvent);
   const serviceHealth=await client.call('service.health');
   await mkdir(base,{recursive:true});await atomic(path.join(privateDir,'discovery.json'),{schemaVersion:1,...identity,buildId:serviceHealth.serviceBuildId,clientBuildId:build,privateDir,kind,updatedAt:Date.now()});
@@ -139,4 +148,22 @@ export async function connectRuntime(options){
   client:{get welcome(){return link?.client.welcome??structuredClone(lastWelcome)},async call(method,args={},opts={}){if(!link||closed){if(!closed)void reconnect();throw Object.assign(error(reconnectError?.code??'SERVICE_STARTING',reconnectError?.message??(closed?'知识库正在安全更新，正在等待新版接管':'知识库服务正在建立连接')),{transport:true});}try{return await link.client.call(method,args,opts);}catch(e){if(!draining&&(e.transport||e.code==='UNAUTHORIZED'))void reconnect();throw e;}},subscribe(fn){listeners.add(fn);return()=>listeners.delete(fn);},close(){void runtime.close();}},
   async close(){disposed=true;closed=true;clearInterval(timer);listeners.clear();await link?.close();link=null;},
  };return runtime;
+}
+
+// First binding reserves an empty library before any embedded writer can use it.
+export async function selectFirstSharedLibrary({core,library,python,home,node}){
+ const config=await core.getConfigFresh();
+ if(config.kbPath)throw error('BINDING_CHANGED','当前已有知识库绑定，请刷新后重试');
+ const marker=await readJson(path.join(library,'.kbmeta/service-mode.json'),null);
+ if(!marker){
+  const init=await core.initializeLibrary(library,{freshSetup:true});
+  if(!init.ok)throw error('RECOVERY_REQUIRED',init.error??init.detail??'无法建立新共享库');
+ }
+ const freshPolicy={categories:config.categories,privateDirs:config.privateDirs,excludeFromSearch:config.excludeFromSearch};
+ const runtime=await connectRuntime({library,python,home,node,kind:'dsh-adapter',allowFreshSynthetic:false,allowFreshShared:true,freshPolicy});
+ try{
+  const bound=await core.bindSharedLibrary(library,runtime.identity,config.revision);
+  if(!bound.ok)throw error('BINDING_CHANGED',bound.note??bound.detail??'绑定发生变化，请刷新后重试');
+  return {...bound,action:marker?'attached':'created',restartRequired:true,note:'共享知识库已就绪。请完全退出并重新打开 DSH，以连接同一个库。'};
+ }finally{await runtime.close()}
 }

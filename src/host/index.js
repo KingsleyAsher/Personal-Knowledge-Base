@@ -1,4 +1,5 @@
 import {createHandoffApi} from '../../packages/kb-service/handoff-api.js'
+import {selectFirstSharedLibrary} from '../../packages/kb-service/runtime.js'
 import {resolveHostPython} from '../../packages/kb-service/host-python.js'
 import { readCandidateBuild } from '../../packages/kb-service/build.js'
 import {publishKnowledgeMemory} from '../../packages/kb-service/memory-sync.js';
@@ -247,6 +248,7 @@ export function apply(ctx, config) {
     ctx.inject(['tools','agents'],scope=>scope.effect(async () => { try{await mountServiceHost(scope, config, { isLiveKnowledgeGrant, gatewayApply, createCitationGuard, getFlowWorkspace:root=>sharedFlowWorkspace.ensure(root),installApi:handler=>handoffApi.attach(handler),legacyStateDir:sharedState.stateDir,profileDir:sharedState.profileDir,library:sharedRoot,python:await resolveHostPython(path.resolve(path.dirname(fileURLToPath(import.meta.url)),'../..')), build: await readCandidateBuild(path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..')) });}catch(error){handoffApi.fail(error);throw error} }, 'kb-service: explicit shared mode'))
     return
   }
+  const firstSharedEnabled = process.platform === 'win32' && (config?.runtimeMode ?? 'auto') === 'auto'
   if(config?.runtimeMode==='auto')config={...config,runtimeMode:'embedded'}
   if (config?.runtimeMode && config.runtimeMode !== 'embedded') throw new Error('Unknown knowledge runtime mode')
   const startedAt = new Date().toISOString()
@@ -1656,7 +1658,19 @@ let parsingService = null
 
   // 「自动建库 / 识别」：选定文件夹后点一次 —— 空目录建库、本插件库接入、普通资料夹识别导入。
   // R1/R3 的顺序：foreign 目录**先冻结清单、再建标准结构**；导入完成且核验通过后才切当前库。
+  const maybeFirstShared = async (target) => {
+    if (!firstSharedEnabled || !path.isAbsolute(target) || (await core.getConfigFresh()).kbPath) return null
+    const info = await inspectFolder(target)
+    const meta = info.meta
+    const managed = fsExists(path.join(target, '.kbmeta/service-mode.json'))
+    // Never promote an existing embedded library by relabelling it.
+    if (!managed && meta?.freshSharedSetup !== true && info.kind !== 'empty' && !(info.kind === 'missing' && info.creatable)) return null
+    await ctx.get('h1Isolation')?.assertBindingTarget(target)
+    return selectFirstSharedLibrary({core, library: target, python: await resolveHostPython(pkgRootForState), home: config?.shared?.home})
+  }
   const kbSetupFolder = async (folderRaw, modeIn) => {
+    const shared = modeIn !== 'copy' && await maybeFirstShared(String(folderRaw).trim())
+    if (shared) return shared
     if (importService === null) return { ok: false, blocked: true, note: '导入服务尚未就绪' }
     return await importService.setupFolder(folderRaw, modeIn)
   }
@@ -2158,6 +2172,10 @@ let parsingService = null
         // Legacy bind also switches an existing library without commit=true.
         // Check every entry before it can inspect or mutate another root.
         await ctx.get('h1Isolation')?.assertBindingTarget(target)
+        if (opts.confirmInit === true && opts.commit !== true) {
+          const shared = await maybeFirstShared(String(target).trim())
+          if (shared) return shared
+        }
         return bindBeforeH1(target, opts)
       }
       try {

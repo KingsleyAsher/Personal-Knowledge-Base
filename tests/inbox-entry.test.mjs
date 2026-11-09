@@ -139,8 +139,10 @@ test('builtin flow survives reload, cannot be changed, and forces High conversat
 test('High is selected before sending; lack of a High model never creates or sends a session', async () => {
   const source = await readFile(new URL('../src/client/index.js', import.meta.url), 'utf8')
   const code = source.slice(source.indexOf('    let flowClientContext'), source.indexOf('    function Flows()'))
-  for (const supported of [true, false]) {
-    const calls = []
+  for (const scenario of ['retry', 'no-high', 'switched']) {
+    const supported = scenario !== 'no-high'
+    const calls = [], revisions = []
+    let reads = 0
     const services = {
       sessions: { create: async opts => { assert.equal(opts.agentPreset, 'knowledge'); calls.push('create'); return 'session' }, retain: () => ({ ready: Promise.resolve(), release() {} }), scope: () => ({ get: () => ({ send: async prompt => calls.push(prompt) }) }) },
       uiWorkspace: { openSession() {} }, uiConversation: { binding: () => ({ activate() {} }) },
@@ -148,9 +150,24 @@ test('High is selected before sending; lack of a High model never creates or sen
     }
     const launch = vm.runInNewContext(code + '\nflowLaunchContext = context; launchFlowConversation', {
       context: { get: name => services[name] },
-      callApi: async args => args.op === 'flows.models' ? { ok: true, groups: [{ id: 'provider', models: [{ id: 'model', reasoning: { efforts: supported ? [{ id: 'high' }] : [] } }] }] } : { ok: true, workspaceId: 'workspace', execution: args.execution, requiredReasoningEffort: 'high', prompt: 'organize-inbox' },
+      callApi: async args => {
+        if (args.op === 'flows.get') return { ok: true, kbId: scenario === 'switched' ? 'other' : 'fixture', flow: { id: args.id, revision: 2 + reads++ } }
+        if (args.op === 'flows.models') return { ok: true, groups: [{ id: 'provider', models: [{ id: 'model', reasoning: { efforts: supported ? [{ id: 'high' }] : [] } }] }] }
+        revisions.push(args.expectedRevision)
+        if (scenario === 'retry' && revisions.length === 1) return { ok: false, reason: 'flow-changed' }
+        return { ok: true, workspaceId: 'workspace', execution: args.execution, requiredReasoningEffort: 'high', prompt: 'organize-inbox' }
+      },
     })
-    if (supported) { await launch({ id: 'builtin-inbox-organize', revision: 1 }, 'fixture', {}, { provider: 'provider', model: 'model' }); assert.deepEqual(calls, ['create', 'select-high', 'organize-inbox']) }
+    if (scenario === 'switched') {
+      await assert.rejects(launch({ id: 'builtin-inbox-organize', revision: 1 }, 'fixture', {}), /知识库已切换/)
+      assert.deepEqual(revisions, [])
+      assert.deepEqual(calls, [])
+    }
+    else if (supported) {
+      await launch({ id: 'builtin-inbox-organize', revision: 1 }, 'fixture', {}, { provider: 'provider', model: 'model' })
+      assert.deepEqual(revisions, [2, 3])
+      assert.deepEqual(calls, ['create', 'select-high', 'organize-inbox'])
+    }
     else { await assert.rejects(launch({ id: 'builtin-inbox-organize', revision: 1 }, 'fixture', {}), /High/); assert.deepEqual(calls, []) }
   }
 })

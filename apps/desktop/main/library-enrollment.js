@@ -1,6 +1,6 @@
 import path from 'node:path';import os from 'node:os';import {realpath,readdir,open,unlink,mkdir} from 'node:fs/promises';import {pathToFileURL} from 'node:url';
 // Called only after the native directory picker has supplied the selected path.
-export async function enrollPickedLibrary({root,dataDir,backendRoot,python,node,confirm,serviceHome=path.join(os.homedir(),'.dsh/shared-knowledge-services')}){
+export async function enrollPickedLibrary({root,dataDir,backendRoot,python,node,confirm,serviceHome=process.env.KB_SHARED_HOME??path.join(os.homedir(),'.dsh/shared-knowledge-services')}){
  const load=name=>import(pathToFileURL(path.join(backendRoot,'packages/kb-service',name)).href);
  const {atomic,readJson,hash,native}=await load('io.js'),{libraryIdentity}=await load('service.js');
  root=await realpath(root);const metaFile=path.join(root,'.kbmeta/kb.json'),modeFile=path.join(root,'.kbmeta/service-mode.json'),grantsFile=path.join(dataDir,'real-library-grants.json');
@@ -13,7 +13,7 @@ export async function enrollPickedLibrary({root,dataDir,backendRoot,python,node,
   if(!pending){if(!await confirm(root))return {cancelled:true};await atomic(pendingFile,{root,approvedAt:new Date().toISOString()});}
   if(!meta){
    const {createEmbeddedKernel}=await import(pathToFileURL(path.join(backendRoot,'packages/kb-core/index.js')).href),kernel=createEmbeddedKernel({stateDir:path.join(dataDir,'library-enrollments',hash(root)+'-init')});
-   try{const r=await kernel.openCore().bind(root,{confirmInit:true});if(!r.ok)throw Error(r.note??'文件夹初始化未完成');}finally{kernel.dispose();}
+   try{const r=await kernel.openCore().bind(root,{confirmInit:true,originalIndex:true});if(!r.ok)throw Error(r.note??'文件夹初始化未完成');}finally{kernel.dispose();}
    meta=await readJson(metaFile,null);
   }
   await atomic(pendingFile,{root,kbId:meta.kbId,approvedAt:pending?.approvedAt??new Date().toISOString()});

@@ -282,7 +282,7 @@ export async function inspectFolder(folderRaw) {
   if (existsSync(metaPath)) {
     try {
       const meta = JSON.parse(await readFile(metaPath, 'utf8'))
-      out.meta = { installState: meta.installState ?? null, kbId: meta.kbId ?? null, schemaVersion: meta.schemaVersion ?? null, name: meta.name ?? null, createdAt: meta.createdAt ?? null }
+      out.meta = { installState: meta.installState ?? null, kbId: meta.kbId ?? null, schemaVersion: meta.schemaVersion ?? null, name: meta.name ?? null, createdAt: meta.createdAt ?? null, freshSharedSetup: meta.freshSharedSetup === true }
       if (meta.schemaVersion !== 1) {
         out.kind = 'incompatible'
         out.reasons.push(`元数据版本不兼容（schemaVersion=${meta.schemaVersion ?? '缺'}，本版支持 1）`)
