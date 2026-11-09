@@ -59,7 +59,13 @@ A separate [2.4.6 migration recovery entry](docs/LEGACY-246-BOOTSTRAP.md) verifi
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 2.5.10 -->
+<!-- project-record-version: 2.5.12 -->
+
+## Plugin 2.5.12 · First shared library and inbox workflow refresh
+
+On Windows, a new shared library created in an empty folder enables original-file indexing by default. The plugin and desktop client can operate independently or connect to one library. Fully exit and reopen DSH after its first shared-library binding. Existing embedded libraries still require explicit migration.
+
+The workflow view refreshes after an update or service reconnect. Inbox organization reads the current workflow revision before starting. A same-library revision conflict retries preparation once, before a session or prompt is created. A library change stops the old request and displays a notice.
 
 ## Plugin 2.5.10 · Unified memory integration
 

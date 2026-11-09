@@ -64,7 +64,13 @@ Flow text and actions now wrap in separate sections. Each card saves its model a
 
 [简体中文](PROJECT-RECORD.md) · [English](PROJECT-RECORD.en.md)
 
-<!-- project-record-version: 2.5.10 -->
+<!-- project-record-version: 2.5.12 -->
+
+## 插件 2.5.12 · 首次共库与整理流程刷新
+
+Windows 首次从空目录建立共享库时默认启用原件索引。插件与客户端可以独立使用，也可以连接同一个库。插件首次绑定共享库后，需完全退出 DSH 并重新打开。已有嵌入式库仍通过显式迁移接入。
+
+更新完成或服务重连后，流程页面自动刷新。启动收件箱整理前会读取当前流程修订号。同库配置发生变化时，只重试一次尚未执行的准备步骤。切换知识库时停止原库请求并提示。
 
 ## 插件 2.5.10 · 统一记忆接口
 

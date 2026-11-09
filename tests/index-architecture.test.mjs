@@ -13,6 +13,8 @@ import {connectService} from '../packages/kb-service/client.js'
 
 async function fixture(t){
  const base=await mkdtemp(path.join(os.tmpdir(),'kb-original-architecture-')),root=path.join(base,'library'),stateDir=path.join(base,'state');await mkdir(root)
+ // Exercise migration on a library with a pre-existing navigation file.
+ await writeFile(path.join(root,'INDEX.md'),'# Existing library')
  const core=createCore({stateDir});assert.equal((await core.bind(root,{confirmInit:true})).ok,true)
  const kbId=(await core.status()).kbId,wb=createWorkbench({stateDir,getCore:()=>core,authorizeDocument:async()=>true})
  const call=op=>wb.dispatch({expectedKbId:kbId,...op})

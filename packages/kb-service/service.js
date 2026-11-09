@@ -40,7 +40,7 @@ export async function libraryIdentity(root) {
   if (meta.schemaVersion !== 1 || meta.installState !== 'complete' || typeof meta.kbId !== 'string' || !meta.kbId) throw error('BINDING_CHANGED', 'Initialize the library through a compatible embedded plugin first')
   return { root, kbId: meta.kbId, instanceId: hash([meta.kbId, root.toLowerCase(), String(info.dev), String(info.ino)]).slice(0, 40) }
 }
-export async function startService({ library, privateDir, python, sources = {}, recoverOwner = false, idleMs = 300000, fault = async () => {}, desktopRoot }) {
+export async function startService({ library, privateDir, python, sources = {}, recoverOwner = false, freshPolicy, idleMs = 300000, fault = async () => {}, desktopRoot }) {
   if (desktopRoot) {
     const candidateBase = await realpath(desktopRoot), candidateLibrary = await realpath(library), candidateRelative = path.relative(candidateBase,candidateLibrary)
     if (!candidateRelative || candidateRelative==='..' || candidateRelative.startsWith('..'+path.sep) || path.isAbsolute(candidateRelative)) throw error('FORBIDDEN','候选服务拒绝范围外的知识库')
@@ -390,7 +390,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
   try {
     // Service state is wholly separate from all existing DSH profile directories.
     await atomic(runtimeFile, { ...identity, ownerToken, pipe, bootId })
-    kernel = createEmbeddedKernel({ stateDir: path.join(privateDir, 'kernel'), config: { kbPath: root, serviceOwnerToken: ownerToken, autoIndex: false }, ports: {
+    kernel = createEmbeddedKernel({ stateDir: path.join(privateDir, 'kernel'), config: { categories:freshPolicy?.categories, privateDirs:freshPolicy?.privateDirs, excludeFromSearch:freshPolicy?.excludeFromSearch, kbPath: root, serviceOwnerToken: ownerToken, autoIndex: false }, ports: {
       sharedState:true,watchingFiles:()=>Boolean(fileWatcher),policyScope:()=> 'phase4-shared-library',getParsing:()=>engines?.parsing,getImports:()=>engines?.imports,getFlows:()=>engines?.flows,
       getUpgradeContext:async()=>({version:KERNEL_VERSION,buildId:runtimeBuildId,runtimeId:bootId}),downloadExtension:()=>extensionArchive(path.resolve(import.meta.dirname,'../../browser-extension')),
       getAIWorkspace:()=>{const h=broker.status().hosts[0];if(!h)throw error('HOST_UNAVAILABLE','DSH 离线');return {workspaceId:h.workspaceId,workspaceName:'知识库流程',workspacePath:h.workspacePath,cwd:h.workspacePath};},

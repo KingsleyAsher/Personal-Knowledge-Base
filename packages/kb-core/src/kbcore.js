@@ -22,9 +22,10 @@ import { policyExcludes, readIndexPolicy, policyExcluded, excludedSource, EXCLUD
 import { readImportSources, derivedPrivatePartitions, effectivePrivateDirs, foldGeneratedPairs } from './fsindex.js'
 import { sourceReferences, reconcileImportedSources, SOURCE_TEXT } from './source-references.js'
 import {catalogActive,readCatalog,refreshCatalog,classifyOriginal} from './file-catalog.js'
+import { CLASSIFICATION_VERSION } from './file-classification.js'
 
 // 版本单一来源：package.json 的 version 必须与此一致（详见 INSTALL 说明）
-export const VERSION = '2.5.10'
+export const VERSION = '2.5.12'
 
 export const REQUIRED_FIELDS = ['title', 'type', 'tags', 'status', 'updated']
 export const SCHEMA_VERSION = 1
@@ -871,15 +872,15 @@ export function createCore(cfg, logger) {
   }
 
   /** 在库级锁内执行；拿不到锁返回 lock-* 结构（不抛异常，调用方按 schema 处理） */
-  async function withKbLock(root, label, fn) {
-    await assertServiceOwner(root, cfg.serviceOwnerToken)
+  async function withKbLock(root, label, fn, { freshSetup = false } = {}) {
+    await assertServiceOwner(root, cfg.serviceOwnerToken, { freshSetup })
     const lock = await acquireKbLock(root, label)
     if (!lock.ok) {
       await writeLog('warn', `取锁失败（${label}）：${lock.reason} ${lock.detail}`)
       return { ok: false, reason: lock.reason, detail: lock.detail, lock: { held: false } }
     }
     try {
-      await assertServiceOwner(root, cfg.serviceOwnerToken)
+      await assertServiceOwner(root, cfg.serviceOwnerToken, { freshSetup })
       return await fn()
     } finally {
       if (lock.reentrant !== true) {
@@ -1100,6 +1101,9 @@ export function createCore(cfg, logger) {
     if (m.schemaVersion !== SCHEMA_VERSION) {
       return { healthy: false, reason: 'unsupported-meta-schema', detail: `kb.json schemaVersion=${m.schemaVersion}，本版支持 ${SCHEMA_VERSION}` }
     }
+    if (m.freshOriginalIndex === true && !catalogActive(root)) {
+      return { healthy: false, reason: 'catalog-missing', detail: '原件目录缺失，请恢复索引后重试；不会自动切换旧模式' }
+    }
     const bad = []
     if (!catalogActive(root)) {
     for (const category of conf.categories ?? []) {
@@ -1230,7 +1234,7 @@ export function createCore(cfg, logger) {
       return result
     }
     // R2：初始化也会写 .kbmeta（索引/备份目录/恢复记录），走同一把库级锁
-    const initResult = await withKbLock(target, 'bind-init', async () => initTo(target, conf))
+    const initResult = await withKbLock(target, 'bind-init', async () => initTo(target, conf, { originalIndex: options.originalIndex === true }))
     result.initialized = initResult.installState === 'complete'
     result.kbId = initResult.kbId ?? null
     const written = await setConfig({ kbPath: toPosix(target) })
@@ -1300,6 +1304,10 @@ export function createCore(cfg, logger) {
       if (expectedTargetKbId !== null && String(targetKbId ?? '') !== String(expectedTargetKbId)) {
         return { ...conflict('target-kbId', { actual: { revision: confNow.revision ?? null, kbPath: nowPath, kbId: currentKbId, targetKbId } }) }
       }
+      if (options.sharedInstanceId) {
+        const marker = await readJsonState(path.join(target, '.kbmeta/service-mode.json'))
+        if (marker.state !== 'ok' || marker.value.state !== 'active' || marker.value.kbId !== targetKbId || marker.value.instanceId !== options.sharedInstanceId) return conflict('target-service')
+      }
       const built = buildConfigPatch(confNow, { kbPath: toPosix(target) })
       if (!built.ok) return { ok: false, kbPath: toPosix(target), needsConfirm: false, ...built }
       const next = { ...built.value, revision: (confNow.revision ?? 1) + 1, updatedAt: nowIso() }
@@ -1332,20 +1340,29 @@ export function createCore(cfg, logger) {
   }
 
   // ── C：初始化有完成标记；半成品重试补齐 ─────────────────────────────
-  async function initTo(root, conf) {
+  async function initTo(root, conf, { freshSetup = false, originalIndex = freshSetup } = {}) {
     const created = []
     const repaired = []
     const skipped = []
     await mkdir(root, { recursive: true })
+    // Only a genuinely empty directory receives the new default. Existing
+    // directories still go through the explicit original-file migration.
+    const entriesAtStart = await readdir(root)
+    const metaEntries = entriesAtStart.length === 1 && entriesAtStart[0] === '.kbmeta'
+      ? await readdir(path.join(root, '.kbmeta')) : []
+    const emptyAtStart = entriesAtStart.length === 0 || (entriesAtStart.length === 1 && entriesAtStart[0] === '.kbmeta' && metaEntries.length === 1 && metaEntries[0] === 'lock.json')
     const metaDir = path.join(root, '.kbmeta')
-    await mkdir(path.join(metaDir, 'index'), { recursive: true })
-    await mkdir(path.join(metaDir, 'backups'), { recursive: true })
     const metaFile = path.join(metaDir, 'kb.json')
     const meta = await readMeta(root)
     let state = meta.state === 'ok' ? meta.value : null
     if (meta.state === 'corrupt') {
       return { installState: 'blocked', reason: 'meta-corrupt', detail: 'kb.json 损坏，未改动', kbId: null, created, repaired, skipped }
     }
+    if (freshSetup && !(state ? state.freshSharedSetup === true : emptyAtStart)) {
+      return { installState: 'blocked', reason: 'not-fresh', detail: '仅空目录可新建共享库', kbId: null, created, repaired, skipped }
+    }
+    await mkdir(path.join(metaDir, 'index'), { recursive: true })
+    await mkdir(path.join(metaDir, 'backups'), { recursive: true })
     if (state === null) {
       state = {
         schemaVersion: SCHEMA_VERSION,
@@ -1355,6 +1372,8 @@ export function createCore(cfg, logger) {
         createdBy: `dsh-knowledge-base@${VERSION}`,
         stateDir: toPosix(stateDir),
         installState: 'partial',
+        freshOriginalIndex: originalIndex && emptyAtStart,
+        ...(freshSetup ? { freshSharedSetup: true } : {}),
       }
       await atomicWrite(metaFile, JSON.stringify(state, null, 2))
       created.push('.kbmeta/kb.json')
@@ -1362,6 +1381,18 @@ export function createCore(cfg, logger) {
       repaired.push(`继续未完成的初始化（原 installState=${state.installState ?? '(缺)'}）`)
     } else {
       skipped.push('.kbmeta/kb.json')
+    }
+    if (state.freshOriginalIndex === true && state.installState === 'complete' && !catalogActive(root)) {
+      return { installState: 'blocked', reason: 'catalog-missing', detail: '原件目录缺失，请恢复索引后重试；不会重建空目录或切换旧模式', kbId: state.kbId, created, repaired, skipped }
+    }
+    if (state.freshOriginalIndex === true && state.installState !== 'complete' && !catalogActive(root)) {
+      const canonical = await realpath(root)
+      const key = crypto.createHash('sha256').update(state.kbId + '\0' + canonical.toLowerCase()).digest('hex').slice(0, 24)
+      const folder = path.join(root, '索引层')
+      await mkdir(folder, { recursive: true })
+      const at = Date.now()
+      await atomicWrite(path.join(folder, '文件目录.json'), JSON.stringify({format:'original-files-v1',kbId:state.kbId,key,revision:1,policyRevision:1,createdAt:at,updatedAt:at,classificationVersion:CLASSIFICATION_VERSION,files:[],references:[],coverage:{files:0,originals:0,references:0,errors:0}}, null, 2))
+      created.push('索引层/文件目录.json')
     }
     if (!catalogActive(root)) {
     for (const category of conf.categories ?? []) {
@@ -1634,7 +1665,8 @@ export function createCore(cfg, logger) {
         return { ok: false, reason: 'mkdir-failed', error: String((error && (error.code || error.message)) ?? error) }
       }
     }
-    const initResult = await withKbLock(target, 'bind-init', async () => initTo(target, conf))
+    const freshSetup = options.freshSetup === true
+    const initResult = await withLock(target, () => withKbLock(target, 'bind-init', async () => initTo(target, conf, { freshSetup }), { freshSetup }))
     if (initResult.installState !== 'complete') {
       return { ok: false, reason: 'init-incomplete', error: '初始化未完成：' + (initResult.reason ?? initResult.detail ?? initResult.installState), init: initResult }
     }
@@ -2447,6 +2479,10 @@ export function createCore(cfg, logger) {
     getConfig,
     getConfigHealth,
     setConfig,
+    getConfigFresh,
+    async bindSharedLibrary(target, identity, expectedConfigRevision) {
+      return commitBind(target, { expectedCurrentKbPath: '', expectedConfigRevision, expectedTargetKbId: identity.kbId, sharedInstanceId: identity.instanceId })
+    },
     bind,
     init,
     initializeLibrary,

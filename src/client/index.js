@@ -1741,7 +1741,7 @@ window.__ModuleLoader__.load({
           data?.entries.length===0?e('p',{className:'kbw-meta'},'还没有记忆。'):null,
           (data?.entries??[]).map(item=>e('article',{key:item.id,className:'kbw-service','data-memory-id':item.id},e('strong',null,item.title),e('p',{style:{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}},item.text),e('div',{className:'kbw-actions'},e('span',{className:'kbw-meta'},item.origin==='knowledge'?'知识库原文 · '+item.metadata.path:'记忆插件 · 全局'),item.origin==='knowledge'?btn('打开原文',()=>navigate?.('reading',item.metadata.path)):removeId===item.id?e(R.Fragment,null,e('span',null,'删除这条记忆？'),btn('确认删除',()=>void mutate({op:'memory.remove',entry_id:item.id}),busy),btn('取消',()=>setRemoveId(''),busy)):btn('删除',()=>setRemoveId(item.id),busy)))));
       }
-      return { Workbench, Guide, PreferencesSettings, CaptureSettings, knowledgeReferenceRule, KnowledgeReference, UpgradeSettings:UpgradeSettingsEntry, RetrievalSettings: RetrievalSettingsEntry, formatSize: size, api, event, registerReferences, dispose: () => { eventSource?.close(); eventSource = null; eventsStarted = false; styleElement?.remove(); stylesInstalled = false; guideInstance = null } }
+      return { Workbench, Guide, PreferencesSettings, CaptureSettings, knowledgeReferenceRule, KnowledgeReference, UpgradeSettings:UpgradeSettingsEntry, RetrievalSettings: RetrievalSettingsEntry, formatSize: size, api, event, registerReferences, connectEvents, dispose: () => { eventSource?.close(); eventSource = null; eventsStarted = false; styleElement?.remove(); stylesInstalled = false; guideInstance = null } }
     }
     // END GENERATED WORKBENCH UI
     let releaseNoticeClaimed = false
@@ -2260,7 +2260,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
             setJob({ importId: s.importId, stage: 'importing', counts: s.counts })
             setMessage('已建标准结构，开始导入 ' + (s.counts ? s.counts.total : 0) + ' 个源文件（原件只读不动；可中断、可重试）')
           } else if (s.ok) {
-            setMessage(s.action === 'created' ? '空目录：已新建标准知识库并切换为当前库' : '已接入既有库（保留 kbId 与资料）')
+            setMessage(s.restartRequired ? s.note : s.action === 'created' ? '空目录：已新建知识库并切换为当前库' : '已接入既有库（保留 kbId 与资料）')
             dirtyRef.current = false
           } else {
             setMessage('未执行：' + (s.note || s.failed || '未知原因'))
@@ -2818,7 +2818,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
        const r=await call({action:'claim'});if(!r.ok||!r.task||stopped)return;
        const task=r.task;let report;
        const pulse=setInterval(()=>{if(!stopped)void call({action:'heartbeat',execution:task.execution}).catch(()=>{});},3000);
-       try{const definition=await api({op:'flows.get',id:'builtin-inbox-organize'});if(!definition.ok||definition.kbId!==context.kbId)throw Error('整理流程或知识库身份已变化');const sessionId=await launch(definition.flow,context.kbId,{},task.execution);report={state:'launched',sessionId,message:'已在 DSH 发起知识库会话；实际归档进度以会话及收件箱清单为准。'};}
+       try{const sessionId=await launch({id:'builtin-inbox-organize'},context.kbId,{},task.execution);report={state:'launched',sessionId,message:'已在 DSH 发起知识库会话；实际归档进度以会话及收件箱清单为准。'};}
        catch(e){report={state:e.sendAttempted?'unknown':'failed',sessionId:e.sessionId??'',message:String(e.message).slice(0,600)};}
        finally{clearInterval(pulse);}
        await call({action:'report',taskId:task.id,token:task.token,...report});
@@ -2842,7 +2842,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       })
     }
 
-    async function launchFlowConversation(flow, kbId, params, execution = flow.execution || {}) {
+    async function launchFlowConversation(flow, kbId, params, execution) {
       if (flowLaunchPending) throw new Error('正在创建流程会话，请勿重复点击')
       flowLaunchPending = true
       let reference = null
@@ -2855,7 +2855,20 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         const views = context && context.get('uiConversation')
         const directories = context && context.get('modelDirectories')
         if (!sessions || !workspace || !views || !directories?.directoryFor) throw new Error('宿主会话或模型选择服务尚未就绪，请稍后重试')
-        const prepared = await callApi({ op: 'flows.prepare-conversation', id: flow.id, kbId, expectedRevision: flow.revision, params, execution })
+        const builtin = flow.id === 'builtin-inbox-organize'
+        const prepare = async () => {
+          let current = flow
+          if (builtin) {
+            const result = await callApi({ op: 'flows.get', id: flow.id })
+            if (!result?.ok || !result.flow) throw new Error(result?.error || '暂时无法读取整理流程，未启动整理。')
+            if (result.kbId !== kbId) throw new Error('当前知识库已切换，原库的整理请求已停止。请确认当前库后再发起整理。')
+            current = result.flow
+          }
+          return callApi({ op: 'flows.prepare-conversation', id: current.id, kbId, expectedRevision: current.revision, params, execution: execution ?? current.execution ?? {} })
+        }
+        let prepared = await prepare()
+        // Preparation creates no session and sends no prompt.
+        if (builtin && !prepared?.ok && prepared?.reason === 'flow-changed') prepared = await prepare()
         if (!prepared || !prepared.ok) throw new Error((prepared && (prepared.error || prepared.reason)) || '无法读取流程提示词')
         if (!prepared.workspaceId) throw new Error('未获得流程工作区，未创建会话；请确认宿主已加载最新插件')
         if (prepared.requiredReasoningEffort) {
@@ -2891,6 +2904,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
 
     function Flows() {
+      const loaded = react.useRef({ sequence: 0, kbId: null })
       const [data, setData] = react.useState(null)
       const [error, setError] = react.useState('')
       const [msg, setMsg] = react.useState('')
@@ -2906,22 +2920,42 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       const [toast, showToast] = useToast()
 
       const load = react.useCallback(async () => {
+        const sequence = ++loaded.current.sequence
         try {
           const d = await callApi({ op: 'flows.list', includeArchived: true })
+          if (sequence !== loaded.current.sequence) return
           if (d && d.ok) {
+            if (loaded.current.kbId && loaded.current.kbId !== d.kbId) {
+              setDraft(null)
+              setRunRequest(null)
+              setExecutionDrafts({})
+              setRecords(null)
+              setMsg('当前知识库已切换，已加载当前库的流程。请确认后再运行。')
+            }
+            loaded.current.kbId = d.kbId
             setData(d)
             setError('')
           } else {
             setError((d && (d.error || d.reason)) || '读取失败')
           }
         } catch (err) {
-          setError(String((err && err.message) || err))
+          if (sequence === loaded.current.sequence) setError(String((err && err.message) || err))
         }
       }, [])
 
       react.useEffect(() => {
         ensureStyle()
-        load()
+        const onServiceReady = ({ detail }) => {
+          if (detail?.type === 'connection-restored' || detail?.type === 'update-completed' ||
+            (detail?.event === 'connection.changed' && detail.data?.state === 'ready')) void load()
+        }
+        window.addEventListener('kbw-policy', onServiceReady)
+        workbenchUI?.connectEvents()
+        void load()
+        return () => {
+          window.removeEventListener('kbw-policy', onServiceReady)
+          loaded.current.sequence++
+        }
       }, [load])
 
       const loadModels = async () => {
@@ -2981,7 +3015,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         }
       }
 
-      const startRun = async (flow, kbId, params, execution = flow.execution || {}) => {
+      const startRun = async (flow, kbId, params) => {
         if (launching.current) return
         const missing = (flow.params || []).filter(p => p.required && !String(params && Object.hasOwn(params, p.name) ? params[p.name] : p.default || '').trim())
         if (missing.length) { setMsg('请填写必填参数：' + missing.map(p => p.name).join('、')); return }
@@ -2990,7 +3024,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         setMsg('正在新建会话并发送流程提示词…')
         setRecords(null)
         try {
-          await launchFlowConversation(flow, kbId, params, execution)
+          await launchFlowConversation(flow, kbId, params)
           setRunRequest(null)
           setMsg('提示词已发送，请在新会话中查看实时执行过程')
         } catch (err) {
@@ -3010,9 +3044,12 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           // List rows are summaries and deliberately contain no parameter definitions.
           const result = await callApi({ op: 'flows.get', id: summary.id })
           if (!result || !result.ok || !result.flow) throw new Error((result && (result.error || result.reason)) || '无法读取流程定义')
-          if (result.kbId !== data.kbId) throw new Error('绑定的知识库已变化，请刷新流程页面后再运行')
+          if (result.kbId !== data.kbId) { await load(); throw new Error('当前知识库已切换，原库的流程请求已停止。请确认当前库后再运行。') }
           const flow = result.flow
-          if (flow.revision !== summary.revision) throw new Error('流程定义已变化，请刷新页面后再运行')
+          if (flow.revision !== summary.revision) {
+            await load()
+            if (flow.id !== 'builtin-inbox-organize') throw new Error('流程定义已更新，请确认最新内容后再运行')
+          }
           setMsg('')
           setDraft(null)
           const params = Object.fromEntries((flow.params || []).map(p => [p.name, String(p.default ?? '')]))
@@ -3415,7 +3452,10 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       storage: { getItem: (key) => window.localStorage.getItem(key), setItem: (key, value) => window.localStorage.setItem(key, value) },
       notify: (state) => {
         updateViewState = state
-        if (state.completedVersion) reconcileCompletedUpdate(state.completedVersion)
+        if (state.completedVersion) {
+          reconcileCompletedUpdate(state.completedVersion)
+          window.dispatchEvent(new CustomEvent('kbw-policy', { detail: { type: 'update-completed' } }))
+        }
         window.dispatchEvent(new CustomEvent('kb-plugin-update', { detail: state }))
       },
     })
@@ -4551,11 +4591,13 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     // END GENERATED TODO LIFECYCLE UI
 
-    const RELEASE_VERSION = '2.5.10'
+    const RELEASE_VERSION = '2.5.12'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.
     const RELEASE_NOTICES = [
+      {version:'2.5.12',items:['更新后自动刷新整理流程。同库配置变化时重读最新版本，切库时停止旧请求并提示。']},
+      {version:'2.5.11',items:['首次新建空库默认启用原件索引。插件与客户端可分别使用，也可连接同一个库。']},
       {version:'2.5.5',items:['兼容的插件与客户端补丁版本可共享同一个知识库服务，不再仅因构建指纹不同就要求退出另一端。','仍校验接口契约、存储与引擎兼容代次及所需能力；真正不兼容时不启动第二个写入者。']},
       {version:'2.5.4',items:['更新支持国内镜像分片与备用下载入口，完整校验大小、摘要和插件格式。','慢速下载按传输空闲计时；关闭失败提示后切换界面不再重复弹出。']},
       {version:'2.5.3',items:['原件索引与分类、两端迁移入口：安装更新不会自动迁移资料库。','流程保存模型配置，自定义流程可正常准备；任务计划宽度、展开方向与进度核对修正。','系列成品复用目录：task 填系列目录名，title 填单期标题，path 填库内相对路径。']},
@@ -4810,7 +4852,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       ctx.inject(['locale', 'sessions'], scope => createTodoLifecycleUI(react).apply(scope))
       workbenchUI = createWorkbenchUI({ react, e, ReferenceChip, api: callApi, ctx: () => flowClientContext, themeCss: KNOWLEDGE_UI_THEME,
         Overview: () => e(Overview, { statusOnly: true }), Flows, Parsing: ParseSection, BuildBadge, version: RELEASE_VERSION, projectRecordUrl: PROJECT_RECORD_URL, portal: reactDom.createPortal,
-        organizeInbox: (kbId, execution) => launchFlowConversation({ id: 'builtin-inbox-organize', revision: 1 }, kbId, {}, execution) })
+        organizeInbox: (kbId, execution) => launchFlowConversation({ id: 'builtin-inbox-organize' }, kbId, {}, execution) })
       const installedWorkbenchUI = workbenchUI
       ctx.effect(() => () => installedWorkbenchUI.dispose(), 'kb-workbench: client lifecycle')
       workbenchUI.registerReferences(ctx)
