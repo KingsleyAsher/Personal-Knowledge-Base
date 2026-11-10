@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util'
 import { assertServiceOwner } from './service-ownership.js'
 // 知识库核心逻辑（P0.1：按验收意见 A–D 修复，E/F/G 中可顺手处理的一并修）
 // 只依赖 node 内置模块，不 import @deepseek-ai/*。
@@ -656,6 +657,8 @@ export function createCore(cfg, logger) {
       }
       const built = buildConfigPatch(config, patch)
       if (!built.ok) return built
+      // Validate under the lock, but do not invalidate watchers for an unchanged policy.
+      if (isDeepStrictEqual(built.value, config)) return { ok: true, revision: config.revision, unchanged: true }
       const next = { ...built.value, revision: (config.revision ?? 1) + 1, updatedAt: nowIso() }
       await atomicWrite(configFile, JSON.stringify(next, null, 2))
       config = next

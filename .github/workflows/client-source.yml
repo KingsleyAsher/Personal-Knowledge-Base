@@ -23,7 +23,7 @@ jobs:
       - run: npm.cmd ci --ignore-scripts --prefix apps/desktop
       - run: npm.cmd ci --ignore-scripts --prefix apps/desktop/vendor/chat
       - run: npm.cmd run build --prefix apps/desktop
-      - run: node --test tests/mixed-version-interop.test.mjs tests/runtime-compatibility.test.mjs apps/desktop/tests/feedback.test.mjs apps/desktop/tests/cross-volume-trash.test.mjs apps/desktop/tests/startup.test.mjs apps/desktop/tests/workspace.test.mjs apps/desktop/tests/storage-path.test.mjs apps/desktop/tests/library-scope.test.mjs apps/desktop/tests/client-updates.test.mjs tests/shared-version-policy.test.mjs tests/update-notification.test.mjs
+      - run: node --test tests/startup-performance.test.mjs tests/mixed-version-interop.test.mjs tests/runtime-compatibility.test.mjs apps/desktop/tests/feedback.test.mjs apps/desktop/tests/cross-volume-trash.test.mjs apps/desktop/tests/startup.test.mjs apps/desktop/tests/workspace.test.mjs apps/desktop/tests/storage-path.test.mjs apps/desktop/tests/library-scope.test.mjs apps/desktop/tests/client-updates.test.mjs tests/shared-version-policy.test.mjs tests/update-notification.test.mjs
       - run: node --test tests/release-recovery.test.mjs tests/fresh-original-index.test.mjs tests/index-architecture.test.mjs apps/desktop/tests/service.test.mjs apps/desktop/tests/inbox.test.mjs
       - run: python -X utf8 -m unittest discover -s tests -p test_mirror_release.py
       - run: python -X utf8 tools/check-public-source.py

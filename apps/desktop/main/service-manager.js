@@ -50,7 +50,8 @@ export async function createManager({dataDir,backendRoot,assetDir,python,node,se
   const real=await grantFor(root);
   let nextRuntime;try{nextRuntime=await connectRuntime({library:root,home:real?.serviceHome??process.env.KB_SHARED_HOME??path.join(sandbox,'services'),python,node,kind:'desktop',...(real?{allowFreshSynthetic:false}:{candidateRoot:sandbox}),required:['workspace.read','workspace.write','providers.get','host.bridge'],onEvent:event=>{if(event.event==='connection.changed'){connectionState=event.data.state;send({type:'connection.changed',...event.data});}else if(event.event==='dsh.event')send({type:'dsh.event',...event.data});else notify();}});}catch(e){connectionState=runtime?"ready":"offline";send({type:"connection.changed",state:connectionState});throw e;}
   await runtime?.close();runtime=nextRuntime;activeRoot=root;client=runtime.client;privateDir=runtime.privateDir;configurationWarning='';
-  await client.call('desktop.restoreState');
+  const restorePending=await lstat(path.join(root,'.desktop-restore-state.json')).then(()=>true,e=>{if(e.code==='ENOENT')return false;throw e;});
+  if(restorePending)await client.call('desktop.restoreState');
   try{const profilesHome=process.env.KB_PROFILE_HOME??path.join(os.homedir(),'.dsh/profiles'),own=real?.profile?await exportPluginVector({stateDir:path.join(profilesHome,real.profile,'kb-state'),root,kbId:runtime.identity.kbId,sourceId:'profile:'+real.profile}):null,candidates=real?.profile?(own?[own]:[]):await detectPluginVectors({profilesHome,root,kbId:runtime.identity.kbId});
    if(candidates.length===1)await client.call('providers.syncPlugin',candidates[0]);else if(candidates.length>1)configurationWarning='检测到多个同库插件向量配置，请在连接设置中明确选择来源。';
   }catch{configurationWarning='插件向量配置未能安全读取；已保留当前配置，可连接 DSH 后共享或单独配置。';}
@@ -74,9 +75,9 @@ export async function createManager({dataDir,backendRoot,assetDir,python,node,se
   const hidden=await readJson(path.join(sandbox,'hidden-libraries.json'),[]),protectedPath=await protectedRoot();return items.filter(i=>!hidden.some(p=>sameRoot(p,i.root))).map(i=>({...i,protected:sameRoot(i.root,protectedPath)}));
  }
  async function initialize(){
-  const sample=path.join(sandbox,'libraries','示例资料库');await createFixture(sample,backendRoot,assetDir);
-  const last=await readJson(path.join(sandbox,'last-library.json'),null);let chosen=sample;
+  const last=await readJson(path.join(sandbox,'last-library.json'),null);let chosen;
   if(last)try{chosen=await ensureCandidate(last.root);}catch{}
+  if(!chosen){chosen=path.join(sandbox,'libraries','示例资料库');await createFixture(chosen,backendRoot,assetDir);}
   return openLibrary(chosen);
  }
  async function createLibrary(name){

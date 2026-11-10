@@ -3,6 +3,12 @@
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
+## 2026-11-10 · Startup deduplication and index maintenance stability (unpublished 2.5.13 / 1.1.4 candidate)
+
+Opening an existing library no longer creates the sample library or submits a restore write when no restore is pending. Startup tree loads and concurrent loads of the same document are deduplicated. Identical configuration is validated under the lock without rewriting the file or advancing its revision, avoiding unnecessary watcher resets. Reconnection checks file revisions and preserves unsaved edits; service-bound PDF/Office resource handles are still renewed. Restored copies retain complete recovery, and actual policy changes still trigger maintenance.
+
+An isolated Electron comparison reduced default-workspace startup directory requests from 18 to 9. Unchanged Markdown was not reread on reconnect, externally changed content still refreshed, and no renderer script errors occurred. Validation covered concurrent configuration/index maintenance, upgrade handoff and failed-update resume, backup recovery, mixed versions and startup paths. Normal updates do not force a full rebuild: service startup retains incremental verification and reuses unchanged index entries; damaged or legacy indexes retain their existing repair rules. Fewer requests are not presented as an equivalent reduction in whole-library latency. Production libraries were not used for tests. This regenerates the unpublished candidate rather than claiming a public release or installation in the user environment.
+
 ## 2026-11-10 · Mixed-version interoperability tests and fixes
 
 Reproduced and fixed two mixed-version failures: an optional new method changed the aggregate contract hash and blocked old peers from joining a new service, while the new desktop required the reconciliation feature and rejected a running older plugin service. The established base contract now remains stable, with optional features negotiated separately. Older services without reconciliation show an upgrade notice while file management stays available. Changes to existing interfaces, unknown protocols, incompatible storage/engine epochs and missing mandatory capabilities still fail closed without starting a second writer.

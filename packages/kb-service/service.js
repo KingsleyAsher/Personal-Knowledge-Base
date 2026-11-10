@@ -231,7 +231,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
       desktopPrivateDirs=display.preferences.showPrivate?[]:display.privateDirs
       desktopCatalog=display.fileCatalog;desktopShowPrivate=display.preferences.showPrivate
       const result = await desktopFiles.call(call.method, a, caller.id, call.operationId)
-      if(call.method==='desktop.restoreState')await applySharedPolicy()
+      if(call.method==='desktop.restoreState'&&!result.alreadyApplied)await applySharedPolicy()
       return result
     }
     if (call.method === 'library.snapshot') { const s = await wb({ op: 'atlas.snapshot' }); return { ...s, library: identity, sharedStateRevision: (await lib.userData(await lib.binding(kbId))).revision } }

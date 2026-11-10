@@ -89,8 +89,14 @@ export default function App(){
   void api<{x:number;y:number}>('pointer').then(place).catch(()=>place(lastPointer.current));
  }
  function togglePopup(kind:NonNullable<typeof popup>){if(kind==='search'){showSearch();return;}viewChange(()=>{setPopup(p=>p===kind?null:kind);if(popup!==kind)bringTool(kind);},{target:toolMotion(kind),kind:'popover'});if(kind==='library'){void showLeft(true);run(async()=>setLibraries(await api('libraries')));}}
+ const documentLoads=useRef(new Map<string,Promise<Doc>>());
  async function loadDoc(path:string,force=false,discard=false){
   if(docsRef.current[path]&&!force)return docsRef.current[path];
+  const key=JSON.stringify([path,discard]);const pending=documentLoads.current.get(key);if(pending)return pending;
+  const job=readDoc(path,discard);documentLoads.current.set(key,job);
+  try{return await job;}finally{if(documentLoads.current.get(key)===job)documentLoads.current.delete(key);}
+ }
+ async function readDoc(path:string,discard=false){
   const preview=await api<Preview>('preview',{path});let text=preview.text??'',revision:string|undefined;
   if(preview.kind==='markdown'&&preview.file.access.canEdit){const raw=await api('read',{path});text=raw.text;revision=raw.revision;}
   if(preview.kind==='docx'||preview.kind==='xlsx')text='{}';if(preview.kind!=='markdown')revision=preview.file.revision;
@@ -132,7 +138,7 @@ export default function App(){
   let ps=data.connection.synthetic===false?[]:defaultPanes;
   if(data.preferences.restoreTabs!==false&&Array.isArray(data.workspace?.panes)){ps=data.workspace.panes.map((p:Pane,i:number)=>({...p,weight:p.weight??(data.workspace.panes.length===2?(i===0?(data.workspace.splitRatio??58.3):(100-(data.workspace.splitRatio??58.3))):1)}));setLeftWidth(data.workspace.leftWidth??272);setRightWidth(data.workspace.rightWidth??316);setRightOpen(data.workspace.rightOpen!==false);setRightTab(data.workspace.rightTab??'file');}
   workspace.restore(ps,data.workspace?.activePane,data.workspace?.layoutVersion);loaded.current=true;
-  if(data.connection.state==='ready'){await Promise.allSettled([refreshTree(data.preferences.fileSort??'name-asc',roots),...ps.filter((p:Pane)=>p.active).map((p:Pane)=>loadDoc(p.active))]);if(Object.keys(data.drafts??{}).length)showDialog({type:'drafts',items:data.drafts});}
+  if(data.connection.state==='ready'){await Promise.allSettled([...new Set<string>(ps.filter((p:Pane)=>p.active).map((p:Pane)=>p.active))].map(path=>loadDoc(path)));if(Object.keys(data.drafts??{}).length)showDialog({type:'drafts',items:data.drafts});}
  }
  useEffect(()=>{void boot().catch(e=>setStartupError(e.message));return()=>{if(toastTimer.current)clearTimeout(toastTimer.current);if(relationSizeTimer.current)clearTimeout(relationSizeTimer.current);};},[]);
  useEffect(()=>{const q=matchMedia('(prefers-color-scheme: dark)');const handler=()=>setSystemDark(q.matches);q.addEventListener('change',handler);return()=>q.removeEventListener('change',handler);},[]);
@@ -144,8 +150,10 @@ export default function App(){
   const t=setTimeout(()=>{if(discarding.current)return;for(const d of dirty)void api('drafts',{path:d.path,text:d.text,revision:d.revision,originalKey:d.preview.originalKey,bom:d.preview.bom}).catch(fail);},400);return()=>clearTimeout(t);
  },[docs,keepDrafts]);
  useEffect(()=>window.kbDesktop?.onEvent((e:any)=>{
-  if(e.type==='connection.changed'){setConnection(c=>({...c,state:e.state}));if(e.state==='ready'){void refreshTree();for(const d of Object.values(docsRef.current))if(!d.dirty)void loadDoc(d.path,true).catch(fail);}}
-  if(e.type==='snapshot.required'){
+  const reconnected=e.type==='connection.changed'&&e.state==='ready'&&connectionRef.current.state!=='ready';
+  if(e.type==='connection.changed'){connectionRef.current={...connectionRef.current,state:e.state};setConnection(c=>({...c,state:e.state}));}
+  if(loaded.current&&reconnected)for(const d of Object.values(docsRef.current))if(d.preview.resourceHandle&&!d.dirty)void loadDoc(d.path,true).catch(fail);
+  if(loaded.current&&(e.type==='snapshot.required'||reconnected)){
    if(refreshTimer.current)clearTimeout(refreshTimer.current);
    refreshTimer.current=setTimeout(()=>{void refreshTree();void refreshSection().catch(fail);for(const d of Object.values(docsRef.current))void api<FileInfo>('stat',{path:d.path}).then(f=>{if(f.revision!==d.preview.file.revision){if(d.dirty)setDocs(v=>({...v,[d.path]:{...v[d.path],external:true}}));else void loadDoc(d.path,true).catch(fail);}}).catch((e:ApiError)=>{if(['NOT_FOUND','ENOENT'].includes(e.code??''))setDocs(v=>({...v,[d.path]:{...v[d.path],missing:true}}));});},140);
   }

@@ -1,11 +1,11 @@
 {
   "package": "@local/dsh-knowledge-base",
   "version": "2.5.13",
-  "buildId": "c940e5d9ebf9ebf9",
+  "buildId": "f73faa9f2d3852f6",
   "tgz": "local-dsh-knowledge-base-2.5.13.tgz",
-  "bytes": 15848344,
-  "sha256": "36822a950dadb6df71f8b8c7a04024d3959c24e24126d31d2f9ff714f9eb1ae0",
-  "integrity": "sha512-OeKXjeZMpymqj6kPHeyJi5TraZr+6lC7A1vrWWnTgcp+E7q/m93B5+xnD+KNlI1pAn18NgUIDzTlJgJ+hs2mXA==",
+  "bytes": 15849468,
+  "sha256": "a563a1ee846628f351f0e5c2efd23b0a435f4d65f52a360896fbd8b4c839e430",
+  "integrity": "sha512-h+dLSJkH0nNBc4+BmPm9Cq6dyi0MFjthg83jc29yacNlTVKemdhNRQ1ck7B9r2B1ohUQGHVnkht8Pfy8qgMFrw==",
   "packageFileCount": 500,
   "buildFileCount": 377,
   "files": [
@@ -86,13 +86,13 @@
     },
     {
       "path": "PROJECT-RECORD.en.md",
-      "bytes": 82887,
-      "sha256": "027a5244033883fb133e7e4c9035f0303eca046154a212849b1023268ed1b9c8"
+      "bytes": 84394,
+      "sha256": "b2689f498904e1fb86ea4c0add648d662d8893183e25c0bd21e6ec0096aa86e9"
     },
     {
       "path": "PROJECT-RECORD.md",
-      "bytes": 72607,
-      "sha256": "f810458a5caf3086b956af2926f0f0d59a3f3bded76a59687e2cad1b0ff5d816"
+      "bytes": 73844,
+      "sha256": "8f4ae665986409d5e74e67b28c67eb9f946758fd3ce883c25ae7b5c3e63010c5"
     },
     {
       "path": "README.md",
@@ -636,8 +636,8 @@
     },
     {
       "path": "packages/kb-core/src/kbcore.js",
-      "bytes": 134984,
-      "sha256": "d5f5d26b22840dc5fc6003ad46bf06770096f6ccaa5a2d66a274281c34f3ca3c"
+      "bytes": 135234,
+      "sha256": "0ada108cc8b0bf8ec2f113b5180a2cb97a5f8014f514f7c4938e73ff18185227"
     },
     {
       "path": "packages/kb-core/src/library-framework.js",
@@ -981,8 +981,8 @@
     },
     {
       "path": "packages/kb-service/service.js",
-      "bytes": 44592,
-      "sha256": "3e349b8581d594ab7ad112196ebb1eb5a74d3a6f9c2c2e9ef5b222c580197992"
+      "bytes": 44616,
+      "sha256": "c0da89264baa2217a025c1f220125ea6c411bbf1af202c15684dd08bbcbf362d"
     },
     {
       "path": "packages/kb-service/tool-definitions.json",
