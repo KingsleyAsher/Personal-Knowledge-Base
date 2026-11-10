@@ -1,11 +1,11 @@
 {
   "package": "@local/dsh-knowledge-base",
   "version": "2.5.13",
-  "buildId": "537fc48a280e7c9d",
+  "buildId": "c940e5d9ebf9ebf9",
   "tgz": "local-dsh-knowledge-base-2.5.13.tgz",
-  "bytes": 15847006,
-  "sha256": "7cf6073d0015c65c6bd5e4203c9b4b40a8675bae11a12afc2d08f0e954222b01",
-  "integrity": "sha512-OBiCXAUpox6aGvID+lqYX8QnEE2Ex6h6LzfFbh41zkpfMnzrCEP5Gt1VdWDXr3Kacs9h24QagCE/CMJzFVBXNQ==",
+  "bytes": 15848344,
+  "sha256": "36822a950dadb6df71f8b8c7a04024d3959c24e24126d31d2f9ff714f9eb1ae0",
+  "integrity": "sha512-OeKXjeZMpymqj6kPHeyJi5TraZr+6lC7A1vrWWnTgcp+E7q/m93B5+xnD+KNlI1pAn18NgUIDzTlJgJ+hs2mXA==",
   "packageFileCount": 500,
   "buildFileCount": 377,
   "files": [
@@ -86,13 +86,13 @@
     },
     {
       "path": "PROJECT-RECORD.en.md",
-      "bytes": 81763,
-      "sha256": "7c100d4ad7cc4c029e2a8a14a5854c31dcfaf952ccacaa55801041a177229237"
+      "bytes": 82887,
+      "sha256": "027a5244033883fb133e7e4c9035f0303eca046154a212849b1023268ed1b9c8"
     },
     {
       "path": "PROJECT-RECORD.md",
-      "bytes": 71706,
-      "sha256": "96a54ffa3fac1fedcc3a31652c3988dc7c0c527af66186180ca3ad3021e4c1d8"
+      "bytes": 72607,
+      "sha256": "f810458a5caf3086b956af2926f0f0d59a3f3bded76a59687e2cad1b0ff5d816"
     },
     {
       "path": "README.md",
@@ -106,13 +106,13 @@
     },
     {
       "path": "RELEASE.en.md",
-      "bytes": 59583,
-      "sha256": "ce3fdae42534b73b06d0190ecc15963fad89b274f2111d5526ef056ff516db6c"
+      "bytes": 59848,
+      "sha256": "d99f48d3ed72385316f63ffdfe39948c1199674b2a15d81f2f410e1067d185c4"
     },
     {
       "path": "RELEASE.md",
-      "bytes": 54284,
-      "sha256": "be98f511617bb14cd1f06e8be96aa4c47e74de1714eff0d204530f7ed1e12a70"
+      "bytes": 54478,
+      "sha256": "fc0eb31911e594c250d0afd5dd79854b6e3db7fcd2ac6859e26a79b5830e54dc"
     },
     {
       "path": "RETRIEVAL.md",
@@ -376,8 +376,8 @@
     },
     {
       "path": "docs/releases/client-1.1.4.md",
-      "bytes": 463,
-      "sha256": "2fe14c9ac0ca200f3f694f993f248c481792ae28ab1031e99f77ff723dd45ab3"
+      "bytes": 586,
+      "sha256": "d0fd6d9bfc2e5f41b39d011a79fc92f5b766c9c14f2516ad3724ce7e9908e149"
     },
     {
       "path": "docs/releases/plugin-2.4.1.md",
@@ -456,13 +456,13 @@
     },
     {
       "path": "docs/releases/plugin-2.5.13.en.md",
-      "bytes": 1770,
-      "sha256": "b210aaa44099cb0a63bdf9c91ef1e87368aee4498a7f30e9d8116ab8334412ba"
+      "bytes": 1917,
+      "sha256": "6ed56f3874433212ee848d9a641fe24e1a60b62289577f0426063e033806aa95"
     },
     {
       "path": "docs/releases/plugin-2.5.13.md",
-      "bytes": 1463,
-      "sha256": "5c565bcfdd769331124359817637545060aedfed2cb375913138ed66a01ce516"
+      "bytes": 1585,
+      "sha256": "7dc1ab7ae74d4e188024a6c9546c706f253ed84adc8ac6b49bafa6896fdbfc68"
     },
     {
       "path": "docs/releases/plugin-2.5.3.md",
@@ -831,8 +831,8 @@
     },
     {
       "path": "packages/kb-service/compatibility.js",
-      "bytes": 1582,
-      "sha256": "14c758e64fc30b0ce0382a11a6e9b9a011b749f5b2270d791ab1b640c9918c0f"
+      "bytes": 1961,
+      "sha256": "73e68f123d682f60fc5f5ea7756470786f50bf9750f45faa7f20b4fbcb7e5040"
     },
     {
       "path": "packages/kb-service/desktop-files.js",

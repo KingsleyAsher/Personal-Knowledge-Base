@@ -86,8 +86,8 @@ function wire(){
   for(const row of r.items){try{const f=await manager.call('desktop.stat',{path:row.path});items.push({...f,indexAllowed:!row.excludedFromIndex,indexPolicyState:row.policyState,pending:true});}catch(e){if(!['NOT_FOUND','ENOENT'].includes(e.code))throw e;}}
   return {...r,items,nextOffset:r.offset+r.limit<r.total?r.offset+r.limit:undefined};
  });
- register('inboxStatus',()=>manager.call('inbox.organizeStatus'));
- register('resolveInbox',a=>writeCall('inbox.organizeResolve',{taskId:a.taskId,state:a.state,sessionId:a.sessionId,confirm:a.confirm},a.requestId));
+ register('inboxStatus',async()=>({...await manager.call('inbox.organizeStatus'),canResolve:manager.status().capabilities.includes('inbox.organizeResolve')}));
+ register('resolveInbox',a=>{if(!manager.status().capabilities.includes('inbox.organizeResolve'))throw Object.assign(Error('当前服务不支持结果核对；请更新知识库插件，并在任务完成后关闭两端再重新打开。'),{code:'CAPABILITY_UNSUPPORTED'});return writeCall('inbox.organizeResolve',{taskId:a.taskId,state:a.state,sessionId:a.sessionId,confirm:a.confirm},a.requestId);});
  register('organizeInbox',a=>writeCall('inbox.organize',{},a.requestId));
  register('stat',a=>manager.call('desktop.stat',a));
  register('preview',async a=>resourcePreview(await manager.call('desktop.preview',a)));

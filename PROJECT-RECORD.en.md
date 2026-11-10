@@ -3,6 +3,12 @@
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
+## 2026-11-10 · Mixed-version interoperability tests and fixes
+
+Reproduced and fixed two mixed-version failures: an optional new method changed the aggregate contract hash and blocked old peers from joining a new service, while the new desktop required the reconciliation feature and rejected a running older plugin service. The established base contract now remains stable, with optional features negotiated separately. Older services without reconciliation show an upgrade notice while file management stays available. Changes to existing interfaces, unknown protocols, incompatible storage/engine epochs and missing mandatory capabilities still fail closed without starting a second writer.
+
+Tests use original historical TGZs for 2.5.5, 2.5.10, 2.5.12 and the preceding 2.5.13 candidate, covering old/new service owners, plugin/desktop connection order, cross-peer reads and writes, stale revision conflicts and simultaneous startup. The tests are included in desktop and release CI. This updates the unpublished 2.5.13 / 1.1.4 candidate build without replacing an existing public release or changing production data.
+
 ## Plugin 2.5.13 / Client 1.1.4 · Release audit fixes (unpublished)
 
 Fix fail-open privacy on corrupt source maps and lost mappings during concurrent imports. Original-file backups retain classification catalogs and index policy, and restored libraries undergo a health check. Desktop restore copies receive their own identity and grant, can be reopened, and share one service with the plugin adapter.
