@@ -3,9 +3,9 @@
   "version": "3.0.0",
   "buildId": "c076cef9bd4009a3",
   "tgz": "local-dsh-knowledge-base-3.0.0.tgz",
-  "bytes": 15868987,
-  "sha256": "6fd22e8ee55083bc611da34b5ddebe2a69c86c0e148542492992da1377893157",
-  "integrity": "sha512-5B4dWwYHgkYVN5LQ3uKRDWXXIHVGD2VlcLAxYMMeJ+BOmRdnUiDXNBvBEgPhfKgvVvR1WtfuUXk9Szptlzc15Q==",
+  "bytes": 15869167,
+  "sha256": "0e5a06b7bec9f611158dbffeb3559994d5032b39530040ea955de21530548599",
+  "integrity": "sha512-od8IT0iMrtPceX/BYPvvXdK8lEYOHrvH7Ar/crIKdG+vWKVaHOU0avGspRWow4vYs9EWvUTmnFOUvDS/SzyMHQ==",
   "packageFileCount": 504,
   "buildFileCount": 377,
   "files": [
@@ -86,13 +86,13 @@
     },
     {
       "path": "PROJECT-RECORD.en.md",
-      "bytes": 92242,
-      "sha256": "010db598439015b3b4fa53974878e46b6388babac11445a2073f9bf4ab675717"
+      "bytes": 92533,
+      "sha256": "e44d4f81df019fbd66b8030a6e6820bb98b3d369a64a4e33d30f5cec3d3631a1"
     },
     {
       "path": "PROJECT-RECORD.md",
-      "bytes": 80508,
-      "sha256": "81ce8a150c5233955ca0a0cbe7242fb424ec5f82c27443ebc48dbfb3e051944b"
+      "bytes": 80765,
+      "sha256": "9aa54400d8407d05d860463ff6099d8c4915df359df6182a53e1310c18e73f1b"
     },
     {
       "path": "README.md",

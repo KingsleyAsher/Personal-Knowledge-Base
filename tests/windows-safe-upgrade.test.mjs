@@ -15,6 +15,13 @@ test('Windows live service: legacy refusal, drain, staged pnpm upgrade, restart 
   await mkdir(plugin,{recursive:true});await mkdir(library)
   const oldArchive=path.join(repo,'dist/local-dsh-knowledge-base-2.4.3.tgz')
   execFileSync('python',['-X','utf8','-c',"import tarfile,sys,pathlib; t=tarfile.open(sys.argv[1]); d=pathlib.Path(sys.argv[2]); [(d.joinpath(*pathlib.PurePosixPath(m.name).parts[1:]).parent.mkdir(parents=True,exist_ok=True),d.joinpath(*pathlib.PurePosixPath(m.name).parts[1:]).write_bytes(t.extractfile(m).read())) for m in t if m.isfile()]",oldArchive,plugin],{windowsHide:true})
+  // The frozen 2.4.3 shim predates SID alias normalization. GitHub's built-in
+  // Administrator is serialized as LA. Adapt only this descriptor formatting;
+  // retain the legacy runtime, permissions and upgrade behavior under test.
+  const shimPath=path.join(plugin,'packages/kb-service/native.py')
+  const shim=await readFile(shimPath,'utf8'),anchor='    sd, sa = security(expected)'
+  assert.equal(shim.split(anchor).length,2)
+  await writeFile(shimPath,shim.replace(anchor,anchor+'\n    normalized = W.LPWSTR()\n    checked(sd_string(sd, 1, 4, C.byref(normalized), None))\n    try: expected = normalized.value\n    finally: local_free(normalized)'))
   await writeFile(path.join(profile,'package.json'),JSON.stringify({private:true,dependencies:{'@local/dsh-knowledge-base':'file:'+oldArchive.replaceAll('\\','/')},dsh:{profile:{bundles:['@local/dsh-knowledge-base']}}}))
   const core=createCore({stateDir:path.join(root,'embedded')});assert.equal((await core.bind(library,{confirmInit:true})).ok,true)
   await writeFile(path.join(library,'.desktop-preview.json'),JSON.stringify({synthetic:true,schemaVersion:1}))
