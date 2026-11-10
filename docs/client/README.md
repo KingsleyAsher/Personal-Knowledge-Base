@@ -1,5 +1,5 @@
 
-**[Download Windows client 1.1.2 (EXE)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v1.1.2/KnowledgeWorkbench-1.1.2-Setup.exe)** · [Release notes](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.1.2)
+**[Download Windows client 2.0.0 (EXE)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v2.0.0/KnowledgeWorkbench-2.0.0-Setup.exe)** · [Release notes](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v2.0.0)
 
 > Client-specific guide in the unified repository. See the [main README](../../README.md) and [shared release policy](../../VERSIONING.en.md).
 
@@ -9,7 +9,7 @@
 
 A local-first Windows knowledge workspace for reading, editing and connecting your files. Use it independently, or connect it to DeepSeek Harness (DSH) and the [Personal Knowledge Base plugin](https://github.com/KingsleyAsher/Personal-Knowledge-Base).
 
-**Client 1.1.2 · Shared plugin source 2.5.5 · Windows x64**
+**Client 2.0.0 · Shared plugin source 3.0.0 · Windows x64**
 
 ## Your files, in one workspace
 
@@ -35,7 +35,7 @@ A local-first Windows knowledge workspace for reading, editing and connecting yo
 
 ## Installation
 
-Install a maintainer-provided Windows installer and launch the application from its shortcut. Public downloads, when published, are listed in [Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases). Client 1.1.2 is published with the installer linked above. Keep the application directory separate from your document libraries.
+Install a maintainer-provided Windows installer and launch the application from its shortcut. Public downloads, when published, are listed in [Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases). Client 2.0.0 is published with the installer linked above. Keep the application directory separate from your document libraries.
 
 The current installer keeps the existing paper-green interface and animations. It requires an empty target directory; in-place automatic upgrades are not implemented. Uninstall preserves user data. Online client update checking/download/install is not connected yet.
 
@@ -45,11 +45,11 @@ See [build instructions](DEVELOPMENT.en.md). The repository includes the Electro
 
 ## Verification boundaries
 
-Validation scope / 验证范围：[本次发布说明](../releases/client-1.1.2.md)。历史界面验收不等于本次正式安装验证。
+Validation scope / 验证范围：[本次发布说明](../releases/client-2.0.0.md)。历史界面验收不等于本次正式安装验证。
 
 MIT licensed; bundled third-party components retain their own licenses. See [third-party notices](THIRD-PARTY-NOTICES.md).
 
 Update policy: every eligible version in the selected channel updates automatically, including majors and previews. The client online executor remains unfinished; see [version policy](../../VERSIONING.en.md).
 
 
-Paired payload / 配套插件：**2.5.5**。[原件索引架构](../ORIGINAL-FILE-INDEX-ARCHITECTURE.md)。
+Paired payload / 配套插件：**3.0.0**。[原件索引架构](../ORIGINAL-FILE-INDEX-ARCHITECTURE.md)。

@@ -1,4 +1,4 @@
-> Local build / 当前本地构建：plugin **3.0.0**, client **2.0.0**. [Release notes](docs/releases/plugin-3.0.0.en.md). Not publicly released / 尚未公开发布。
+> Release / 当前发布：plugin **3.0.0**, client **2.0.0**. [Release notes](docs/releases/plugin-3.0.0.en.md).
 
 # Unified installation and usage
 
@@ -15,7 +15,7 @@ Choose the client for a standalone file workspace, or the plugin for tools and m
 | Develop or package either product | [Development](DEVELOPMENT.en.md) |
 | Understand library sharing and offline limits | [Architecture](ARCHITECTURE.en.md) |
 
-Local source and delivery versions are client 2.0.0 and plugin 3.0.0. Local manifests identify these packages; public downloads depend on an actually published Release. Client update checks and verified downloads are available; automatic in-place installation and activation remain unfinished. Removing a library registration does not delete its original files; application uninstall and document deletion are different operations.
+Release source and delivery versions are client 2.0.0 and plugin 3.0.0. Product manifests identify the matching GitHub Release assets. Client update checks and verified downloads are available; automatic in-place installation and activation remain unfinished. Removing a library registration does not delete its original files; application uninstall and document deletion are different operations.
 
 ## Plugin usage and historical instructions
 

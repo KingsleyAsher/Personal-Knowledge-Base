@@ -1,4 +1,4 @@
-> Local build / 当前本地构建：plugin **3.0.0**, client **2.0.0**. [Release notes](docs/releases/plugin-3.0.0.md). Not publicly released / 尚未公开发布。
+> Release / 当前发布：plugin **3.0.0**, client **2.0.0**. [Release notes](docs/releases/plugin-3.0.0.md).
 
 # 插件与客户端统一架构
 

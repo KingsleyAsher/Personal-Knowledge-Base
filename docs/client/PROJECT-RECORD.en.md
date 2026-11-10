@@ -1,3 +1,11 @@
+## 2026-11-11 · Publish plugin 3.0.0 and client 2.0.0
+
+Merges release-review fixes, mixed-version interoperability, startup/scoped-update improvements and visual corrections into the unified main repository, with separate v3.0.0 and client-v2.0.0 releases. Synchronizes both languages of the READMEs, client guides, version notes, evolution records, website and product feeds. Independent versions and installations retain protocol/storage/capability-based sharing; a product major bump does not force an index rebuild.
+
+Final local regression: 362 of 364 Node checks passed, zero failures and two real-host environment skips; all 24 Python checks passed. Actual installer validation confirmed that client 2.0.0 installed in a new directory resumes the 1.1.4 profile and library, preserves originals and renders without page errors. Nonempty targets remain protected. Source/package, embedded plugin and installer digests are verified before publication; GitHub Actions validates the merge and release tags.
+
+The installer is unsigned and requires an empty destination; silent in-place installation is not implemented. Library migration still requires preview and confirmation. No production library or paid model call was used; real DSH tool-dispatch and ASAR-host checks remain environment-dependent.
+
 ## 插件 2.5.3 / 客户端 1.1.1（2026-11-07）
 
 本次统一发布此前本地交付的原件索引架构及后续修正，两端继续使用同一共享内核与服务，独立安装、独立版本。

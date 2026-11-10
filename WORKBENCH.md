@@ -1,4 +1,4 @@
-> Local build / 当前本地构建：plugin **3.0.0**, client **2.0.0**. [Release notes](docs/releases/plugin-3.0.0.md). Not publicly released / 尚未公开发布。
+> Release / 当前发布：plugin **3.0.0**, client **2.0.0**. [Release notes](docs/releases/plugin-3.0.0.md).
 
 # 插件与客户端安装使用
 
@@ -17,7 +17,7 @@
 | 从源码开发与打包 | [开发指南](DEVELOPMENT.md) |
 | 了解共库、索引与离线边界 | [架构](ARCHITECTURE.md) |
 
-当前本地源码及交付为客户端 2.0.0、插件 3.0.0；本地清单标识本次包，公开下载以实际已发布 Release 为准。客户端已支持更新检查与校验下载，自动覆盖安装和激活尚未完成。移除资料库登记不删除原文件；卸载应用与删除文档是不同操作。
+当前发布源码及交付为客户端 2.0.0、插件 3.0.0；清单与各自 GitHub Release 附件标识本次发布。客户端已支持更新检查与校验下载，自动覆盖安装和激活尚未完成。移除资料库登记不删除原文件；卸载应用与删除文档是不同操作。
 
 ## 插件使用与历史说明
 

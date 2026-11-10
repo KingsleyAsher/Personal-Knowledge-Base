@@ -1,4 +1,4 @@
-> Local build / 当前本地构建：plugin **3.0.0**, client **2.0.0**. [Release notes](../releases/plugin-3.0.0.en.md). Not publicly released / 尚未公开发布。
+> Release / 当前发布：plugin **3.0.0**, client **2.0.0**. [Release notes](../releases/plugin-3.0.0.en.md).
 
 > Unified project: [main README](../../README.md) · [shared architecture](../../ARCHITECTURE.en.md).
 

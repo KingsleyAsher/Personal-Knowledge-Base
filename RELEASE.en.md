@@ -1,4 +1,4 @@
-## Plugin 3.0.0 / Client 2.0.0 · Local major-version delivery
+## Plugin 3.0.0 / Client 2.0.0 · Major release
 
 Consolidates release, cross-round and visual review fixes. Both products work independently or share one library. Compatibility continues to use the shared protocol, storage generation and negotiated capabilities; changing the product major version does not force migration or rebuilding.
 
@@ -9,7 +9,7 @@ Consolidates release, cross-round and visual review fixes. Both products work in
 
 Existing originals stay in place. A version upgrade alone does not migrate or rebuild the entire library. Copy imports watch the library copy, not the external source. The client checks and verifies downloads; installation still uses the installer. Historical host installation constraints and the 2.4.6 recovery boundary remain unchanged.
 
-This is a local delivery, not a public Release, signed distribution or production installation. See the delivery report for final verification and checksums.
+Release tags are v3.0.0 and client-v2.0.0, with separate plugin TGZ, client EXE and product manifests. The installer is unsigned and requires an empty destination. Publication does not install into production. See release assets for checksums and validation scope.
 
 ## Plugin 2.5.13 / Client 1.1.4 · Release audit fixes (unpublished)
 
