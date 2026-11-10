@@ -1,3 +1,4 @@
+import {readCandidateBuild,runtimeBuild} from '../../../packages/kb-service/build.js';
 import {verifyDesktopBuild} from './build-proof.mjs';
 import {parseKnowledgeVersion,packageVersion} from '../../../packages/kb-contracts/version-policy.js';
 import {packager} from '@electron/packager';
@@ -20,6 +21,8 @@ for(const part of ['main','dist','fixture-assets'])await inventory(path.join(app
 for(const name of ['kb-core','kb-contracts','kb-service'])await inventory(path.join(repo,'packages',name),'packages/'+name);
 const nativePlugin=JSON.parse(await readFile(path.join(repo,'development/desktop-parity/artifacts/plugin/latest-plugin.json'),'utf8'));
 if(sha(await readFile(nativePlugin.path))!==nativePlugin.sha256)throw Error('Paired native backend plugin checksum mismatch');
+const pairedIdentity=JSON.parse(await readFile(path.join(appDir,'main/real-library/paired-plugin.json'),'utf8')),currentPlugin=await readCandidateBuild(repo);
+if(pairedIdentity.version!==currentPlugin.version||pairedIdentity.buildId!==currentPlugin.buildId||pairedIdentity.runtimeBuildId!==await runtimeBuild()||pairedIdentity.sha256!==nativePlugin.sha256)throw Error('Real-library companion identity is stale. Prepare the plugin, rebuild the desktop, then package again.');
 rows.push({path:'native-backend/plugin.tgz',sha256:nativePlugin.sha256});
 await inventory(path.join(repo,'browser-extension'),'browser-extension');for(const name of ['kb-pdf-pages.py','kb-local-model.py'])rows.push({path:'tools/'+name,sha256:sha(await readFile(path.join(repo,'tools',name)))});
 rows.push({path:'app/package.json',sha256:sha(await readFile(path.join(appDir,'package.json')))});

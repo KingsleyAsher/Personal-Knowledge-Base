@@ -1,4 +1,4 @@
-> Current release / 当前版本：plugin **2.5.5**, client **1.1.2**. [Release notes](docs/releases/plugin-2.5.5.md)。原件索引迁移须在资料库预览并确认。
+> Local build / 当前本地构建：plugin **3.0.0**, client **2.0.0**. [Release notes](docs/releases/plugin-3.0.0.en.md). Not publicly released / 尚未公开发布。
 
 # Unified installation and usage
 
@@ -15,7 +15,7 @@ Choose the client for a standalone file workspace, or the plugin for tools and m
 | Develop or package either product | [Development](DEVELOPMENT.en.md) |
 | Understand library sharing and offline limits | [Architecture](ARCHITECTURE.en.md) |
 
-Source versions are client 1.0.3 and plugin 2.4.14. Public plugin downloads follow release-manifest-v2.json; the current publication is 2.4.14. Client update checks and verified downloads are available; automatic in-place installation and activation remain unfinished. Removing a library registration does not delete its original files; application uninstall and document deletion are different operations.
+Local source and delivery versions are client 2.0.0 and plugin 3.0.0. Local manifests identify these packages; public downloads depend on an actually published Release. Client update checks and verified downloads are available; automatic in-place installation and activation remain unfinished. Removing a library registration does not delete its original files; application uninstall and document deletion are different operations.
 
 ## Plugin usage and historical instructions
 

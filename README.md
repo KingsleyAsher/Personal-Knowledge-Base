@@ -1,7 +1,7 @@
 # Personal Knowledge Base · Plugin and Desktop Client
 
 
-> **Plugin 2.5.12 / desktop source 1.1.3:** original-file indexing on first shared setup and automatic inbox workflow refresh. [Release notes](RELEASE.en.md).
+> **Current local build: plugin 3.0.0 / client 2.0.0.** Independent/shared-library operation, scoped updates and release/visual review fixes. [Release notes](RELEASE.en.md). The download links below refer to prior public releases; this local build has not been published.
 
 > **2.4.6 updater limitation:** a pristine installation stuck on a pending receipt cannot self-repair from the feed alone. The [general recovery entry](docs/LEGACY-246-BOOTSTRAP.md) is a one-time external migration, not a zero-intervention update.
 

@@ -19,6 +19,6 @@ Index snapshots are not backups of original files. Confirm backup type and resto
 
 ## 当前版本 / Current release
 
-客户端 1.1.1，配套插件 2.5.3。原件分类树读取共享索引；在设置中预览并确认索引迁移。系列成品复用已有目录。
+当前本地交付：客户端 2.0.0，配套插件 3.0.0；尚未公开发布。原件分类树读取共享索引；在设置中预览并确认索引迁移。系列成品复用已有目录。
 
-Client 1.1.1 pairs with plugin 2.5.3. The original-file tree uses shared classification. Preview and confirm index migration in Settings. Reuse series folders for deliverables. [Release notes](../releases/client-1.1.1.md).
+Local client 2.0.0 pairs with plugin 3.0.0; this delivery is not publicly released. The original-file tree uses shared classification. Preview and confirm index migration in Settings. Reuse series folders for deliverables. [Release notes](../releases/client-2.0.0.en.md).

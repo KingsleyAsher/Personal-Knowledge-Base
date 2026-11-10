@@ -1,14 +1,14 @@
 {
   "product": "knowledge-workbench-client",
   "platform": "win32-x64",
-  "version": "1.1.4",
-  "tag": "client-v1.1.4",
-  "buildId": "0e4ebd688d3481ed",
-  "asset": "KnowledgeWorkbench-1.1.4-0e4ebd688d3481ed-Setup.exe",
-  "bytes": 195270567,
-  "sha256": "8a1a083a2f6d7713dcfbeac267a606d46522e8a342308d1920e9e37cfa96f08d",
+  "version": "2.0.0",
+  "tag": "client-v2.0.0",
+  "buildId": "4d53607a275e8d41",
+  "asset": "KnowledgeWorkbench-2.0.0-4d53607a275e8d41-Setup.exe",
+  "bytes": 195277198,
+  "sha256": "7e5223bcfd4e125819f6e07abf59e5032d3767dcc0a4ca8a628e86339a018403",
   "channel": "stable",
-  "notes": "https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v1.1.4",
+  "notes": "https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v2.0.0",
   "automaticInstallSupported": false,
   "manualInstallSupported": true
 }

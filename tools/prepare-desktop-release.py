@@ -23,4 +23,9 @@ out=root/'development/desktop-parity/artifacts/plugin';out.mkdir(parents=True,ex
 r=subprocess.run(['npm.cmd','pack','--ignore-scripts','--json','--pack-destination',str(out)],cwd=root,capture_output=True,check=True)
 package=json.loads(r.stdout.decode('utf-8'))[0];file=out/package['filename']
 (out/'latest-plugin.json').write_text(json.dumps({'path':str(file),'sha256':digest(file),'channel':'stable'},indent=2),encoding='utf-8')
+# The explicit real-library launcher must verify this exact companion build.
+identity_script = "import {readCandidateBuild,runtimeBuild} from './packages/kb-service/build.js';const b=await readCandidateBuild(process.cwd());console.log(JSON.stringify({version:b.version,buildId:b.buildId,runtimeBuildId:await runtimeBuild()}));"
+identity = json.loads(subprocess.check_output(['node','--input-type=module','-e',identity_script],cwd=root).decode('utf-8'))
+identity['sha256'] = digest(file)
+(app/'main/real-library/paired-plugin.json').write_text(json.dumps(identity,indent=2)+'\n',encoding='utf-8',newline='\n')
 print('Runtime inputs and paired plugin prepared')

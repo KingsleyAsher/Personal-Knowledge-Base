@@ -3,6 +3,23 @@
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
+<!-- project-record-version: 3.0.0 -->
+
+**Source covered: plugin 3.0.0 / Windows client 2.0.0 · Updated: 2026-11-11 · Local delivery, not publicly released**
+
+## 2026-11-11 · Plugin 3.0.0 / Client 2.0.0 · Local major-version delivery
+
+Consolidates release, cross-round and visual review fixes. Both products work independently or share one library. Compatibility continues to use the shared protocol, storage generation and negotiated capabilities; changing the product major version does not force migration or rebuilding.
+
+- Fixes first-run creation, interrupted initialization, migration, backup restoration, grant renewal, concurrent ingestion and update handoff.
+- External edits within the library trigger scoped maintenance with retryable continuous saves. Startup reads coalesce, healthy indexes are reused, and permission changes hide stale content.
+- Restores shared management control styling, aligned switches, light/dark themes, readable badges, modal scrolling and visible keyboard focus.
+- Checks build/package fingerprints and regenerates real-library launcher pairing metadata for the exact companion plugin.
+
+Existing originals stay in place. A version upgrade alone does not migrate or rebuild the entire library. Copy imports watch the library copy, not the external source. The client checks and verifies downloads; installation still uses the installer. Historical host installation constraints and the 2.4.6 recovery boundary remain unchanged.
+
+This is a local delivery, not a public Release, signed distribution or production installation. See the delivery report for final verification and checksums.
+
 ## 2026-11-11 · Layout and shared control fixes (unpublished candidate)
 
 Inspected the workspace, quick/full settings, management tabs and service settings at 1440×1024 and 1040×720. The desktop management factory now receives the plugin's shared UI stylesheet, restoring separate preference rows, label alignment, field grouping and control styling. Native management controls and scrollbars follow the desktop light/dark theme. Selected tabs and primary actions use the palette's foreground color instead of white on pale backgrounds. Status badges also inherit the palette soft accent background, avoiding pale green text on a pale green fill. Added modal boundaries and keyboard focus indicators for selects, and kept a single management content scroll area in smaller windows.
@@ -50,10 +67,6 @@ Clarify sample-library creation and real-folder enrollment. Fix mirror release-n
 Validation uses isolated synthetic libraries and covers standalone plugin setup, standalone desktop access and a single shared writer. Real user data was not modified. These are unpublished source changes and local candidate packages, not evidence of publication, installation or real cloud-model acceptance. Final validation results are recorded in the release audit report.
 
 Local validation: 325 of 327 Node tests passed, with two environment-dependent skips. The packaged Electron ASAR test subsequently passed, followed by 28 passing targeted restore-policy checks. All 23 Python tests passed; both dependency audits reported zero vulnerabilities. The actual desktop rendered PDF pages. Isolated installation, launch and uninstallation passed while preserving an extra user file. The installer remains unsigned; no real DSH profile installation or cloud-model call was performed.
-
-<!-- project-record-version: 2.5.13 -->
-
-**Source covered: plugin 2.5.13 / Windows client 1.1.4 source · Updated: 2026-11-10**
 
 ## Plugin 2.5.12 · First shared library and inbox workflow refresh
 

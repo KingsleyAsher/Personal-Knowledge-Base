@@ -1,4 +1,4 @@
-> Current release / 当前版本：plugin **2.5.3**, client **1.1.1**. [Release notes](../releases/plugin-2.5.3.md)。原件索引迁移须在资料库预览并确认。
+> Local build / 当前本地构建：plugin **3.0.0**, client **2.0.0**. [Release notes](../releases/plugin-3.0.0.en.md). Not publicly released / 尚未公开发布。
 
 > Unified project: [main README](../../README.md) · [shared architecture](../../ARCHITECTURE.en.md).
 

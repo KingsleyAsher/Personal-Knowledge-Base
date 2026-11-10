@@ -1,4 +1,4 @@
-> Current release / 当前版本：plugin **2.5.5**, client **1.1.2**. [Release notes](docs/releases/plugin-2.5.5.md)。原件索引迁移须在资料库预览并确认。
+> Local build / 当前本地构建：plugin **3.0.0**, client **2.0.0**. [Release notes](docs/releases/plugin-3.0.0.md). Not publicly released / 尚未公开发布。
 
 # 插件与客户端统一架构
 
