@@ -51,6 +51,7 @@ export const METHODS = Object.freeze({
   'relations.query': { access: 'read', args: optional({ path: relative, limit: { type: 'integer', min: 1, max: 500 } }, []) },
   'inbox.list': { access: 'read', args: optional({ offset: revision, limit: { type: 'integer', min: 1, max: 500 } }, []) },
   'inbox.organize': { access: 'write', idempotent: true, args: empty },
+  'inbox.organizeResolve': {access:'admin',idempotent:true,args:object({taskId:text(128),state:choice(['launched','failed']),sessionId:{type:'string',max:128},confirm:{const:true}},['taskId','state','confirm'])},
   'inbox.organizeStatus': { access: 'read', args: empty },
   'inbox.organizeBridge': { access: 'host', args: object({action:choice(['heartbeat','claim','report','leave']),clientId:text(80),execution:{type:'json'},taskId:text(128),token:text(128),state:choice(['launched','failed','unknown']),sessionId:{type:'string',max:128},message:{type:'string',max:600}},['action','clientId']) },
   'inbox.import': { access: 'write', idempotent: true, args: object({ sourceHandle: text(128) }) },

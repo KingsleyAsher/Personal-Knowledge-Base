@@ -31,7 +31,7 @@ import {startClipper} from './clipper.js'
 import {extensionArchive} from './extension.js'
 import {createLegacyPorts} from './legacy-ports.js'
 
-export const SUPPORTED = Object.freeze(['host.tool', 'service.health', 'service.prepareUpgrade', 'service.shutdown', 'connection.grant', 'connection.revoke', 'migration.preview', 'migration.commit', 'migration.recover', 'adapter.dispatch', 'library.snapshot', 'library.tree', 'document.read', 'document.readForEdit', 'document.create', 'document.save', 'state.patch', 'search.query', 'relations.query', 'inbox.list', 'inbox.organize', 'inbox.organizeStatus', 'inbox.organizeBridge', 'policy.get', 'policy.setIndexExcluded', 'events.subscribe', 'operation.status', 'task.get'])
+export const SUPPORTED = Object.freeze(['host.tool', 'service.health', 'service.prepareUpgrade', 'service.shutdown', 'connection.grant', 'connection.revoke', 'migration.preview', 'migration.commit', 'migration.recover', 'adapter.dispatch', 'library.snapshot', 'library.tree', 'document.read', 'document.readForEdit', 'document.create', 'document.save', 'state.patch', 'search.query', 'relations.query', 'inbox.list', 'inbox.organize', 'inbox.organizeStatus', 'inbox.organizeResolve', 'inbox.organizeBridge', 'policy.get', 'policy.setIndexExcluded', 'events.subscribe', 'operation.status', 'task.get'])
 const legacyRead = new Set(['atlas.snapshot', 'atlas.tree', 'atlas.detail', 'search.list', 'reading.list', 'reading.export', 'review.list', 'atlas.relations', 'capture.list', 'capture.inbox-files', 'inbox.list', 'index.policy.get'])
 const legacyWrite = new Set(['reading.progress', 'reading.annotate', 'reading.delete', 'review.update'])
 export async function libraryIdentity(root) {
@@ -230,7 +230,9 @@ export async function startService({ library, privateDir, python, sources = {}, 
       const display=await kernel.workbench.libraryState.binding(kbId)
       desktopPrivateDirs=display.preferences.showPrivate?[]:display.privateDirs
       desktopCatalog=display.fileCatalog;desktopShowPrivate=display.preferences.showPrivate
-      return desktopFiles.call(call.method, a, caller.id, call.operationId)
+      const result = await desktopFiles.call(call.method, a, caller.id, call.operationId)
+      if(call.method==='desktop.restoreState')await applySharedPolicy()
+      return result
     }
     if (call.method === 'library.snapshot') { const s = await wb({ op: 'atlas.snapshot' }); return { ...s, library: identity, sharedStateRevision: (await lib.userData(await lib.binding(kbId))).revision } }
     if (call.method === 'library.tree') return wb({ op: 'atlas.tree', ...a })
@@ -282,6 +284,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
     if (call.method === 'search.query') return wb({ op: 'search.list', q: a.query, mode: 'fulltext', limit: a.limit })
     if (call.method === 'relations.query') return wb({ op: 'atlas.relations', ...a })
     if (call.method === 'inbox.list') return wb({ op: 'inbox.list', ...a })
+    if (call.method === 'inbox.organizeResolve') return inboxJobs.resolve(a)
     if (call.method === 'inbox.organizeStatus') return inboxJobs.status()
     if (call.method === 'inbox.organize') return inboxJobs.request(call.operationId)
     if (call.method === 'inbox.organizeBridge') return inboxJobs.bridge(a,connection.id)
@@ -470,7 +473,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
     if (await active()) { await applySharedPolicy(); startMaintenance();await engines.recover() }
     clipper=await startClipper({privateDir,dispatch:args=>queue(async()=>{await requireActive();const result=await kernel.workbench.clipper(args);writeSequence++;await atomic(path.join(privateDir,'sequence.json'),{value:writeSequence});kernel.workbench.invalidate();await event();maintenance?.notify('');return result;})});
     timer = setInterval(() => {
-      void queue(async()=>{if(!closing&&await broker.audit())await event();}).catch(()=>{})
+      void queue(async()=>{if(!closing){await auth.provision();if(await broker.audit())await event();}}).catch(()=>{})
       for (const [id, c] of connections) { try { if (!c.authenticated && Date.now() - c.created > 10000) disconnect(id); else if (c.authenticated) auth.get(c.grantId) } catch { disconnect(id) } }
       if (connections.size) lastActive = Date.now()
       else if (Date.now() - lastActive > idleMs) void close()

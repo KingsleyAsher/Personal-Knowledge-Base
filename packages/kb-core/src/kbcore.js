@@ -25,7 +25,7 @@ import {catalogActive,readCatalog,refreshCatalog,classifyOriginal} from './file-
 import { CLASSIFICATION_VERSION } from './file-classification.js'
 
 // 版本单一来源：package.json 的 version 必须与此一致（详见 INSTALL 说明）
-export const VERSION = '2.5.12'
+export const VERSION = '2.5.13'
 
 export const REQUIRED_FIELDS = ['title', 'type', 'tags', 'status', 'updated']
 export const SCHEMA_VERSION = 1
@@ -1204,7 +1204,11 @@ export function createCore(cfg, logger) {
       result.initialized = meta.value.installState === 'complete'
       result.kbId = meta.value.kbId ?? null
       result.note = '已初始化，接入时不覆盖任何既有文件'
-      const written = await setConfig({ kbPath: toPosix(target) })
+      const restoreReport = await readJsonState(path.join(target, '.kbmeta/restore-report.json'))
+      const restorePolicy = await readJsonState(path.join(target, '.kbmeta/restore-policy.json'))
+      const recovered = restoreReport.state === 'ok' && restoreReport.value.verified === true && restoreReport.value.kbId === result.kbId && restorePolicy.state === 'ok'
+        ? Object.fromEntries(['categories','privateDirs','excludeFromSearch','autoIndex'].filter(k => restorePolicy.value[k] !== undefined).map(k => [k,restorePolicy.value[k]])) : {}
+      const written = await setConfig({ ...recovered, kbPath: toPosix(target) })
       if (!written.ok) return { ...result, ...written, ok: false, kbPath: toPosix(target) }
       await writeBinding(result.kbId, target)
       result.ok = true
@@ -1636,6 +1640,7 @@ export function createCore(cfg, logger) {
 
   /** 对**指定根目录**写索引（R6：初始化新库时当前绑定还没切，不能用 kbRootOf(conf)） */
   async function writeIndexAtRoot(root, conf, entries) {
+    await mkdir(path.dirname(indexPath(root)), { recursive: true })
     const payload = { generatedAt: nowIso(), meta: await indexMetaOf(conf, entries, root), entries }
     await commitIndex(indexPath(root), payload)
     return payload

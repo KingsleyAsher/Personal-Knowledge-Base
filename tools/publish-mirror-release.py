@@ -45,8 +45,12 @@ def release_files(repo, tag):
         notes = '# ' + manifest['version'] + ' · 个人知识库插件\n\n' + show('docs/releases/plugin-' + manifest['version'] + '.md').decode('utf-8')
     except subprocess.CalledProcessError:
         notes = show('RELEASE.md').decode('utf-8')
-        sections = re.split(r'(?m)^# ', notes)
-        notes = '# ' + next(section for section in sections if section.startswith(manifest['version'] + ' '))
+        heading = re.search(r'(?m)^(#{1,2}) (?:插件 |Plugin )?v?' + re.escape(manifest['version']) + r'(?=\s|$)[^\n]*', notes)
+        if not heading:
+            raise RuntimeError('Release notes do not contain plugin ' + manifest['version'])
+        following = re.search(r'(?m)^#{1,' + str(len(heading[1])) + r'} ', notes[heading.end():])
+        end = heading.end() + following.start() if following else len(notes)
+        notes = '# ' + manifest['version'] + ' · 个人知识库插件\n' + notes[heading.end():end]
     commit = git_bytes(repo, 'rev-parse', tag + '^{commit}').decode().strip()
     return manifest, commit, notes.strip(), files
 

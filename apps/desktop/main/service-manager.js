@@ -34,11 +34,21 @@ export async function createManager({dataDir,backendRoot,assetDir,python,node,se
   const m=await readJson(path.join(canonical,'.desktop-preview.json'),null);
   if(m?.synthetic!==true)throw Object.assign(Error('不是候选虚构库'),{code:'FORBIDDEN'});return canonical;
  }
+ // Called only with a service restore receipt, never with a renderer-selected path.
+ async function registerRestoredCopy(receipt){
+  if(!receipt.committed||!receipt.copyRoot||!activeRoot)throw Error('恢复回执无效');
+  const root=await realpath(receipt.copyRoot),expected=path.join((await grantFor(activeRoot))?path.dirname(activeRoot):sandbox,'libraries');
+  if(!sameRoot(path.dirname(root),expected)||!/^恢复副本-[a-f0-9]{64}$/.test(path.basename(root)))throw Error('恢复副本不属于当前库');
+  const home=(await grantFor(activeRoot))?.serviceHome??process.env.KB_SHARED_HOME??path.join(sandbox,'services');
+  const restored=await connectRuntime({library:root,home,python,node,kind:'desktop',candidateRoot:path.dirname(root),allowFreshSynthetic:true});
+  try{await restored.client.call('desktop.restoreState');const grants=await realGrants();await atomic(path.join(sandbox,'real-library-grants.json'),[...grants.filter(g=>!sameRoot(g.root,root)),{mode:'shared-real',root,kbId:restored.identity.kbId,instanceId:restored.identity.instanceId,serviceHome:home}]);}finally{await restored.close();}
+  return receipt;
+ }
  async function openLibrary(root){
   root=await ensureCandidate(root);connectionState='connecting';send({type:'connection.changed',state:connectionState});
   clearTimeout(retryTimer);subscription?.();
   const real=await grantFor(root);
-  let nextRuntime;try{nextRuntime=await connectRuntime({library:root,home:real?.serviceHome??process.env.KB_SHARED_HOME??path.join(sandbox,'services'),python,node,kind:'desktop',...(real?{allowFreshSynthetic:false}:{candidateRoot:sandbox}),required:['workspace.read','workspace.write','providers.get','host.bridge'],onEvent:event=>{if(event.event==='connection.changed'){connectionState=event.data.state;send({type:'connection.changed',...event.data});}else if(event.event==='dsh.event')send({type:'dsh.event',...event.data});else notify();}});}catch(e){connectionState=runtime?"ready":"offline";send({type:"connection.changed",state:connectionState});throw e;}
+  let nextRuntime;try{nextRuntime=await connectRuntime({library:root,home:real?.serviceHome??process.env.KB_SHARED_HOME??path.join(sandbox,'services'),python,node,kind:'desktop',...(real?{allowFreshSynthetic:false}:{candidateRoot:sandbox}),required:['workspace.read','workspace.write','providers.get','host.bridge','inbox.organizeResolve'],onEvent:event=>{if(event.event==='connection.changed'){connectionState=event.data.state;send({type:'connection.changed',...event.data});}else if(event.event==='dsh.event')send({type:'dsh.event',...event.data});else notify();}});}catch(e){connectionState=runtime?"ready":"offline";send({type:"connection.changed",state:connectionState});throw e;}
   await runtime?.close();runtime=nextRuntime;activeRoot=root;client=runtime.client;privateDir=runtime.privateDir;configurationWarning='';
   await client.call('desktop.restoreState');
   try{const profilesHome=process.env.KB_PROFILE_HOME??path.join(os.homedir(),'.dsh/profiles'),own=real?.profile?await exportPluginVector({stateDir:path.join(profilesHome,real.profile,'kb-state'),root,kbId:runtime.identity.kbId,sourceId:'profile:'+real.profile}):null,candidates=real?.profile?(own?[own]:[]):await detectPluginVectors({profilesHome,root,kbId:runtime.identity.kbId});
@@ -73,6 +83,6 @@ export async function createManager({dataDir,backendRoot,assetDir,python,node,se
   if(typeof name!=='string'||!name.trim()||name.length>80||/[<>:"|?*\\/\x00-\x1f]/.test(name)||/[. ]$/.test(name)||/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\.|$)/i.test(name))throw Object.assign(Error('库名称无效'),{code:'BAD_REQUEST'});
   const root=path.join(sandbox,'libraries',name.trim());await mkdir(root);await createFixture(root,backendRoot,assetDir);return openLibrary(root);
  }
- return {initialize,call,status,removeLibrary,reconnectDsh,openLibrary,listLibraries,createLibrary,ensureCandidate,get root(){return activeRoot;},get privateDir(){return privateDir;},get sandbox(){return sandbox;},async close(){clearInterval(leaseTimer);await unlink(leaseFile).catch(()=>{});clearTimeout(retryTimer);subscription?.();await runtime?.close();client=null;connectionState='offline';},async reconnect(){return activeRoot?openLibrary(activeRoot):initialize();}};
+ return {initialize,call,status,registerRestoredCopy,removeLibrary,reconnectDsh,openLibrary,listLibraries,createLibrary,ensureCandidate,get root(){return activeRoot;},get privateDir(){return privateDir;},get sandbox(){return sandbox;},async close(){clearInterval(leaseTimer);await unlink(leaseFile).catch(()=>{});clearTimeout(retryTimer);subscription?.();await runtime?.close();client=null;connectionState='offline';},async reconnect(){return activeRoot?openLibrary(activeRoot):initialize();}};
 }
 

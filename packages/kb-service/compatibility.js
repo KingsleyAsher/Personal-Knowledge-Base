@@ -24,5 +24,5 @@ export function canShareRuntime(health, buildId, required = [], expected = SERVI
   if (!Array.isArray(health?.supported) || !required.every(m => health.supported.includes(m))) return false
   if (health.serviceBuildId === buildId) return true
   const actual = health.compatibility ?? LEGACY[health.serviceBuildId]
-  return Boolean(actual && Object.keys(SERVICE_COMPATIBILITY).every(key => actual[key] === expected[key]))
+  return Boolean(actual && Object.keys(SERVICE_COMPATIBILITY).every(key => actual[key] === expected[key] || key === 'contractHash' && expected[key] === SERVICE_COMPATIBILITY.contractHash && actual[key] === legacyContract.contractHash))
 }

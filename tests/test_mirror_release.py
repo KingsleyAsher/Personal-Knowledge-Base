@@ -5,12 +5,14 @@ import json
 import re
 import sys
 import unittest
+import tempfile
 import urllib.error
 from pathlib import Path
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 TOOLS = ROOT / 'tools'
+FIXTURE_TAG = 'v2.5.12'  # Immutable published fixture; a new candidate has no tag yet.
 sys.path.insert(0, str(TOOLS))
 from mirror_release import APIError, MirrorAPI  # noqa: E402
 
@@ -40,7 +42,7 @@ class FakeResponse:
 class FakeAPI:
     def __init__(self, platform, hashes, existing=None):
         self.platform = platform
-        self.tag = 'v' + json.loads((ROOT / 'release-manifest-v2.json').read_text(encoding='utf-8'))['version']
+        self.tag = FIXTURE_TAG
         self.token = 'test-upload-token'
         self.hashes = hashes
         self.release = existing
@@ -95,9 +97,13 @@ class FakeAPI:
 class MirrorReleaseTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.manifest = json.loads((ROOT / 'release-manifest-v2.json').read_text(encoding='utf-8'))
+        cls.manifest = json.loads(publisher.git_bytes(ROOT, 'show', FIXTURE_TAG + ':release-manifest-v2.json'))
         cls.tag = 'v' + cls.manifest['version']
         cls.release_data = publisher.release_files(ROOT, cls.tag)
+        cls.fixture_directory = tempfile.TemporaryDirectory(prefix='mirror-release-fixture-')
+        cls.addClassCleanup(cls.fixture_directory.cleanup)
+        cls.fixture_repo = Path(cls.fixture_directory.name)
+        (cls.fixture_repo / 'release-manifest-v2.json').write_text(json.dumps(cls.manifest), encoding='utf-8')
 
     def test_release_assets_are_pinned_to_a_valid_stable_tag(self):
         manifest, commit, notes, files = self.release_data
@@ -193,12 +199,12 @@ class MirrorReleaseTests(unittest.TestCase):
             def git_bytes(repo, *args):
                 if args[0] == 'ls-remote':
                     return f'{commit}\trefs/tags/{self.tag}\n'.encode()
-                return real_git_bytes(repo, *args)
+                return real_git_bytes(ROOT, *args)
 
             with self.subTest(platform=platform), patch.object(publisher, 'git_bytes', side_effect=git_bytes):
-                publisher.publish(platform, repo=ROOT, tag=self.tag, api=api)
+                publisher.publish(platform, repo=self.fixture_repo, tag=self.tag, api=api)
                 first_body = api.release['body']
-                publisher.publish(platform, repo=ROOT, tag=self.tag, api=api)
+                publisher.publish(platform, repo=self.fixture_repo, tag=self.tag, api=api)
 
             self.assertIn('人工补充的发行说明', first_body)
             self.assertEqual(api.release['name'], '手工标题')
@@ -217,11 +223,11 @@ class MirrorReleaseTests(unittest.TestCase):
             def git_bytes(repo, *args):
                 if args[0] == 'ls-remote':
                     return f'{commit}\trefs/tags/{self.tag}\n'.encode()
-                return real_git_bytes(repo, *args)
+                return real_git_bytes(ROOT, *args)
 
             with self.subTest(platform=platform), patch.object(publisher, 'git_bytes', side_effect=git_bytes):
-                publisher.publish(platform, repo=ROOT, tag=self.tag, api=api)
-                publisher.publish(platform, repo=ROOT, tag=self.tag, api=api)
+                publisher.publish(platform, repo=self.fixture_repo, tag=self.tag, api=api)
+                publisher.publish(platform, repo=self.fixture_repo, tag=self.tag, api=api)
 
             self.assertEqual(api.release['tag_name'], self.tag)
             self.assertEqual(api.upload_count, 6)

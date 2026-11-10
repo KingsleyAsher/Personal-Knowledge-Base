@@ -87,6 +87,7 @@ function wire(){
   return {...r,items,nextOffset:r.offset+r.limit<r.total?r.offset+r.limit:undefined};
  });
  register('inboxStatus',()=>manager.call('inbox.organizeStatus'));
+ register('resolveInbox',a=>writeCall('inbox.organizeResolve',{taskId:a.taskId,state:a.state,sessionId:a.sessionId,confirm:a.confirm},a.requestId));
  register('organizeInbox',a=>writeCall('inbox.organize',{},a.requestId));
  register('stat',a=>manager.call('desktop.stat',a));
  register('preview',async a=>resourcePreview(await manager.call('desktop.preview',a)));
@@ -119,7 +120,7 @@ function wire(){
  register('backup',a=>writeCall('desktop.backupCreate',{},a.requestId));
  register('backupDelete',a=>writeCall('desktop.backupDelete',{backupId:a.backupId,expectedDigest:a.expectedDigest},a.requestId));
  register('restorePreview',a=>manager.call('desktop.restorePreview',a));
- register('restoreCommit',async a=>{const r=await writeCall('desktop.restoreCommit',a);return {committed:r.committed,copyRoot:r.copyRoot,files:r.files};});
+ register('restoreCommit',async a=>{const r=await writeCall('desktop.restoreCommit',a);await manager.registerRestoredCopy(r);return {committed:r.committed,copyRoot:r.copyRoot,files:r.files};});
  register('tasks',async()=>({items:(await localRead('taskHistory',[])).filter(r=>r.library===clientKey()),pending:Object.fromEntries(Object.entries(await localRead('pending',{})).filter(([_id,r])=>r.library===clientKey()))}));
  register('operation',async a=>{const r=await manager.call('operation.status',a);if(r.state==='committed'||r.state==='failed'){const p=await localRead('pending',{});delete p[a.requestId];await localWrite('pending',p);}return r;});
  register('preferences',async a=>{const p=await localRead('preferences',{theme:'system',restoreTabs:true,keepDrafts:true});if(a.theme!==undefined){if(!['light','dark','system'].includes(a.theme))throw Error('无效主题');p.theme=a.theme;}if(a.palette!==undefined){if(!validPalette(a.palette))throw Error('无效配色');p.palette=a.palette;}if(a.fileSort!==undefined){if(!['name-asc','name-desc','modified-desc','modified-asc'].includes(a.fileSort))throw Error('无效排序');p.fileSort=a.fileSort;}if(a.shortcuts!==undefined)p.shortcuts=validateShortcuts(a.shortcuts);if(a.relationWindowSize!==undefined){const {width,height}=a.relationWindowSize??{};if(!Number.isFinite(width)||!Number.isFinite(height)||width<340||height<300||width>4096||height>2160)throw Error('关系窗口尺寸无效');p.relationWindowSize={width:Math.round(width),height:Math.round(height)};}for(const k of ['restoreTabs','keepDrafts'])if(typeof a[k]==='boolean')p[k]=a[k];await localWrite('preferences',p);if(a.palette!==undefined){appearancePalette=p.palette;window?.setBackgroundColor(windowBackground());}if(a.theme!==undefined&&nativeTheme.themeSource!==p.theme)nativeTheme.themeSource=p.theme;return p;});

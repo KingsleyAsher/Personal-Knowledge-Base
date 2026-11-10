@@ -31,7 +31,7 @@ jobs:
           if ((git rev-parse HEAD) -ne (git rev-parse origin/main)) { throw 'Stable tag must point to the current main commit' }
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -51,6 +51,8 @@ jobs:
           python -X utf8 -m unittest discover -s tests -p test_transactional_update.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node --test tests/runtime-compatibility.test.mjs tests/update-download-recovery.test.mjs tests/update-status-recovery.test.mjs tests/flow-tool-output.test.mjs tests/shared-parse-records.test.mjs tests/parse-desktop-authorization.test.mjs tests/handoff-api.test.mjs tests/legacy-handoff.test.mjs tests/runtime-resume.test.mjs tests/parse-job-storage.test.mjs tests/flow-model-selection.test.mjs tests/inbox-entry.test.mjs tests/command-description.test.mjs tests/todo-lifecycle.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node --test tests/fresh-original-index.test.mjs tests/index-architecture.test.mjs tests/windows-safe-upgrade.test.mjs tests/release-recovery.test.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node tests/flow-conversation-probe.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
