@@ -3,6 +3,12 @@
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
+## 2026-11-11 · Layout and shared control fixes (unpublished candidate)
+
+Inspected the workspace, quick/full settings, management tabs and service settings at 1440×1024 and 1040×720. The desktop management factory now receives the plugin's shared UI stylesheet, restoring separate preference rows, label alignment, field grouping and control styling. Native management controls and scrollbars follow the desktop light/dark theme. Selected tabs and primary actions use the palette's foreground color instead of white on pale backgrounds. Status badges also inherit the palette soft accent background, avoiding pale green text on a pale green fill. Added modal boundaries and keyboard focus indicators for selects, and kept a single management content scroll area in smaller windows.
+
+TypeScript/Vite builds passed. Actual Electron screenshots and geometry checks confirmed horizontally centered dialogs, no horizontal content overflow, and 34×20 switches with at most 0.5px vertical misalignment. Selected management button text passed 4.5:1 contrast in all 14 combinations of seven palettes and light/dark modes. The shared stylesheet is included in build proof inputs to reject stale builds after stylesheet changes. Regenerated candidates without public release or production library changes.
+
 ## 2026-11-11 · Cross-round review and release consistency fixes (unpublished)
 
 Reproduced and fixed standalone desktop vector reconciliation checking the plugin directory, which could incorrectly rebuild a healthy index. File changes and atomic replacements during scans remain retryable, including preservation of dirty paths when work throws. Continuous file notifications now have a maximum flush delay. Automatic visibility changes advance the policy version; the desktop rechecks open documents, hides content, outlines and actions after access is revoked, preserves unsaved edits, and resumes after access is restored.
