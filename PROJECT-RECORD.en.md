@@ -13,6 +13,8 @@ Merges release-review fixes, mixed-version interoperability, startup/scoped-upda
 
 Final local regression: 362 of 364 Node checks passed, zero failures and two real-host environment skips; all 24 Python checks passed. Actual installer validation confirmed that client 2.0.0 installed in a new directory resumes the 1.1.4 profile and library, preserves originals and renders without page errors. Nonempty targets remain protected. Source/package, embedded plugin and installer digests are verified before publication; GitHub Actions validates the merge and release tags.
 
+Fixes concurrent first activation across old/new clients: an authenticated active owner satisfies duplicate fresh activation without another migration. Conflicts from older services require an active matching library identity before proceeding. Concurrent interoperability tests now retain and close successful connections even when the peer fails, preventing a leaked test process.
+
 GitHub Windows checks now await complete service exit before removing test directories. The historical 2.4.3 upgrade fixture adapts only SID/ACL display-alias normalization for the runner built-in Administrator account, without changing legacy protocols, permissions or upgrade behavior.
 
 The installer is unsigned and requires an empty destination; silent in-place installation is not implemented. Library migration still requires preview and confirmation. No production library or paid model call was used; real DSH tool-dispatch and ASAR-host checks remain environment-dependent.

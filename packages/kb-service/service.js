@@ -188,6 +188,9 @@ export async function startService({ library, privateDir, python, sources = {}, 
     if (call.method === 'connection.revoke') { await auth.revoke(a.grantId); for (const [id, c] of connections) if (c.grantId === a.grantId) disconnect(id); return { revoked: true } }
     if (call.method === 'migration.preview') return migration.preview(a.sourceHandles)
     if (call.method === 'migration.commit') {
+      // Old connectors may race after observing an inactive fresh library.
+      // A verified active owner already satisfies this request without writes.
+      if(a.planId==='fresh'&&a.quiescent===true&&await active())return {committed:true,alreadyActive:true,sourcesPreserved:true}
       const conf = await kernel.core.getConfig()
       const result = await migration.commit({ ...a, ownerToken, instanceId, freshPolicy: { schemaVersion: 1, revision: 0, categories: conf.categories, privateDirs: conf.privateDirs ?? DEFAULT_PRIVATE_DIRS, excludeFromSearch: conf.excludeFromSearch, preferences: DEFAULT_PREFERENCES } })
       await applySharedPolicy(); startMaintenance();await engines?.recover(); return result

@@ -1,11 +1,11 @@
 {
   "package": "@local/dsh-knowledge-base",
   "version": "3.0.0",
-  "buildId": "c076cef9bd4009a3",
+  "buildId": "d8a4283a132ff07d",
   "tgz": "local-dsh-knowledge-base-3.0.0.tgz",
-  "bytes": 15869167,
-  "sha256": "0e5a06b7bec9f611158dbffeb3559994d5032b39530040ea955de21530548599",
-  "integrity": "sha512-od8IT0iMrtPceX/BYPvvXdK8lEYOHrvH7Ar/crIKdG+vWKVaHOU0avGspRWow4vYs9EWvUTmnFOUvDS/SzyMHQ==",
+  "bytes": 15869925,
+  "sha256": "e6ed8c47ce24fb13508218c09394456fe746d57e82a329f6848edaa593d2e199",
+  "integrity": "sha512-1CkKcR+wueyyuAQR5nsLdZb0JRChzg5E5FyJi+QvUxDzCFYIHUpz7mBL71bfuouincRPqvQPBpQdqB4bae0GAw==",
   "packageFileCount": 504,
   "buildFileCount": 377,
   "files": [
@@ -86,13 +86,13 @@
     },
     {
       "path": "PROJECT-RECORD.en.md",
-      "bytes": 92533,
-      "sha256": "e44d4f81df019fbd66b8030a6e6820bb98b3d369a64a4e33d30f5cec3d3631a1"
+      "bytes": 92919,
+      "sha256": "ef91dbc9ff91c9349f2fb54f261b461987760e7eb3b5b08fc9ee7f3f7da19e92"
     },
     {
       "path": "PROJECT-RECORD.md",
-      "bytes": 80765,
-      "sha256": "9aa54400d8407d05d860463ff6099d8c4915df359df6182a53e1310c18e73f1b"
+      "bytes": 81084,
+      "sha256": "c3d7ca2bcb67effc47f6e2ae2c47f3a4c7e1872046afae095e2c9b3b079bf330"
     },
     {
       "path": "README.md",
@@ -281,13 +281,13 @@
     },
     {
       "path": "docs/client/PROJECT-RECORD.en.md",
-      "bytes": 19331,
-      "sha256": "e2755b120f1582ee6325cb7d722a94362ce4133e80bb2e5df3a5c2a7112f619c"
+      "bytes": 20008,
+      "sha256": "7820a217cd9f6f86f8076861029357a35a553e2f8cf238b53c89e30499a0f04d"
     },
     {
       "path": "docs/client/PROJECT-RECORD.md",
-      "bytes": 19603,
-      "sha256": "f4d44faea9483639607a09311907d119d81f2e9c83406993cef1a072a117e9a8"
+      "bytes": 20179,
+      "sha256": "34d5209ba6effbd60f215c16dd2626fb46f31a24a59e881ff75dce3b2c2bb401"
     },
     {
       "path": "docs/client/README.md",
@@ -991,8 +991,8 @@
     },
     {
       "path": "packages/kb-service/runtime.js",
-      "bytes": 12544,
-      "sha256": "4c6780cda160be90d8f1032ab9d878ce7de1e5de4eb77e08a5c631e46c4cf378"
+      "bytes": 13378,
+      "sha256": "6f1d2805c9dbb115bc1471bd4a88051755e78e9b38a415a85f9b796bb5554221"
     },
     {
       "path": "packages/kb-service/safe-update.js",
@@ -1001,8 +1001,8 @@
     },
     {
       "path": "packages/kb-service/service.js",
-      "bytes": 46198,
-      "sha256": "e8a3cf579a1d9d1574e01d77501e51024d46e2ff86e5e750a5211f5c0a37b6e3"
+      "bytes": 46486,
+      "sha256": "a98854a6e4f0ec1cebf0509470e85b1a0d0d293c0ad5584c9c34e4ed563c01a9"
     },
     {
       "path": "packages/kb-service/tool-definitions.json",
