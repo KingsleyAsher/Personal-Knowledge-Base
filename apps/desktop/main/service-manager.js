@@ -19,7 +19,7 @@ export async function createManager({dataDir,backendRoot,assetDir,python,node,se
  const sameRoot=(a,b)=>typeof a==='string'&&typeof b==='string'&&path.resolve(a).toLowerCase()===path.resolve(b).toLowerCase();
  async function removeLibrary(root){root=await realpath(root);if(sameRoot(root,await protectedRoot()))throw Object.assign(Error('插件当前绑定的知识库不可移除'),{code:'FORBIDDEN'});const libraries=await listLibraries();if(!libraries.some(l=>sameRoot(l.root,root)))throw Error('该库不在客户端列表中');const active=sameRoot(root,activeRoot);if(active){const next=libraries.find(l=>!sameRoot(l.root,root));if(!next)throw Error('请先打开另一个知识库，再移除当前库');await openLibrary(next.root);}const grants=await realGrants(),removed=grants.find(g=>sameRoot(g.root,root));await atomic(path.join(sandbox,'real-library-grants.json'),grants.filter(g=>!sameRoot(g.root,root)));const hidden=await readJson(path.join(sandbox,'hidden-libraries.json'),[]);await atomic(path.join(sandbox,'hidden-libraries.json'),[...hidden.filter(p=>!sameRoot(p,root)),root]);if(removed?.instanceId)for(const name of ['workspaces','drafts']){const file=path.join(sandbox,'client',name+'.json'),value=await readJson(file,{});delete value[removed.instanceId];await atomic(file,value);}return {removed:true,active,filesDeleted:false};}
  async function reconnectDsh(){await publishDshSelection();let status;const until=Date.now()+8000;do{status=await call('dsh.status');if(status.online)return status;await new Promise(r=>setTimeout(r,250));}while(Date.now()<until);return {...status,message:'未检测到在线 DSH，请打开 DSH 后重连。'};}
- const notify=()=>send({type:'snapshot.required'});
+ const notify=(data={})=>send({type:'snapshot.required',...data});
  const inside=(base,p)=>{const r=path.relative(base,p);return r!==''&&!r.startsWith('..'+path.sep)&&r!=='..'&&!path.isAbsolute(r);};
  const realGrants=()=>readJson(path.join(sandbox,'real-library-grants.json'),[]);
  const grantFor=async root=>(await realGrants()).find(g=>typeof g.root==='string'&&path.resolve(g.root).toLowerCase()===root.toLowerCase());
@@ -34,13 +34,24 @@ export async function createManager({dataDir,backendRoot,assetDir,python,node,se
   const m=await readJson(path.join(canonical,'.desktop-preview.json'),null);
   if(m?.synthetic!==true)throw Object.assign(Error('不是候选虚构库'),{code:'FORBIDDEN'});return canonical;
  }
+ // Called only with a service restore receipt, never with a renderer-selected path.
+ async function registerRestoredCopy(receipt){
+  if(!receipt.committed||!receipt.copyRoot||!activeRoot)throw Error('恢复回执无效');
+  const root=await realpath(receipt.copyRoot),expected=path.join((await grantFor(activeRoot))?path.dirname(activeRoot):sandbox,'libraries');
+  if(!sameRoot(path.dirname(root),expected)||!/^恢复副本-[a-f0-9]{64}$/.test(path.basename(root)))throw Error('恢复副本不属于当前库');
+  const home=(await grantFor(activeRoot))?.serviceHome??process.env.KB_SHARED_HOME??path.join(sandbox,'services');
+  const restored=await connectRuntime({library:root,home,python,node,kind:'desktop',candidateRoot:path.dirname(root),allowFreshSynthetic:true});
+  try{await restored.client.call('desktop.restoreState');const grants=await realGrants();await atomic(path.join(sandbox,'real-library-grants.json'),[...grants.filter(g=>!sameRoot(g.root,root)),{mode:'shared-real',root,kbId:restored.identity.kbId,instanceId:restored.identity.instanceId,serviceHome:home}]);}finally{await restored.close();}
+  return receipt;
+ }
  async function openLibrary(root){
   root=await ensureCandidate(root);connectionState='connecting';send({type:'connection.changed',state:connectionState});
   clearTimeout(retryTimer);subscription?.();
   const real=await grantFor(root);
-  let nextRuntime;try{nextRuntime=await connectRuntime({library:root,home:real?.serviceHome??process.env.KB_SHARED_HOME??path.join(sandbox,'services'),python,node,kind:'desktop',...(real?{allowFreshSynthetic:false}:{candidateRoot:sandbox}),required:['workspace.read','workspace.write','providers.get','host.bridge'],onEvent:event=>{if(event.event==='connection.changed'){connectionState=event.data.state;send({type:'connection.changed',...event.data});}else if(event.event==='dsh.event')send({type:'dsh.event',...event.data});else notify();}});}catch(e){connectionState=runtime?"ready":"offline";send({type:"connection.changed",state:connectionState});throw e;}
+  let nextRuntime;try{nextRuntime=await connectRuntime({library:root,home:real?.serviceHome??process.env.KB_SHARED_HOME??path.join(sandbox,'services'),python,node,kind:'desktop',...(real?{allowFreshSynthetic:false}:{candidateRoot:sandbox}),required:['workspace.read','workspace.write','providers.get','host.bridge'],onEvent:event=>{if(event.event==='connection.changed'){connectionState=event.data.state;send({type:'connection.changed',...event.data});}else if(event.event==='dsh.event')send({type:'dsh.event',...event.data});else notify(event.data);}});}catch(e){connectionState=runtime?"ready":"offline";send({type:"connection.changed",state:connectionState});throw e;}
   await runtime?.close();runtime=nextRuntime;activeRoot=root;client=runtime.client;privateDir=runtime.privateDir;configurationWarning='';
-  await client.call('desktop.restoreState');
+  const restorePending=await lstat(path.join(root,'.desktop-restore-state.json')).then(()=>true,e=>{if(e.code==='ENOENT')return false;throw e;});
+  if(restorePending)await client.call('desktop.restoreState');
   try{const profilesHome=process.env.KB_PROFILE_HOME??path.join(os.homedir(),'.dsh/profiles'),own=real?.profile?await exportPluginVector({stateDir:path.join(profilesHome,real.profile,'kb-state'),root,kbId:runtime.identity.kbId,sourceId:'profile:'+real.profile}):null,candidates=real?.profile?(own?[own]:[]):await detectPluginVectors({profilesHome,root,kbId:runtime.identity.kbId});
    if(candidates.length===1)await client.call('providers.syncPlugin',candidates[0]);else if(candidates.length>1)configurationWarning='检测到多个同库插件向量配置，请在连接设置中明确选择来源。';
   }catch{configurationWarning='插件向量配置未能安全读取；已保留当前配置，可连接 DSH 后共享或单独配置。';}
@@ -64,15 +75,15 @@ export async function createManager({dataDir,backendRoot,assetDir,python,node,se
   const hidden=await readJson(path.join(sandbox,'hidden-libraries.json'),[]),protectedPath=await protectedRoot();return items.filter(i=>!hidden.some(p=>sameRoot(p,i.root))).map(i=>({...i,protected:sameRoot(i.root,protectedPath)}));
  }
  async function initialize(){
-  const sample=path.join(sandbox,'libraries','示例资料库');await createFixture(sample,backendRoot,assetDir);
-  const last=await readJson(path.join(sandbox,'last-library.json'),null);let chosen=sample;
+  const last=await readJson(path.join(sandbox,'last-library.json'),null);let chosen;
   if(last)try{chosen=await ensureCandidate(last.root);}catch{}
+  if(!chosen){chosen=path.join(sandbox,'libraries','示例资料库');await createFixture(chosen,backendRoot,assetDir);}
   return openLibrary(chosen);
  }
  async function createLibrary(name){
   if(typeof name!=='string'||!name.trim()||name.length>80||/[<>:"|?*\\/\x00-\x1f]/.test(name)||/[. ]$/.test(name)||/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\.|$)/i.test(name))throw Object.assign(Error('库名称无效'),{code:'BAD_REQUEST'});
   const root=path.join(sandbox,'libraries',name.trim());await mkdir(root);await createFixture(root,backendRoot,assetDir);return openLibrary(root);
  }
- return {initialize,call,status,removeLibrary,reconnectDsh,openLibrary,listLibraries,createLibrary,ensureCandidate,get root(){return activeRoot;},get privateDir(){return privateDir;},get sandbox(){return sandbox;},async close(){clearInterval(leaseTimer);await unlink(leaseFile).catch(()=>{});clearTimeout(retryTimer);subscription?.();await runtime?.close();client=null;connectionState='offline';},async reconnect(){return activeRoot?openLibrary(activeRoot):initialize();}};
+ return {initialize,call,status,registerRestoredCopy,removeLibrary,reconnectDsh,openLibrary,listLibraries,createLibrary,ensureCandidate,get root(){return activeRoot;},get privateDir(){return privateDir;},get sandbox(){return sandbox;},async close(){clearInterval(leaseTimer);await unlink(leaseFile).catch(()=>{});clearTimeout(retryTimer);subscription?.();await runtime?.close();client=null;connectionState='offline';},async reconnect(){return activeRoot?openLibrary(activeRoot):initialize();}};
 }
 

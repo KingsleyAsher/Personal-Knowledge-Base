@@ -8,6 +8,7 @@ import {safePath,relativePath,inside,locked} from '../kb-core/src/workbench-stat
 import {fileRole} from '../kb-core/src/workbench-files.js';
 import {DEFAULT_PRIVATE_DIRS} from '../kb-core/src/fsindex.js';
 import {readIndexPolicy,policyExcluded,savePolicy,policyFile} from '../kb-core/src/index-policy.js';
+import {readCatalog,CATALOG_PATH} from '../kb-core/src/file-catalog.js';
 import {createEmbeddedKernel} from '../kb-core/index.js';
 import {atomic,readJson,hash,error} from './io.js';
 
@@ -393,8 +394,12 @@ export async function createDesktopFiles({root,privateDir,desktopRoot,core,withL
   for(const f of files){const b=await stable(f.path);total+=b.data.length;if(total>MAX_BACKUP)throw error('BAD_REQUEST','备份超过候选版128MB预算');
    await mkdir(path.dirname(path.join(dir,'files',f.path)),{recursive:true});await publishNew(path.join(dir,'files',f.path),b.data);manifest.push({path:f.path,sha256:hash(b.data),size:b.data.length});}
   const shared=await readJson(path.join(base,'.kbmeta/shared-state.json'),null),policy=readIndexPolicy(base);
-  await atomic(path.join(dir,'state.json'),{shared,policy});
-  const result={id:operationId,createdAt:Date.now(),files:manifest,size:total,verified:true,scope:'authorized-public-files-and-shared-state'};
+  const included=new Set(files.map(f=>f.path)),catalog=await readCatalog(base);
+  const safeShared=shared?{...shared,links:(shared.links??[]).filter(e=>included.has(e.from)&&included.has(e.to)),captures:(shared.captures??[]).filter(e=>included.has(e.path)),annotations:(shared.annotations??[]).filter(e=>included.has(e.path)),reading:Object.fromEntries(Object.entries(shared.reading??{}).filter(([p])=>included.has(p))),reviews:Object.fromEntries(Object.entries(shared.reviews??{}).filter(([p])=>included.has(p))),tasks:[],trashOperations:{}}:null;
+  const sharedPolicy=await readJson(path.join(base,'.kbmeta/shared-policy.json'),null);
+  const state={shared:safeShared,policy,sharedPolicy:sharedPolicy?{...sharedPolicy,preferences:{...sharedPolicy.preferences,showPrivate:false}}:null,catalog:catalog?{...catalog,files:catalog.files.filter(f=>included.has(f.path)),references:catalog.references.filter(f=>included.has(f.path))}:null};
+  await atomic(path.join(dir,'state.json'),state);
+  const result={id:operationId,createdAt:Date.now(),files:manifest,size:total,stateHash:hash(state),verified:true,scope:'authorized-public-files-and-shared-state'};
   await atomic(path.join(dir,'manifest.json'),result);const receipt={id:operationId,files:manifest.length,size:total,createdAt:result.createdAt,verified:true};await atomic(path.join(storage,'operations',operationId,'committed.json'),receipt);return receipt;
  }
  async function restorePreview(backupId,caller){
@@ -406,21 +411,26 @@ export async function createDesktopFiles({root,privateDir,desktopRoot,core,withL
  }
  async function restoreCopy(planId,caller,operationId){
   const p=plans.get(planId);if(!p||p.caller!==caller||p.operation!=='backupRestore'||p.expires<Date.now())throw error('CONFLICT');
-  const dst=path.join(sandbox,'libraries','恢复副本-'+operationId.slice(0,8));await mkdir(dst,{recursive:false});
+  const state=await readJson(await safePath(storage,'backups/'+p.backupId+'/state.json'));
+  if(p.manifest.stateHash&&hash(state)!==p.manifest.stateHash)throw error('RECOVERY_REQUIRED','备份状态校验失败');
+  const parent=await safePath(sandbox,'libraries',{missing:true});await mkdir(parent,{recursive:true});
+  const dst=await safePath(sandbox,'libraries/恢复副本-'+operationId,{missing:true});await mkdir(dst,{recursive:false});
   const kernel=createEmbeddedKernel({stateDir:path.join(storage,'restore-init',operationId)});
-  try{const result=await kernel.openCore().bind(dst,{confirmInit:true});if(!result.ok)throw error('BINDING_CHANGED');}finally{kernel.dispose();}
+  try{const result=await kernel.openCore().bind(dst,{confirmInit:true,originalIndex:!!state.catalog});if(!result.ok)throw error('BINDING_CHANGED');}finally{kernel.dispose();}
   await atomic(path.join(dst,'.desktop-preview.json'),{schemaVersion:1,synthetic:true,restoredAt:Date.now()});
   for(const f of p.manifest.files){
    const data=await readFile(path.join(storage,'backups',p.backupId,'files',f.path));if(hash(data)!==f.sha256)throw error('RECOVERY_REQUIRED','备份文件校验失败');
    const target=await safePath(dst,f.path,{missing:true});await mkdir(path.dirname(target),{recursive:true});await atomic(target,data);
   }
-  const state=await readJson(path.join(storage,'backups',p.backupId,'state.json'));
+  const meta=await readJson(path.join(dst,'.kbmeta/kb.json'));
+  if(state.catalog){state.catalog={...state.catalog,kbId:meta.kbId};await atomic(path.join(dst,CATALOG_PATH),state.catalog);}
+  if(state.shared)state.shared={...state.shared,kbId:meta.kbId};
   await atomic(path.join(dst,'.desktop-restore-state.json'),state);
   const result={committed:true,copyRoot:dst,files:p.manifest.files.length,restoreStatePending:true};await atomic(path.join(storage,'operations',operationId,'committed.json'),result);plans.delete(planId);return result;
  }
  async function restoreState(){
   const pending=path.join(base,'.desktop-restore-state.json'),state=await readJson(pending,null);if(!state)return {committed:true,alreadyApplied:true};
-  return withLock(async()=>{if(state.shared?.schemaVersion===1||state.shared?.format===1)await atomic(path.join(base,'.kbmeta/shared-state.json'),state.shared);if(state.policy?.format===1)await atomic(path.join(base,'.kbmeta/index-policy.json'),state.policy);await unlink(pending);return {committed:true};});
+  return withLock(async()=>{if(state.shared?.schemaVersion===1||state.shared?.format===1)await atomic(path.join(base,'.kbmeta/shared-state.json'),state.shared);if(state.sharedPolicy?.schemaVersion===1)await atomic(path.join(base,'.kbmeta/shared-policy.json'),state.sharedPolicy);if(state.policy?.format===1)await atomic(path.join(base,'.kbmeta/index-policy.json'),state.policy);await unlink(pending);return {committed:true};});
  }
  // Retry only cleanup of already staged deletions, including after a crash between
  // the atomic rename and receipt publication. Never infer deletion from absence.

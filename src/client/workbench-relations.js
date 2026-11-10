@@ -84,4 +84,3 @@
       error ? e('div', { role: 'alert', className: 'kbw-error' }, error, btn('重新读取', () => setRetry(n => n + 1))) : null)
   }
 
-\n

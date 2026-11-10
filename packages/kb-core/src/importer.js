@@ -183,10 +183,12 @@ export function sourcesFileOf(targetRoot) {
 export async function readSourceMap(targetRoot) {
   try {
     const raw = JSON.parse(await readFile(sourcesFileOf(targetRoot), 'utf8'))
-    const entries = raw && typeof raw.entries === 'object' && raw.entries !== null ? raw.entries : {}
+    if (!raw || (raw.version !== undefined && raw.version !== 1) || !raw.entries || typeof raw.entries !== 'object' || Array.isArray(raw.entries) || Object.values(raw.entries).some(e => !e || typeof e !== 'object' || Array.isArray(e))) throw Error('Invalid source map schema')
+    const entries = raw.entries
     return { version: 1, entries }
-  } catch {
-    return { version: 1, entries: {} }
+  } catch (error) {
+    if (error.code === 'ENOENT') return { version: 1, entries: {} }
+    throw Object.assign(new Error('来源映射无法读取，未覆盖原文件'), { code: 'STATE_CORRUPT', cause: error })
   }
 }
 
@@ -812,7 +814,11 @@ export async function runImport({ core, stateDir, importId, log = () => {}, onPr
           importId,
           updatedAt: new Date().toISOString(),
         }
-        await writeSourceMap(manifest.target, sourceMap)
+        await locked(sourcesFileOf(manifest.target), async () => {
+          const latest = await readSourceMap(manifest.target)
+          latest.entries[key] = sourceMap.entries[key]
+          await writeSourceMap(manifest.target, latest)
+        })
         await locked(policyFile(manifest.target), async () => {
           const policy = readIndexPolicy(manifest.target), group = groupFor(policy, originalRef)
           if (group?.pending) { group.pending = false; await savePolicy(manifest.target, policy) }

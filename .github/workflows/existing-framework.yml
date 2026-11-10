@@ -3,6 +3,7 @@ on:
   workflow_dispatch:
   pull_request:
     paths:
+      - 'packages/**'
       - 'src/host/retrieval*'
       - 'src/host/workbench*'
       - 'src/host/relation-name-lookup.js'

@@ -154,7 +154,7 @@ test('large-library migration and classification stay within frame budget and en
   assert.deepEqual((await ui({op:'architecture.categories'})).architecture.categories,[{category:'课程',count:360}])
   const filtered=(await ui({op:'architecture.files',q:'原件-0359'})).architecture;assert.equal(filtered.total,1);assert.equal(filtered.files[0].path,paths.at(-1))
   assert.equal((await client.call('desktop.stat',{path:paths.at(-1)})).category,'课程')
- }finally{try{await client.call('service.prepareUpgrade')}finally{await runtime.close()}}
+ }finally{try{await runtime.prepareUpgrade()}finally{await runtime.close()}}
 })
 
 test('DSH Electron service indexes an ASAR as one physical original', {skip:!process.env.KB_TEST_ELECTRON,timeout:60000},async t=>{
@@ -186,7 +186,7 @@ test('DSH Electron service indexes an ASAR as one physical original', {skip:!pro
   const catalog=JSON.parse(await readFile(path.join(f.root,CATALOG_PATH),'utf8'))
   assert.deepEqual(catalog.files.map(f=>f.path),['fixture.asar'])
   assert.deepEqual(await readFile(target),archive)
- }finally{try{await client.call('service.prepareUpgrade')}finally{await runtime.close()}}
+ }finally{try{await runtime.prepareUpgrade()}finally{await runtime.close()}}
 })
 
 test('browse snapshots reuse the scan until an external change or manual refresh', {skip:process.platform!=='win32',timeout:30000},async t=>{
@@ -219,5 +219,5 @@ test('browse snapshots reuse the scan until an external change or manual refresh
   await writeFile(path.join(f.root,'.kbmeta/shared-policy.json'),JSON.stringify({...policy,revision:policy.revision+1}))
   const updated=await snapshot()
   assert.notEqual(updated.policyVersion,changed.policyVersion)
- }finally{try{await client.call('service.prepareUpgrade')}finally{await runtime.close()}}
+ }finally{try{await runtime.prepareUpgrade()}finally{await runtime.close()}}
 })

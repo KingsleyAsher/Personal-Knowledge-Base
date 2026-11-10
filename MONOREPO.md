@@ -1,4 +1,4 @@
-> Current release / 当前版本：plugin **2.5.5**, client **1.1.2**. [Release notes](docs/releases/plugin-2.5.5.md)。原件索引迁移须在资料库预览并确认。
+> Current release / 当前版本：plugin **3.0.0**, client **2.0.0**. [Release notes](docs/releases/plugin-3.0.0.md)。原件索引迁移须在资料库预览并确认。
 
 # 统一仓库与独立发布
 
@@ -6,8 +6,8 @@
 
 | 目录 | 职责 |
 |---|---|
-| apps/desktop | 客户端 1.0.1、界面与 Electron 权限边界 |
-| src、presets、skills、cordis.patch.yml | 插件 2.4.1 源码及兼容入口 |
+| apps/desktop | 客户端 2.0.0、界面与 Electron 权限边界 |
+| src、presets、skills、cordis.patch.yml | 插件 3.0.0 源码及兼容入口 |
 | packages/kb-core、kb-contracts、kb-service | 两端唯一共享内核、契约与服务 |
 | installer-design-b | 现有安装器设计、动画与实现 |
 | docs/client | 客户端中英文文档与演进记录 |
@@ -17,9 +17,9 @@
 
 ## 发布与更新边界
 
-客户端与插件独立版本。插件现有 v2.x 标签、清单、下载链接及更新流程保留。客户端使用 client-v1.x 标签命名空间，预留 client-update.json 独立清单；目前尚未接入客户端在线更新或自动发布。不要让插件的 GitHub latest 发布选择误取客户端安装包，始终按各自清单查找文件。
+客户端与插件独立版本。当前分别使用 v3.0.0 与 client-v2.0.0 标签、release-manifest-v2.json 与 client-update.json 清单。客户端支持更新检查和校验下载，安装通过现有安装器完成。不要依赖 GitHub 通用 Latest 区分产品，始终按产品清单与独立 Release 查找附件。
 
-本次仅迁移源码和文档，不修改现有 Release 资产，不重装本机程序，不迁移用户知识库。2.4.1 是当前合入源码版本，原 release-manifest-v2.json 仍描述此前公开安装包。发布 2.4.1 前需重新生成并验证该清单及包文件。
+本仓库统一维护代码、文档和发布；程序发布不迁移用户资料库，也不替换生产安装。旧合仓记录保留在中英文演进记录中。
 
 ## 构建
 

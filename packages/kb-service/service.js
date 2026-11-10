@@ -31,7 +31,7 @@ import {startClipper} from './clipper.js'
 import {extensionArchive} from './extension.js'
 import {createLegacyPorts} from './legacy-ports.js'
 
-export const SUPPORTED = Object.freeze(['host.tool', 'service.health', 'service.prepareUpgrade', 'service.shutdown', 'connection.grant', 'connection.revoke', 'migration.preview', 'migration.commit', 'migration.recover', 'adapter.dispatch', 'library.snapshot', 'library.tree', 'document.read', 'document.readForEdit', 'document.create', 'document.save', 'state.patch', 'search.query', 'relations.query', 'inbox.list', 'inbox.organize', 'inbox.organizeStatus', 'inbox.organizeBridge', 'policy.get', 'policy.setIndexExcluded', 'events.subscribe', 'operation.status', 'task.get'])
+export const SUPPORTED = Object.freeze(['host.tool', 'service.health', 'service.prepareUpgrade', 'service.shutdown', 'connection.grant', 'connection.revoke', 'migration.preview', 'migration.commit', 'migration.recover', 'adapter.dispatch', 'library.snapshot', 'library.tree', 'document.read', 'document.readForEdit', 'document.create', 'document.save', 'state.patch', 'search.query', 'relations.query', 'inbox.list', 'inbox.organize', 'inbox.organizeStatus', 'inbox.organizeResolve', 'inbox.organizeBridge', 'policy.get', 'policy.setIndexExcluded', 'events.subscribe', 'operation.status', 'task.get'])
 const legacyRead = new Set(['atlas.snapshot', 'atlas.tree', 'atlas.detail', 'search.list', 'reading.list', 'reading.export', 'review.list', 'atlas.relations', 'capture.list', 'capture.inbox-files', 'inbox.list', 'index.policy.get'])
 const legacyWrite = new Set(['reading.progress', 'reading.annotate', 'reading.delete', 'review.update'])
 export async function libraryIdentity(root) {
@@ -71,15 +71,17 @@ export async function startService({ library, privateDir, python, sources = {}, 
   try { ownerHandle = await open(ownerFile, 'wx'); await ownerHandle.writeFile(JSON.stringify({ pid: process.pid, birth, bootId, instanceId })); await ownerHandle.sync() }
   catch (e) { if (e.code === 'EEXIST') throw error('STATE_BUSY'); throw e } finally { await ownerHandle?.close() }
   let upgradeDraining = false, heavyReads = 0;
-  let fileWatcher, fileEventTimer
+  let fileWatcher, fileEventTimer, firstFileEvent=null, fileGlobal=false, catalogChanged=false;const fileChanges=new Set()
   const filePolicyPaths = new Set(['.kbmeta/kb.json', '.kbmeta/shared-policy.json', '.kbmeta/index-policy.json', '索引层/文件目录.json'])
   function fileChanged(_event, filename) {
     if (closing) return
     const relative = String(filename ?? '').replaceAll('\\', '/')
     if (!filePolicyPaths.has(relative) && relative.split('/').some(part => part.startsWith('.') || part === '索引层' || part === 'node_modules')) return
+    if(relative==='索引层/文件目录.json')catalogChanged=true;else if(!relative||filePolicyPaths.has(relative))fileGlobal=true;else fileChanges.add(relative)
+    if(fileChanges.size>1024){fileGlobal=true;fileChanges.clear()}
     kernel.workbench.invalidateBrowse()
-    clearTimeout(fileEventTimer)
-    fileEventTimer = setTimeout(() => { void queue(event).catch(() => {}) }, 150)
+    firstFileEvent??=Date.now();clearTimeout(fileEventTimer)
+    fileEventTimer = setTimeout(() => { firstFileEvent=null;const data=fileGlobal?{}:{paths:[...fileChanges],catalogChanged};fileGlobal=false;catalogChanged=false;fileChanges.clear();void queue(()=>event(data)).catch(() => {}) }, Math.max(0,Math.min(150,1000-(Date.now()-firstFileEvent))))
     fileEventTimer.unref?.()
   }
   function watchFiles() {
@@ -117,9 +119,13 @@ export async function startService({ library, privateDir, python, sources = {}, 
     return kernel.workbench.libraryState.versionOf(await kernel.workbench.libraryState.binding(kbId))
   }
   const stillAuthorized = () => { const row = currentGrant(); if (closing) throw error('HOST_UNAVAILABLE'); return row }
-  const event = async () => {
-    const row = { protocolMajor:1,type:'event',event:'snapshot.required',library:identity,bootId,seq:++sequence,policyVersion:await policyVersion(),data:{} };ring.push(row);if(ring.length>256)ring.shift()
-    for(const [id,c] of connections)if(c.authenticated&&c.subscribed){try{auth.get(c.grantId);send(id,row)}catch{disconnect(id)}}
+  let announcedPolicy=null;
+  const eventFor=(row,grant)=>grant.access.includes('admin')?row:{...row,data:{...(row.data?.indexOnly?{indexOnly:true}:{}),...(row.data?.policyChanged?{policyChanged:true}:{})}}
+  const event = async (data={}) => {
+    if(Buffer.byteLength(JSON.stringify(data))>65536)data={}
+    const currentPolicy=await policyVersion();if(announcedPolicy!==null&&announcedPolicy!==currentPolicy)data={...data,policyChanged:true};announcedPolicy=currentPolicy;
+    const row = { protocolMajor:1,type:'event',event:'snapshot.required',library:identity,bootId,seq:++sequence,policyVersion:currentPolicy,data };ring.push(row);if(ring.length>256)ring.shift()
+    for(const [id,c] of connections)if(c.authenticated&&c.subscribed){try{send(id,eventFor(row,auth.get(c.grantId)))}catch{disconnect(id)}}
   }
   async function close() {
     if (closePromise) return closePromise
@@ -182,6 +188,9 @@ export async function startService({ library, privateDir, python, sources = {}, 
     if (call.method === 'connection.revoke') { await auth.revoke(a.grantId); for (const [id, c] of connections) if (c.grantId === a.grantId) disconnect(id); return { revoked: true } }
     if (call.method === 'migration.preview') return migration.preview(a.sourceHandles)
     if (call.method === 'migration.commit') {
+      // Old connectors may race after observing an inactive fresh library.
+      // A verified active owner already satisfies this request without writes.
+      if(a.planId==='fresh'&&a.quiescent===true&&await active())return {committed:true,alreadyActive:true,sourcesPreserved:true}
       const conf = await kernel.core.getConfig()
       const result = await migration.commit({ ...a, ownerToken, instanceId, freshPolicy: { schemaVersion: 1, revision: 0, categories: conf.categories, privateDirs: conf.privateDirs ?? DEFAULT_PRIVATE_DIRS, excludeFromSearch: conf.excludeFromSearch, preferences: DEFAULT_PREFERENCES } })
       await applySharedPolicy(); startMaintenance();await engines?.recover(); return result
@@ -230,7 +239,9 @@ export async function startService({ library, privateDir, python, sources = {}, 
       const display=await kernel.workbench.libraryState.binding(kbId)
       desktopPrivateDirs=display.preferences.showPrivate?[]:display.privateDirs
       desktopCatalog=display.fileCatalog;desktopShowPrivate=display.preferences.showPrivate
-      return desktopFiles.call(call.method, a, caller.id, call.operationId)
+      const result = await desktopFiles.call(call.method, a, caller.id, call.operationId)
+      if(call.method==='desktop.restoreState'&&!result.alreadyApplied)await applySharedPolicy()
+      return result
     }
     if (call.method === 'library.snapshot') { const s = await wb({ op: 'atlas.snapshot' }); return { ...s, library: identity, sharedStateRevision: (await lib.userData(await lib.binding(kbId))).revision } }
     if (call.method === 'library.tree') return wb({ op: 'atlas.tree', ...a })
@@ -282,6 +293,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
     if (call.method === 'search.query') return wb({ op: 'search.list', q: a.query, mode: 'fulltext', limit: a.limit })
     if (call.method === 'relations.query') return wb({ op: 'atlas.relations', ...a })
     if (call.method === 'inbox.list') return wb({ op: 'inbox.list', ...a })
+    if (call.method === 'inbox.organizeResolve') return inboxJobs.resolve(a)
     if (call.method === 'inbox.organizeStatus') return inboxJobs.status()
     if (call.method === 'inbox.organize') return inboxJobs.request(call.operationId)
     if (call.method === 'inbox.organizeBridge') return inboxJobs.bridge(a,connection.id)
@@ -291,7 +303,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
     if (call.method === 'events.subscribe') {
       if (a.bootId && (a.bootId !== bootId || a.afterSeq > sequence || a.afterSeq < (ring[0]?.seq ?? sequence) - 1)) throw error('RESYNC_REQUIRED')
       connection.subscribed = true
-      return { bootId, seq: sequence, events: a.afterSeq == null ? [] : ring.filter(x => x.seq > a.afterSeq) }
+      return { bootId, seq: sequence, events: a.afterSeq == null ? [] : ring.filter(x => x.seq > a.afterSeq).map(x=>eventFor(x,caller)) }
     }
     if(call.method==='host.tool')return toolRouter(a,{...caller,operationId:call.operationId})
     if (call.method === 'adapter.dispatch') {
@@ -337,10 +349,11 @@ export async function startService({ library, privateDir, python, sources = {}, 
     if (!call.method.startsWith('migration.')) { writeSequence++; await atomic(path.join(privateDir, 'sequence.json'), { value: writeSequence }) }
     try {
       const result = await route({ ...call, operationId }, connection)
-      kernel.workbench.invalidate();kernel.workbench.notify({type:'snapshot-dirty',kbId})
+      const paths=['document.save','document.create'].includes(call.method)?[call.args.path]:undefined
+      kernel.workbench.invalidate();kernel.workbench.notify({type:'snapshot-dirty',kbId,paths})
       await fault('operation:published')
       journal.state = 'committed'; journal.result = result
-      await atomic(file, journal); await event(); maintenance?.notify(call.args.path ?? '')
+      await atomic(file, journal); await event(paths?{paths}:{}); maintenance?.notify(call.args.path ?? '')
       return result
     } catch (e) {
       // A started write may already have published. Recovery inspects evidence; no blind retry.
@@ -384,7 +397,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
     const changed = await kernel.core.setConfig({ categories: policy.categories ?? conf.categories, privateDirs: policy.privateDirs ?? conf.privateDirs ?? DEFAULT_PRIVATE_DIRS, excludeFromSearch: policy.excludeFromSearch ?? conf.excludeFromSearch, autoIndex: policy.autoIndex??conf.autoIndex??true }); if (!changed.ok) throw error('RECOVERY_REQUIRED', changed.reason)
   }
   function startMaintenance() {
-    if (!maintenance) maintenance = createIndexMaintenance({ getCore: () => ({ ...kernel.core, maintainIndex: args => queue(async () => closing || !await active() ? { ok: false, reason: 'service-inactive' } : kernel.core.maintainIndex(args)) }), onChange: result => {if(result.indexWritten)kernel.workbench.invalidateBrowse();void queue(event)}, resources: kernel.workbench.resources })
+    if (!maintenance) maintenance = createIndexMaintenance({ getCore: () => ({ ...kernel.core, maintainIndex: args => queue(async () => closing || !await active() ? { ok: false, reason: 'service-inactive' } : kernel.core.maintainIndex(args)) }), onChange: result => {if(result.indexWritten)kernel.workbench.invalidateBrowse();void queue(()=>event({indexOnly:true}))}, resources: kernel.workbench.resources })
     if(!automaticTimer){automaticTimer=setInterval(()=>{void queue(async()=>{if(closing||!await active())return;const before=hash(await bytes(path.join(root,'.kbmeta/shared-state.json')));await kernel.workbench.runAutomatic();if(before!==hash(await bytes(path.join(root,'.kbmeta/shared-state.json')))){writeSequence++;await atomic(path.join(privateDir,'sequence.json'),{value:writeSequence});await event();}}).catch(e=>console.warn('[kb-service] automatic maintenance: '+String(e.code??'failed')));},60000);automaticTimer.unref?.()}
   }
   try {
@@ -408,7 +421,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
     legacyPorts=createLegacyPorts({kernel,kbId,root,maintenance:()=>maintenance,changeMaintenance:enabled=>{maintenance?.dispose();maintenance=null;if(enabled)startMaintenance();}})
     engines=createEngines({kernel,root,getWorkspace:()=>{const h=broker.status().hosts[0];if(!h)throw error('HOST_UNAVAILABLE');return {workspaceId:h.workspaceId,workspacePath:h.workspacePath,cwd:h.workspacePath};},stateDir:path.join(privateDir,'kernel'),resourceRoot:path.resolve(import.meta.dirname,'../..'),online:()=>broker.status().online,invoke:(method,args,options)=>broker.invoke(method,args,options),notify:ev=>kernel.workbench.notify(ev)})
     toolRouter=createToolRouter({kernel,root,kbId,engines,sourceFromStage:(id,caller)=>desktopFiles.sourceFromStage(id,caller),wb:op=>kernel.dispatch({...op,expectedKbId:kbId}),online:()=>broker.status().online,write:caller=>{if(!caller.access.includes('write'))throw error('FORBIDDEN')}})
-    unsubscribe=kernel.workbench.subscribe(()=>{if(closing||pendingEvent)return;pendingEvent=setTimeout(()=>{pendingEvent=null;void queue(event).catch(()=>{})},50);pendingEvent.unref?.()})
+    let pendingChanges=[];unsubscribe=kernel.workbench.subscribe(change=>{if(closing)return;pendingChanges.push(change);if(pendingEvent)return;pendingEvent=setTimeout(()=>{pendingEvent=null;const batch=pendingChanges;pendingChanges=[];const relevant=batch.filter(c=>c.type!=='retrieval');const data=!relevant.length?{indexOnly:true}:relevant.every(c=>Array.isArray(c.paths))?{paths:[...new Set(relevant.flatMap(c=>c.paths))]}:{};void queue(()=>event(data)).catch(()=>{})},50);pendingEvent.unref?.()})
     inboxJobs=await createInboxJobs({privateDir,connected:owner=>{const c=connections.get(owner);if(!c?.authenticated)return false;try{auth.get(c.grantId);return true}catch{return false}},list:async()=>{
       const files=[];for(let offset=0;;offset+=500){const r=await kernel.dispatch({op:'inbox.list',expectedKbId:kbId,offset,limit:500});files.push(...r.items);if(r.items.length<500)break;if(files.length>=5000)throw error('BAD_REQUEST','单次整理最多 5000 份待整理资料');}return files;
     }})
@@ -467,10 +480,10 @@ export async function startService({ library, privateDir, python, sources = {}, 
     bridge.once('exit', () => { if (!closing) void close() })
     watchFiles()
     await recoverReceipts()
-    if (await active()) { await applySharedPolicy(); startMaintenance();await engines.recover() }
+    if (await active()) { await applySharedPolicy(); startMaintenance();await engines.recover();announcedPolicy=await policyVersion();void kernel.workbench.retrieval.automatic().catch(()=>{}) }
     clipper=await startClipper({privateDir,dispatch:args=>queue(async()=>{await requireActive();const result=await kernel.workbench.clipper(args);writeSequence++;await atomic(path.join(privateDir,'sequence.json'),{value:writeSequence});kernel.workbench.invalidate();await event();maintenance?.notify('');return result;})});
     timer = setInterval(() => {
-      void queue(async()=>{if(!closing&&await broker.audit())await event();}).catch(()=>{})
+      void queue(async()=>{if(!closing){await auth.provision();if(await broker.audit())await event();}}).catch(()=>{})
       for (const [id, c] of connections) { try { if (!c.authenticated && Date.now() - c.created > 10000) disconnect(id); else if (c.authenticated) auth.get(c.grantId) } catch { disconnect(id) } }
       if (connections.size) lastActive = Date.now()
       else if (Date.now() - lastActive > idleMs) void close()

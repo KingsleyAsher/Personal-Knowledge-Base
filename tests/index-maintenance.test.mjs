@@ -99,7 +99,7 @@ test('snapshot directory links are rejected before maintenance writes',async()=>
 test('scheduler debounces, ignores generated paths, enforces minimum interval and closes on binding switch/dispose',async()=>{
   let clock=0, config={kbPath:'synthetic-A',revision:1}, callback, closed=0,calls=[]
   const core={configGate:async()=>({ok:true,conf:config}),status:async()=>({healthy:true,kbId:'A'}),maintainIndex:async opts=>{calls.push(opts);return{ok:true,indexWritten:true}}}
-  const s=createIndexMaintenance({getCore:()=>core,now:()=>clock,watch:(_root,_opts,fn)=>{callback=fn;return{close:()=>closed++,on:()=>{}}},timers:{setInterval:()=>1,clearInterval:()=>{}}})
+  const s=createIndexMaintenance({quietMs:5000,minimumMs:30000,getCore:()=>core,now:()=>clock,watch:(_root,_opts,fn)=>{callback=fn;return{close:()=>closed++,on:()=>{}}},timers:{setInterval:()=>1,clearInterval:()=>{}}})
   await s.tick();clock=4999;await s.tick();assert.equal(calls.length,0)
   clock=5000;await s.tick();assert.equal(calls.length,1)
   callback('change','.kbmeta/index/entries.json');assert.equal(s.status().pending,false)

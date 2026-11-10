@@ -19,5 +19,5 @@ html[data-palette] .file-icon.md{color:var(--note)}
 html[data-palette] .markdown a,html[data-palette] .chat-markdown a{color:var(--link)}
 html[data-palette] .preview-source-path{color:var(--link)}
 html[data-palette] .chat-message.user{background:var(--accent-soft)}
-:root[data-palette]{--kbw-bg:var(--surface);--kbw-surface:var(--soft);--kbw-fg:var(--text);--kbw-muted:var(--muted);--kbw-line:var(--line);--kbw-soft:var(--soft);--kbw-accent:var(--accent-solid);--kbw-accent-fg:var(--on-accent);--kbw-danger:var(--red)}
+:root[data-palette]{--kbw-bg:var(--surface);--kbw-surface:var(--soft);--kbw-fg:var(--text);--kbw-muted:var(--muted);--kbw-line:var(--line);--kbw-soft:var(--soft);--kbw-accent:var(--accent-solid);--kbw-accent-soft:var(--accent-soft);--kbw-accent-fg:var(--on-accent);--kbw-danger:var(--red)}
 [data-relation-library]{display:flex;flex:1;min-height:0;min-width:0;flex-direction:column;height:100%}

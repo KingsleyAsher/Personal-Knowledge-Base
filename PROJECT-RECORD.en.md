@@ -3,9 +3,82 @@
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 2.5.12 -->
+<!-- project-record-version: 3.0.0 -->
 
-**Source covered: plugin 2.5.12 / Windows client 1.1.3 source · Updated: 2026-11-09**
+**Source covered: plugin 3.0.0 / Windows client 2.0.0 · Updated: 2026-11-11 · GitHub major release**
+
+## 2026-11-11 · Publish plugin 3.0.0 and client 2.0.0
+
+Merges release-review fixes, mixed-version interoperability, startup/scoped-update improvements and visual corrections into the unified main repository, with separate v3.0.0 and client-v2.0.0 releases. Synchronizes both languages of the READMEs, client guides, version notes, evolution records, website and product feeds. Independent versions and installations retain protocol/storage/capability-based sharing; a product major bump does not force an index rebuild.
+
+Final local regression: 362 of 364 Node checks passed, zero failures and two real-host environment skips; all 24 Python checks passed. Actual installer validation confirmed that client 2.0.0 installed in a new directory resumes the 1.1.4 profile and library, preserves originals and renders without page errors. Nonempty targets remain protected. Source/package, embedded plugin and installer digests are verified before publication; GitHub Actions validates the merge and release tags.
+
+Fixes concurrent first activation across old/new clients: an authenticated active owner satisfies duplicate fresh activation without another migration. Conflicts from older services require an active matching library identity before proceeding. Concurrent interoperability tests now retain and close successful connections even when the peer fails, preventing a leaked test process.
+
+GitHub Windows checks now await complete service exit before removing test directories. The historical 2.4.3 upgrade fixture adapts only SID/ACL display-alias normalization for the runner built-in Administrator account, without changing legacy protocols, permissions or upgrade behavior.
+
+The installer is unsigned and requires an empty destination; silent in-place installation is not implemented. Library migration still requires preview and confirmation. No production library or paid model call was used; real DSH tool-dispatch and ASAR-host checks remain environment-dependent.
+
+## 2026-11-11 · Plugin 3.0.0 / Client 2.0.0 · Local major-version delivery
+
+Consolidates release, cross-round and visual review fixes. Both products work independently or share one library. Compatibility continues to use the shared protocol, storage generation and negotiated capabilities; changing the product major version does not force migration or rebuilding.
+
+- Fixes first-run creation, interrupted initialization, migration, backup restoration, grant renewal, concurrent ingestion and update handoff.
+- External edits within the library trigger scoped maintenance with retryable continuous saves. Startup reads coalesce, healthy indexes are reused, and permission changes hide stale content.
+- Restores shared management control styling, aligned switches, light/dark themes, readable badges, modal scrolling and visible keyboard focus.
+- Checks build/package fingerprints and regenerates real-library launcher pairing metadata for the exact companion plugin.
+
+Existing originals stay in place. A version upgrade alone does not migrate or rebuild the entire library. Copy imports watch the library copy, not the external source. The client checks and verifies downloads; installation still uses the installer. Historical host installation constraints and the 2.4.6 recovery boundary remain unchanged.
+
+This is a local delivery, not a public Release, signed distribution or production installation. See the delivery report for final verification and checksums.
+
+## 2026-11-11 · Layout and shared control fixes (unpublished candidate)
+
+Inspected the workspace, quick/full settings, management tabs and service settings at 1440×1024 and 1040×720. The desktop management factory now receives the plugin's shared UI stylesheet, restoring separate preference rows, label alignment, field grouping and control styling. Native management controls and scrollbars follow the desktop light/dark theme. Selected tabs and primary actions use the palette's foreground color instead of white on pale backgrounds. Status badges also inherit the palette soft accent background, avoiding pale green text on a pale green fill. Added modal boundaries and keyboard focus indicators for selects, and kept a single management content scroll area in smaller windows.
+
+TypeScript/Vite builds passed. Actual Electron screenshots and geometry checks confirmed horizontally centered dialogs, no horizontal content overflow, and 34×20 switches with at most 0.5px vertical misalignment. Selected management button text passed 4.5:1 contrast in all 14 combinations of seven palettes and light/dark modes. The shared stylesheet is included in build proof inputs to reject stale builds after stylesheet changes. Regenerated candidates without public release or production library changes.
+
+## 2026-11-11 · Cross-round review and release consistency fixes (unpublished)
+
+Reproduced and fixed standalone desktop vector reconciliation checking the plugin directory, which could incorrectly rebuild a healthy index. File changes and atomic replacements during scans remain retryable, including preservation of dirty paths when work throws. Continuous file notifications now have a maximum flush delay. Automatic visibility changes advance the policy version; the desktop rechecks open documents, hides content, outlines and actions after access is revoked, preserves unsaved edits, and resumes after access is restored.
+
+Initial document loads still merge, but a refresh arriving during a load schedules a fresh read instead of disappearing into the old request. Windows event paths match consistently across case and separator differences. Both workbench guides and scheduler test settings now match the current timing. Ordinary content changes remain scoped; permission changes intentionally recheck visibility.
+
+Added build proofs: a successful TypeScript/Vite build records source and output fingerprints, and desktop packaging rejects missing proofs, changed source or modified output. The installer also verifies the desktop build manifest and paired plugin against current inputs, preventing reuse of stale dist or package directories. New regressions cover healthy independent indexes, transient scans, policy changes, continuous events, overlapping refreshes and stale-build rejection. Electron verified permission revocation/restoration and scoped refresh. The candidate is regenerated without public release or production installation changes.
+
+## 2026-11-11 · External changes and incremental chunk updates (unpublished 2.5.13 / 1.1.4 candidate)
+
+File maintenance now uses a 750 ms debounce, a one-second minimum interval and a five-second maximum event batch, retaining patrol recovery for missed events. Changed paths reach the desktop so local saves check only affected documents and directories. Index progress and catalog metadata changes no longer reload all open files. Non-admin live events and replay omit paths, and older clients retain compatibility with unscoped events.
+
+The original-file catalog reuses hashes when identity, size, mtime and ctime are unchanged; fulltext records also verify ctime. Normal vector maintenance reuses unchanged source text, chunks and vectors, while explicitly forced verification still rereads originals. External saves schedule work after debounce, changes during a build receive a follow-up pass, and pending work for the second retrieval profile is retained. Legacy references no longer block unrelated maintenance after an external source rename or deletion. Metadata enumeration and atomic index publication remain; this is not a claim of zero directory scans.
+
+Real filesystem tests cover attached roots, imported local copies, rename, deletion, preserved-mtime rewrites, binary catalog records and saves during a build. A 13-chunk fixture requested only one changed embedding after about 0.86 seconds; the local mock service does not establish remote API completion latency. Electron checked/reloaded only the externally edited document, without rereading the adjacent PDF. Mixed-version, event-permission and recovery regressions passed. Copy import does not synchronize the original outside the library; binary metadata updates do not imply automatic OCR or parsing.
+
+Also fixed the preview-handle type declaration omitted in the preceding change. The prior final-compilation success claim was incorrect and is corrected here. This candidate is regenerated only after an explicitly successful TypeScript/Vite build, without changing production installations or publishing a release.
+
+## 2026-11-10 · Startup deduplication and index maintenance stability (unpublished 2.5.13 / 1.1.4 candidate)
+
+Opening an existing library no longer creates the sample library or submits a restore write when no restore is pending. Startup tree loads and concurrent loads of the same document are deduplicated. Identical configuration is validated under the lock without rewriting the file or advancing its revision, avoiding unnecessary watcher resets. Reconnection checks file revisions and preserves unsaved edits; service-bound PDF/Office resource handles are still renewed. Restored copies retain complete recovery, and actual policy changes still trigger maintenance.
+
+An isolated Electron comparison reduced default-workspace startup directory requests from 18 to 9. Unchanged Markdown was not reread on reconnect, externally changed content still refreshed, and no renderer script errors occurred. Validation covered concurrent configuration/index maintenance, upgrade handoff and failed-update resume, backup recovery, mixed versions and startup paths. Normal updates do not force a full rebuild: service startup retains incremental verification and reuses unchanged index entries; damaged or legacy indexes retain their existing repair rules. Fewer requests are not presented as an equivalent reduction in whole-library latency. Production libraries were not used for tests. This regenerates the unpublished candidate rather than claiming a public release or installation in the user environment.
+
+## 2026-11-10 · Mixed-version interoperability tests and fixes
+
+Reproduced and fixed two mixed-version failures: an optional new method changed the aggregate contract hash and blocked old peers from joining a new service, while the new desktop required the reconciliation feature and rejected a running older plugin service. The established base contract now remains stable, with optional features negotiated separately. Older services without reconciliation show an upgrade notice while file management stays available. Changes to existing interfaces, unknown protocols, incompatible storage/engine epochs and missing mandatory capabilities still fail closed without starting a second writer.
+
+Tests use original historical TGZs for 2.5.5, 2.5.10, 2.5.12 and the preceding 2.5.13 candidate, covering old/new service owners, plugin/desktop connection order, cross-peer reads and writes, stale revision conflicts and simultaneous startup. The tests are included in desktop and release CI. This updates the unpublished 2.5.13 / 1.1.4 candidate build without replacing an existing public release or changing production data.
+
+## Plugin 2.5.13 / Client 1.1.4 · Release audit fixes (unpublished)
+
+Fix fail-open privacy on corrupt source maps and lost mappings during concurrent imports. Original-file backups retain classification catalogs and index policy, and restored libraries undergo a health check. Desktop restore copies receive their own identity and grant, can be reopened, and share one service with the plugin adapter.
+
+Interrupted first-time initialization can resume. Launch locks from dead processes are reclaimed only after identity checks; live or unverifiable owners remain protected. Offline migration preserves interrupted staging before rebuilding it, validates the source before completing an unfinished journal, and retains grants for other libraries. Unknown inbox launches now have an explicit reconciliation action that rejects late receipts and avoids blind resending. Local bootstrap credentials renew before expiry without reviving revoked grants.
+
+Clarify sample-library creation and real-folder enrollment. Fix mirror release-note extraction and standalone UI module syntax. Extend CI coverage for first-time setup, index migration, service lifecycle and Windows live updates. Upgrade PDF.js and packaging dependencies and resolve the math renderer dependency advisory. Add fault regressions for source maps, concurrent imports, backup restore, interrupted setup, launch locks, task reconciliation, credential renewal and offline migration.
+
+Validation uses isolated synthetic libraries and covers standalone plugin setup, standalone desktop access and a single shared writer. Real user data was not modified. These are unpublished source changes and local candidate packages, not evidence of publication, installation or real cloud-model acceptance. Final validation results are recorded in the release audit report.
+
+Local validation: 325 of 327 Node tests passed, with two environment-dependent skips. The packaged Electron ASAR test subsequently passed, followed by 28 passing targeted restore-policy checks. All 23 Python tests passed; both dependency audits reported zero vulnerabilities. The actual desktop rendered PDF pages. Isolated installation, launch and uninstallation passed while preserving an extra user file. The installer remains unsigned; no real DSH profile installation or cloud-model call was performed.
 
 ## Plugin 2.5.12 · First shared library and inbox workflow refresh
 

@@ -16,6 +16,7 @@ concurrency:
 jobs:
   validate:
     runs-on: windows-latest
+    timeout-minutes: 15
     env:
       PYTHONUTF8: '1'
       RELEASE_TAG: ${{ github.event_name == 'push' && github.ref_name || '' }}
@@ -31,7 +32,7 @@ jobs:
           if ((git rev-parse HEAD) -ne (git rev-parse origin/main)) { throw 'Stable tag must point to the current main commit' }
       - uses: actions/setup-node@v4
         with:
-          node-version: '22'
+          node-version: '24'
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -42,15 +43,19 @@ jobs:
         run: npm.cmd install --global --prefix "$env:APPDATA\npm" pnpm@11.23.0 --ignore-scripts
       - name: Focused release checks
         run: |
-          node --test tests/library-framework.test.mjs tests/library-framework-ui.test.mjs
+          node --test --test-reporter=tap tests/library-framework.test.mjs tests/library-framework-ui.test.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -X utf8 -m unittest discover -s tests -p test_legacy_bootstrap.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          node --test tests/legacy-246-update-boundary.test.mjs
+          node --test --test-reporter=tap tests/legacy-246-update-boundary.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -X utf8 -m unittest discover -s tests -p test_package_proof.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -X utf8 -m unittest discover -s tests -p test_transactional_update.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          node --test tests/runtime-compatibility.test.mjs tests/update-download-recovery.test.mjs tests/update-status-recovery.test.mjs tests/flow-tool-output.test.mjs tests/shared-parse-records.test.mjs tests/parse-desktop-authorization.test.mjs tests/handoff-api.test.mjs tests/legacy-handoff.test.mjs tests/runtime-resume.test.mjs tests/parse-job-storage.test.mjs tests/flow-model-selection.test.mjs tests/inbox-entry.test.mjs tests/command-description.test.mjs tests/todo-lifecycle.test.mjs
+          node --test --test-reporter=tap tests/cross-round-review.test.mjs apps/desktop/tests/build-proof.test.mjs apps/desktop/tests/paired-plugin.test.mjs apps/desktop/tests/document-loads.test.mjs tests/local-change-updates.test.mjs tests/startup-performance.test.mjs tests/mixed-version-interop.test.mjs tests/runtime-compatibility.test.mjs tests/update-download-recovery.test.mjs tests/update-status-recovery.test.mjs tests/flow-tool-output.test.mjs tests/shared-parse-records.test.mjs tests/parse-desktop-authorization.test.mjs tests/handoff-api.test.mjs tests/legacy-handoff.test.mjs tests/runtime-resume.test.mjs tests/parse-job-storage.test.mjs tests/flow-model-selection.test.mjs tests/inbox-entry.test.mjs tests/command-description.test.mjs tests/todo-lifecycle.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node --test --test-reporter=tap tests/fresh-original-index.test.mjs tests/index-architecture.test.mjs tests/windows-safe-upgrade.test.mjs tests/release-recovery.test.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node tests/flow-conversation-probe.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -60,7 +65,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node --check src/host/index.js
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          node --test tests/runtime-optimization.test.mjs tests/import-parse-auth.test.mjs tests/startup-view.test.mjs tests/release-notice-dismiss.test.mjs tests/preview-updates.test.mjs tests/update-download.test.mjs tests/update-notification.test.mjs tests/client-update-flow.test.mjs tests/update-completion-state.test.mjs tests/index-maintenance.test.mjs tests/performance-optimization.test.mjs tests/retrieval.test.mjs tests/retrieval-storage.test.mjs tests/retrieval-settings.test.mjs tests/beta2-directed.test.mjs tests/beta4.test.mjs tests/mirror-updates.test.mjs
+          node --test --test-reporter=tap tests/runtime-optimization.test.mjs tests/import-parse-auth.test.mjs tests/startup-view.test.mjs tests/release-notice-dismiss.test.mjs tests/preview-updates.test.mjs tests/update-download.test.mjs tests/update-notification.test.mjs tests/client-update-flow.test.mjs tests/update-completion-state.test.mjs tests/index-maintenance.test.mjs tests/performance-optimization.test.mjs tests/retrieval.test.mjs tests/retrieval-storage.test.mjs tests/retrieval-settings.test.mjs tests/beta2-directed.test.mjs tests/beta4.test.mjs tests/mirror-updates.test.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node tests/beta8-smoke.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -87,7 +92,7 @@ jobs:
           archive=$(python -c "import json; print(json.load(open('release-manifest-v2.json', encoding='utf-8'))['tgz'])")
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
             gh release upload "$RELEASE_TAG" "dist/$archive" dist/knowledge-base-browser-extension.zip release-manifest-v2.json SHA256SUMS dist/memory-evolve-context-fix.zip dist/memory-context-SHA256SUMS --clobber
-            gh release edit "$RELEASE_TAG" --title "${RELEASE_TAG#v} · 个人知识库插件" --notes-file RELEASE.md
+            gh release edit "$RELEASE_TAG" --draft=false --latest --title "${RELEASE_TAG#v} · 个人知识库插件" --notes-file RELEASE.md
           else
             gh release create "$RELEASE_TAG" "dist/$archive" dist/knowledge-base-browser-extension.zip release-manifest-v2.json SHA256SUMS dist/memory-evolve-context-fix.zip dist/memory-context-SHA256SUMS \
               --verify-tag --latest --title "${RELEASE_TAG#v} · 个人知识库插件" --notes-file RELEASE.md

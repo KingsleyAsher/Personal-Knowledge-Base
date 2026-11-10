@@ -87,7 +87,7 @@ test('archives are searchable, pending inbox stays excluded, and exclusion cover
 test('continuous saves reach maximum wait and a save during maintenance remains pending', async () => {
   let clock = 0, runs = 0, scheduler
   const core = { configGate: async () => ({ ok: true, conf: { kbPath: 'synthetic', revision: 1 } }), status: async () => ({ healthy: true, kbId: 'synthetic' }), maintainIndex: async () => { runs++; if (runs === 1) scheduler.notify('next.md'); return { ok: true, indexWritten: true } } }
-  scheduler = createIndexMaintenance({ getCore: () => core, now: () => clock, minimumMs: 0, watch: () => ({ close() {}, on() {} }), timers: { setInterval: () => 1, clearInterval() {} } })
+  scheduler = createIndexMaintenance({ getCore: () => core, now: () => clock, quietMs: 5000, maximumWaitMs: 30000, minimumMs: 0, watch: () => ({ close() {}, on() {} }), timers: { setInterval: () => 1, clearInterval() {} } })
   try {
     await scheduler.tick()
     for (clock = 2000; clock <= 30000; clock += 2000) { scheduler.notify('sample.md'); await scheduler.tick() }

@@ -91,7 +91,7 @@ page=page.replace('880 × 600','安装展示页 1040 × 780').replace('或从左
 overview='<html lang="zh-CN"><meta charset="utf-8"><title>B 全套设计稿</title><style>body{background:#e6e9e1;font-family:Microsoft YaHei;padding:32px;color:#26392f}main{display:grid;grid-template-columns:repeat(2,880px);gap:40px}h2{font-size:18px}svg{box-shadow:0 6px 26px #26392f18;border-radius:16px}</style><h1>知识工作台 · 纸页绿 / 完整安装流程</h1><p>设计稿 · 演示状态 · 2026.11.04</p><main>'
 overview+=''.join('<section><h2>'+label+'</h2>'+svgs[k]+'</section>' for k,label,*_ in screens)+'</main></html>'
 (OUT/'overview.html').write_text(overview,encoding='utf-8')
-(OUT/'README.md').write_text('''# 知识工作台 · B 纸页绿
+(OUT/'DESIGN-PREVIEW.md').write_text('''# 知识工作台 · B 纸页绿
 
 index.html 为可点击预览；overview.html 为十个状态总览。十份 SVG 可分别导入 Figma，保留矢量与文字（字体取决于导入环境）。当前 Figma 文件尚未同步，因 Starter MCP 调用额度耗尽。
 

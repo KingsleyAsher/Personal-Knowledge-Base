@@ -19,6 +19,6 @@ Alt+F 打开可移动全局搜索；结果可拖入预览栏。关系网络支�
 
 ## 当前版本 / Current release
 
-客户端 1.1.1，配套插件 2.5.3。原件分类树读取共享索引；在设置中预览并确认索引迁移。系列成品复用已有目录。
+当前发布：客户端 2.0.0，配套插件 3.0.0。原件分类树读取共享索引；在设置中预览并确认索引迁移。系列成品复用已有目录。
 
-Client 1.1.1 pairs with plugin 2.5.3. The original-file tree uses shared classification. Preview and confirm index migration in Settings. Reuse series folders for deliverables. [Release notes](../releases/client-1.1.1.md).
+Client 2.0.0 pairs with plugin 3.0.0. The original-file tree uses shared classification. Preview and confirm index migration in Settings. Reuse series folders for deliverables. [Release notes](../releases/client-2.0.0.md).

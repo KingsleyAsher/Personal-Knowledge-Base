@@ -2,7 +2,7 @@
 
 [中文](VERSIONING.md) · English
 
-Both products share this policy while retaining independent versions: plugin source 2.5.12, client source 1.1.3. Shared implementation: packages/kb-contracts/version-policy.js; the plugin keeps its legacy import entry.
+Both products share this policy while retaining independent versions: plugin source 3.0.0, client source 2.0.0. Shared implementation: packages/kb-contracts/version-policy.js; the plugin keeps its legacy import entry.
 
 ## Names and ordering
 
@@ -18,7 +18,7 @@ Verify product identity, version, size, SHA-256 and build ID before installation
 
 Do not start another installation while busy, uncertain or awaiting restart/refresh. Safely handle unsaved content and running tasks. Unsupported executors report status rather than claiming success or blindly resending writes. Automatic updating does not authorize forced loss of unsaved work.
 
-The plugin depends on host installation capabilities. The client shares naming, ordering, decision and packaging rules, but online download, in-place installation, activation and post-install notice integration remain unfinished. This change does not make client automatic updating operational.
+The plugin depends on host installation capabilities. The client shares naming, ordering, decision and packaging rules and supports feed checks and verified downloads. Automatic in-place installation, activation and post-install notices remain incomplete; installation uses the installer, not a silent automatic executor.
 
 ## Post-install notes
 

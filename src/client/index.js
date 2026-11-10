@@ -4591,11 +4591,12 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     // END GENERATED TODO LIFECYCLE UI
 
-    const RELEASE_VERSION = '2.5.12'
+    const RELEASE_VERSION = '3.0.0'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep each shipped release in order. Patch entries are retained for a
     // later cross-version summary even though patch-only installs stay quiet.
     const RELEASE_NOTICES = [
+      {version:'3.0.0',items:['插件 3.0 与客户端 2.0：独立使用与共库联动，保留兼容协议和已有资料。','修复首次建库、迁移恢复、备份登记、并发入库及更新交接；文件外部变更按受影响路径维护。','减少启动重读和无效重建，修复权限变化后的旧内容显示，完善深浅主题控件与排版。']},
       {version:'2.5.12',items:['更新后自动刷新整理流程。同库配置变化时重读最新版本，切库时停止旧请求并提示。']},
       {version:'2.5.11',items:['首次新建空库默认启用原件索引。插件与客户端可分别使用，也可连接同一个库。']},
       {version:'2.5.5',items:['兼容的插件与客户端补丁版本可共享同一个知识库服务，不再仅因构建指纹不同就要求退出另一端。','仍校验接口契约、存储与引擎兼容代次及所需能力；真正不兼容时不启动第二个写入者。']},

@@ -1,3 +1,4 @@
+import { isDeepStrictEqual } from 'node:util'
 import { assertServiceOwner } from './service-ownership.js'
 // 知识库核心逻辑（P0.1：按验收意见 A–D 修复，E/F/G 中可顺手处理的一并修）
 // 只依赖 node 内置模块，不 import @deepseek-ai/*。
@@ -25,7 +26,7 @@ import {catalogActive,readCatalog,refreshCatalog,classifyOriginal} from './file-
 import { CLASSIFICATION_VERSION } from './file-classification.js'
 
 // 版本单一来源：package.json 的 version 必须与此一致（详见 INSTALL 说明）
-export const VERSION = '2.5.12'
+export const VERSION = '3.0.0'
 
 export const REQUIRED_FIELDS = ['title', 'type', 'tags', 'status', 'updated']
 export const SCHEMA_VERSION = 1
@@ -656,6 +657,8 @@ export function createCore(cfg, logger) {
       }
       const built = buildConfigPatch(config, patch)
       if (!built.ok) return built
+      // Validate under the lock, but do not invalidate watchers for an unchanged policy.
+      if (isDeepStrictEqual(built.value, config)) return { ok: true, revision: config.revision, unchanged: true }
       const next = { ...built.value, revision: (config.revision ?? 1) + 1, updatedAt: nowIso() }
       await atomicWrite(configFile, JSON.stringify(next, null, 2))
       config = next
@@ -921,7 +924,7 @@ export function createCore(cfg, logger) {
     return valid
   }
 
-  function entryFromBuffer(relPath, abs, buf, mtimeMs) {
+  function entryFromBuffer(relPath, abs, buf, mtimeMs, ctimeMs) {
     const text = buf.toString('utf8')
     const parsed = parseFrontmatter(text)
     return {
@@ -936,6 +939,7 @@ export function createCore(cfg, logger) {
       revision: sha12(buf),
       size: buf.length,
       mtimeMs: Number.isFinite(mtimeMs) ? mtimeMs : 0,
+      ctimeMs: Number.isFinite(ctimeMs) ? ctimeMs : null,
       frontmatterValid: parsed.valid !== false,
       // 全文（含 frontmatter）：与旧口径「整份文件读出来做 includes」逐字一致
       text,
@@ -1020,7 +1024,7 @@ export function createCore(cfg, logger) {
       const abs = path.join(root, relPath)
       const buf = await readFile(abs)
       const st = await stat(abs).catch(() => null)
-      const entry = entryFromBuffer(relPath, abs, buf, st ? st.mtimeMs : 0)
+      const entry = entryFromBuffer(relPath, abs, buf, st ? st.mtimeMs : 0, st?.ctimeMs)
       if (at >= 0) entries[at] = entry
       else entries.push(entry)
     }
@@ -1204,7 +1208,11 @@ export function createCore(cfg, logger) {
       result.initialized = meta.value.installState === 'complete'
       result.kbId = meta.value.kbId ?? null
       result.note = '已初始化，接入时不覆盖任何既有文件'
-      const written = await setConfig({ kbPath: toPosix(target) })
+      const restoreReport = await readJsonState(path.join(target, '.kbmeta/restore-report.json'))
+      const restorePolicy = await readJsonState(path.join(target, '.kbmeta/restore-policy.json'))
+      const recovered = restoreReport.state === 'ok' && restoreReport.value.verified === true && restoreReport.value.kbId === result.kbId && restorePolicy.state === 'ok'
+        ? Object.fromEntries(['categories','privateDirs','excludeFromSearch','autoIndex'].filter(k => restorePolicy.value[k] !== undefined).map(k => [k,restorePolicy.value[k]])) : {}
+      const written = await setConfig({ ...recovered, kbPath: toPosix(target) })
       if (!written.ok) return { ...result, ...written, ok: false, kbPath: toPosix(target) }
       await writeBinding(result.kbId, target)
       result.ok = true
@@ -1554,7 +1562,7 @@ export function createCore(cfg, logger) {
         if (kbRootOf(current) !== root || current.revision !== conf.revision || expectedRevision != null && expectedRevision !== current.revision || expectedKbId && meta.value?.kbId !== expectedKbId) return { ok: false, reason: 'binding-changed' }
         if (!health.healthy || current.degraded || automatic && current.autoIndex === false) return { ok: false, reason: 'maintenance-disabled-or-unhealthy' }
         await reconcileImportedSources(root, meta.value?.kbId)
-        if(catalogActive(root))await refreshCatalog({root,st:{kbId:meta.value.kbId},privateDirs:effectivePrivateDirs(conf.privateDirs,derivedPrivatePartitions(await readImportSources(root))),core:{_internal:{parseFrontmatter}}})
+        if(catalogActive(root))await refreshCatalog({root,st:{kbId:meta.value.kbId},privateDirs:effectivePrivateDirs(conf.privateDirs,derivedPrivatePartitions(await readImportSources(root))),core:{_internal:{parseFrontmatter}}},{paths})
         maintenanceState = { ...maintenanceState, state: 'running', reason: null }
         const snap = await indexSnapshot(conf)
         if (snap.freshness.reason === 'index-kbid-mismatch') throw Object.assign(new Error('索引身份不一致，未自动替换'), { code: 'index-kbid-mismatch' })
@@ -1571,11 +1579,11 @@ export function createCore(cfg, logger) {
             if (++processed % 50 === 0) await cfg.resources?.checkpoint(signal)
             if (signal?.aborted) throw Object.assign(new Error('维护已取消'), { code: 'canceled' })
             const rel = toPosix(path.relative(root, file)), before = await stat(file), old = previous.get(rel)
-            if (old && old.size === before.size && old.mtimeMs === before.mtimeMs && !dirty.has(rel)) entries.push(old)
+            if (old && old.size === before.size && old.mtimeMs === before.mtimeMs && old.ctimeMs === before.ctimeMs && ![...dirty].some(p=>rel===p||rel.startsWith(p+'/'))) entries.push(old)
             else {
               const buf = await readFile(file), after = await stat(file)
-              if (before.size !== after.size || before.mtimeMs !== after.mtimeMs || buf.length !== after.size) throw Object.assign(new Error('文件仍在写入'), { code: 'source-unstable' })
-              entries.push(entryFromBuffer(rel, file, buf, after.mtimeMs)); metadataChanged = true
+              if (before.size !== after.size || before.mtimeMs !== after.mtimeMs || before.ctimeMs !== after.ctimeMs || buf.length !== after.size) throw Object.assign(new Error('文件仍在写入'), { code: 'source-unstable' })
+              entries.push(entryFromBuffer(rel, file, buf, after.mtimeMs, after.ctimeMs)); metadataChanged = true
             }
           }
         } else {
@@ -1636,6 +1644,7 @@ export function createCore(cfg, logger) {
 
   /** 对**指定根目录**写索引（R6：初始化新库时当前绑定还没切，不能用 kbRootOf(conf)） */
   async function writeIndexAtRoot(root, conf, entries) {
+    await mkdir(path.dirname(indexPath(root)), { recursive: true })
     const payload = { generatedAt: nowIso(), meta: await indexMetaOf(conf, entries, root), entries }
     await commitIndex(indexPath(root), payload)
     return payload
@@ -1764,7 +1773,7 @@ export function createCore(cfg, logger) {
         const buf = await readFile(file)
         const st = await stat(file)
         if (before.size !== st.size || before.mtimeMs !== st.mtimeMs || buf.length !== st.size) throw new Error('文件扫描期间发生变化')
-        entries.push(entryFromBuffer(rel, file, buf, st ? st.mtimeMs : 0))
+        entries.push(entryFromBuffer(rel, file, buf, st ? st.mtimeMs : 0, st?.ctimeMs))
       } catch (error) {
         scanErrors.push(`${rel}: ${(error && (error.code || error.message)) ?? error}`)
       }
@@ -2174,7 +2183,7 @@ export function createCore(cfg, logger) {
       try {
         const before = await stat(absolute), buf = await readFile(absolute), info = await stat(absolute)
         if (before.size !== info.size || before.mtimeMs !== info.mtimeMs || before.ctimeMs !== info.ctimeMs || buf.length !== info.size) continue
-        const original = entryFromBuffer(source, absolute, buf, info.mtimeMs)
+        const original = entryFromBuffer(source, absolute, buf, info.mtimeMs, info.ctimeMs)
         canonical.set(source, { ...original, title: original.title || entry.title, tags: [...new Set([...original.tags, ...(canonical.get(source)?.tags || []), ...entry.tags])] })
       } catch { /* Missing sources cannot fall back to stale mirror text. */ }
     }

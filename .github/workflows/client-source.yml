@@ -2,9 +2,9 @@ name: Client source checks
 on:
   push:
     branches: [main]
-    paths: ['apps/**', 'packages/**', 'src/**', 'installer-design-b/**', 'tools/**', '.github/workflows/client-source.yml']
+    paths: ['apps/**', 'packages/**', 'src/**', 'installer-design-b/**', 'tools/**', 'tests/**', '.github/workflows/client-source.yml']
   pull_request:
-    paths: ['apps/**', 'packages/**', 'src/**', 'installer-design-b/**', 'tools/**', '.github/workflows/client-source.yml']
+    paths: ['apps/**', 'packages/**', 'src/**', 'installer-design-b/**', 'tools/**', 'tests/**', '.github/workflows/client-source.yml']
 permissions:
   contents: read
 jobs:
@@ -12,6 +12,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
@@ -21,5 +23,8 @@ jobs:
       - run: npm.cmd ci --ignore-scripts --prefix apps/desktop
       - run: npm.cmd ci --ignore-scripts --prefix apps/desktop/vendor/chat
       - run: npm.cmd run build --prefix apps/desktop
-      - run: node --test tests/runtime-compatibility.test.mjs apps/desktop/tests/feedback.test.mjs apps/desktop/tests/cross-volume-trash.test.mjs apps/desktop/tests/startup.test.mjs apps/desktop/tests/workspace.test.mjs apps/desktop/tests/storage-path.test.mjs apps/desktop/tests/library-scope.test.mjs apps/desktop/tests/client-updates.test.mjs tests/shared-version-policy.test.mjs tests/update-notification.test.mjs
+      - run: node --test tests/cross-round-review.test.mjs apps/desktop/tests/build-proof.test.mjs apps/desktop/tests/paired-plugin.test.mjs apps/desktop/tests/document-loads.test.mjs tests/local-change-updates.test.mjs tests/startup-performance.test.mjs tests/mixed-version-interop.test.mjs tests/runtime-compatibility.test.mjs apps/desktop/tests/feedback.test.mjs apps/desktop/tests/cross-volume-trash.test.mjs apps/desktop/tests/startup.test.mjs apps/desktop/tests/workspace.test.mjs apps/desktop/tests/storage-path.test.mjs apps/desktop/tests/library-scope.test.mjs apps/desktop/tests/client-updates.test.mjs tests/shared-version-policy.test.mjs tests/update-notification.test.mjs
+      - run: node --test tests/release-recovery.test.mjs tests/fresh-original-index.test.mjs tests/index-architecture.test.mjs apps/desktop/tests/service.test.mjs apps/desktop/tests/inbox.test.mjs
+      - run: python -X utf8 -m unittest discover -s tests -p test_mirror_release.py
+      - run: python -X utf8 -m unittest discover -s tests -p test_package_proof.py
       - run: python -X utf8 tools/check-public-source.py

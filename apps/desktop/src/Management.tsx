@@ -1,10 +1,10 @@
-import * as React from 'react';import {createPortal} from 'react-dom';import {api} from './types';import {FlowsPanel,ParsingPanel} from './EnginesPanel';
+import themeCss from '../../../src/client/knowledge-ui.css?raw';import * as React from 'react';import {createPortal} from 'react-dom';import {api} from './types';import {FlowsPanel,ParsingPanel} from './EnginesPanel';
 // @ts-ignore Generated from the same audited factory as the existing plugin.
 import {createWorkbenchUI} from './generated-management.js';
 // @ts-ignore The operation registry is a runtime JS contract shared by both apps.
 import {READ_OPERATIONS} from '../../../packages/kb-service/operations.js';
 const e=React.createElement;
-function makeUI(library?:{kbId:string;instanceId:string}){return createWorkbenchUI({react:React,e,api:async(body:any)=>{
+function makeUI(library?:{kbId:string;instanceId:string}){return createWorkbenchUI({react:React,e,themeCss,api:async(body:any)=>{
  const aliases:Record<string,string>={'import-run':'import.run','import-cancel':'import.cancel'};const op=aliases[body.op]??body.op;
  if(op==='index.policy.set')return api('policy',{paths:body.paths??[body.path],excluded:body.excluded,expectedRevision:body.expectedPolicyRevision});
  return api('knowledge',{expectedLibrary:library,operation:{...body,op},requestId:body.requestId,write:!READ_OPERATIONS.has(op)});

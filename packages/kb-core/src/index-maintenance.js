@@ -1,11 +1,10 @@
 import { watch as fsWatch } from 'node:fs'
 import path from 'node:path'
-import { SOURCE_TEXT } from './source-references.js'
 import { readIndexPolicy, policyExcluded } from './index-policy.js'
 
 // Independent of page refresh. It observes only the currently bound root and
 // excludes generated state; a missed watch event is repaired by the patrol.
-export function createIndexMaintenance({ getCore, onChange = () => {}, watch = fsWatch, resources, now = Date.now, timers = globalThis, quietMs = 5000, maximumWaitMs = 30000, minimumMs = 30000, patrolMs = 300000 } = {}) {
+export function createIndexMaintenance({ getCore, onChange = () => {}, watch = fsWatch, resources, now = Date.now, timers = globalThis, quietMs = 750, maximumWaitMs = 5000, minimumMs = 1000, patrolMs = 300000 } = {}) {
   let watcher, root = null, revision = null, enabled = false, stopped = false, ticking = false
   let pending = false, lastEvent = 0, lastStart = -Infinity, lastPatrol = 0, failures = 0, running = false, controller
   let firstPending = null
@@ -15,7 +14,7 @@ export function createIndexMaintenance({ getCore, onChange = () => {}, watch = f
   const relevant = file => {
     const rel = String(file || '').replaceAll('\\', '/')
     const parts = rel.split('/')
-    return !parts.some(p => ['.kbmeta', '.kb-state', '索引层', '.git'].includes(p)) && !excludes.some(p => rel === p || rel.startsWith(p + '/')) && !rel.includes('.tmp-') && (!rel.startsWith('90-收件箱/') || !policyExcluded(readIndexPolicy(root), rel)) && (rel === '' || !path.extname(rel) || SOURCE_TEXT.test(rel) && path.basename(rel) !== 'INDEX.md' && !(parts.length === 1 && ['README.md', 'AGENTS.md', '知识库清单.md'].includes(rel)))
+    return !parts.some(p => ['.kbmeta', '.kb-state', '索引层', '.git'].includes(p)) && !excludes.some(p => rel === p || rel.startsWith(p + '/')) && !rel.includes('.tmp-') && (!rel.startsWith('90-收件箱/') || !policyExcluded(readIndexPolicy(root), rel)) && path.basename(rel) !== 'INDEX.md' && !(parts.length === 1 && ['README.md', 'AGENTS.md', '知识库清单.md'].includes(rel))
   }
   const mark = file => { if (relevant(file) && (failures < 3 || transient)) { if (transient) { failures = 0; retryAt = 0 }; if (file) dirty.add(String(file).replaceAll('\\', '/')); if (firstPending === null) firstPending = now(); pending = true; lastEvent = now(); if (!running) state = 'waiting' } }
   function connect() {
@@ -31,7 +30,7 @@ export function createIndexMaintenance({ getCore, onChange = () => {}, watch = f
   }
   function failure(reason) {
     failures++
-    transient = ['ENOSPC', 'EACCES', 'EPERM', 'EBUSY', 'source-unstable', 'maintenance-failed'].includes(reason)
+    transient = ['ENOSPC', 'EACCES', 'EPERM', 'EBUSY', 'source-unstable', 'ENOENT', 'FILE_CHANGED', 'maintenance-failed'].includes(reason)
     const hard = ['index-drop-confirmation', 'index-kbid-mismatch'].includes(reason)
     state = hard || failures >= 3 && !transient ? 'paused' : 'retrying'
     if (hard) failures = 3
@@ -39,7 +38,7 @@ export function createIndexMaintenance({ getCore, onChange = () => {}, watch = f
     pending = state === 'retrying'
   }
   async function tick() {
-    let started = false
+    let started = false, attempted = []
     if (stopped || ticking) return
     const core = getCore()
     if (!core) return
@@ -62,13 +61,13 @@ export function createIndexMaintenance({ getCore, onChange = () => {}, watch = f
       const status = await core.status()
       if (!status.healthy || !status.kbId) { state = 'unhealthy'; return }
       running = true; started = true; pending = false; firstPending = null; lastStart = now(); state = 'running'; controller = new AbortController()
-      const active = controller, paths = [...dirty]; dirty.clear()
+      const active = controller, paths = [...dirty]; attempted = paths; dirty.clear()
       const run = () => core.maintainIndex({ expectedKbId: status.kbId, expectedRevision: revision, paths, automatic: true, signal: active.signal })
       const r = await (resources ? resources.background(run, active.signal) : run())
       if (stopped || !enabled || active.signal.aborted) return
       if (r.ok) { failures = 0; transient = false; retryAt = 0; state = pending ? 'waiting' : 'synced'; if (r.indexWritten) onChange(r) }
       else { paths.forEach(p => dirty.add(p)); failure(r.reason); onChange(r) }
-    } catch (error) { failure(error.code || 'maintenance-failed') }
+    } catch (error) { attempted.forEach(p => dirty.add(p)); failure(error.code || 'maintenance-failed') }
     finally { if (started) running = false; ticking = false }
   }
   const timer = timers.setInterval(() => { void tick() }, 1000)

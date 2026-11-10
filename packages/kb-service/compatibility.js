@@ -1,11 +1,17 @@
 import { CONTRACT, METHODS } from '../kb-contracts/index.js'
 import { hash } from './io.js'
 
+// An additive, optional method does not change the established base contract.
+// Its availability is negotiated through supported/capabilities. Any edit to an
+// existing method still changes this hash and fails closed.
+const baseMethods = Object.fromEntries(Object.entries(METHODS).filter(([name]) => name !== 'inbox.organizeResolve'))
+const extendedContractHash = hash(METHODS)
+
 // Change these epochs for incompatible storage or engine semantics, even if
 // the method names stay unchanged. A patch version/build ID is not an epoch.
 export const SERVICE_COMPATIBILITY = Object.freeze({
   family: 'kb-original-files', protocolMajor: CONTRACT.protocolMajor,
-  storageEpoch: 1, engineEpoch: 1, contractHash: hash(METHODS),
+  storageEpoch: 1, engineEpoch: 1, contractHash: hash(baseMethods),
 })
 
 // Pre-handshake-descriptor releases are accepted only by verified full runtime
@@ -24,5 +30,5 @@ export function canShareRuntime(health, buildId, required = [], expected = SERVI
   if (!Array.isArray(health?.supported) || !required.every(m => health.supported.includes(m))) return false
   if (health.serviceBuildId === buildId) return true
   const actual = health.compatibility ?? LEGACY[health.serviceBuildId]
-  return Boolean(actual && Object.keys(SERVICE_COMPATIBILITY).every(key => actual[key] === expected[key]))
+  return Boolean(actual && Object.keys(SERVICE_COMPATIBILITY).every(key => actual[key] === expected[key] || key === 'contractHash' && expected[key] === SERVICE_COMPATIBILITY.contractHash && actual[key] === extendedContractHash))
 }

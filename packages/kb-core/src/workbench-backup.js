@@ -3,6 +3,7 @@ import { mkdir, readdir, stat, lstat, readFile, writeFile, copyFile, rename, rm,
 import { createReadStream } from 'node:fs'
 import { createHash, randomUUID } from 'node:crypto'
 import { digest, inside, fail, safePath, relativePath, atomicJson, readJson, locked } from './workbench-state.js'
+import { CATALOG_PATH, readCatalog } from './file-catalog.js'
 import { privateRootOf } from './fsindex.js'
 
 const NAME = /^kb-backup-\d{13}-[a-f0-9-]{36}$/
@@ -70,11 +71,22 @@ export function createBackupService({ stateDir, binding, scan, userData, visible
         }
         const data = await userData(b)
         const chosen = new Set(entries)
-        const privatePath = p => args.exportOnly ? !chosen.has(p) : privateRootOf(p, b.privateDirs) !== null
+        const privatePath = p => !chosen.has(p)
         const filtered = includePrivate && !args.exportOnly ? data : { ...data, links: data.links.filter(e => !privatePath(e.from) && !privatePath(e.to)),
           captures: data.captures.filter(c => !privatePath(c.path)), annotations: data.annotations.filter(a => !privatePath(a.path)),
-          reading: Object.fromEntries(Object.entries(data.reading).filter(([p]) => !privatePath(p))), reviews: Object.fromEntries(Object.entries(data.reviews).filter(([p]) => !privatePath(p))), tasks: [] }
+          reading: Object.fromEntries(Object.entries(data.reading).filter(([p]) => !privatePath(p))), reviews: Object.fromEntries(Object.entries(data.reviews).filter(([p]) => !privatePath(p))), tasks: [], trashOperations: {} }
         await putMetadata('workbench-user-data.json', filtered)
+        if (!args.exportOnly) {
+          const catalog = await readCatalog(b.root, b.st.kbId)
+          if (catalog) {
+            const rel = CATALOG_PATH, target = path.join(temp, 'files', rel)
+            await atomicJson(target, {...catalog, files: catalog.files.filter(f => chosen.has(f.path)), references: catalog.references.filter(f => chosen.has(f.path))})
+            manifest.files.push({path: rel, bytes: (await stat(target)).size, sha256: await fileHash(target)})
+          }
+          const policy = await readJson(path.join(b.root, '.kbmeta/index-policy.json'), null)
+          if (policy) await putMetadata('index-policy.json', policy)
+          await putMetadata('restore-policy.json', {categories:b.conf.categories, privateDirs:b.privateDirs, excludeFromSearch:b.conf.excludeFromSearch, autoIndex:b.conf.autoIndex})
+        }
         try {
           if (args.exportOnly) throw Object.assign(new Error(), { code: 'ENOENT' })
           const flowFile = await safePath(path.join(stateDir, 'flows'), b.st.kbId + '/flows.json')
@@ -124,6 +136,11 @@ export function createBackupService({ stateDir, binding, scan, userData, visible
         if (await fileHash(dst) !== item.sha256) throw fail('RESTORE_CHECKSUM', '恢复文件校验失败')
         restored.push(item.path)
       }
+      const {createCore} = await import('./kbcore.js')
+      const restoredPolicy = await readJson(path.join(resolved, '.kbmeta/restore-policy.json'), {})
+      const core = createCore({...restoredPolicy, stateDir:path.join(stateDir, 'restores', randomUUID())}, () => {})
+      const initialized = await core.initializeLibrary(resolved, {rebuildIndex:true})
+      if (!initialized.ok || !initialized.health.healthy) throw fail('RESTORE_UNHEALTHY', '恢复资料库初始化检查失败')
       await atomicJson(path.join(resolved, '.kbmeta', 'restore-report.json'), { kbId: b.st.kbId, restoredAt: new Date(now()).toISOString(), files: restored.length, verified: true })
       return { destination: resolved, files: restored.length, verified: true, note: '已恢复到新目录；尚未切换绑定。重新接入时可恢复阅读与关联数据。' }
     } catch (error) { throw fail('RESTORE_PARTIAL', '恢复未完成，新目录保留用于排查；未修改当前库。' + error.message) }

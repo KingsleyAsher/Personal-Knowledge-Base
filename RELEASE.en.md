@@ -1,3 +1,28 @@
+## Plugin 3.0.0 / Client 2.0.0 · Major release
+
+Consolidates release, cross-round and visual review fixes. Both products work independently or share one library. Compatibility continues to use the shared protocol, storage generation and negotiated capabilities; changing the product major version does not force migration or rebuilding.
+
+- Fixes first-run creation, interrupted initialization, migration, backup restoration, grant renewal, concurrent ingestion and update handoff.
+- External edits within the library trigger scoped maintenance with retryable continuous saves. Startup reads coalesce, healthy indexes are reused, and permission changes hide stale content.
+- Restores shared management control styling, aligned switches, light/dark themes, readable badges, modal scrolling and visible keyboard focus.
+- Checks build/package fingerprints and regenerates real-library launcher pairing metadata for the exact companion plugin.
+
+Existing originals stay in place. A version upgrade alone does not migrate or rebuild the entire library. Copy imports watch the library copy, not the external source. The client checks and verifies downloads; installation still uses the installer. Historical host installation constraints and the 2.4.6 recovery boundary remain unchanged.
+
+Release tags are v3.0.0 and client-v2.0.0, with separate plugin TGZ, client EXE and product manifests. The installer is unsigned and requires an empty destination. Publication does not install into production. See release assets for checksums and validation scope.
+
+## Plugin 2.5.13 / Client 1.1.4 · Release audit fixes (unpublished)
+
+Mixed-version update: keep the base contract stable and negotiate inbox reconciliation separately. Compatible old/new peers share one service; incompatible storage epochs or missing mandatory capabilities reject the new connection while preserving existing peers.
+
+Fix fail-open privacy on corrupt source maps and lost mappings during concurrent imports. Original-file backups retain classification catalogs and index policy, and restored libraries undergo a health check. Desktop restore copies receive their own identity and grant, can be reopened, and share one service with the plugin adapter.
+
+Interrupted first-time initialization can resume. Launch locks from dead processes are reclaimed only after identity checks; live or unverifiable owners remain protected. Offline migration preserves interrupted staging before rebuilding it, validates the source before completing an unfinished journal, and retains grants for other libraries. Unknown inbox launches now have an explicit reconciliation action that rejects late receipts and avoids blind resending. Local bootstrap credentials renew before expiry without reviving revoked grants.
+
+Fix mirror release-note extraction and standalone UI module syntax. Extend CI coverage for first-time setup, index migration, service lifecycle and Windows live updates. Upgrade PDF.js and packaging dependencies and resolve the math renderer dependency advisory. Add fault regressions for source maps, concurrent imports, backup restore, interrupted setup, launch locks, task reconciliation, credential renewal and offline migration.
+
+Validation uses isolated synthetic libraries and covers standalone plugin setup, standalone desktop access and a single shared writer. Real user data was not modified. These are unpublished source changes and local candidate packages, not evidence of publication, installation or real cloud-model acceptance. Final validation results are recorded in the release audit report.
+
 ## Plugin 2.5.12 · First shared library and inbox workflow refresh
 
 On Windows, a new shared library created in an empty folder enables original-file indexing by default. The plugin and desktop client can operate independently or connect to one library. Fully exit and reopen DSH after its first shared-library binding. Existing embedded libraries still require explicit migration.

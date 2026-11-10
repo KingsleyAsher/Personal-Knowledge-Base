@@ -53,12 +53,13 @@ export const DEFAULT_PRIVATE_DIRS = ['00-画像', '30-人物关系']
 // ── F2/F3：来源映射的读取与解释（kbcore / map / importer 共用同一口径）──────
 const normAbs = (p) => toPosix(path.resolve(String(p ?? ''))).toLowerCase()
 
-/** 读目标库的来源映射（无则空对象；坏文件按空处理，不让检索/概览崩） */
+/** 读目标库的来源映射（无则空对象；坏文件拒绝读取，保持隐私边界） */
 export async function readImportSources(root) {
   if (!root) return {}
   try {
     const raw = JSON.parse(await readFile(path.join(root, '.kbmeta', 'import-sources.json'), 'utf8'))
-    const entries = raw && typeof raw.entries === 'object' && raw.entries !== null ? raw.entries : {}
+    if (!raw || (raw.version !== undefined && raw.version !== 1) || !raw.entries || typeof raw.entries !== 'object' || Array.isArray(raw.entries) || Object.values(raw.entries).some(e => !e || typeof e !== 'object' || Array.isArray(e))) throw Error('Invalid source map schema')
+    const entries = raw.entries
     // Windows TEMP may use an 8.3 alias while binding() resolves the long path.
     // Canonicalize only mappings that actually refer to this very same root.
     if (process.platform === 'win32') {
@@ -70,8 +71,9 @@ export async function readImportSources(root) {
       }
     }
     return entries
-  } catch {
-    return {}
+  } catch (error) {
+    if (error.code === 'ENOENT') return {}
+    throw Object.assign(new Error('来源映射无法读取，请恢复原文件；未放宽隐私策略'), { code: 'STATE_CORRUPT', cause: error })
   }
 }
 

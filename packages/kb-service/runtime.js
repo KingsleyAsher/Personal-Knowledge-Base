@@ -62,6 +62,14 @@ async function bootstrapRuntime({library,home=defaultServiceHome(),python='pytho
  try{
   while(Date.now()<until){
    const live=await connect();
+   if(live&&!live.health.active){
+     const held=await readJson(lockFile,null);
+     // Let the elected legacy launcher finish its first activation. It cannot
+     // recognize a duplicate commit if a newer peer activates its service first.
+     if(held&&held.owner!==owner&&await native(python,'birth',{pid:held.pid})===held.birth){
+       live.client.close();await pause(150);continue;
+     }
+   }
    if(live&&canShareRuntime(live.health,build,required)&&!olderWorker(live.health,preferredVersion)){client=live.client;break;}
    if(live&&!live.health.supported.includes('service.prepareUpgrade')&&live.health.serviceBuildId===LEGACY_243_BUILD){await waitForLegacy243({health:live.health,client:live.client,privateDir,python});continue;}
    if(live){
@@ -97,7 +105,15 @@ async function bootstrapRuntime({library,home=defaultServiceHome(),python='pytho
   if(!(await client.call('service.health')).active){
    const marker=await readJson(path.join(identity.root,'.desktop-preview.json'),null);
    if(!(allowFreshSynthetic&&marker?.synthetic===true)&&!await freshShared())throw error('RECOVERY_REQUIRED','未完成的共库交接需要从原入口继续');
-   await client.call('migration.commit',{planId:'fresh',quiescent:true});
+   try{await client.call('migration.commit',{planId:'fresh',quiescent:true});}
+   catch(e){
+     // A compatible older service can reject the second fresh activation after
+     // another connector has already committed. Verify the authenticated owner;
+     // do not replay migration or suppress other failures.
+     if(e.code!=='CONFLICT')throw e;
+     const health=await client.call('service.health');
+     if(!health.active||health.library.instanceId!==identity.instanceId)throw e;
+   }
   }
   await client.call('events.subscribe');off=client.subscribe(onEvent);
   const serviceHealth=await client.call('service.health');

@@ -21,9 +21,19 @@ export async function createAuthorization({ privateDir, python, identity }) {
     return row
   }
   const revoke = async id => { if (!vault.grants[id]) throw error('NOT_FOUND'); vault.grants[id].revoked = true; await save() }
+  let provisionCheckedUntil = 0
   return { issue, get, revoke, async provision() {
     const file = path.join(privateDir, 'bootstrap.dpapi.json')
-    if (!await readJson(file, null)) await atomic(file, (await issue('local bootstrap administrator', ['read', 'edit', 'write', 'admin', 'host','chat','chat-write','approval'], Date.now() + 365 * 86400000)).credential)
+    if (Date.now() < provisionCheckedUntil) return file
+    const encrypted = await readJson(file, null)
+    const current = encrypted ? await native(python, 'unprotect', encrypted) : null
+    if (current) {
+      const stored = vault.grants[current.id]
+      if (!stored || stored.revoked || stored.secret !== current.secret || stored.instanceId !== identity.instanceId) throw error('UNAUTHORIZED', 'Bootstrap grant was revoked or identity changed')
+      if (stored.expiresAt > Date.now() + 7 * 86400000) { provisionCheckedUntil = Date.now() + 3600000; return file }
+    }
+    await atomic(file, (await issue('local bootstrap administrator', ['read', 'edit', 'write', 'admin', 'host','chat','chat-write','approval'], Date.now() + 365 * 86400000)).credential)
+    provisionCheckedUntil = Date.now() + 3600000
     return file
   } }
 }

@@ -12,6 +12,12 @@ export async function createInboxJobs({privateDir,list,connected,now=Date.now}){
  return {
   recoverOperation(id){return task?.operationId===id?publicTask():null;},
   status(){const r=runner();return {ready:!!r,execution:r?.execution,task:publicTask()};},
+  async resolve(a){
+   if(!task||task.id!==a.taskId||task.state!=='unknown')throw error('CONFLICT','待核对任务已变化，请刷新');
+   if(a.confirm!==true||!['launched','failed'].includes(a.state)||a.state==='launched'&&!a.sessionId?.trim())throw error('BAD_REQUEST','请核对原会话并确认结果');
+   task={...task,state:a.state,sessionId:a.state==='launched'?a.sessionId:'',resolvedAt:now(),message:a.state==='launched'?'已人工核对：DSH 会话已创建':'已人工核对：未发送，可重新发起整理'};
+   await atomic(file,task);return publicTask();
+  },
   async request(operationId){
    if(task?.operationId===operationId)return publicTask();
    const r=runner();if(!r)throw error('HOST_UNAVAILABLE','尚未接入可执行整理的 DSH 知识库会话；没有移动或归档文件。');

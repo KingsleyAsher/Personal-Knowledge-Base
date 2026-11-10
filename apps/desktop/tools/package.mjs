@@ -1,7 +1,10 @@
+import {readCandidateBuild,runtimeBuild} from '../../../packages/kb-service/build.js';
+import {verifyDesktopBuild} from './build-proof.mjs';
 import {parseKnowledgeVersion,packageVersion} from '../../../packages/kb-contracts/version-policy.js';
-import {packager} from '@electron/packager';import extract from 'extract-zip';
+import {packager} from '@electron/packager';
 import path from 'node:path';import {fileURLToPath} from 'node:url';import {mkdir,readFile,writeFile,cp,copyFile,readdir,lstat} from 'node:fs/promises';import {createHash} from 'node:crypto';import {execFileSync} from 'node:child_process';
 const appDir=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),repo=path.resolve(appDir,'../..'),out=path.join(appDir,'out');
+await verifyDesktopBuild(appDir);
 const releaseVersion=JSON.parse(await readFile(path.join(appDir,'package.json'),'utf8')).version;
 const parsedRelease=parseKnowledgeVersion(releaseVersion);if(!parsedRelease)throw Error('发布版本必须为 x.y.z 或 x.y-betaN');
 const electronVersion=packageVersion(releaseVersion);
@@ -18,6 +21,8 @@ for(const part of ['main','dist','fixture-assets'])await inventory(path.join(app
 for(const name of ['kb-core','kb-contracts','kb-service'])await inventory(path.join(repo,'packages',name),'packages/'+name);
 const nativePlugin=JSON.parse(await readFile(path.join(repo,'development/desktop-parity/artifacts/plugin/latest-plugin.json'),'utf8'));
 if(sha(await readFile(nativePlugin.path))!==nativePlugin.sha256)throw Error('Paired native backend plugin checksum mismatch');
+const pairedIdentity=JSON.parse(await readFile(path.join(appDir,'main/real-library/paired-plugin.json'),'utf8')),currentPlugin=await readCandidateBuild(repo);
+if(pairedIdentity.version!==currentPlugin.version||pairedIdentity.buildId!==currentPlugin.buildId||pairedIdentity.runtimeBuildId!==await runtimeBuild()||pairedIdentity.sha256!==nativePlugin.sha256)throw Error('Real-library companion identity is stale. Prepare the plugin, rebuild the desktop, then package again.');
 rows.push({path:'native-backend/plugin.tgz',sha256:nativePlugin.sha256});
 await inventory(path.join(repo,'browser-extension'),'browser-extension');for(const name of ['kb-pdf-pages.py','kb-local-model.py'])rows.push({path:'tools/'+name,sha256:sha(await readFile(path.join(repo,'tools',name)))});
 rows.push({path:'app/package.json',sha256:sha(await readFile(path.join(appDir,'package.json')))});
@@ -35,7 +40,7 @@ for(const name of ['kb-core','kb-contracts','kb-service'])await cp(path.join(rep
 await mkdir(path.join(resources,'kb-runtime/tools'),{recursive:true});for(const name of ['kb-pdf-pages.py','kb-local-model.py'])await copyFile(path.join(repo,'tools',name),path.join(resources,'kb-runtime/tools',name));await cp(path.join(repo,'browser-extension'),path.join(resources,'kb-runtime/browser-extension'),{recursive:true});
 // Content-addressed targets already contain this pinned runtime. Repacking
 // launchers/docs must not overwrite Python modules loaded by a shared service.
-if(!await lstat(path.join(resources,'python','python.exe')).catch(()=>null))await extract(path.join(cache,pythonName),{dir:path.join(resources,'python')});
+if(!await lstat(path.join(resources,'python','python.exe')).catch(()=>null))execFileSync('python',['-m','zipfile','-e',path.join(cache,pythonName),path.join(resources,'python')],{windowsHide:true});
 await cp(path.join(appDir,'node_modules/@fontsource-variable/noto-sans-sc/LICENSE'),path.join(target,'LICENSE-Noto-Sans-SC.txt'));
 const manifest={version:releaseVersion,buildId,channel:parsedRelease.channel,createdAt:new Date().toISOString(),platform:'win32-x64',syntheticOnly:false,realLibraryAccess:'explicit installed-build check, stopped-writer handoff, identity-bound grant',electron:{version:'45.2.1',sha256:checksums[electronName]},python:{version:'3.14.10',sha256:pythonSha,source:'https://www.python.org/downloads/release/python-31410/'},files:rows};
 await writeFile(path.join(target,'BUILD-MANIFEST.json'),JSON.stringify(manifest,null,2));
