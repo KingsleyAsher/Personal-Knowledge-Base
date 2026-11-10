@@ -30,7 +30,7 @@ export function createIndexMaintenance({ getCore, onChange = () => {}, watch = f
   }
   function failure(reason) {
     failures++
-    transient = ['ENOSPC', 'EACCES', 'EPERM', 'EBUSY', 'source-unstable', 'maintenance-failed'].includes(reason)
+    transient = ['ENOSPC', 'EACCES', 'EPERM', 'EBUSY', 'source-unstable', 'ENOENT', 'FILE_CHANGED', 'maintenance-failed'].includes(reason)
     const hard = ['index-drop-confirmation', 'index-kbid-mismatch'].includes(reason)
     state = hard || failures >= 3 && !transient ? 'paused' : 'retrying'
     if (hard) failures = 3
@@ -38,7 +38,7 @@ export function createIndexMaintenance({ getCore, onChange = () => {}, watch = f
     pending = state === 'retrying'
   }
   async function tick() {
-    let started = false
+    let started = false, attempted = []
     if (stopped || ticking) return
     const core = getCore()
     if (!core) return
@@ -61,13 +61,13 @@ export function createIndexMaintenance({ getCore, onChange = () => {}, watch = f
       const status = await core.status()
       if (!status.healthy || !status.kbId) { state = 'unhealthy'; return }
       running = true; started = true; pending = false; firstPending = null; lastStart = now(); state = 'running'; controller = new AbortController()
-      const active = controller, paths = [...dirty]; dirty.clear()
+      const active = controller, paths = [...dirty]; attempted = paths; dirty.clear()
       const run = () => core.maintainIndex({ expectedKbId: status.kbId, expectedRevision: revision, paths, automatic: true, signal: active.signal })
       const r = await (resources ? resources.background(run, active.signal) : run())
       if (stopped || !enabled || active.signal.aborted) return
       if (r.ok) { failures = 0; transient = false; retryAt = 0; state = pending ? 'waiting' : 'synced'; if (r.indexWritten) onChange(r) }
       else { paths.forEach(p => dirty.add(p)); failure(r.reason); onChange(r) }
-    } catch (error) { failure(error.code || 'maintenance-failed') }
+    } catch (error) { attempted.forEach(p => dirty.add(p)); failure(error.code || 'maintenance-failed') }
     finally { if (started) running = false; ticking = false }
   }
   const timer = timers.setInterval(() => { void tick() }, 1000)

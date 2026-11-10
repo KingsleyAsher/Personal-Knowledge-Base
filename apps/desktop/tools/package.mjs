@@ -1,7 +1,9 @@
+import {verifyDesktopBuild} from './build-proof.mjs';
 import {parseKnowledgeVersion,packageVersion} from '../../../packages/kb-contracts/version-policy.js';
 import {packager} from '@electron/packager';
 import path from 'node:path';import {fileURLToPath} from 'node:url';import {mkdir,readFile,writeFile,cp,copyFile,readdir,lstat} from 'node:fs/promises';import {createHash} from 'node:crypto';import {execFileSync} from 'node:child_process';
 const appDir=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),repo=path.resolve(appDir,'../..'),out=path.join(appDir,'out');
+await verifyDesktopBuild(appDir);
 const releaseVersion=JSON.parse(await readFile(path.join(appDir,'package.json'),'utf8')).version;
 const parsedRelease=parseKnowledgeVersion(releaseVersion);if(!parsedRelease)throw Error('发布版本必须为 x.y.z 或 x.y-betaN');
 const electronVersion=packageVersion(releaseVersion);

@@ -1,3 +1,4 @@
+from verify_package import verify_current_package
 from pathlib import Path
 import json,hashlib,shutil,subprocess,zipfile,struct,re,runpy,sys
 from windows_icon import generate as generate_icon,patch as patch_icon
@@ -5,6 +6,8 @@ BASE=Path(__file__).resolve().parent;DESIGN=BASE.parent;WORK=DESIGN.parent
 APP=WORK/'apps/desktop'
 DIST=DESIGN/'release';STAGE=BASE/'stage';UI=BASE/'ui';DIST.mkdir(exist_ok=True);UI.mkdir(exist_ok=True)
 package=json.loads((APP/'out/latest-package.json').read_text(encoding='utf-8'));SOURCE=Path(package['target'])
+subprocess.run(['node',str(APP/'tools/build-proof.mjs'),'--verify'],check=True)
+verify_current_package(WORK,APP,SOURCE,package)
 payload_only='--payload-only' in sys.argv
 existing_ui=BASE/'ui-template.asar'
 STAGE=BASE/('stage-'+package['buildId'])

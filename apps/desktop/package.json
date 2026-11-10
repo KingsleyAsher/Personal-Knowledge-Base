@@ -6,7 +6,7 @@
   "main": "main/index.js",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 4173 --strictPort",
-    "build": "node ../../tools/sync-desktop-palettes.mjs && python -X utf8 ../../tools/build-desktop-management.py && tsc --noEmit && vite build",
+    "build": "node ../../tools/sync-desktop-palettes.mjs && python -X utf8 ../../tools/build-desktop-management.py && tsc --noEmit && vite build && node tools/build-proof.mjs",
     "desktop": "npm run build && electron .",
     "test": "node --test tests/service.test.mjs tests/workspace.test.mjs tests/office-formats.test.mjs tests/inbox.test.mjs",
     "test:inbox": "node --test tests/inbox.test.mjs",

@@ -84,8 +84,11 @@ export async function refreshCatalog(b,options={}){
   if(!catalogActive(b.root))return null
   const file=await safePath(b.root,CATALOG_PATH)
   return locked(file,async()=>{const old=await readCatalog(b.root,b.st.kbId),scan=await inspectOriginals(b,{previous:old,...options})
+    const privatePaths=files=>files.filter(f=>f.private&&f.status==='available').map(f=>f.path).sort();
+    const privacyChanged=JSON.stringify(privatePaths(old.files))!==JSON.stringify(privatePaths(scan.files));
     const next={...old,...scan,classificationPending:false};if(old.classificationPending||digest(JSON.stringify(scan.files))!==digest(JSON.stringify(old.files))||digest(JSON.stringify(scan.references))!==digest(JSON.stringify(old.references))){
-      if(old.classificationPending){const raw=await readJson(file,null);await atomicJson(await safePath(b.root,'索引层/分类历史/'+Date.now()+'-'+old.revision+'.json',{missing:true}),raw);next.policyRevision=(old.policyRevision??0)+1}
+      if(old.classificationPending){const raw=await readJson(file,null);await atomicJson(await safePath(b.root,'索引层/分类历史/'+Date.now()+'-'+old.revision+'.json',{missing:true}),raw);}
+      if(old.classificationPending||privacyChanged)next.policyRevision=(old.policyRevision??0)+1
       next.revision++;next.updatedAt=Date.now();await atomicJson(file,next)
     }return next})
 }

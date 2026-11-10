@@ -2,7 +2,7 @@
 export interface FileInfo {category?:string;kind?:string;original?:boolean;id:string;path:string;name:string;type:'file'|'directory';mime?:string;size:number;modifiedAt:number;revision:string;protected:boolean;access:{canEdit:boolean;canRename:boolean;canMove:boolean;canTrash:boolean;indexExcluded:boolean;reasons:string[]}}
 export interface Preview {file:FileInfo;kind:'markdown'|'text'|'pdf'|'image'|'audio'|'video'|'unsupported'|'docx'|'xlsx'|'csv';text?:string;resourceUrl?:string;resourceHandle?:string;readOnlyReason?:string;originalKey?:string;bom?:boolean}
 export const formatLabel=(p:Preview)=>({markdown:'Markdown 文件',docx:'Word 文档 · DOCX',xlsx:'Excel 表格 · XLSX',csv:'CSV 表格',pdf:'PDF 文档',image:'图片',audio:'音频',video:'视频'} as Record<string,string>)[p.kind]??(p.file.path.split('.').at(-1)?.toUpperCase()+' 文件');
-export interface Doc {path:string;preview:Preview;text:string;savedText:string;revision?:string;mode:'read'|'source';dirty:boolean;external?:boolean;missing?:boolean}
+export interface Doc {path:string;preview:Preview;text:string;savedText:string;revision?:string;mode:'read'|'source';dirty:boolean;external?:boolean;missing?:boolean;blocked?:boolean}
 export interface Tab {path:string;pinned:boolean}
 export interface Pane {id:string;active:string;tabs:Tab[];weight?:number;editing?:boolean;markdownModes?:Record<string,'read'|'source'>;manualEmpty?:boolean}
 export interface Connection {state:string;root?:string;synthetic?:boolean;library?:{kbId:string;instanceId:string};capabilities:string[];name:string}

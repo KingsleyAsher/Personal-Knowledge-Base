@@ -521,7 +521,7 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
     let compatible=true,from=null
     if(raw){
       const validKey=/^[a-f0-9]{32}$/.test(raw.key||'')
-      const old=validKey?await readJson(await safePath(b.root,'索引层/'+raw.key+'/manifest.json',{missing:true}),{}).catch(()=>({})):{}
+      const old=validKey?await readJson(await safePath(b.root,path.relative(b.root,path.join(directory(b),raw.key,'manifest.json')).replaceAll('\\','/'),{missing:true}),{}).catch(()=>({})):{}
       compatible=Boolean(validKey&&raw.embedding&&raw.key===modelKey(raw.embedding)&&old.format===1&&(raw.chunkVersion==null||raw.chunkVersion===CHUNK_VERSION)&&(raw.format==null||raw.format===1))
       if(!compatible)from=raw.key
     }

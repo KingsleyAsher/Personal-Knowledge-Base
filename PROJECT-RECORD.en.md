@@ -3,6 +3,14 @@
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
+## 2026-11-11 · Cross-round review and release consistency fixes (unpublished)
+
+Reproduced and fixed standalone desktop vector reconciliation checking the plugin directory, which could incorrectly rebuild a healthy index. File changes and atomic replacements during scans remain retryable, including preservation of dirty paths when work throws. Continuous file notifications now have a maximum flush delay. Automatic visibility changes advance the policy version; the desktop rechecks open documents, hides content, outlines and actions after access is revoked, preserves unsaved edits, and resumes after access is restored.
+
+Initial document loads still merge, but a refresh arriving during a load schedules a fresh read instead of disappearing into the old request. Windows event paths match consistently across case and separator differences. Both workbench guides and scheduler test settings now match the current timing. Ordinary content changes remain scoped; permission changes intentionally recheck visibility.
+
+Added build proofs: a successful TypeScript/Vite build records source and output fingerprints, and desktop packaging rejects missing proofs, changed source or modified output. The installer also verifies the desktop build manifest and paired plugin against current inputs, preventing reuse of stale dist or package directories. New regressions cover healthy independent indexes, transient scans, policy changes, continuous events, overlapping refreshes and stale-build rejection. Electron verified permission revocation/restoration and scoped refresh. The candidate is regenerated without public release or production installation changes.
+
 ## 2026-11-11 · External changes and incremental chunk updates (unpublished 2.5.13 / 1.1.4 candidate)
 
 File maintenance now uses a 750 ms debounce, a one-second minimum interval and a five-second maximum event batch, retaining patrol recovery for missed events. Changed paths reach the desktop so local saves check only affected documents and directories. Index progress and catalog metadata changes no longer reload all open files. Non-admin live events and replay omit paths, and older clients retain compatibility with unscoped events.

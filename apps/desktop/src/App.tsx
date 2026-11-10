@@ -1,3 +1,4 @@
+import {createDocumentLoads,affectedByPaths,changePath} from './document-loads';
 import PalettePicker from './PalettePicker';import {validPalette,COLOR_THEMES,paletteForMode,normalizePalette} from '../main/theme-palettes.js';import './palettes.css';import './palette-surfaces.css';
 
 import {lazy,Suspense,useCallback,useEffect,useMemo,useRef,useState} from 'react';
@@ -89,20 +90,22 @@ export default function App(){
   void api<{x:number;y:number}>('pointer').then(place).catch(()=>place(lastPointer.current));
  }
  function togglePopup(kind:NonNullable<typeof popup>){if(kind==='search'){showSearch();return;}viewChange(()=>{setPopup(p=>p===kind?null:kind);if(popup!==kind)bringTool(kind);},{target:toolMotion(kind),kind:'popover'});if(kind==='library'){void showLeft(true);run(async()=>setLibraries(await api('libraries')));}}
+ const policyEpoch=useRef(0);
  const pendingRefreshPaths=useRef<Set<string>|null|undefined>(undefined);
- const documentLoads=useRef(new Map<string,Promise<Doc>>());
+ const documentLoads=useRef(createDocumentLoads<Doc>());
  async function loadDoc(path:string,force=false,discard=false){
   if(docsRef.current[path]&&!force)return docsRef.current[path];
-  const key=JSON.stringify([path,discard]);const pending=documentLoads.current.get(key);if(pending)return pending;
-  const job=readDoc(path,discard);documentLoads.current.set(key,job);
-  try{return await job;}finally{if(documentLoads.current.get(key)===job)documentLoads.current.delete(key);}
+  const d=await documentLoads.current(changePath(path),()=>readDoc(path),force);
+  setDocs(v=>v[path]?.dirty&&!discard?v:{...v,[path]:{...d,mode:v[path]?.mode??d.mode}});return d;
  }
- async function readDoc(path:string,discard=false){
+ async function readDoc(path:string):Promise<Doc>{
+  const epoch=policyEpoch.current;
   const preview=await api<Preview>('preview',{path});let text=preview.text??'',revision:string|undefined;
   if(preview.kind==='markdown'&&preview.file.access.canEdit){const raw=await api('read',{path});text=raw.text;revision=raw.revision;}
   if(preview.kind==='docx'||preview.kind==='xlsx')text='{}';if(preview.kind!=='markdown')revision=preview.file.revision;
+  if(epoch!==policyEpoch.current)return readDoc(path);
   const d:Doc={path,preview,text,savedText:text,revision,dirty:false,mode:docsRef.current[path]?.mode??'read'};
-  setDocs(v=>v[path]?.dirty&&!discard?v:{...v,[path]:{...d,mode:v[path]?.mode??d.mode}});return d;
+  return d;
  }
  async function openFile(path:string,paneId?:string,pinned=true,force=false){
   await loadDoc(path,force);const update=()=>{setSelected(path);setSection('workspace');workspace.open(path,paneId,pinned);};if(section!=='workspace')viewChange(update,{kind:'layout'});else if(!paneId&&!panesRef.current.some(p=>!p.tabs.length||p.tabs.some(t=>t.path===path))&&panesRef.current.length<MAX_PANES)viewChange(update,{kind:'layout'});else update();
@@ -151,14 +154,15 @@ export default function App(){
   const t=setTimeout(()=>{if(discarding.current)return;for(const d of dirty)void api('drafts',{path:d.path,text:d.text,revision:d.revision,originalKey:d.preview.originalKey,bom:d.preview.bom}).catch(fail);},400);return()=>clearTimeout(t);
  },[docs,keepDrafts]);
  useEffect(()=>window.kbDesktop?.onEvent((e:any)=>{
+  if(e.policyChanged)policyEpoch.current++;
   const reconnected=e.type==='connection.changed'&&e.state==='ready'&&connectionRef.current.state!=='ready';
   if(e.type==='connection.changed'){connectionRef.current={...connectionRef.current,state:e.state};setConnection(c=>({...c,state:e.state}));}
   if(loaded.current&&reconnected)for(const d of Object.values(docsRef.current))if(d.preview.resourceHandle&&!d.dirty)void loadDoc(d.path,true).catch(fail);
-  if(e.type==='snapshot.required'&&(e.indexOnly||(e.catalogChanged&&Array.isArray(e.paths)&&!e.paths.length)))return;
+  if(e.type==='snapshot.required'&&!e.policyChanged&&(e.indexOnly||(e.catalogChanged&&Array.isArray(e.paths)&&!e.paths.length)))return;
   if(loaded.current&&(e.type==='snapshot.required'||reconnected)){
-   if(reconnected||!Array.isArray(e.paths))pendingRefreshPaths.current=null;else if(pendingRefreshPaths.current!==null){pendingRefreshPaths.current??=new Set();for(const path of e.paths)pendingRefreshPaths.current.add(path);}
+   if(reconnected||e.policyChanged||!Array.isArray(e.paths))pendingRefreshPaths.current=null;else if(pendingRefreshPaths.current!==null){pendingRefreshPaths.current??=new Set();for(const path of e.paths)pendingRefreshPaths.current.add(path);}
    if(refreshTimer.current)clearTimeout(refreshTimer.current);
-   refreshTimer.current=setTimeout(()=>{const paths=pendingRefreshPaths.current;pendingRefreshPaths.current=undefined;const affects=(path:string)=>!paths||[...paths].some(p=>path===p||path.startsWith(p+'/'));void refreshTree(fileSort,[...expanded].filter(p=>!paths||affects(p)||[...paths].some(f=>parentPath(f)===p)));void refreshSection().catch(fail);for(const d of Object.values(docsRef.current).filter(d=>affects(d.path)))void api<FileInfo>('stat',{path:d.path}).then(f=>{if(f.revision!==d.preview.file.revision){if(d.dirty)setDocs(v=>({...v,[d.path]:{...v[d.path],external:true}}));else void loadDoc(d.path,true).catch(fail);}}).catch((e:ApiError)=>{if(['NOT_FOUND','ENOENT'].includes(e.code??''))setDocs(v=>({...v,[d.path]:{...v[d.path],missing:true}}));});},140);
+   refreshTimer.current=setTimeout(()=>{const paths=pendingRefreshPaths.current;pendingRefreshPaths.current=undefined;const affects=(path:string)=>affectedByPaths(path,paths);void refreshTree(fileSort,[...expanded].filter(p=>!paths||affects(p)||[...paths].some(f=>changePath(parentPath(f))===changePath(p))));void refreshSection().catch(fail);for(const d of Object.values(docsRef.current).filter(d=>affects(d.path)))void api<FileInfo>('stat',{path:d.path}).then(f=>{if(d.blocked||f.revision!==d.preview.file.revision){if(d.dirty)setDocs(v=>({...v,[d.path]:{...v[d.path],blocked:false,preview:{...v[d.path].preview,file:f},external:f.revision!==d.preview.file.revision}}));else void loadDoc(d.path,true).catch(fail);}}).catch((e:ApiError)=>{if(['FORBIDDEN','PRIVATE_HIDDEN','UNAUTHORIZED'].includes(e.code??''))setDocs(v=>v[d.path]?{...v,[d.path]:{...v[d.path],blocked:true}}:v);if(['NOT_FOUND','ENOENT'].includes(e.code??''))setDocs(v=>({...v,[d.path]:{...v[d.path],missing:true}}));});},140);
   }
   if(e.type==='close.requested'){if(Object.values(docsRef.current).some(d=>d.dirty))showDialog({type:'unsaved',window:true});else void api('window',{action:'close'});}
  }),[expanded,section,leftSection,fileSort]);
@@ -210,7 +214,7 @@ export default function App(){
  useEffect(()=>{setRows([]);void refreshSection().catch(fail);},[leftSection,connection.state,activePath]);
  function exportDocument(path:string){const entry=exporters.current.get(path),doc=docsRef.current[path];if(!entry||entry.sourceKey!==doc?.preview.originalKey)throw Error('文档编辑器仍在加载，请稍后保存');return entry.export();}
  async function saveDoc(path:string){
-  const d=docsRef.current[path];if(!d||!d.dirty)return;
+  const d=docsRef.current[path];if(!d||!d.dirty)return;if(d.blocked)throw Error('此资料目前不可访问，请恢复权限后再保存');
   if(!d.revision||!d.preview.file.access.canEdit)throw Error('此文档不能原地编辑');
   try{
    const binary=d.preview.kind==='docx'||d.preview.kind==='xlsx';
@@ -308,6 +312,7 @@ export default function App(){
  }
  function reader(doc:Doc|undefined,paneId:string){
   if(!doc)return <NoticeEmpty title="打开一份资料开始阅读" description={'从文件树选择文件'+(shortcuts.quickOpen?'，或按 '+shortcuts.quickOpen+' 快速打开。':'。')}><button className="primary" onClick={()=>operation('create')}>新建笔记</button></NoticeEmpty>;
+  if(doc.blocked)return <NoticeEmpty title="此资料目前不可访问" description="浏览权限已改变；未保存的编辑仍保留，恢复权限后可以继续。"/>;
   if(doc.missing)return <NoticeEmpty title="找不到这个文件" description="标签和草稿已保留。文件可能在其它应用中被移动。"><button onClick={()=>showDialog({type:'quick'})}>重新定位</button></NoticeEmpty>;
   const p=doc.preview,pane=panesRef.current.find(pane=>pane.id===paneId),editable=columnEditing(pane,doc.path,p.kind,p.file.access.canEdit,doc.mode);
   if(p.kind==='docx'||p.kind==='xlsx')return <Suspense fallback={<div className="loading">正在加载文档编辑器…</div>}><Office key={doc.path+':'+p.originalKey} sourceKey={p.originalKey!} path={doc.path} kind={p.kind} url={p.resourceUrl!} value={doc.text} editable={editable} onChange={text=>editDoc(doc.path,text,paneId)} register={registerExport}/></Suspense>;
@@ -320,14 +325,14 @@ export default function App(){
   return <NoticeEmpty title={p.file.name} description={p.readOnlyReason??'此格式使用系统默认应用查看。'}><button className="primary" onClick={()=>run(()=>api('path',{path:doc.path,action:'open'}))}><ExternalLink size={16}/>用默认应用打开</button><button onClick={()=>run(()=>api('path',{path:doc.path,action:'reveal'}))}>打开所在文件夹</button></NoticeEmpty>;
  }
  function paneView(p:Pane,drag:TabDragHandlers){
-  const d=docs[p.active],canEdit=!!d?.preview.file.access.canEdit&&!d.missing,editing=!!d&&columnEditing(p,d.path,d.preview.kind,canEdit,d.mode);return <section key={p.id} data-motion-layout="" data-motion-surface={paneMotion(p.id)} style={{viewTransitionName:paneMotion(p.id)}} data-document-path={p.active} className={'document-pane '+(p.id===activePane?'focused':'')} onPointerDown={()=>setActivePane(p.id)} aria-label={'文件预览栏 '+(panes.findIndex(x=>x.id===p.id)+1)}>
+  const d=docs[p.active],canEdit=!!d?.preview.file.access.canEdit&&!d.missing&&!d.blocked,editing=!!d&&columnEditing(p,d.path,d.preview.kind,canEdit,d.mode);return <section key={p.id} data-motion-layout="" data-motion-surface={paneMotion(p.id)} style={{viewTransitionName:paneMotion(p.id)}} data-document-path={p.active} className={'document-pane '+(p.id===activePane?'focused':'')} onPointerDown={()=>setActivePane(p.id)} aria-label={'文件预览栏 '+(panes.findIndex(x=>x.id===p.id)+1)}>
    <div className="tab-strip">
     <div className="tab-list" role="tablist" aria-label="文档标签">{p.tabs.map(t=><div key={t.path} data-tab-path={t.path} onContextMenu={e=>tabContext(e,t.path)} draggable onDragStart={e=>drag.onDragStart(e,{paneId:p.id,path:t.path})} onDragEnd={drag.onDragEnd} className={'document-tab '+(p.active===t.path?'active':'')+(!t.pinned?' temporary':'')}>
      <button role="tab" aria-selected={p.active===t.path} title={t.path} onClick={()=>run(()=>openFile(t.path,p.id,t.pinned))} onDoubleClick={()=>setPanes(ps=>ps.map(x=>x.id===p.id?{...x,tabs:x.tabs.map(a=>a.path===t.path?{...a,pinned:true}:a)}:x))}><FileIcon file={{path:t.path,type:'file'}} size={16}/><span>{fileName(t.path)}{docs[t.path]?.dirty?' •':''}</span></button><button aria-label={'关闭 '+fileName(t.path)} onClick={()=>closeTab(p.id,t.path)}><X size={13}/></button>
     </div>)}</div>
     <div className="pane-actions">{p.manualEmpty&&!p.tabs.length?<IconButton label="关闭空白预览栏" onClick={()=>{const widths=renderedPaneWidths();viewChange(()=>workspace.closeEmpty(p.id,widths),{kind:'layout'});}}><X size={15}/></IconButton>:null}<IconButton label="新建标签" onClick={()=>{setActivePane(p.id);setQuickQuery('');showDialog({type:'quick',paneId:p.id});}}><Plus size={16}/></IconButton><span className="new-pane-action" data-new-pane="true"><IconButton label="新建预览栏" disabled={panes.length>=MAX_PANES} onClick={()=>viewChange(()=>workspace.add(p.id),{kind:'layout'})}><Columns2 size={16}/></IconButton></span></div>
    </div>
-   {d&&d.preview.kind!=='pdf'?<><div className="path-row"><button className="breadcrumb" title={d.path} onClick={()=>locate(d.path)}>{d.path.split('/').join(' / ')}</button><IconButton label="复制当前文件路径" onClick={()=>run(()=>api('path',{path:d.path,action:'copy'}))}><Copy size={16}/></IconButton>{d.preview.file.access.canEdit?<button className="save-button primary" disabled={connection.state!=='ready'} onClick={()=>run(()=>saveDoc(d.path))}>保存</button>:null}</div><div className="edit-control-row"><span>允许编辑</span><EditSwitch checked={editing} disabled={!canEdit} title={canEdit?(editing?'关闭编辑，锁定此栏':'开启此栏编辑'):(d?.preview.file.access.reasons.join('；')||'此格式只读')} onChange={checked=>setPanes(ps=>ps.map(pane=>pane.id===p.id?setColumnEditing(pane,d.path,d.preview.kind,checked):pane))}/></div><div className="editor-tools"><span className="muted">{canEdit?(editing?'可编辑':'编辑已锁定'):'只读预览'}</span><div className="spacer"/><IconButton label="用默认应用打开" onClick={()=>run(()=>api('path',{path:d.path,action:'open'}))}><ExternalLink size={16}/></IconButton><IconButton label="文档大纲" onClick={()=>showRight(true,'outline')}><List size={17}/></IconButton><IconButton label="右侧分屏打开" disabled={panes.length>=MAX_PANES} onClick={()=>run(()=>splitFile(d.path))}><Columns2 size={17}/></IconButton><IconButton label="文件操作菜单" onClick={e=>{const r=e.currentTarget.getBoundingClientRect();setContext({x:r.left,y:r.bottom+4,file:d.preview.file,anchor:e.currentTarget});}}><MoreHorizontal size={18}/></IconButton></div></>:null}
+   {d&&!d.blocked&&d.preview.kind!=='pdf'?<><div className="path-row"><button className="breadcrumb" title={d.path} onClick={()=>locate(d.path)}>{d.path.split('/').join(' / ')}</button><IconButton label="复制当前文件路径" onClick={()=>run(()=>api('path',{path:d.path,action:'copy'}))}><Copy size={16}/></IconButton>{d.preview.file.access.canEdit?<button className="save-button primary" disabled={connection.state!=='ready'} onClick={()=>run(()=>saveDoc(d.path))}>保存</button>:null}</div><div className="edit-control-row"><span>允许编辑</span><EditSwitch checked={editing} disabled={!canEdit} title={canEdit?(editing?'关闭编辑，锁定此栏':'开启此栏编辑'):(d?.preview.file.access.reasons.join('；')||'此格式只读')} onChange={checked=>setPanes(ps=>ps.map(pane=>pane.id===p.id?setColumnEditing(pane,d.path,d.preview.kind,checked):pane))}/></div><div className="editor-tools"><span className="muted">{canEdit?(editing?'可编辑':'编辑已锁定'):'只读预览'}</span><div className="spacer"/><IconButton label="用默认应用打开" onClick={()=>run(()=>api('path',{path:d.path,action:'open'}))}><ExternalLink size={16}/></IconButton><IconButton label="文档大纲" onClick={()=>showRight(true,'outline')}><List size={17}/></IconButton><IconButton label="右侧分屏打开" disabled={panes.length>=MAX_PANES} onClick={()=>run(()=>splitFile(d.path))}><Columns2 size={17}/></IconButton><IconButton label="文件操作菜单" onClick={e=>{const r=e.currentTarget.getBoundingClientRect();setContext({x:r.left,y:r.bottom+4,file:d.preview.file,anchor:e.currentTarget});}}><MoreHorizontal size={18}/></IconButton></div></>:null}
    {d?.external?<div className="inline-warning">磁盘版本已变化。保存时将核对版本，草稿已保留。</div>:null}<PreviewZoom documentKey={d?.path??p.id} native={d?.preview.kind==='pdf'} disabled={!d||['audio','video','unsupported'].includes(d.preview.kind)}>{!d&&p.active?<div className="loading">正在打开文档…</div>:reader(d,p.id)}</PreviewZoom>
   </section>;
  }
@@ -354,7 +359,7 @@ export default function App(){
  function inboxContent(){return <InboxView onOpen={path=>{closeTool('inbox');run(()=>openFile(path));}} onArchive={file=>operation('move',file)} onImport={()=>run(chooseImport)} onIndex={setIndexPolicy}/>;}
  function trashContent(){return <TrashView onRestore={file=>{setFormName(fileName(file.path));setFormParent(parentPath(file.path));setFormKind('restore');showDialog({type:'operation',operation:'restore',file});}} onPurge={file=>{setFormKind('purge');showDialog({type:'operation',operation:'purge',file});}}/>;}
  const sidebarDoc=active;
- const [pinnedInspector,setPinnedInspector]=useState<string|null>(null);const detailDoc=(pinnedInspector?docs[pinnedInspector]:sidebarDoc)??sidebarDoc;
+ const [pinnedInspector,setPinnedInspector]=useState<string|null>(null);const inspectedDoc=(pinnedInspector?docs[pinnedInspector]:sidebarDoc)??sidebarDoc;const detailDoc=inspectedDoc?.blocked?undefined:inspectedDoc;
  const headingList=useMemo(()=>detailDoc?.text.split('\n').filter(l=>/^#{1,6} /.test(l)).map(l=>l.replace(/^#+ /,''))??[],[detailDoc?.text]);
  async function createOfficeFile(){
   const ext=dialog?.type==='binaryCopy'?fileName(dialog.path).split('.').at(-1):dialog?.kind;

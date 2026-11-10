@@ -71,7 +71,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
   try { ownerHandle = await open(ownerFile, 'wx'); await ownerHandle.writeFile(JSON.stringify({ pid: process.pid, birth, bootId, instanceId })); await ownerHandle.sync() }
   catch (e) { if (e.code === 'EEXIST') throw error('STATE_BUSY'); throw e } finally { await ownerHandle?.close() }
   let upgradeDraining = false, heavyReads = 0;
-  let fileWatcher, fileEventTimer, fileGlobal=false, catalogChanged=false;const fileChanges=new Set()
+  let fileWatcher, fileEventTimer, firstFileEvent=null, fileGlobal=false, catalogChanged=false;const fileChanges=new Set()
   const filePolicyPaths = new Set(['.kbmeta/kb.json', '.kbmeta/shared-policy.json', '.kbmeta/index-policy.json', '索引层/文件目录.json'])
   function fileChanged(_event, filename) {
     if (closing) return
@@ -80,8 +80,8 @@ export async function startService({ library, privateDir, python, sources = {}, 
     if(relative==='索引层/文件目录.json')catalogChanged=true;else if(!relative||filePolicyPaths.has(relative))fileGlobal=true;else fileChanges.add(relative)
     if(fileChanges.size>1024){fileGlobal=true;fileChanges.clear()}
     kernel.workbench.invalidateBrowse()
-    clearTimeout(fileEventTimer)
-    fileEventTimer = setTimeout(() => { const data=fileGlobal?{}:{paths:[...fileChanges],catalogChanged};fileGlobal=false;catalogChanged=false;fileChanges.clear();void queue(()=>event(data)).catch(() => {}) }, 150)
+    firstFileEvent??=Date.now();clearTimeout(fileEventTimer)
+    fileEventTimer = setTimeout(() => { firstFileEvent=null;const data=fileGlobal?{}:{paths:[...fileChanges],catalogChanged};fileGlobal=false;catalogChanged=false;fileChanges.clear();void queue(()=>event(data)).catch(() => {}) }, Math.max(0,Math.min(150,1000-(Date.now()-firstFileEvent))))
     fileEventTimer.unref?.()
   }
   function watchFiles() {
@@ -119,10 +119,12 @@ export async function startService({ library, privateDir, python, sources = {}, 
     return kernel.workbench.libraryState.versionOf(await kernel.workbench.libraryState.binding(kbId))
   }
   const stillAuthorized = () => { const row = currentGrant(); if (closing) throw error('HOST_UNAVAILABLE'); return row }
-  const eventFor=(row,grant)=>grant.access.includes('admin')?row:{...row,data:row.data?.indexOnly?{indexOnly:true}:{}}
+  let announcedPolicy=null;
+  const eventFor=(row,grant)=>grant.access.includes('admin')?row:{...row,data:{...(row.data?.indexOnly?{indexOnly:true}:{}),...(row.data?.policyChanged?{policyChanged:true}:{})}}
   const event = async (data={}) => {
     if(Buffer.byteLength(JSON.stringify(data))>65536)data={}
-    const row = { protocolMajor:1,type:'event',event:'snapshot.required',library:identity,bootId,seq:++sequence,policyVersion:await policyVersion(),data };ring.push(row);if(ring.length>256)ring.shift()
+    const currentPolicy=await policyVersion();if(announcedPolicy!==null&&announcedPolicy!==currentPolicy)data={...data,policyChanged:true};announcedPolicy=currentPolicy;
+    const row = { protocolMajor:1,type:'event',event:'snapshot.required',library:identity,bootId,seq:++sequence,policyVersion:currentPolicy,data };ring.push(row);if(ring.length>256)ring.shift()
     for(const [id,c] of connections)if(c.authenticated&&c.subscribed){try{send(id,eventFor(row,auth.get(c.grantId)))}catch{disconnect(id)}}
   }
   async function close() {
@@ -475,7 +477,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
     bridge.once('exit', () => { if (!closing) void close() })
     watchFiles()
     await recoverReceipts()
-    if (await active()) { await applySharedPolicy(); startMaintenance();await engines.recover();void kernel.workbench.retrieval.automatic().catch(()=>{}) }
+    if (await active()) { await applySharedPolicy(); startMaintenance();await engines.recover();announcedPolicy=await policyVersion();void kernel.workbench.retrieval.automatic().catch(()=>{}) }
     clipper=await startClipper({privateDir,dispatch:args=>queue(async()=>{await requireActive();const result=await kernel.workbench.clipper(args);writeSequence++;await atomic(path.join(privateDir,'sequence.json'),{value:writeSequence});kernel.workbench.invalidate();await event();maintenance?.notify('');return result;})});
     timer = setInterval(() => {
       void queue(async()=>{if(!closing){await auth.provision();if(await broker.audit())await event();}}).catch(()=>{})
