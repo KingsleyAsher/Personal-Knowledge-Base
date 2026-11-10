@@ -62,7 +62,7 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
   const queries = new Set()
   const manifests=createByteCache({maxBytes:64*1024*1024,maxEntries:4,sizeOf:v=>v.fileBytes*4+1024})
   const manifestMetrics={loads:0,hits:0}
-  let rankingCatalog = null, sourceTimer = null, automaticPending = null
+  let rankingCatalog = null, sourceTimer = null, automaticPending = null, sourceBuildTimer=null, firstSourceAt=null, profilePending=false;const changedSources=new Set();let unknownSource=false
   function invalidateComputations() { rankingCatalog=null;ranking.invalidate() }
   // Provider settings and encrypted credentials live outside the installed package.
   // Indexes belong to the library, never to the system-drive plugin state.
@@ -184,11 +184,11 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
     return current
   }
   async function checkpoint(b) { statusSnapshots.delete(b.key);await atomicJson(path.join(directory(b),'progress.json'),job); notify({ type:'retrieval', kbId:b.st.kbId, state:job.state }) }
-  async function build(b, config, signal, depth=0) {
+  async function build(b, config, signal, depth=0, verifyContent=false) {
     job = { state:'scanning', startedAt:now(), completed:0, pending:0, failed:0, errors:[] }; await checkpoint(b)
-    // A build retains the existing forced source verification: an index whose
-    // mtime was preserved must not become authoritative input for new vectors.
-    const catalog = await (resources ? resources.background(() => documents(b,true,config.embedding), signal) : documents(b,true,config.embedding))
+    // Refresh file metadata, including ctime, while reusing verified unchanged source text.
+    // Changed sources still get new content hashes; unchanged chunk vectors retain their keys.
+    const catalog = await (resources ? resources.background(() => documents(b,verifyContent?true:'changed',config.embedding), signal) : documents(b,verifyContent?true:'changed',config.embedding))
     const eligible = catalog.documents.filter(d => !d.private || config.allowPrivateCloud)
     const { dir, manifest } = await manifestOf(b,config.embedding,{mutable:true})
     if(manifest.corrupt)throw fail('INDEX_CORRUPT','向量索引损坏，请使用重建操作')
@@ -216,7 +216,7 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
         catch (e) {
           if(e.code==='API_TOO_LONG' && depth<5 && (manifest.effectiveTarget||config.embedding.chunkTarget||2400)>128) {
             manifest.effectiveTarget=Math.max(128,Math.floor((manifest.effectiveTarget||config.embedding.chunkTarget||2400)/2))
-            await atomicJsonStream(path.join(dir,'manifest.json'),manifest);cache.clear();return build(b,config,signal,depth+1)
+            await atomicJsonStream(path.join(dir,'manifest.json'),manifest);cache.clear();return build(b,config,signal,depth+1,verifyContent)
           }
           if (['API_LIMIT','API_TEMPORARY','API_TIMEOUT','API_NETWORK'].includes(e.code) && attempt < 3 && !signal.aborted) {
             job.state='retrying'; job.retryAt=now()+(e.retryAfter || 1000*2**attempt); await checkpoint(b)
@@ -292,10 +292,10 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
     // The new job is queued before its asynchronous build acquires the lock.
     // Do not expose the previous generation's completed state in this gap.
     job={state:'waiting',completed:0,total:0,reused:0}
-    const promise=locked(path.join(directory(b),'build.lock'),()=>build(b,config,controller.signal)).catch(async e=>{
+    const promise=locked(path.join(directory(b),'build.lock'),()=>build(b,config,controller.signal,0,force)).catch(async e=>{
       job={...job,state:['CANCELED','SETTINGS_CHANGED','API_AUTH','ENOSPC'].includes(e.code)?'paused':'failed',error:safeMessage(e),code:e.code||'INDEX_ERROR'}
       await checkpoint(b).catch(()=>{}); return job
-    }).finally(()=>{running=null})
+    }).finally(()=>{running=null;if((dirty||profilePending)&&!stopped){profilePending=false;clearTimeout(sourceBuildTimer);sourceBuildTimer=setTimeout(()=>void automatic().catch(()=>{}),750);sourceBuildTimer.unref?.()}})
     running={key:b.key,controller,promise}; void promise; return { ...job,running:true }
   }
   async function automaticPass() {
@@ -310,14 +310,15 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
         const rel=path.relative(stateDir,path.resolve(b.root,String(file||'')))
         if(rel===''||!rel.startsWith('..')&&!path.isAbsolute(rel))return
         if(!/(^|[\\/])(?:\.kb|\.kbmeta|\.kb-state|\.git|node_modules|索引层)([\\/]|$)/.test(String(file||''))) {
+          firstSourceAt??=now();const source=String(file||'').replaceAll('\\','/');if(source)changedSources.add(source);else unknownSource=true;if(changedSources.size>1024){unknownSource=true;changedSources.clear()}
           dirty=true;due.clear();statusSnapshots.clear();rankingCatalog=null
-          clearTimeout(sourceTimer);sourceTimer=setTimeout(()=>{sourceTimer=null;if(!stopped&&watched===watchKey)notify({type:'snapshot-dirty',kbId:b.st.kbId})},200);sourceTimer.unref?.()
+          clearTimeout(sourceTimer);sourceTimer=setTimeout(()=>{sourceTimer=null;firstSourceAt=null;if(!stopped&&watched===watchKey){const paths=unknownSource?undefined:[...changedSources];changedSources.clear();unknownSource=false;notify({type:'snapshot-dirty',kbId:b.st.kbId,paths});void automatic().catch(()=>{})}},Math.max(0,Math.min(750,5000-(now()-firstSourceAt))));sourceTimer.unref?.()
         }
       }); watcher.unref?.(); const currentWatcher=watcher;watcher.on('error',()=>{if(watcher!==currentWatcher)return;currentWatcher.close();watcher=null;dirty=true;notify({type:'snapshot-dirty',kbId:b.st.kbId})})}catch{watcher=null}
     }
     const config=await configuration(b)
     if(dirty)due.clear()
-    if(config.enabled && (!due.has(b.key)||now()-due.get(b.key)>300000) && (!running||running.key===b.key)){await start(b);due.set(b.key,now())}
+    if(config.enabled && (!due.has(b.key)||now()-due.get(b.key)>300000)){if(running&&running.key!==b.key)profilePending=true;else {await start(b);due.set(b.key,now())}}
   }
   function automatic() {
     if(automaticPending)return automaticPending
@@ -611,7 +612,7 @@ export function createRetrieval({ stateDir, binding, loadDocuments, visible, ver
       }
       throw fail('BAD_OPERATION','未知检索操作')
     },
-    invalidate(){dirty=true;due.clear();cache.clear();manifests.clear();statusSnapshots.clear();traces.clear();invalidateComputations()},
-    dispose(){stopped=true;clearInterval(timer);clearTimeout(sourceTimer);watcher?.close();running?.controller.abort();ranking.dispose();rankingCatalog=null;cache.clear();manifests.clear();pendingVectors.clear();statusSnapshots.clear();traces.clear()},
+    invalidate({preserveSources=false}={}){dirty=true;due.clear();if(!preserveSources)cache.clear();manifests.clear();statusSnapshots.clear();traces.clear();invalidateComputations()},
+    dispose(){stopped=true;clearInterval(timer);clearTimeout(sourceTimer);clearTimeout(sourceBuildTimer);watcher?.close();running?.controller.abort();ranking.dispose();rankingCatalog=null;cache.clear();manifests.clear();pendingVectors.clear();statusSnapshots.clear();traces.clear()},
   }
 }

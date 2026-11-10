@@ -1,11 +1,10 @@
 import { watch as fsWatch } from 'node:fs'
 import path from 'node:path'
-import { SOURCE_TEXT } from './source-references.js'
 import { readIndexPolicy, policyExcluded } from './index-policy.js'
 
 // Independent of page refresh. It observes only the currently bound root and
 // excludes generated state; a missed watch event is repaired by the patrol.
-export function createIndexMaintenance({ getCore, onChange = () => {}, watch = fsWatch, resources, now = Date.now, timers = globalThis, quietMs = 5000, maximumWaitMs = 30000, minimumMs = 30000, patrolMs = 300000 } = {}) {
+export function createIndexMaintenance({ getCore, onChange = () => {}, watch = fsWatch, resources, now = Date.now, timers = globalThis, quietMs = 750, maximumWaitMs = 5000, minimumMs = 1000, patrolMs = 300000 } = {}) {
   let watcher, root = null, revision = null, enabled = false, stopped = false, ticking = false
   let pending = false, lastEvent = 0, lastStart = -Infinity, lastPatrol = 0, failures = 0, running = false, controller
   let firstPending = null
@@ -15,7 +14,7 @@ export function createIndexMaintenance({ getCore, onChange = () => {}, watch = f
   const relevant = file => {
     const rel = String(file || '').replaceAll('\\', '/')
     const parts = rel.split('/')
-    return !parts.some(p => ['.kbmeta', '.kb-state', '索引层', '.git'].includes(p)) && !excludes.some(p => rel === p || rel.startsWith(p + '/')) && !rel.includes('.tmp-') && (!rel.startsWith('90-收件箱/') || !policyExcluded(readIndexPolicy(root), rel)) && (rel === '' || !path.extname(rel) || SOURCE_TEXT.test(rel) && path.basename(rel) !== 'INDEX.md' && !(parts.length === 1 && ['README.md', 'AGENTS.md', '知识库清单.md'].includes(rel)))
+    return !parts.some(p => ['.kbmeta', '.kb-state', '索引层', '.git'].includes(p)) && !excludes.some(p => rel === p || rel.startsWith(p + '/')) && !rel.includes('.tmp-') && (!rel.startsWith('90-收件箱/') || !policyExcluded(readIndexPolicy(root), rel)) && path.basename(rel) !== 'INDEX.md' && !(parts.length === 1 && ['README.md', 'AGENTS.md', '知识库清单.md'].includes(rel))
   }
   const mark = file => { if (relevant(file) && (failures < 3 || transient)) { if (transient) { failures = 0; retryAt = 0 }; if (file) dirty.add(String(file).replaceAll('\\', '/')); if (firstPending === null) firstPending = now(); pending = true; lastEvent = now(); if (!running) state = 'waiting' } }
   function connect() {

@@ -3,6 +3,16 @@
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
+## 2026-11-11 · External changes and incremental chunk updates (unpublished 2.5.13 / 1.1.4 candidate)
+
+File maintenance now uses a 750 ms debounce, a one-second minimum interval and a five-second maximum event batch, retaining patrol recovery for missed events. Changed paths reach the desktop so local saves check only affected documents and directories. Index progress and catalog metadata changes no longer reload all open files. Non-admin live events and replay omit paths, and older clients retain compatibility with unscoped events.
+
+The original-file catalog reuses hashes when identity, size, mtime and ctime are unchanged; fulltext records also verify ctime. Normal vector maintenance reuses unchanged source text, chunks and vectors, while explicitly forced verification still rereads originals. External saves schedule work after debounce, changes during a build receive a follow-up pass, and pending work for the second retrieval profile is retained. Legacy references no longer block unrelated maintenance after an external source rename or deletion. Metadata enumeration and atomic index publication remain; this is not a claim of zero directory scans.
+
+Real filesystem tests cover attached roots, imported local copies, rename, deletion, preserved-mtime rewrites, binary catalog records and saves during a build. A 13-chunk fixture requested only one changed embedding after about 0.86 seconds; the local mock service does not establish remote API completion latency. Electron checked/reloaded only the externally edited document, without rereading the adjacent PDF. Mixed-version, event-permission and recovery regressions passed. Copy import does not synchronize the original outside the library; binary metadata updates do not imply automatic OCR or parsing.
+
+Also fixed the preview-handle type declaration omitted in the preceding change. The prior final-compilation success claim was incorrect and is corrected here. This candidate is regenerated only after an explicitly successful TypeScript/Vite build, without changing production installations or publishing a release.
+
 ## 2026-11-10 · Startup deduplication and index maintenance stability (unpublished 2.5.13 / 1.1.4 candidate)
 
 Opening an existing library no longer creates the sample library or submits a restore write when no restore is pending. Startup tree loads and concurrent loads of the same document are deduplicated. Identical configuration is validated under the lock without rewriting the file or advancing its revision, avoiding unnecessary watcher resets. Reconnection checks file revisions and preserves unsaved edits; service-bound PDF/Office resource handles are still renewed. Restored copies retain complete recovery, and actual policy changes still trigger maintenance.

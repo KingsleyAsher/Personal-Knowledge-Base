@@ -30,7 +30,7 @@ async function fileHash(file){const hash=createHash('sha256');for await(const ch
 const system=file=>/(^|\/)(_模板|_手册)(\/|$)/.test(file)||/^(AGENTS|INDEX|README|知识库清单)\.md$/i.test(file)
 
 // No body is stored here. Every catalog record addresses an ordinary original.
-export async function inspectOriginals(b,{previous=null}={}){
+export async function inspectOriginals(b,{previous=null,paths=[]}={}){
   const walk=await walkTree(b.root,b.root,{maxFiles:Number.MAX_SAFE_INTEGER,maxDepth:128,followLinks:false})
   if(walk.truncated||walk.errors.some(e=>!String(e.reason??e.code??'').includes('link')&&!String(e.reason??e.code??'').includes('LINK')))throw fail('SCAN_INCOMPLETE','文件枚举不完整，未发布迁移；请检查不可访问目录或链接')
   const old=new Map((previous?.files??[]).map(f=>[f.path,f])),byIdentity=new Map()
@@ -44,25 +44,29 @@ export async function inspectOriginals(b,{previous=null}={}){
   for(const f of walk.files){
     if(system(f.path))continue
     const absolute=await safePath(b.root,f.path),before=await lstat(absolute)
+    const cached=old.get(f.path)
+    if(cached?.status==='available'&&!cached.referencePaths?.length&&cached.identity===identity(before)&&cached.size===before.size&&cached.mtimeMs===before.mtimeMs&&cached.ctimeMs===before.ctimeMs&&!paths.some(p=>f.path===p||f.path.startsWith(p+'/'))){candidates.push({...cached,private:cached.private===true||privateRootOf(f.path,b.privateDirs)!==null});continue}
     let fm={},text=''
     if(TEXT.test(f.path)&&before.size<=8*1024*1024){text=await readFile(absolute,'utf8');fm=b.core._internal.parseFrontmatter(text).data}
     const source=typeof fm.source==='string'?fm.source:null
     if(source&&(known.has(f.path)||text.includes('<!-- kb:source-reference -->'))){
       let rel;try{rel=relativePath(source)}catch{throw fail('SOURCE_INVALID','旧索引的原件指向无效：'+f.path)}
-      if(rel===f.path||!livePaths.has(rel))throw fail('SOURCE_MISSING','旧索引的原件缺失，未把旧正文当作原件：'+f.path)
-      await safePath(b.root,rel);refs.set(f.path,{source:rel,fm});continue
+      const priorReference=previous?.references?.find(r=>r.path===f.path);if(!livePaths.has(rel)&&priorReference&&old.has(priorReference.source))rel=priorReference.source;
+      if(rel===f.path||!livePaths.has(rel)&&!old.has(rel))throw fail('SOURCE_MISSING','旧索引的原件缺失，未把旧正文当作原件：'+f.path)
+      if(livePaths.has(rel))await safePath(b.root,rel);refs.set(f.path,{source:rel,fm});continue
     }
     const hash=await fileHash(absolute),after=await lstat(absolute)
     if(before.size!==after.size||before.mtimeMs!==after.mtimeMs||before.ctimeMs!==after.ctimeMs||identity(before)!==identity(after))throw fail('FILE_CHANGED','扫描期间文件已改变，请重新预览')
     const moved=byIdentity.get(identity(after)),prior=old.get(f.path)??(moved?.length===1&&moved[0].sha256===hash?moved[0]:null)
     const folder=path.posix.dirname(f.path),kind=label(fm.type,categories[f.path.split('/')[0]]||'素材')
-    candidates.push({id:prior?.id??'file-'+digest(b.st.kbId+'\0'+identity(after)+'\0'+f.path).slice(0,24),path:f.path,identity:identity(after),sha256:hash,size:after.size,mtimeMs:after.mtimeMs,
+    candidates.push({id:prior?.id??'file-'+digest(b.st.kbId+'\0'+identity(after)+'\0'+f.path).slice(0,24),path:f.path,identity:identity(after),sha256:hash,size:after.size,mtimeMs:after.mtimeMs,ctimeMs:after.ctimeMs,
       title:typeof fm.title==='string'?fm.title.slice(0,512):path.posix.basename(f.path,path.posix.extname(f.path)),originalType:label(fm.type,null),originalCategory:label(fm.category,null),kind:prior?.manual?prior.kind:kind,
       category:prior?.manual?prior.category:label(fm.category,folder==='.'?'未分类':folder),tags:prior?.manual?prior.tags:tagsOf(fm.tags),manual:prior?.manual===true,
       private:prior?.private===true||kind==='画像'||kind==='人物'||privateRootOf(f.path,b.privateDirs)!==null,status:'available',...(prior&&prior.path!==f.path?{previousPath:prior.path}:{})})
   }
   const files=new Map(candidates.map(f=>[f.path,f]))
-  for(const [alias,{source,fm}]of [...refs].sort(([a],[b])=>a.localeCompare(b))){const f=files.get(source);if(!f)throw fail('SOURCE_INVALID','原件指向另一个索引条目，未迁移：'+alias)
+  for(const [alias,{source,fm}]of [...refs].sort(([a],[b])=>a.localeCompare(b))){const f=files.get(source)??candidates.find(row=>row.previousPath===source);if(!f&&old.has(source))continue;if(!f)throw fail('SOURCE_INVALID','原件指向另一个索引条目，未迁移：'+alias)
+    if(f.path!==source)refs.set(alias,{source:f.path,fm});
     if(!f.manual&&!f.originalCategory&&!f.referencePaths?.length){
       // Old classified references contain the user's classification. The date
       // archive containing the original is a storage location, not that category.
@@ -76,10 +80,10 @@ export async function inspectOriginals(b,{previous=null}={}){
   return {classificationVersion:CLASSIFICATION_VERSION,files:candidates.map(presentClassifiedFile).sort((a,b)=>a.path.localeCompare(b.path)),references:[...refs].map(([path,r])=>({path,source:r.source})),coverage:{files:walk.files.length,originals:candidates.filter(f=>f.status==='available').length,references:refs.size,errors:walk.errors}}
 }
 
-export async function refreshCatalog(b){
+export async function refreshCatalog(b,options={}){
   if(!catalogActive(b.root))return null
   const file=await safePath(b.root,CATALOG_PATH)
-  return locked(file,async()=>{const old=await readCatalog(b.root,b.st.kbId),scan=await inspectOriginals(b,{previous:old})
+  return locked(file,async()=>{const old=await readCatalog(b.root,b.st.kbId),scan=await inspectOriginals(b,{previous:old,...options})
     const next={...old,...scan,classificationPending:false};if(old.classificationPending||digest(JSON.stringify(scan.files))!==digest(JSON.stringify(old.files))||digest(JSON.stringify(scan.references))!==digest(JSON.stringify(old.references))){
       if(old.classificationPending){const raw=await readJson(file,null);await atomicJson(await safePath(b.root,'索引层/分类历史/'+Date.now()+'-'+old.revision+'.json',{missing:true}),raw);next.policyRevision=(old.policyRevision??0)+1}
       next.revision++;next.updatedAt=Date.now();await atomicJson(file,next)

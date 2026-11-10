@@ -318,7 +318,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       if(!selected(f,true))continue
       try {
         let full = retrievalText.get(key)
-        if (!full || full.fingerprint !== fingerprint || fresh) {
+        if (!full || full.fingerprint !== fingerprint || fresh === true) {
           const existing = snap.indexFresh && !fresh ? snap.indexed.get(f.path) : null
           const content = existing?.text && !existing.truncated ? { text: existing.text, revision: digest(existing.text), truncated:false } : await textOf(b,f.path,Number.MAX_SAFE_INTEGER)
           if(!(existing?.text&&!existing.truncated)){sourceReads++;sourceBytes+=content.bytes||Buffer.byteLength(content.text)}
@@ -923,8 +923,8 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       text: String(item.text ?? ''), title: String(item.title ?? ''), url: String(item.url ?? ''), completeness: item.completeness === 'selection' ? 'selection' : item.completeness === 'article' ? 'article' : 'url-only' })
     return { saved: Boolean(result.capture), duplicate: Boolean(result.duplicate), requiresConfirmation: result.requiresConfirmation === true }
   }
-  const documents = createDocumentService({ binding, versionOf, assertVisible, authorize: authorizeDocument, notify, invalidate: invalidatePolicyCaches })
-  return { documents, libraryState, dispatch, binding, versionOf, profile, preferences, runAutomatic, activeTasks, invalidate: () => { cache = null;scanEpoch++; retrieval.invalidate() }, backups,
+  const documents = createDocumentService({ binding, versionOf, assertVisible, authorize: authorizeDocument, notify, invalidate: () => { cache=null;scanEpoch++;retrieval.invalidate({preserveSources:true});questions.clear();questionService.clear() } })
+  return { documents, libraryState, dispatch, binding, versionOf, profile, preferences, runAutomatic, activeTasks, invalidate: () => { cache = null;scanEpoch++; retrieval.invalidate({preserveSources:true}) }, backups,
     retrieval, resources, runtimeStats: () => ({ resources: resources.stats(), sourceReads: sourceReader.stats() }),
     invalidateBrowse: () => { cache = null; scanEpoch++ },
     dispose: () => {retrieval.dispose();resources.dispose();retrievalText.clear();metadataText.clear();cache=null},

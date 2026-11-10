@@ -27,7 +27,7 @@ export default function OriginalCategories({library,name,selected,onOpen,onDragF
   finally{pending.current.delete(request);}
  }
  useEffect(()=>{generation.current++;cache.current={};setBranches({});const timer=setTimeout(()=>{if(searching)void load(searchKey);else for(const category of open.current)void load(category);},150);return()=>{clearTimeout(timer);generation.current++;};},[library?.instanceId,query,auxiliary,refresh]);
- useEffect(()=>window.kbDesktop.onEvent(e=>{if(e.type==='snapshot.required')setRefresh(v=>v+1);}),[]);
+ useEffect(()=>window.kbDesktop.onEvent(e=>{if(e.type==='snapshot.required'&&!e.indexOnly&&(!Array.isArray(e.paths)||e.catalogChanged))setRefresh(v=>v+1);}),[]);
  function toggle(category:string){setExpanded(prev=>{const next=new Set(prev);if(next.has(category))next.delete(category);else next.add(category);return next;});if(!cache.current[category]&&!pending.current.has(generation.current+':'+category))void load(category);}
  function rows(category:string,depth:number):ReactNode{
   const branch=branches[category];

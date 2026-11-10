@@ -89,6 +89,7 @@ export default function App(){
   void api<{x:number;y:number}>('pointer').then(place).catch(()=>place(lastPointer.current));
  }
  function togglePopup(kind:NonNullable<typeof popup>){if(kind==='search'){showSearch();return;}viewChange(()=>{setPopup(p=>p===kind?null:kind);if(popup!==kind)bringTool(kind);},{target:toolMotion(kind),kind:'popover'});if(kind==='library'){void showLeft(true);run(async()=>setLibraries(await api('libraries')));}}
+ const pendingRefreshPaths=useRef<Set<string>|null|undefined>(undefined);
  const documentLoads=useRef(new Map<string,Promise<Doc>>());
  async function loadDoc(path:string,force=false,discard=false){
   if(docsRef.current[path]&&!force)return docsRef.current[path];
@@ -153,9 +154,11 @@ export default function App(){
   const reconnected=e.type==='connection.changed'&&e.state==='ready'&&connectionRef.current.state!=='ready';
   if(e.type==='connection.changed'){connectionRef.current={...connectionRef.current,state:e.state};setConnection(c=>({...c,state:e.state}));}
   if(loaded.current&&reconnected)for(const d of Object.values(docsRef.current))if(d.preview.resourceHandle&&!d.dirty)void loadDoc(d.path,true).catch(fail);
+  if(e.type==='snapshot.required'&&(e.indexOnly||(e.catalogChanged&&Array.isArray(e.paths)&&!e.paths.length)))return;
   if(loaded.current&&(e.type==='snapshot.required'||reconnected)){
+   if(reconnected||!Array.isArray(e.paths))pendingRefreshPaths.current=null;else if(pendingRefreshPaths.current!==null){pendingRefreshPaths.current??=new Set();for(const path of e.paths)pendingRefreshPaths.current.add(path);}
    if(refreshTimer.current)clearTimeout(refreshTimer.current);
-   refreshTimer.current=setTimeout(()=>{void refreshTree();void refreshSection().catch(fail);for(const d of Object.values(docsRef.current))void api<FileInfo>('stat',{path:d.path}).then(f=>{if(f.revision!==d.preview.file.revision){if(d.dirty)setDocs(v=>({...v,[d.path]:{...v[d.path],external:true}}));else void loadDoc(d.path,true).catch(fail);}}).catch((e:ApiError)=>{if(['NOT_FOUND','ENOENT'].includes(e.code??''))setDocs(v=>({...v,[d.path]:{...v[d.path],missing:true}}));});},140);
+   refreshTimer.current=setTimeout(()=>{const paths=pendingRefreshPaths.current;pendingRefreshPaths.current=undefined;const affects=(path:string)=>!paths||[...paths].some(p=>path===p||path.startsWith(p+'/'));void refreshTree(fileSort,[...expanded].filter(p=>!paths||affects(p)||[...paths].some(f=>parentPath(f)===p)));void refreshSection().catch(fail);for(const d of Object.values(docsRef.current).filter(d=>affects(d.path)))void api<FileInfo>('stat',{path:d.path}).then(f=>{if(f.revision!==d.preview.file.revision){if(d.dirty)setDocs(v=>({...v,[d.path]:{...v[d.path],external:true}}));else void loadDoc(d.path,true).catch(fail);}}).catch((e:ApiError)=>{if(['NOT_FOUND','ENOENT'].includes(e.code??''))setDocs(v=>({...v,[d.path]:{...v[d.path],missing:true}}));});},140);
   }
   if(e.type==='close.requested'){if(Object.values(docsRef.current).some(d=>d.dirty))showDialog({type:'unsaved',window:true});else void api('window',{action:'close'});}
  }),[expanded,section,leftSection,fileSort]);

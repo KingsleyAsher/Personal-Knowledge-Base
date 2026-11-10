@@ -924,7 +924,7 @@ export function createCore(cfg, logger) {
     return valid
   }
 
-  function entryFromBuffer(relPath, abs, buf, mtimeMs) {
+  function entryFromBuffer(relPath, abs, buf, mtimeMs, ctimeMs) {
     const text = buf.toString('utf8')
     const parsed = parseFrontmatter(text)
     return {
@@ -939,6 +939,7 @@ export function createCore(cfg, logger) {
       revision: sha12(buf),
       size: buf.length,
       mtimeMs: Number.isFinite(mtimeMs) ? mtimeMs : 0,
+      ctimeMs: Number.isFinite(ctimeMs) ? ctimeMs : null,
       frontmatterValid: parsed.valid !== false,
       // 全文（含 frontmatter）：与旧口径「整份文件读出来做 includes」逐字一致
       text,
@@ -1023,7 +1024,7 @@ export function createCore(cfg, logger) {
       const abs = path.join(root, relPath)
       const buf = await readFile(abs)
       const st = await stat(abs).catch(() => null)
-      const entry = entryFromBuffer(relPath, abs, buf, st ? st.mtimeMs : 0)
+      const entry = entryFromBuffer(relPath, abs, buf, st ? st.mtimeMs : 0, st?.ctimeMs)
       if (at >= 0) entries[at] = entry
       else entries.push(entry)
     }
@@ -1561,7 +1562,7 @@ export function createCore(cfg, logger) {
         if (kbRootOf(current) !== root || current.revision !== conf.revision || expectedRevision != null && expectedRevision !== current.revision || expectedKbId && meta.value?.kbId !== expectedKbId) return { ok: false, reason: 'binding-changed' }
         if (!health.healthy || current.degraded || automatic && current.autoIndex === false) return { ok: false, reason: 'maintenance-disabled-or-unhealthy' }
         await reconcileImportedSources(root, meta.value?.kbId)
-        if(catalogActive(root))await refreshCatalog({root,st:{kbId:meta.value.kbId},privateDirs:effectivePrivateDirs(conf.privateDirs,derivedPrivatePartitions(await readImportSources(root))),core:{_internal:{parseFrontmatter}}})
+        if(catalogActive(root))await refreshCatalog({root,st:{kbId:meta.value.kbId},privateDirs:effectivePrivateDirs(conf.privateDirs,derivedPrivatePartitions(await readImportSources(root))),core:{_internal:{parseFrontmatter}}},{paths})
         maintenanceState = { ...maintenanceState, state: 'running', reason: null }
         const snap = await indexSnapshot(conf)
         if (snap.freshness.reason === 'index-kbid-mismatch') throw Object.assign(new Error('索引身份不一致，未自动替换'), { code: 'index-kbid-mismatch' })
@@ -1578,11 +1579,11 @@ export function createCore(cfg, logger) {
             if (++processed % 50 === 0) await cfg.resources?.checkpoint(signal)
             if (signal?.aborted) throw Object.assign(new Error('维护已取消'), { code: 'canceled' })
             const rel = toPosix(path.relative(root, file)), before = await stat(file), old = previous.get(rel)
-            if (old && old.size === before.size && old.mtimeMs === before.mtimeMs && !dirty.has(rel)) entries.push(old)
+            if (old && old.size === before.size && old.mtimeMs === before.mtimeMs && old.ctimeMs === before.ctimeMs && ![...dirty].some(p=>rel===p||rel.startsWith(p+'/'))) entries.push(old)
             else {
               const buf = await readFile(file), after = await stat(file)
-              if (before.size !== after.size || before.mtimeMs !== after.mtimeMs || buf.length !== after.size) throw Object.assign(new Error('文件仍在写入'), { code: 'source-unstable' })
-              entries.push(entryFromBuffer(rel, file, buf, after.mtimeMs)); metadataChanged = true
+              if (before.size !== after.size || before.mtimeMs !== after.mtimeMs || before.ctimeMs !== after.ctimeMs || buf.length !== after.size) throw Object.assign(new Error('文件仍在写入'), { code: 'source-unstable' })
+              entries.push(entryFromBuffer(rel, file, buf, after.mtimeMs, after.ctimeMs)); metadataChanged = true
             }
           }
         } else {
@@ -1772,7 +1773,7 @@ export function createCore(cfg, logger) {
         const buf = await readFile(file)
         const st = await stat(file)
         if (before.size !== st.size || before.mtimeMs !== st.mtimeMs || buf.length !== st.size) throw new Error('文件扫描期间发生变化')
-        entries.push(entryFromBuffer(rel, file, buf, st ? st.mtimeMs : 0))
+        entries.push(entryFromBuffer(rel, file, buf, st ? st.mtimeMs : 0, st?.ctimeMs))
       } catch (error) {
         scanErrors.push(`${rel}: ${(error && (error.code || error.message)) ?? error}`)
       }
@@ -2182,7 +2183,7 @@ export function createCore(cfg, logger) {
       try {
         const before = await stat(absolute), buf = await readFile(absolute), info = await stat(absolute)
         if (before.size !== info.size || before.mtimeMs !== info.mtimeMs || before.ctimeMs !== info.ctimeMs || buf.length !== info.size) continue
-        const original = entryFromBuffer(source, absolute, buf, info.mtimeMs)
+        const original = entryFromBuffer(source, absolute, buf, info.mtimeMs, info.ctimeMs)
         canonical.set(source, { ...original, title: original.title || entry.title, tags: [...new Set([...original.tags, ...(canonical.get(source)?.tags || []), ...entry.tags])] })
       } catch { /* Missing sources cannot fall back to stale mirror text. */ }
     }
