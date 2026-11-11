@@ -62,6 +62,16 @@ test('Windows live service: legacy refusal, drain, staged pnpm upgrade, restart 
     const prepared={ok:true,spec:path.join(repo,'dist',m.tgz),latestVersion:m.version,buildId:m.buildId,bytes:m.bytes,sha256:m.sha256}
     const updater=createSafeUpdate({profileDir:profile,packageRoot:repo,quiesce:()=>runtime.prepareUpgrade()})
     let plan=await updater.prepare(prepared);evidence.realPnpm=true
+    const abandoned=plan.transactionId
+    const receiptFile=path.join(profile,'.kb-safe-updates/transaction.json')
+    const receipt=await readFile(receiptFile,'utf8')
+    await writeFile(receiptFile,JSON.stringify({...JSON.parse(receipt),phase:'publishing'}))
+    try{await assert.rejects(updater.prepare(prepared),/需要先恢复该事务/)}finally{await writeFile(receiptFile,receipt)}
+    plan=await updater.prepare(prepared)
+    assert.notEqual(plan.transactionId,abandoned)
+    await assert.rejects(updater.install({transactionId:abandoned,expectedVersion:m.version}),/更新事务已变化/)
+    assert.equal((await runtime.client.call('service.health')).active,true)
+    evidence.abandonedPreparationReplaced=true
     assert.equal(JSON.parse(await readFile(path.join(plugin,'package.json'),'utf8')).version,'2.4.3')
     const snapshot=await readFile(path.join(profile,'package.json'))
     await runtime.prepareUpgrade()

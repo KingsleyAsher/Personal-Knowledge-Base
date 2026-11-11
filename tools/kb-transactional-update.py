@@ -149,11 +149,26 @@ def merge_plugin_lock(original, resolved):
     if PACKAGE in unrelated(original): raise RuntimeError('Another lock entry depends on the knowledge package')
     return result
 
+def retire_prepared(journal, plan):
+    # The caller holds the profile writer lock; prepared has not changed live files.
+    if plan.get('phase') != 'prepared' or not re.fullmatch(r'transaction-[a-f0-9]{32}', plan.get('work', '')):
+        raise RuntimeError('An unresolved update requires recovery first')
+    if (journal.parent / plan['work'] / 'previous').exists():
+        raise RuntimeError('An unresolved update requires recovery first')
+    atomic(journal.with_name('superseded-' + uuid.uuid4().hex + '.json'), journal.read_bytes())
+    plan['phase'] = 'aborted'
+    plan['reason'] = 'superseded-before-publication'
+    save(journal, plan)
+
+
 def prepare(profile, archive, expected, pnpm=None):
     profile, plugin, journal = locations(profile)
     with profile_lock(profile):
-        if journal.exists() and json.loads(journal.read_text(encoding='utf-8'))['phase'] not in ('committed', 'rolled-back', 'aborted'):
-            raise RuntimeError('An unresolved update requires recovery first')
+        if journal.exists():
+            previous = json.loads(journal.read_text(encoding='utf-8'))
+            if previous.get('phase') == 'prepared': retire_prepared(journal, previous)
+            elif previous.get('phase') not in ('committed', 'rolled-back', 'aborted'):
+                raise RuntimeError('An unresolved update requires recovery first')
         config = json.loads((profile / 'package.json').read_text(encoding='utf-8'))
         if PACKAGE not in config.get('dependencies', {}): raise RuntimeError('Plugin is not registered in this profile')
         if not (plugin / 'package.json').is_file(): raise RuntimeError('Existing plugin is incomplete; use the recovery installer with a trusted old package')
@@ -235,6 +250,16 @@ def commit(profile, transaction_id, fault=lambda phase: None):
             raise
         return {'ok': True, 'application': 'restart-required', 'version': plan['version'], 'buildId': plan['buildId'], 'transactionId': plan['work']}
 
+def cancel_prepared(profile):
+    profile, plugin, journal = locations(profile)
+    with profile_lock(profile):
+        if not journal.exists(): return {'ok': True, 'phase': 'none'}
+        plan = json.loads(journal.read_text(encoding='utf-8'))
+        if plan.get('phase') == 'aborted': return {'ok': True, 'phase': 'aborted'}
+        retire_prepared(journal, plan)
+        return {'ok': True, 'phase': 'aborted', 'version': plan.get('version')}
+
+
 def recover(profile):
     profile, plugin, journal = locations(profile)
     with profile_lock(profile):
@@ -246,12 +271,13 @@ def recover(profile):
         return {'ok': True, 'phase': plan['phase']}
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(); parser.add_argument('action', choices=['prepare', 'commit', 'recover'])
+    parser = argparse.ArgumentParser(); parser.add_argument('action', choices=['prepare', 'commit', 'recover', 'cancel-prepared'])
     parser.add_argument('--profile', type=Path, required=True); parser.add_argument('--archive', type=Path); parser.add_argument('--expected', type=Path); parser.add_argument('--transaction')
     args = parser.parse_args()
     try:
         if args.action == 'prepare': result = prepare(args.profile, args.archive, json.loads(args.expected.read_text(encoding='utf-8')))
         elif args.action == 'commit': result = commit(args.profile, args.transaction)
+        elif args.action == 'cancel-prepared': result = cancel_prepared(args.profile)
         else: result = recover(args.profile)
         print(json.dumps(result))
     except Exception as error:

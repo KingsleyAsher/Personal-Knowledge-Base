@@ -1,5 +1,33 @@
 # 自动升级失败后的手动更新与恢复
 
+当前补丁：插件 **3.0.1** / 客户端 **2.0.1**。[English](UPDATE-RECOVERY.en.md)。本节优先于下方历史版本说明；程序升级不会迁移或重建知识库。
+
+## 旧事务停在 prepared，阻止后续更新
+
+3.0.1 的更新器会在写锁内归档并取消旧准备事务，再准备新安装。但尚未更新的旧插件无法提前运行这个修复。若旧版已经被该状态阻塞，先保存工作并退出 DSH 与共库客户端，再执行一次“仅取消准备”操作。
+
+1. 从 [3.0.1 Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v3.0.1) 下载 `local-dsh-knowledge-base-3.0.1.tgz` 和 `SHA256SUMS`，使用 `Get-FileHash -Algorithm SHA256` 核对 TGZ 摘要。将 TGZ 解压到一个新的临时目录，得到 `package` 子目录。
+2. 在解压目录打开 PowerShell，核对实际 DSH profile。下面以默认 `desktop` 为例；其他 profile 必须改成实际路径，不能批量执行。
+
+```powershell
+$kbProfile = Join-Path $env:USERPROFILE '.dsh\profiles\desktop'
+.\package\runtime\python\python.exe -I -X utf8 .\package\tools\kb-transactional-update.py cancel-prepared --profile $kbProfile
+```
+
+3. 只有返回 `ok: true` 且 `phase` 为 `aborted` 或 `none` 时，重新打开 DSH，从知识库入口重新检查更新并安装。保存工作，按提示重新加载后核对 **3.0.1** 及发布清单构建号。
+
+此操作只归档并取消“尚未开始发布”的准备事务，不安装、不回滚、不重建知识库。完整旧回执保存在 profile 的 `.kb-safe-updates/superseded-*.json`，候选包保留。遇到活跃写锁、publishing、未知状态或已存在发布备份会停止；请保留记录进一步核对，不能删锁或强改状态继续。不要把旧事务直接 commit，否则可能安装它记录的旧版本。
+
+## 下载与其他故障
+
+下载失败应检查对应下载源和摘要；不能通过清理事务解决网络错误。客户端仍通过安装器安装到空目录，不是静默覆盖升级。下方 2.4.x 指南及恢复包是历史定向方案，目标版本保持原样，不能当作当前 3.0.1 安装命令。
+
+---
+
+## 历史 2.4.x 恢复记录（保留原验证范围）
+
+### 历史说明
+
 当前正式版本为 2.4.14。下文 2.4.3/2.4.6 → 2.4.13 的定向验证和专用过渡恢复包保留历史目标，不据此宣称已验证所有旧版直升 2.4.14。程序安装升级与 [旧库框架迁移](LIBRARY-FRAMEWORK-MIGRATION.md)分别执行。
 
 原版 2.4.6 在无旧待确认记录、仅注册知识库包的有效 profile 中，已通过直接自动安装正式 2.4.13 的 Windows 检查；按旧流程重启 Host 后新版确认生效，不要求先运行恢复工具。其他插件依赖和历史记录可能阻断旧流程，详见 [2.4.6 直升验证范围](validation/windows-direct-246-to-2413.md)。

@@ -26,7 +26,14 @@ export function createSafeUpdate({ profileDir, packageRoot, quiesce, resume, wit
       child.once('error', reject)
       child.once('exit', code => {
         try { const result = JSON.parse(output.trim().split('\n').at(-1)); if (code || !result.ok) throw Error(result.error || 'Update failed; backup retained'); resolve(result) }
-        catch (error) { reject(Object.assign(Error(code ? '安全更新未完成；旧版本或恢复备份已保留，请查看更新事务记录。' : error.message), { code: 'UPDATE_TRANSACTION_FAILED' })) }
+        catch (error) {
+          const message = error.message === 'An unresolved update requires recovery first'
+            ? '检测到尚未完成的安装事务，需要先恢复该事务；未开始新安装。'
+            : error.message === 'Profile writer is busy; old installation unchanged'
+              ? '其他安装进程正在写入配置，请等待其完成后重试；当前安装未改变。'
+              : code ? '安全更新未完成；旧版本或恢复备份已保留，请查看更新事务记录。' : error.message
+          reject(Object.assign(Error(message), { code: 'UPDATE_TRANSACTION_FAILED' }))
+        }
       })
     })
   }

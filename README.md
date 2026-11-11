@@ -1,7 +1,10 @@
 # Personal Knowledge Base · Plugin and Desktop Client
 
+> **Update recovery patch:** fixes abandoned prepared receipts. An already blocked older updater needs the [one-time safe recovery](docs/UPDATE-RECOVERY.en.md) before a normal update.
 
-> **Plugin 3.0.0 / client 2.0.0.** Independent/shared-library operation, scoped updates and release/visual review fixes. [Release notes](RELEASE.en.md).
+
+
+> **Plugin 3.0.1 / client 2.0.1.** Independent/shared-library operation, scoped updates and release/visual review fixes. [Release notes](RELEASE.en.md).
 
 > **2.4.6 updater limitation:** a pristine installation stuck on a pending receipt cannot self-repair from the feed alone. The [general recovery entry](docs/LEGACY-246-BOOTSTRAP.md) is a one-time external migration, not a zero-intervention update.
 
@@ -15,10 +18,10 @@
 
 | Product | Published version | Direct download | Release notes |
 |---|---|---|---|
-| **Desktop client · Windows x64** | **2.0.0** | **[⬇ Download client installer (EXE)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v2.0.0/KnowledgeWorkbench-2.0.0-Setup.exe)** | [Client Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v2.0.0) |
-| **DSH knowledge-base plugin** | **3.0.0** | **[⬇ Download plugin (TGZ)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v3.0.0/local-dsh-knowledge-base-3.0.0.tgz)** | [Plugin Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v3.0.0) |
+| **Desktop client · Windows x64** | **2.0.1** | **[⬇ Download client installer (EXE)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v2.0.1/KnowledgeWorkbench-2.0.1-Setup.exe)** | [Client Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v2.0.1) |
+| **DSH knowledge-base plugin** | **3.0.1** | **[⬇ Download plugin (TGZ)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v3.0.1/local-dsh-knowledge-base-3.0.1.tgz)** | [Plugin Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v3.0.1) |
 
-Release entries: [client 2.0.0](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v2.0.0) · [plugin 3.0.0](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v3.0.0). Choose the correct installer/TGZ and verify its product-specific manifest and digest.
+Release entries: [client 2.0.1](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v2.0.1) · [plugin 3.0.1](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v3.0.1). Choose the correct installer/TGZ and verify its product-specific manifest and digest.
 
 ## One library, two entry points
 
@@ -30,21 +33,21 @@ Release entries: [client 2.0.0](https://github.com/KingsleyAsher/Personal-Knowle
 
 ## Download and installation
 
-### Desktop client 2.0.0 · Windows x64
+### Desktop client 2.0.1 · Windows x64
 
-**[Download KnowledgeWorkbench-2.0.0-Setup.exe](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v2.0.0/KnowledgeWorkbench-2.0.0-Setup.exe)** · [Release notes and assets](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v2.0.0) · [SHA-256 checksums](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v2.0.0/client-SHA256SUMS)
+**[Download KnowledgeWorkbench-2.0.1-Setup.exe](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v2.0.1/KnowledgeWorkbench-2.0.1-Setup.exe)** · [Release notes and assets](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v2.0.1) · [SHA-256 checksums](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v2.0.1/client-SHA256SUMS)
 
 Run the EXE to install. The bundled-runtime package includes its runtime. This is the standalone client installer, not a DSH plugin bundle.
 
-### DSH plugin 3.0.0
+### DSH plugin 3.0.1
 
-**[Download local-dsh-knowledge-base-3.0.0.tgz](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v3.0.0/local-dsh-knowledge-base-3.0.0.tgz)** · [Release notes and assets](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v3.0.0)
+**[Download local-dsh-knowledge-base-3.0.1.tgz](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v3.0.1/local-dsh-knowledge-base-3.0.1.tgz)** · [Release notes and assets](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v3.0.1)
 
 Install the TGZ through DSH plugin management. GitHub highlights only one Latest release, but both products have independent releases. Use the product links above or browse [all Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases).
 
 Source, issues and future releases are maintained here. In [Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases), choose the correct product: Windows Setup.exe for the client, TGZ for the plugin.
 
-Published plugin 3.0.0: [Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v3.0.0) · [TGZ](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v3.0.0/local-dsh-knowledge-base-3.0.0.tgz). See [plugin usage](WORKBENCH.en.md) and [mirror information](MIRROR-RELEASES.md) for extensions and regional sources. Mirror availability can vary.
+Published plugin 3.0.1: [Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v3.0.1) · [TGZ](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v3.0.1/local-dsh-knowledge-base-3.0.1.tgz). See [plugin usage](WORKBENCH.en.md) and [mirror information](MIRROR-RELEASES.md) for extensions and regional sources. Mirror availability can vary.
 
 The existing client installer retains its paper-green interface and animations, requires an empty application directory and preserves personal data on uninstall. Client online checks and verified downloads are implemented; automatic in-place installation and activation remain unfinished. The plugin keeps its existing update manifests and installation flow.
 
