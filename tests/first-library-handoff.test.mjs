@@ -21,7 +21,8 @@ test('failed setup remains retryable and ordinary embedded setup is not cached',
  assert.equal(await gate.select('C:/synthetic'),null);assert.equal(await gate.select('C:/synthetic'),null);assert.equal(calls,3)
 })
 
-test('first-use guide preserves successful setup and stops embedded preference refresh until restart',async()=>{
+for(const file of ['index.js','workbench-ui.js'])test(file+': first-use guide preserves successful setup and stops embedded preference refresh until restart',async()=>{
+ const source=readFileSync(new URL('../src/client/'+file,import.meta.url),'utf8')
  const begin=source.indexOf("btn('接入或建立知识库', async () => ")+"btn('接入或建立知识库', ".length
  const end=source.indexOf(', busy || !folder)',begin)
  let refreshes=0,restart='',active={current:true},deferred={current:false}
