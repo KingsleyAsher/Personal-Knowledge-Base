@@ -14,5 +14,5 @@ export async function assertServiceOwner(root, token, { freshSetup = false } = {
     if (meta?.freshSharedSetup === true) throw Object.assign(new Error('新库正在启用共享服务，请在原设置页重试'), { code: 'SERVICE_REQUIRED' })
     return
   }
-  if (value.schemaVersion !== 1 || !token || token !== value.ownerToken) throw Object.assign(new Error('Library is managed by the shared service; connect to it explicitly'), { code: 'SERVICE_REQUIRED' })
+  if (value.schemaVersion !== 1 || !token || token !== value.ownerToken) throw Object.assign(new Error('此知识库由共享服务管理；请完全退出并重新打开 DSH 后接入，无需再次建库。'), { code: 'SERVICE_REQUIRED' })
 }

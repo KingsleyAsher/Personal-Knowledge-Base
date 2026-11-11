@@ -486,6 +486,7 @@ window.__ModuleLoader__.load({
         const [open, setOpen] = R.useState(false), [normal, setNormal] = R.useState(false), [step, setStep] = R.useState(0)
         const [prefs, setPrefs] = R.useState(defaults), [record, setRecord] = R.useState(null), [status, setStatus] = R.useState(null)
         const [error, setError] = R.useState(''), [busy, setBusy] = R.useState(false), [folder, setFolder] = R.useState('')
+        const [bindingRestart, setBindingRestart] = R.useState('')
         const deferred = R.useRef(false), active = R.useRef(false), root = R.useRef(null)
         const owns = () => { if (!guideInstance) guideInstance = owner.current; return guideInstance === owner.current }
         const refresh = R.useCallback(async () => {
@@ -555,10 +556,11 @@ window.__ModuleLoader__.load({
             e('h2', { id: 'kbw-guide-title' }, normal ? '知识库设置' : step === 0 ? '知识库插件已更新' : step === 1 ? '选择适合你的使用方式' : '确认设置'),
             step === 0 ? e('div', null, e('p', null, '当前版本 ' + version + '：目录地图、可控隐私、快速收集、阅读摘录和知识库提问。'),
               e('p', null, '接下来确认隐私展示和备份等选项。已有明确设置会保留，自动完整备份默认关闭。')) : null,
-            step === 1 ? e('div', null,
+            bindingRestart ? e('p', { role: 'status' }, bindingRestart) : null,
+            step === 1 && !bindingRestart ? e('div', null,
               e('p', { className: 'kbw-meta' }, '当前知识库：' + (status?.kbPath || '尚未绑定，可稍后设置')),
               !status?.kbPath ? e('div', null, field('知识库目录', folder, setFolder), btn('选择目录', async () => { const r = await api({ op: 'pick-dir' }); if (r.path) setFolder(r.path) }),
-                btn('接入或建立知识库', async () => { setBusy(true); try { await api({ op: 'setup', path: folder }); await refresh() } catch (err) { setError(err.message) } finally { setBusy(false) } }, busy || !folder)) : null,
+                btn('接入或建立知识库', async () => { setBusy(true); try { const result = await api({ op: 'setup', path: folder }); if (result.restartRequired) { active.current = false; deferred.current = true; setBindingRestart(result.note) } else await refresh() } catch (err) { setError(err.message) } finally { setBusy(false) } }, busy || !folder)) : null,
               e(PreferencesFields, { prefs, setPrefs }), e('details', null, e('summary', null, 'OCR / ASR 解析配置'), e(ParseSummary))) : null,
             step === 2 ? e('div', { className: 'kbw-summary' }, [
               '知识库：' + (status?.kbPath || '稍后绑定'), '隐私展示：' + (prefs.showPrivate ? '开启' : '关闭'),
@@ -566,6 +568,7 @@ window.__ModuleLoader__.load({
               '自动完整备份：' + (prefs.backup.enabled ? prefs.backup.directory + ' · ' + stateLabel(prefs.backup.frequency) : '关闭'),
               '自动解析：' + (prefs.autoParse ? '开启' : '关闭'), '回顾提醒：' + (prefs.reviewReminders ? '开启' : '关闭')].join('\n')) : null,
             error ? e('p', { className: 'kbw-error', role: 'alert' }, error) : null,
+            bindingRestart ? e('div', { className: 'kbw-actions' }, btn('知道了，稍后重启 DSH', close, busy)) :
             e('div', { className: 'kbw-actions' }, btn(normal ? '取消' : '稍后设置', close, busy),
               step > (normal ? 1 : 0) ? btn('上一步', () => setStep(step - 1), busy) : null,
               normal ? btn(busy ? '保存中…' : '保存设置', save, busy) : step < 2 ? btn('下一步', () => setStep(step + 1), busy) : btn(busy ? '保存中…' : '保存并开始使用', save, busy))))
@@ -2168,6 +2171,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       const [rebuilding, setRebuilding] = react.useState(false)
       const [rebuildNote, setRebuildNote] = react.useState('')
       const dirtyRef = react.useRef(false)
+      const [bindingRestart, setBindingRestart] = react.useState(false)
 
       const refresh = react.useCallback(async (opts) => {
         const force = opts && opts.force === true
@@ -2265,7 +2269,8 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           } else {
             setMessage('未执行：' + (s.note || s.failed || '未知原因'))
           }
-          await refresh({ force: false })
+          if (s.restartRequired) setBindingRestart(true)
+          else await refresh({ force: false })
         } catch (error) {
           setMessage('执行失败：' + String((error && error.message) || error))
         } finally {
@@ -2359,7 +2364,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       const build = status && status.build ? status.build : null
       const currentKb = status && status.kbPath ? status.kbPath : ''
       const pending = candidate.trim() !== '' && candidate.trim() !== currentKb
-      const canSetup = !busy && candidate.trim() !== ''
+      const canSetup = !busy && !bindingRestart && candidate.trim() !== ''
       const kindLabel = (kind) => ({
         empty: '空目录（将新建标准知识库）',
         ours: '本插件已有的库（验证后接入，保留 kbId 与资料）',
@@ -2392,7 +2397,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: () => refresh({ force: true }) }, '刷新状态'),
           e('button', {
             className: 'kbc-btn ' + (indexStale ? 'kbc-btn-primary' : 'kbc-btn-ghost'),
-            disabled: busy || rebuilding || sharedIndexBusy || !status || !currentKb,
+            disabled: busy || bindingRestart || rebuilding || sharedIndexBusy || !status || !currentKb,
             onClick: doRebuild,
             title: '重新扫描并写入索引（等价于 kb_check(rebuild=true)）',
           }, rebuilding ? '重建中…' : (indexStale ? '重建索引（当前需重建）' : '重建索引'))),
@@ -2410,7 +2415,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           onChange: (ev) => { dirtyRef.current = true; setCandidate(ev.target.value); setProbe(null); setResult(null) },
         })),
         e('div', { className: 'kbc-set-actions' },
-          e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy, onClick: pickDir }, busy ? '处理中…' : '选择知识库文件夹'),
+          e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: busy || bindingRestart, onClick: pickDir }, busy ? '处理中…' : '选择知识库文件夹'),
           e('button', { className: 'kbc-btn kbc-btn-primary', disabled: !canSetup, onClick: doSetup }, busy ? '执行中…' : '自动建库 / 识别'))),
         e('div', { className: 'kbc-set-hint' },
           pending

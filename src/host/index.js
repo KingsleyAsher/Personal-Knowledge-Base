@@ -1,5 +1,6 @@
 import {createHandoffApi} from '../../packages/kb-service/handoff-api.js'
 import {selectFirstSharedLibrary} from '../../packages/kb-service/runtime.js'
+import {createFirstLibraryHandoff, FIRST_LIBRARY_RESTART} from '../../packages/kb-service/first-library-handoff.js'
 import {resolveHostPython} from '../../packages/kb-service/host-python.js'
 import { readCandidateBuild } from '../../packages/kb-service/build.js'
 import {publishKnowledgeMemory} from '../../packages/kb-service/memory-sync.js';
@@ -1658,7 +1659,7 @@ let parsingService = null
 
   // 「自动建库 / 识别」：选定文件夹后点一次 —— 空目录建库、本插件库接入、普通资料夹识别导入。
   // R1/R3 的顺序：foreign 目录**先冻结清单、再建标准结构**；导入完成且核验通过后才切当前库。
-  const maybeFirstShared = async (target) => {
+  const firstLibraryHandoff = createFirstLibraryHandoff(async (target) => {
     if (!firstSharedEnabled || !path.isAbsolute(target) || (await core.getConfigFresh()).kbPath) return null
     const info = await inspectFolder(target)
     const meta = info.meta
@@ -1667,7 +1668,8 @@ let parsingService = null
     if (!managed && meta?.freshSharedSetup !== true && info.kind !== 'empty' && !(info.kind === 'missing' && info.creatable)) return null
     await ctx.get('h1Isolation')?.assertBindingTarget(target)
     return selectFirstSharedLibrary({core, library: target, python: await resolveHostPython(pkgRootForState), home: config?.shared?.home})
-  }
+  })
+  const maybeFirstShared = target => firstLibraryHandoff.select(target)
   const kbSetupFolder = async (folderRaw, modeIn) => {
     const shared = modeIn !== 'copy' && await maybeFirstShared(String(folderRaw).trim())
     if (shared) return shared
@@ -1805,6 +1807,12 @@ let parsingService = null
               if (req.method === 'GET') return kbSendJson(res, 200, { ok: true, status: { ...(await current.status()), build: buildInfo } })
               if (req.method !== 'POST') return kbSendJson(res, 405, { ok: false, error: 'method not allowed' })
               const body = JSON.parse((await kbReadBody(req)) || '{}')
+              // The old embedded Host cannot execute workspace calls after the
+              // fresh service becomes the writer. Keep setup retries idempotent.
+              if (firstLibraryHandoff.receipt) {
+                if (body.op === 'setup' && body.mode !== 'copy') return kbSendJson(res, 200, await maybeFirstShared(String(body.path ?? '').trim()))
+                if (!['status', 'dirs', 'probe-folder', 'updates.check', 'updates.status'].includes(body.op)) return kbSendJson(res, 200, {ok:false, code:'SERVICE_RESTART_REQUIRED', restartRequired:true, error:FIRST_LIBRARY_RESTART})
+              }
               if (typeof body.op === 'string' && /^(preferences|memory|onboarding|atlas|capture|search|backup|reading|review|tasks|question|links|deliverables|trash|retrieval|upgrade)\./.test(body.op)) {
                 const origin = req.headers.origin
                 if (req.headers['sec-fetch-site'] === 'cross-site' ||

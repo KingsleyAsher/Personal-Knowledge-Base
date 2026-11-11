@@ -7,6 +7,15 @@
 
 **Source covered: plugin 3.0.1 / Windows client 2.0.1 · Updated: 2026-11-11 · GitHub major release**
 
+## 2026-11-11 · Shared-service handoff after first library creation (source fix, unreleased)
+
+Fixes the first-use guide refreshing preferences through the embedded kernel immediately after creating a shared library, which triggered SERVICE_REQUIRED. Preserve successful creation, explain that DSH must fully exit and reopen, and stop the guide lease/refresh. Library settings also skip the old-runtime refresh and disable repeated setup/rebuild. Serialize initial setup and retain its successful receipt for this Host lifetime; repeated requests cannot fall back into the embedded writer. Other workspace calls during handoff receive an actionable restart message. Single-writer protection remains enforced; restart connects through the existing persisted binding.
+
+Validation covers the actual guide/settings callbacks, concurrent/repeated setup, retry after failure, and Windows plugin-first/client-first creation with independent and shared use. This entry describes unreleased source changes; published versions remain plugin 3.0.1 / client 2.0.1.
+
+
+Installer audit: the existing 2.0.1 installer has Authenticode status NotSigned. No matching historical Defender detection was found on this machine. Unsigned applications can trigger reputation or Smart App Control blocks; this alone does not establish a malware false positive or resolve Windows trust. The user identified Smart App Control or administrator policy blocking. A targeted Defender scan completed without related detections and the release hash matched. This trust blocker is unresolved: no code-signing certificate is available locally. Disabling protection or self-signing is not a substitute for a trusted release signature; organization policy may additionally require administrator approval.
+
 ## 2026-11-11 · Plugin 3.0.1 / client 2.0.1 · Update transaction recovery patch
 
 Fixes abandoned prepared receipts blocking later updates after a separate Host installation. Under the profile writer lock, archive the complete old receipt and abort only its preparation before staging a new update. Preserve the installed version, candidates and backups, and reject stale confirmations. Publishing/unknown phases, publication backups and active writer locks still require recovery or waiting. Update dialogs distinguish recovery from writer contention.
