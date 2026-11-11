@@ -1,3 +1,7 @@
+## 2026-11-11 · Recover abandoned prepared updates (source fix, not yet released)
+
+A historical prepared receipt no longer permanently blocks a new update after a separate Host installation. Under the profile writer lock, archive the full old receipt and mark it aborted before staging again. Preserve candidates and backups, and reject stale confirmations. Publishing/unknown phases and live writer locks still require recovery or waiting. Show distinct messages for unresolved publication and an occupied writer. Real pnpm regressions cover supersession, stale confirmations, active locks and publication guards. Published 3.0.0 assets remain unchanged.
+
 ## 2026-11-11 · Publish plugin 3.0.0 and client 2.0.0
 
 Merges release-review fixes, mixed-version interoperability, startup/scoped-update improvements and visual corrections into the unified main repository, with separate v3.0.0 and client-v2.0.0 releases. Synchronizes both languages of the READMEs, client guides, version notes, evolution records, website and product feeds. Independent versions and installations retain protocol/storage/capability-based sharing; a product major bump does not force an index rebuild.

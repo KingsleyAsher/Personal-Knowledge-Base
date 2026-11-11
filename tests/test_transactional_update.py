@@ -28,6 +28,41 @@ class TransactionTests(unittest.TestCase):
         self.expected = {'latestVersion': '2.4.4', 'bytes': len(raw), 'sha256': hashlib.sha256(raw).hexdigest(), 'buildId': build}
 
     def stage(self): return transaction.prepare(self.profile, self.archive, self.expected)['transactionId']
+    def test_prepared_receipt_is_archived_and_stale_confirmation_cannot_commit(self):
+        first = self.stage()
+        journal = self.profile / '.kb-safe-updates/transaction.json'
+        original = journal.read_bytes()
+        (self.plugin / 'original.txt').write_bytes(b'NEWER_HOST_INSTALL')
+        before = transaction.tree(self.plugin)
+        second = self.stage()
+        self.assertNotEqual(first, second)
+        self.assertEqual(transaction.tree(self.plugin), before)
+        history = list(journal.parent.glob('superseded-*.json'))
+        self.assertEqual(len(history), 1)
+        self.assertEqual(history[0].read_bytes(), original)
+        self.assertTrue((journal.parent / first / 'candidate').is_dir())
+        with self.assertRaisesRegex(RuntimeError, 'Stale update transaction'):
+            transaction.commit(self.profile, first)
+        transaction.commit(self.profile, second)
+        self.assertEqual(json.loads((self.plugin / 'package.json').read_text())['version'], '2.4.4')
+        self.assertEqual((self.profile / 'kb-state/binding.json').read_bytes(), b'SYNTHETIC_STATE')
+
+    def test_publishing_or_live_writer_is_never_superseded(self):
+        self.stage()
+        journal = self.profile / '.kb-safe-updates/transaction.json'
+        before = journal.read_bytes()
+        lock = self.profile / 'package.json.lock'
+        lock.write_text(str(os.getpid()) + '\n')
+        try:
+            with self.assertRaisesRegex(RuntimeError, 'writer is busy'): self.stage()
+        finally: lock.unlink()
+        self.assertEqual(journal.read_bytes(), before)
+        plan = json.loads(before); plan['phase'] = 'publishing'; transaction.save(journal, plan)
+        before = journal.read_bytes()
+        with self.assertRaisesRegex(RuntimeError, 'requires recovery'): self.stage()
+        self.assertEqual(journal.read_bytes(), before)
+        self.assert_old()
+
     def assert_old(self):
         self.assertEqual(transaction.tree(self.plugin), self.before)
         self.assertEqual((self.profile / 'package.json').read_bytes(), self.metadata)

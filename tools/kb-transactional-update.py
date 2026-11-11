@@ -149,11 +149,26 @@ def merge_plugin_lock(original, resolved):
     if PACKAGE in unrelated(original): raise RuntimeError('Another lock entry depends on the knowledge package')
     return result
 
+def retire_prepared(journal, plan):
+    # The caller holds the profile writer lock; prepared has not changed live files.
+    if plan.get('phase') != 'prepared' or not re.fullmatch(r'transaction-[a-f0-9]{32}', plan.get('work', '')):
+        raise RuntimeError('An unresolved update requires recovery first')
+    if (journal.parent / plan['work'] / 'previous').exists():
+        raise RuntimeError('An unresolved update requires recovery first')
+    atomic(journal.with_name('superseded-' + uuid.uuid4().hex + '.json'), journal.read_bytes())
+    plan['phase'] = 'aborted'
+    plan['reason'] = 'superseded-before-publication'
+    save(journal, plan)
+
+
 def prepare(profile, archive, expected, pnpm=None):
     profile, plugin, journal = locations(profile)
     with profile_lock(profile):
-        if journal.exists() and json.loads(journal.read_text(encoding='utf-8'))['phase'] not in ('committed', 'rolled-back', 'aborted'):
-            raise RuntimeError('An unresolved update requires recovery first')
+        if journal.exists():
+            previous = json.loads(journal.read_text(encoding='utf-8'))
+            if previous.get('phase') == 'prepared': retire_prepared(journal, previous)
+            elif previous.get('phase') not in ('committed', 'rolled-back', 'aborted'):
+                raise RuntimeError('An unresolved update requires recovery first')
         config = json.loads((profile / 'package.json').read_text(encoding='utf-8'))
         if PACKAGE not in config.get('dependencies', {}): raise RuntimeError('Plugin is not registered in this profile')
         if not (plugin / 'package.json').is_file(): raise RuntimeError('Existing plugin is incomplete; use the recovery installer with a trusted old package')
