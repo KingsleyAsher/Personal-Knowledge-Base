@@ -1,5 +1,7 @@
 # Personal Knowledge Base · Plugin and Desktop Client
 
+> **Current source, not a new public release:** plugin 3.0.2 / client 2.0.2 include the first-library handoff fix; a local unsigned build was delivered. Subsequent [Windows signing preparation](docs/WINDOWS-SIGNING.md) awaits a real certificate and affected-machine validation. Public downloads and update feeds remain at 3.0.1 / 2.0.1.
+
 > **Update recovery patch:** fixes abandoned prepared receipts. An already blocked older updater needs the [one-time safe recovery](docs/UPDATE-RECOVERY.en.md) before a normal update.
 
 

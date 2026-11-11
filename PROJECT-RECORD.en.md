@@ -1,11 +1,22 @@
 # Personal Knowledge Base · Unified Design and Evolution
 
-
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 3.0.1 -->
+<!-- project-record-version: 3.0.2 -->
 
-**Source covered: plugin 3.0.1 / Windows client 2.0.1 · Updated: 2026-11-11 · GitHub major release**
+**Source: plugin 3.0.2 / client 2.0.2 · Updated: 2026-11-11 · Local build and unreleased signing changes. GitHub stable: plugin 3.0.1 / client 2.0.1.**
+
+## 2026-11-11 · Windows signing preparation (source changes; no signed artifact)
+
+Add a trusted Authenticode signing entry point with chain, private-key, validity, publisher and timestamp verification. Sign mutated executables before payload hashes and sign the outer installer last. Production packaging requires signing by default; only explicit --allow-unsigned permits a local development build. Locate the payload trailer using the PE certificate table so an appended signature does not break extraction; retain ZIP SHA-256 validation.
+
+Validation: real C# compilation and three automated checks covering PE32/PE32+, all eight alignments, invalid certificate directories/trailers and rejection of production packaging without a certificate. Synthetic certificate tables do not establish trusted signing. No certificate is available and no signed installer was produced; the existing local 2.0.2 package is unchanged. The user clarified that blocking occurs on another computer, so local Smart App Control state or scan results cannot verify installation there. The exact remote warning and trusted-signing approval remain outstanding.
+
+## 2026-11-11 · Plugin 3.0.2 / client 2.0.2 · Local manual-install fix
+
+Includes the first-library shared-service handoff fix: retain successful creation, stop old embedded-runtime refresh, explain that DSH must fully exit and reopen, serialize concurrent setup and reuse its successful receipt. Single-writer protection remains enforced. No storage epoch change or existing-library rebuild.
+
+This is a local build, not yet published to GitHub. Isolated Windows validation covers plugin-first/client-first creation and independent/shared use, plus guide/settings callbacks and handoff API regression checks. The client installer remains unsigned; Smart App Control/administrator-policy blocking is unresolved. Choosing manual installation does not establish system trust. Use an empty destination, reopen the original library, and retain the old installation for rollback.
 
 ## 2026-11-11 · Shared-service handoff after first library creation (source fix, unreleased)
 
@@ -14,7 +25,7 @@ Fixes the first-use guide refreshing preferences through the embedded kernel imm
 Validation covers the actual guide/settings callbacks, concurrent/repeated setup, retry after failure, and Windows plugin-first/client-first creation with independent and shared use. This entry describes unreleased source changes; published versions remain plugin 3.0.1 / client 2.0.1.
 
 
-Installer audit: the existing 2.0.1 installer has Authenticode status NotSigned. No matching historical Defender detection was found on this machine. Unsigned applications can trigger reputation or Smart App Control blocks; this alone does not establish a malware false positive or resolve Windows trust. The user identified Smart App Control or administrator policy blocking. A targeted Defender scan completed without related detections and the release hash matched. This trust blocker is unresolved: no code-signing certificate is available locally. Disabling protection or self-signing is not a substitute for a trusted release signature; organization policy may additionally require administrator approval.
+Installer audit: the existing 2.0.1 installer has Authenticode status NotSigned. No matching historical Defender detection was found on this machine. Unsigned applications can trigger reputation or Smart App Control blocks; this alone does not establish a malware false positive or resolve Windows trust. The user described a possible Smart App Control or administrator-policy block; the exact category remains unconfirmed. A targeted Defender scan completed without related detections and the release hash matched. This trust blocker is unresolved: no code-signing certificate is available locally. Disabling protection or self-signing is not a substitute for a trusted release signature; organization policy may additionally require administrator approval.
 
 ## 2026-11-11 · Plugin 3.0.1 / client 2.0.1 · Update transaction recovery patch
 

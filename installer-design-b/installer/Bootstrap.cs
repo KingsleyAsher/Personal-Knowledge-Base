@@ -34,9 +34,9 @@ class Bootstrap {
    File.Copy(Path.Combine(uninstall,"resources","installer-ui.asar"),Path.Combine(temp,"resources","app.asar"));
   }else{
    using(var f=File.OpenRead(self)){
-    if(f.Length<48)throw new Exception("安装包不完整。");f.Position=f.Length-48;var trailer=new byte[48];f.Read(trailer,0,48);
+    long payloadEnd=PayloadLayout.FindEnd(f);f.Position=payloadEnd-48;var trailer=new byte[48];f.Read(trailer,0,48);
     if(Encoding.ASCII.GetString(trailer,40,8)!="KBSETUP1")throw new Exception("安装包标记无效。");
-    long length=BitConverter.ToInt64(trailer,0),offset=f.Length-48-length;
+    long length=BitConverter.ToInt64(trailer,0),offset=payloadEnd-48-length;
     if(length<=0||offset<0)throw new Exception("安装包长度无效。");
     string zip=Path.Combine(temp,"payload.zip");f.Position=offset;
     using(var dest=File.Create(zip)){byte[] buffer=new byte[1024*1024];long remaining=length;while(remaining>0){int n=f.Read(buffer,0,(int)Math.Min(buffer.Length,remaining));if(n<=0)throw new Exception("安装包被截断。");dest.Write(buffer,0,n);remaining-=n;}}

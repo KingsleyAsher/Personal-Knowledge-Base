@@ -12,14 +12,15 @@
 cd apps/desktop
 npm.cmd ci
 npm.cmd ci --prefix vendor/chat
-npm.cmd run build
 node --test tests/storage-path.test.mjs tests/library-scope.test.mjs
 cd ../..
 python -m pip install Pillow
 python -X utf8 tools/prepare-desktop-release.py
+npm.cmd run build --prefix apps/desktop
 cd apps/desktop
 npm.cmd run package
 cd ../..
+$env:KB_SIGN_CERT_SHA1 = '<trusted code-signing certificate thumbprint>'
 python -X utf8 installer-design-b/installer/build.py
 ```
 
@@ -28,3 +29,5 @@ python -X utf8 installer-design-b/installer/build.py
 准备脚本下载公开运行时并生成配套插件包；不会查找本机已安装插件或用户配置。应用包输出到 `apps/desktop/out`，安装包输出到 `installer-design-b/release`。首次构建安装器会从已保留的设计源文件生成界面。版本号由应用包和插件根 package.json 各自管理。
 
 构建结果不保证字节级可重复：时间戳和工具版本可能影响产物。源码检出构建检查不等于所有网络环境下载成功；网络失败时应重试原始可信源，不跳过摘要验证。
+
+当前源码为插件 3.0.2 / 客户端 2.0.2，尚未正式发布。仅本地开发可将签名步骤替换为 `python -X utf8 installer-design-b/installer/build.py --allow-unsigned`；此选项不解决智能应用控制。证书前提和验证边界见[Windows 签名说明](../WINDOWS-SIGNING.md)。

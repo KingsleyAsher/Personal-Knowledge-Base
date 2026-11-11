@@ -1,3 +1,13 @@
+## 2026-11-11 · Signing preparation after local 2.0.2 build (unreleased)
+
+Adds trusted-signing preflight and timestamp verification and fixes payload location after Authenticode signing. Production builds require a certificate; explicit --allow-unsigned is for local development. C# compilation and three structural/preflight tests passed; actual trusted signing and installation on the affected other computer remain unverified. No new signed installer or GitHub Release was published. See [Windows signing](docs/WINDOWS-SIGNING.md).
+
+## 2026-11-11 · Plugin 3.0.2 / client 2.0.2 · Local manual-install fix
+
+Includes the first-library shared-service handoff fix: retain successful creation, stop old embedded-runtime refresh, explain that DSH must fully exit and reopen, serialize concurrent setup and reuse its successful receipt. Single-writer protection remains enforced. No storage epoch change or existing-library rebuild.
+
+This is a local build, not yet published to GitHub. Isolated Windows validation covers plugin-first/client-first creation and independent/shared use, plus guide/settings callbacks and handoff API regression checks. The client installer remains unsigned; Smart App Control/administrator-policy blocking is unresolved. Choosing manual installation does not establish system trust. Use an empty destination, reopen the original library, and retain the old installation for rollback.
+
 ## 2026-11-11 · Plugin 3.0.1 / client 2.0.1 · Update transaction recovery patch
 
 Fixes abandoned prepared receipts blocking later updates after a separate Host installation. Under the profile writer lock, archive the complete old receipt and abort only its preparation before staging a new update. Preserve the installed version, candidates and backups, and reject stale confirmations. Publishing/unknown phases, publication backups and active writer locks still require recovery or waiting. Update dialogs distinguish recovery from writer contention.

@@ -2,7 +2,7 @@
 
 [中文](DEVELOPMENT.md) · English
 
-Start at the repository root. Follow the [client build guide](docs/client/DEVELOPMENT.en.md) for dependencies, production build, isolated checks and installer commands. Root package metadata describes plugin 2.5.5; apps/desktop/package.json describes client 1.1.2.
+Start at the repository root. Follow the [client build guide](docs/client/DEVELOPMENT.en.md) for dependencies, production build, isolated checks and installer commands. Current source versions are plugin 3.0.2 and client 2.0.2; the public stable feeds remain plugin 3.0.1 and client 2.0.1 until a new release is published.
 
 Edit shared logic in packages and inspect both consumers. Do not duplicate it in another repository. After plugin UI changes, run tools/sync-workbench-client.py; refresh loaded-file inventory with tools/sync-workbench-build.py. Client build regenerates desktop management views.
 
@@ -22,3 +22,5 @@ The new client shows recovery help only after an installation or handoff error. 
 
 Windows evidence uses the actual public 2.4.3 archive, a live service and real pnpm. Initial legacy installation still runs through the old Host installer and cannot retroactively acquire transaction protection. Recovery is the fallback on failure. No live user profile installation or complete Electron UI automation is claimed; other legacy versions are outside this targeted verification.
 
+
+Windows release packaging now requires trusted signing; see [Windows signing](docs/WINDOWS-SIGNING.md). Set KB_SIGN_CERT_SHA1 to an installed certificate thumbprint. Explicit --allow-unsigned is limited to local development and does not resolve application-control blocks. The first-library guide is generated from src/client/workbench-ui.js: edit that source, synchronize the plugin, then rebuild the desktop.
