@@ -250,6 +250,16 @@ def commit(profile, transaction_id, fault=lambda phase: None):
             raise
         return {'ok': True, 'application': 'restart-required', 'version': plan['version'], 'buildId': plan['buildId'], 'transactionId': plan['work']}
 
+def cancel_prepared(profile):
+    profile, plugin, journal = locations(profile)
+    with profile_lock(profile):
+        if not journal.exists(): return {'ok': True, 'phase': 'none'}
+        plan = json.loads(journal.read_text(encoding='utf-8'))
+        if plan.get('phase') == 'aborted': return {'ok': True, 'phase': 'aborted'}
+        retire_prepared(journal, plan)
+        return {'ok': True, 'phase': 'aborted', 'version': plan.get('version')}
+
+
 def recover(profile):
     profile, plugin, journal = locations(profile)
     with profile_lock(profile):
@@ -261,12 +271,13 @@ def recover(profile):
         return {'ok': True, 'phase': plan['phase']}
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(); parser.add_argument('action', choices=['prepare', 'commit', 'recover'])
+    parser = argparse.ArgumentParser(); parser.add_argument('action', choices=['prepare', 'commit', 'recover', 'cancel-prepared'])
     parser.add_argument('--profile', type=Path, required=True); parser.add_argument('--archive', type=Path); parser.add_argument('--expected', type=Path); parser.add_argument('--transaction')
     args = parser.parse_args()
     try:
         if args.action == 'prepare': result = prepare(args.profile, args.archive, json.loads(args.expected.read_text(encoding='utf-8')))
         elif args.action == 'commit': result = commit(args.profile, args.transaction)
+        elif args.action == 'cancel-prepared': result = cancel_prepared(args.profile)
         else: result = recover(args.profile)
         print(json.dumps(result))
     except Exception as error:

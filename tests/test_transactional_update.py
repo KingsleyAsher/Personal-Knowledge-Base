@@ -63,6 +63,24 @@ class TransactionTests(unittest.TestCase):
         self.assertEqual(journal.read_bytes(), before)
         self.assert_old()
 
+    def test_one_time_cancel_only_handles_preparation_and_retains_live_install(self):
+        ident = self.stage()
+        journal = self.profile / '.kb-safe-updates/transaction.json'
+        original = journal.read_bytes()
+        self.assertEqual(transaction.cancel_prepared(self.profile)['phase'], 'aborted')
+        self.assert_old()
+        self.assertEqual(next(journal.parent.glob('superseded-*.json')).read_bytes(), original)
+        self.assertEqual(transaction.cancel_prepared(self.profile)['phase'], 'aborted')
+        plan = json.loads(original); plan['phase'] = 'publishing'; transaction.save(journal, plan)
+        with self.assertRaisesRegex(RuntimeError, 'requires recovery'):
+            transaction.cancel_prepared(self.profile)
+        self.assertEqual(json.loads(journal.read_text())['phase'], 'publishing')
+        plan['phase'] = 'prepared'; transaction.save(journal, plan)
+        (journal.parent / ident / 'previous').mkdir()
+        with self.assertRaisesRegex(RuntimeError, 'requires recovery'):
+            transaction.cancel_prepared(self.profile)
+        self.assert_old()
+
     def assert_old(self):
         self.assertEqual(transaction.tree(self.plugin), self.before)
         self.assertEqual((self.profile / 'package.json').read_bytes(), self.metadata)

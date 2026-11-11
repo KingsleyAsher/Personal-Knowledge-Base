@@ -121,10 +121,10 @@
   text['DSH 插件 · 支持直接自动升级'] = 'DSH plugin · Direct automatic updates';
   text['2.4.3 用户可在设置中检查更新并直接升级，等待旧服务交接。仅在升级报错时，按更新说明中的恢复文档处理；新装用户可直接安装 TGZ。'] = 'Users on 2.4.3 can check for updates and upgrade directly, then wait for the legacy service handoff. Use recovery instructions only after an error; fresh installations can use the TGZ.';
   text['下载客户端 1.0.3'] = 'Download client 1.0.3';
-  text['下载客户端 2.0.0'] = 'Download client 2.0.0';
-  text['下载插件 3.0.0'] = 'Download plugin 3.0.0';
-  text['个人知识库 3.0.0'] = 'Personal Knowledge Base 3.0.0';
-  text['插件 3.0.0 / 客户端 2.0.0：独立与共库使用、精准局部更新、启动优化及界面修复。'] = 'Plugin 3.0.0 / client 2.0.0: independent and shared libraries, scoped updates, faster startup and visual fixes.';
+  text['下载客户端 2.0.1'] = 'Download client 2.0.1';
+  text['下载插件 3.0.1'] = 'Download plugin 3.0.1';
+  text['个人知识库 3.0.1'] = 'Personal Knowledge Base 3.0.1';
+  text['插件 3.0.1 / 客户端 2.0.1：修复历史更新事务阻塞，保留资料与恢复保护。'] = 'Plugin 3.0.1 / client 2.0.1: unblock abandoned updates while preserving data and recovery safeguards.';
   const attributes = {
     '主导航': 'Primary navigation',
     '知识库的组织方式': 'How the knowledge base is organized',

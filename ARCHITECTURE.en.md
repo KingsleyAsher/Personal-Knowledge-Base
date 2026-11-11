@@ -1,4 +1,4 @@
-> Release / 当前发布：plugin **3.0.0**, client **2.0.0**. [Release notes](docs/releases/plugin-3.0.0.en.md).
+> Release / 当前发布：plugin **3.0.1**, client **2.0.1**. [Release notes](docs/releases/plugin-3.0.1.en.md).
 
 # Shared plugin and client architecture
 
