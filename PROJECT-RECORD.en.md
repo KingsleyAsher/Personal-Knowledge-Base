@@ -2,9 +2,19 @@
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 3.1.0 -->
+<!-- project-record-version: 3.1.1 -->
 
-**Plugin source 3.1.0; desktop public 2.0.1, local source 2.0.2 · 2026-11-14.**
+**Plugin source 3.1.1; desktop public 2.0.1, local source 2.0.2 · 2026-11-14.**
+
+## 2026-11-14 · Plugin 3.1.1 · Release notes follow the actual upgrade range
+
+Filter notes strictly after the previously installed version through the target version. The last dismissed version and older unread notes no longer widen the range. Reopening the same target preserves its range; another upgrade starts a new range. Retire legacy pending ranges without replay, display the version interval, and register the missing 3.1.0 DeepSeek parsing, default selectors and settings fixes. Patch-only installs remain quiet; fresh installs and downgrades do not show historical upgrade notes.
+
+Validation covers patch-to-minor upgrades, skipped versions, upgrades with unclosed notes, same-version reopening, legacy state, hot-load previous-version evidence and four dismissal paths; 18 focused checks and release source/archive checksum verification passed. Plugin 3.1.1 only; public desktop installer remains 2.0.1. Libraries, parsing configuration and external-transfer policy are unchanged.
+
+## 2026-11-14 · Release notes cover only the current upgrade range (source fix; unpublished)
+
+Fix notes being filtered from explainedVersion (last dismissed notes) instead of the previously installed version. New upgrades start at the installed version; only reopening the same target reuses a pending range. Legacy pending records without target markers are retired. Show the version range and register the missing 3.1.0 parsing/settings notes. Patch-only upgrades remain quiet; skipped-version summaries include only the actual installation interval. Seventeen release-note and automatic-update notification checks passed. Source only: the public 3.1.0 archive has not been replaced.
 
 ## 2026-11-14 · Plugin 3.1.0 · DeepSeek parsing and default-service selection
 

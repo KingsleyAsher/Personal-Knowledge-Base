@@ -1,3 +1,9 @@
+## 2026-11-14 · Plugin 3.1.1 · Release notes follow the actual upgrade range
+
+Filter notes strictly after the previously installed version through the target version. The last dismissed version and older unread notes no longer widen the range. Reopening the same target preserves its range; another upgrade starts a new range. Retire legacy pending ranges without replay, display the version interval, and register the missing 3.1.0 DeepSeek parsing, default selectors and settings fixes. Patch-only installs remain quiet; fresh installs and downgrades do not show historical upgrade notes.
+
+Validation covers patch-to-minor upgrades, skipped versions, upgrades with unclosed notes, same-version reopening, legacy state, hot-load previous-version evidence and four dismissal paths; 18 focused checks and release source/archive checksum verification passed. Plugin 3.1.1 only; public desktop installer remains 2.0.1. Libraries, parsing configuration and external-transfer policy are unchanged.
+
 ## 2026-11-14 · Plugin 3.1.0 · DeepSeek parsing and default-service selection
 
 Integrate the official standalone DeepSeek OCR / ASR APIs. Unconfigured libraries offer DeepSeek defaults; retain existing providers, selections and local-only policies. Submit documents directly to OCR and convert long audio with FFmpeg to mono 16 kHz PCM chunks. Preserve pages, truncation and failures without inventing word timestamps. Credentials use encrypted storage or DEEPSEEK_API_KEY; official endpoints are pinned.
