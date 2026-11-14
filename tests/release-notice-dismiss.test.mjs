@@ -14,13 +14,13 @@ function storage(version) {
 const api = () => vm.runInNewContext(code + '\n({ loadReleaseNotices, acknowledgeReleaseNotice, rememberPreviousClientVersion, shouldShowReleaseNotice, compareReleaseVersions, RELEASE_NOTICES })')
 const versions = notice => Array.from(notice?.releases ?? [], entry => entry.version)
 
-test('stable patch stays quiet; the next minor upgrade includes that patch', () => {
+test('stable patch stays quiet; the next minor upgrade starts at the installed patch', () => {
   const { loadReleaseNotices, acknowledgeReleaseNotice } = api(), store = storage('2.0.0')
   assert.equal(loadReleaseNotices(store, '2.0.1'), null)
   const entries = [{ version: '2.0.1', items: ['补丁'] }, { version: '2.1.0', items: ['迭代'] }]
   const notice = loadReleaseNotices(store, '2.1.0', entries)
-  assert.equal(notice.fromVersion, '2.0.0')
-  assert.deepEqual(versions(notice), ['2.0.1', '2.1.0'])
+  assert.equal(notice.fromVersion, '2.0.1')
+  assert.deepEqual(versions(notice), ['2.1.0'])
   acknowledgeReleaseNotice(store, notice)
   assert.equal(loadReleaseNotices(store, '2.1.0', entries), null)
 })
@@ -42,12 +42,12 @@ test('skipping beta releases gives one combined popup and preserves it until clo
   assert.equal(p.loadReleaseNotices(store, '2.0-beta9'), null)
 })
 
-test('an unclosed beta popup extends through a later stable upgrade', () => {
+test('an unclosed beta popup does not widen the next upgrade range', () => {
   const p = api(), store = storage('2.0-beta7')
   assert.deepEqual(versions(p.loadReleaseNotices(store, '2.0-beta8')), ['2.0-beta8'])
   const notice = p.loadReleaseNotices(store, '2.0.0')
-  assert.equal(notice.fromVersion, '2.0-beta7')
-  assert.deepEqual(versions(notice), ['2.0-beta8', '2.0-beta9', '2.0.0'])
+  assert.equal(notice.fromVersion, '2.0-beta8')
+  assert.deepEqual(versions(notice), ['2.0-beta9', '2.0.0'])
 })
 
 test('fresh install, downgrade, bad storage, and legacy markers', () => {
@@ -70,7 +70,7 @@ test('hot load captures beta9 as the actual previous version before replacing th
 
 test('current release is documented and preview ordering is numeric', () => {
   const p = api()
-  assert.ok(p.RELEASE_NOTICES.some(entry => entry.version === '2.0.0'))
+  assert.ok(p.RELEASE_NOTICES.some(entry => entry.version === currentReleaseVersion))
   assert.equal(p.compareReleaseVersions('2.0-beta10', '2.0-beta9'), 1)
   assert.equal(p.compareReleaseVersions('2.0-beta9', '2.0.0'), -1)
   assert.equal(p.compareReleaseVersions('2.0-beta9', '2.0.2-beta9'), 1)
@@ -124,4 +124,30 @@ for (const action of ['Escape', 'close', 'backdrop', 'link']) test(`aggregated p
   assert.equal(view.output, null)
   assert.equal(JSON.parse(store.getItem(key)).explainedVersion, currentReleaseVersion)
   assert.equal(mount(store).output, null)
+})
+
+
+test('stale dismissed and pending versions cannot leak ancient changes into 3.1', () => {
+  const p = api(), store = storage()
+  store.setItem(key, JSON.stringify({version:'3.0.2',explainedVersion:'1.1.3',pendingFrom:'1.1.3'}))
+  const notice = p.loadReleaseNotices(store, '3.1.0')
+  assert.equal(notice.fromVersion, '3.0.2')
+  assert.deepEqual(versions(notice), ['3.1.0'])
+  assert.equal(p.loadReleaseNotices(store, '3.1.0').fromVersion, '3.0.2')
+  p.acknowledgeReleaseNotice(store, notice)
+  assert.equal(p.loadReleaseNotices(store, '3.1.0'), null)
+})
+test('legacy pending records on an already installed version are retired without replay', () => {
+  const p = api(), store = storage()
+  store.setItem(key, JSON.stringify({version:'3.1.0',explainedVersion:'1.1.3',pendingFrom:'1.1.3'}))
+  assert.equal(p.loadReleaseNotices(store, '3.1.0'), null)
+})
+
+
+test('3.1.1 patch stays quiet while a skipped 3.0.2 installation sees only 3.1 entries', () => {
+  const p = api()
+  assert.equal(p.loadReleaseNotices(storage('3.1.0'), '3.1.1'), null)
+  const notice = p.loadReleaseNotices(storage('3.0.2'), '3.1.1')
+  assert.equal(notice.fromVersion, '3.0.2')
+  assert.deepEqual(versions(notice), ['3.1.0', '3.1.1'])
 })

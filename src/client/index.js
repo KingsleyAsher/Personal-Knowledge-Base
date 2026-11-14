@@ -4644,11 +4644,13 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     // END GENERATED TODO LIFECYCLE UI
 
-    const RELEASE_VERSION = '3.1.0'
+    const RELEASE_VERSION = '3.1.1'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
-    // Keep each shipped release in order. Patch entries are retained for a
-    // later cross-version summary even though patch-only installs stay quiet.
+    // Keep shipped releases for summaries of versions skipped during this upgrade.
+    // Patch-only installs stay quiet; unread older notes do not widen the range.
     const RELEASE_NOTICES = [
+      {version:'3.1.1',items:['更新说明只列出本次升级前版本到目标版本之间的内容，不再累计更早的未读记录。','弹窗显示起止版本，补齐 3.1.0 的更新条目。']},
+      {version:'3.1.0',items:['新增 DeepSeek 官方 OCR / ASR，文档直接识别，长音频转换后分段转写。','新增 OCR 与 ASR 默认服务选择，自动保存并显示可读名称；保留已有配置和外发限制。','修复全局设置页空白与首次建库交接问题。']},
       {version:'3.0.1',items:['修复历史准备事务阻塞后续自动更新：保留完整记录后重新准备，旧确认不能覆盖当前安装。','安装中与活跃写入锁继续受保护，明确显示恢复或等待原因；不重建知识库。']},
       {version:'3.0.0',items:['插件 3.0 与客户端 2.0：独立使用与共库联动，保留兼容协议和已有资料。','修复首次建库、迁移恢复、备份登记、并发入库及更新交接；文件外部变更按受影响路径维护。','减少启动重读和无效重建，修复权限变化后的旧内容显示，完善深浅主题控件与排版。']},
       {version:'2.5.12',items:['更新后自动刷新整理流程。同库配置变化时重读最新版本，切库时停止旧请求并提示。']},
@@ -4786,30 +4788,32 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         }
         compareReleaseVersions(previous, currentVersion)
         if (compareReleaseVersions(currentVersion, previous) < 0) return null
-        const pendingFrom = typeof state?.pendingFrom === 'string' ? state.pendingFrom : null
+        const pendingFrom = state?.pendingVersion === currentVersion && typeof state?.pendingFrom === 'string' ? state.pendingFrom : null
         const explained = typeof state?.explainedVersion === 'string' ? state.explainedVersion : previous
         const formatMigration = isCanonicalPreviewMigration(previous, currentVersion)
         const upgraded = compareReleaseVersions(currentVersion, previous) > 0 || formatMigration
-        const show = pendingFrom || (upgraded && shouldShowReleaseNotice(previous, currentVersion))
+        const show = upgraded ? shouldShowReleaseNotice(previous, currentVersion) : pendingFrom
         if (!show) {
           storage.setItem(RELEASE_NOTICE_STATE_KEY, JSON.stringify({ version: currentVersion, explainedVersion: explained }))
           return null
         }
-        const fromVersion = pendingFrom || explained
+        // A new upgrade starts at the actual previous installation. Only reopening
+        // the same target version reuses its pending range.
+        const fromVersion = upgraded ? previous : pendingFrom
         const releases = notices.filter((entry) =>
           ((compareReleaseVersions(entry.version, fromVersion) > 0 && !isSamePreviewSequence(entry.version, fromVersion)) || (formatMigration && entry.version === currentVersion)) &&
           compareReleaseVersions(entry.version, currentVersion) <= 0 &&
           // Stable-to-stable upgrades summarize shipped stable changes only.
           (isPreviewRelease(fromVersion) || isPreviewRelease(currentVersion) || !isPreviewRelease(entry.version))
         ).sort((a, b) => compareReleaseVersions(a.version, b.version))
-        storage.setItem(RELEASE_NOTICE_STATE_KEY, JSON.stringify({ version: currentVersion, explainedVersion: explained, pendingFrom: fromVersion }))
+        storage.setItem(RELEASE_NOTICE_STATE_KEY, JSON.stringify({ version: currentVersion, explainedVersion: explained, pendingFrom: fromVersion, pendingVersion: currentVersion }))
         return { fromVersion, version: currentVersion, releases }
       } catch { return null } // Without readable history, avoid unsolicited popups.
     }
     function acknowledgeReleaseNotice(storage, notice) {
       try {
         const state = JSON.parse(storage.getItem(RELEASE_NOTICE_STATE_KEY))
-        if (state?.pendingFrom !== notice.fromVersion) return
+        if (state?.pendingFrom !== notice.fromVersion || state?.version !== notice.version) return
         storage.setItem(RELEASE_NOTICE_STATE_KEY, JSON.stringify({ version: state.version, explainedVersion: notice.version }))
       } catch { /* Storage unavailable: close for this session. */ }
     }
@@ -4868,7 +4872,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
             e('button', { ref: closeRef, className: 'kb-release-close', type: 'button', 'aria-label': '关闭更新说明', onClick: dismiss }, '×'),
             e('p', { className: 'kb-release-kicker' }, 'PERSONAL KNOWLEDGE · RELEASE NOTES'),
             e('h2', { id: 'kb-release-title' }, '更新内容'),
-            e('p', { id: 'kb-release-intro', className: 'kb-release-intro' }, '以下为本次升级包含的更新内容。'),
+            e('p', { id: 'kb-release-intro', className: 'kb-release-intro' }, '以下为从 ' + notice.fromVersion + ' 升级到 ' + notice.version + ' 的更新内容。'),
             items.length ? e('ul', { className: 'kb-release-list' }, items.map(item => e('li', { key: item }, item))) :
               e('p', { className: 'kb-release-intro' }, '暂无更新条目，请查看完整更新记录。'),
             e('div', { className: 'kb-release-actions' },

@@ -1,6 +1,6 @@
 # Personal Knowledge Base · Plugin and Desktop Client
 
-> **Plugin 3.1.0:** DeepSeek OCR / ASR, saved default-service selectors, readable names and settings fixes. Desktop public release remains 2.0.1; local 2.0.2 and Windows signing preparation remain unreleased.
+> **Plugin 3.1.1:** Release notes now show only the actual installed-to-target version interval, with explicit version bounds. Includes the DeepSeek parsing and settings features from 3.1.0. Desktop public release remains 2.0.1; local 2.0.2 and Windows signing preparation remain unreleased.
 
 > **Update recovery patch:** fixes abandoned prepared receipts. An already blocked older updater needs the [one-time safe recovery](docs/UPDATE-RECOVERY.en.md) before a normal update.
 
