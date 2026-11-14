@@ -36,6 +36,7 @@ test('global shared settings see knowledge and ordinary Agent OCR/ASR records wi
     await writeFile(path.join(library,sourceRel),'synthetic original')
     const provider=await ui({op:'parse.provider.save',provider:{id:'synthetic-'+kind,kind,protocol:kind==='ocr'?'openai-vision':'openai-audio-transcriptions',locality:'local',baseUrl:'http://127.0.0.1:'+server.address().port+'/v1'}})
     assert.equal(provider.ok,true,JSON.stringify(provider))
+    assert.equal((await ui({op:'parse.default',kind,providerId:'synthetic-'+kind})).ok,true)
     const called=new Promise(resolve=>{started=resolve})
     const stage=authority==='workspace'?await client.call('desktop.importStage',{name:path.basename(sourceRel),data:Buffer.from('synthetic ordinary Agent '+kind).toString('base64'),final:true}):null
     const session='synthetic-'+authority+'-'+kind+'-session'

@@ -2,11 +2,11 @@
 
 [English](DEVELOPMENT.en.md) · 中文
 
-从本仓库根目录开始。客户端依赖、生产构建、隔离检查和安装器命令见 [客户端构建指南](docs/client/DEVELOPMENT.md)。插件使用根 package.json 与 src 适配入口，源码版本为 2.5.5；桌面应用版本为 apps/desktop/package.json 中的 1.1.2。
+从本仓库根目录开始。客户端依赖、生产构建、隔离检查和安装器命令见 [客户端构建指南](docs/client/DEVELOPMENT.md)。插件使用根 package.json 与 src 适配入口，当前源码版本为插件 3.0.2 / 客户端 2.0.2；正式更新源仍为插件 3.0.1 / 客户端 2.0.1，需另行发布后才更新。
 
 共享代码修改放在 packages，检查两端调用，不复制到第二仓库。修改插件界面源后运行 python -X utf8 tools/sync-workbench-client.py；更新装载文件集合时运行 tools/sync-workbench-build.py。生成桌面管理界面由客户端 build 命令处理。
 
-插件发布使用既有 tools/package-workbench.py 和 tools/verify-release.py 流程；必须生成与当前源码一致的新包、摘要、发布清单及文档快照，再创建插件标签。当前发布清单与源码、安装包保持一致；每次打包重新计算构建号和摘要。
+插件发布使用既有 tools/package-workbench.py 和 tools/verify-release.py 流程；必须生成与当前源码一致的新包、摘要、发布清单及文档快照，再创建插件标签。正式发布清单保留已发布制品的版本和摘要；提交尚未发布的源码时不冒充新发布。发布前须为最终源码重新打包并更新清单。
 
 客户端独立打包，安装器界面和动画源码在 installer-design-b。client-source.yml 提供构建与针对性检查，不自动上传二进制文件。两端更新通道分别管理，见 [版本规则](VERSIONING.md)。
 
@@ -23,3 +23,5 @@
 
 验证使用真实公开 2.4.3 TGZ、Windows 上的运行服务与真实 pnpm，覆盖直接安装、自然退出后交接、原件保留及受损旧安装恢复；事务失败回退沿用并补验现有检查。验证范围不包含正式用户 profile 安装或完整 Electron 界面操作。旧 2.4.3 首次安装仍由宿主旧安装器执行，不能获得新版事务器在安装前的保护；异常时走恢复入口。旧更新源不能按客户端运行状态筛选，2.4.3 以外的旧版不属于本次定向保证。
 
+
+Windows 正式安装包默认要求可信签名，见[签名说明](docs/WINDOWS-SIGNING.md)；通过 KB_SIGN_CERT_SHA1 指定已安装证书的指纹。--allow-unsigned 仅用于本地开发，不解除应用控制拦截。首次向导由 src/client/workbench-ui.js 生成，须修改源模板后同步插件并重建客户端。

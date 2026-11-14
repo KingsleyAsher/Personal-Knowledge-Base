@@ -1,9 +1,17 @@
 from verify_package import verify_current_package
 from pathlib import Path
-import json,hashlib,shutil,subprocess,zipfile,struct,re,runpy,sys
-from windows_icon import generate as generate_icon,patch as patch_icon
+import json,hashlib,shutil,subprocess,zipfile,struct,re,runpy,sys,os
 BASE=Path(__file__).resolve().parent;DESIGN=BASE.parent;WORK=DESIGN.parent
 APP=WORK/'apps/desktop'
+signing_thumbprint=os.environ.get('KB_SIGN_CERT_SHA1','').strip()
+if signing_thumbprint and not re.fullmatch(r'[a-fA-F0-9]{40}',signing_thumbprint):raise RuntimeError('KB_SIGN_CERT_SHA1 must be a certificate thumbprint')
+if not signing_thumbprint and '--allow-unsigned' not in sys.argv:raise RuntimeError('Trusted code signing is required. Set KB_SIGN_CERT_SHA1, or explicitly use --allow-unsigned for a local development build.')
+if signing_thumbprint and '--payload-only' in sys.argv:raise RuntimeError('Signed releases require a fresh bootstrap build')
+def sign(file):
+ if signing_thumbprint:
+  subprocess.run(['powershell.exe','-NoProfile','-NonInteractive','-File',str(WORK/'tools/sign-windows-file.ps1'),'-FilePath',str(file),'-Thumbprint',signing_thumbprint],check=True)
+
+from windows_icon import generate as generate_icon,patch as patch_icon
 DIST=DESIGN/'release';STAGE=BASE/'stage';UI=BASE/'ui';DIST.mkdir(exist_ok=True);UI.mkdir(exist_ok=True)
 package=json.loads((APP/'out/latest-package.json').read_text(encoding='utf-8'));SOURCE=Path(package['target'])
 subprocess.run(['node',str(APP/'tools/build-proof.mjs'),'--verify'],check=True)
@@ -33,7 +41,7 @@ else:
  compiler=Path('C:/Windows/Microsoft.NET/Framework64/v4.0.30319/csc.exe')
  stub=BASE/'SetupStub.exe'
  icon=generate_icon()
- subprocess.run([str(compiler),'/nologo','/target:winexe','/platform:x64','/optimize+','/win32icon:'+str(icon),'/reference:System.Windows.Forms.dll','/reference:System.Drawing.dll','/reference:System.IO.Compression.dll','/reference:System.IO.Compression.FileSystem.dll','/out:'+str(stub),str(BASE/'Bootstrap.cs')],check=True)
+ subprocess.run([str(compiler),'/nologo','/target:winexe','/platform:x64','/optimize+','/win32icon:'+str(icon),'/reference:System.Windows.Forms.dll','/reference:System.Drawing.dll','/reference:System.IO.Compression.dll','/reference:System.IO.Compression.FileSystem.dll','/out:'+str(stub),str(BASE/'Bootstrap.cs'),str(BASE/'PayloadLayout.cs')],check=True)
 if not STAGE.exists():shutil.copytree(SOURCE,STAGE)
 else:print('Reusing staged application payload')
 shutil.copy2(SOURCE/'KnowledgeWorkbench-Candidate.exe',STAGE/'KnowledgeWorkbench-Candidate.exe')
@@ -45,6 +53,10 @@ if not asarcli.exists():asarcli=APP/'node_modules/@electron/asar/bin/asar.js'
 if payload_only:shutil.copy2(existing_ui,STAGE/'resources/app.asar')
 else:subprocess.run(['node',str(asarcli),'pack',str(UI),str(STAGE/'resources/app.asar')],check=True)
 shutil.copy2(stub,STAGE/'Uninstall.exe')
+# Sign after every executable mutation, before computing payload hashes.
+if signing_thumbprint:
+ for file in sorted(STAGE.rglob('*')):
+  if file.is_file() and file.suffix.lower() in ['.exe','.dll','.pyd']:sign(file)
 rows=[]
 for p in sorted(SOURCE.rglob('*')):
  if not p.is_file():continue
@@ -66,7 +78,8 @@ out=DIST/('KnowledgeWorkbench-'+package['version']+'-'+package['buildId']+'-Setu
 with out.open('wb') as dest,stub.open('rb') as src:shutil.copyfileobj(src,dest)
 with out.open('ab') as dest,archive.open('rb') as src:
  shutil.copyfileobj(src,dest);dest.write(struct.pack('<q',archive.stat().st_size));dest.write(bytes.fromhex(sha(archive)));dest.write(b'KBSETUP1')
-result={'installer':str(out),'sha256':sha(out),'bytes':out.stat().st_size,'version':package['version'],'buildId':package['buildId'],'iconRevision':'knowledge-book-nodes-v1','files':len(rows),'installedBytes':manifest['totalBytes'],'signed':False}
+sign(out)
+result={'installer':str(out),'sha256':sha(out),'bytes':out.stat().st_size,'version':package['version'],'buildId':package['buildId'],'iconRevision':'knowledge-book-nodes-v1','files':len(rows),'installedBytes':manifest['totalBytes'],'signed':bool(signing_thumbprint),'signingThumbprint':signing_thumbprint or None}
 (DIST/'release.json').write_text(json.dumps({**result,'installer':out.name},ensure_ascii=False,indent=2),encoding='utf-8')
 (DIST/'SHA256SUMS.txt').write_text(result['sha256']+'  '+out.name+'\n',encoding='utf-8')
 print(json.dumps(result,ensure_ascii=False),flush=True)

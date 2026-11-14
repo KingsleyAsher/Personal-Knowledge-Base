@@ -41,8 +41,13 @@ jobs:
         run: python -X utf8 tools/verify-release.py
       - name: Install pinned package manager for transaction checks
         run: npm.cmd install --global --prefix "$env:APPDATA\npm" pnpm@11.23.0 --ignore-scripts
+      - name: Ensure FFmpeg for parsing regressions
+        run: |
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) { choco install ffmpeg --no-progress -y; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }
       - name: Focused release checks
         run: |
+          node --test --test-reporter=tap tests/deepseek-parsing.test.mjs tests/parsing-default-selector.test.mjs tests/settings-directory-contract.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node --test --test-reporter=tap tests/library-framework.test.mjs tests/library-framework-ui.test.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -X utf8 -m unittest discover -s tests -p test_legacy_bootstrap.py
@@ -51,11 +56,13 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -X utf8 -m unittest discover -s tests -p test_package_proof.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -X utf8 -m unittest discover -s tests -p test_installer_signing.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -X utf8 -m unittest discover -s tests -p test_transactional_update.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node --test --test-reporter=tap tests/cross-round-review.test.mjs apps/desktop/tests/build-proof.test.mjs apps/desktop/tests/paired-plugin.test.mjs apps/desktop/tests/document-loads.test.mjs tests/local-change-updates.test.mjs tests/startup-performance.test.mjs tests/mixed-version-interop.test.mjs tests/runtime-compatibility.test.mjs tests/update-download-recovery.test.mjs tests/update-status-recovery.test.mjs tests/flow-tool-output.test.mjs tests/shared-parse-records.test.mjs tests/parse-desktop-authorization.test.mjs tests/handoff-api.test.mjs tests/legacy-handoff.test.mjs tests/runtime-resume.test.mjs tests/parse-job-storage.test.mjs tests/flow-model-selection.test.mjs tests/inbox-entry.test.mjs tests/command-description.test.mjs tests/todo-lifecycle.test.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          node --test --test-reporter=tap tests/fresh-original-index.test.mjs tests/index-architecture.test.mjs tests/windows-safe-upgrade.test.mjs tests/release-recovery.test.mjs
+          node --test --test-reporter=tap tests/fresh-original-index.test.mjs tests/first-library-handoff.test.mjs tests/index-architecture.test.mjs tests/windows-safe-upgrade.test.mjs tests/release-recovery.test.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node tests/flow-conversation-probe.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

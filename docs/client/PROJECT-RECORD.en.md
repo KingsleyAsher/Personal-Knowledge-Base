@@ -1,3 +1,36 @@
+# Personal Knowledge Base · Client Evolution
+
+[English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
+
+<!-- project-record-version: 3.0.2 -->
+
+**Source: plugin 3.0.2 / client 2.0.2 · Updated: 2026-11-11 · Local build and unreleased signing changes. GitHub stable: plugin 3.0.1 / client 2.0.1.**
+
+## 2026-11-14 · Shared parsing kernel update (desktop installer unpublished)
+
+Shared source adds DeepSeek OCR / ASR, default-service selectors and settings fixes. Only plugin 3.1.0 is released in this change. Public desktop installer remains 2.0.1; local 2.0.2 source and signing preparation are not a new installer release.
+
+## 2026-11-11 · Windows signing preparation (source changes; no signed artifact)
+
+Add a trusted Authenticode signing entry point with chain, private-key, validity, publisher and timestamp verification. Sign mutated executables before payload hashes and sign the outer installer last. Production packaging requires signing by default; only explicit --allow-unsigned permits a local development build. Locate the payload trailer using the PE certificate table so an appended signature does not break extraction; retain ZIP SHA-256 validation.
+
+Validation: real C# compilation and three automated checks covering PE32/PE32+, all eight alignments, invalid certificate directories/trailers and rejection of production packaging without a certificate. Synthetic certificate tables do not establish trusted signing. No certificate is available and no signed installer was produced; the existing local 2.0.2 package is unchanged. The user clarified that blocking occurs on another computer, so local Smart App Control state or scan results cannot verify installation there. The exact remote warning and trusted-signing approval remain outstanding.
+
+## 2026-11-11 · Plugin 3.0.2 / client 2.0.2 · Local manual-install fix
+
+Includes the first-library shared-service handoff fix: retain successful creation, stop old embedded-runtime refresh, explain that DSH must fully exit and reopen, serialize concurrent setup and reuse its successful receipt. Single-writer protection remains enforced. No storage epoch change or existing-library rebuild.
+
+This is a local build, not yet published to GitHub. Isolated Windows validation covers plugin-first/client-first creation and independent/shared use, plus guide/settings callbacks and handoff API regression checks. The client installer remains unsigned; Smart App Control/administrator-policy blocking is unresolved. Choosing manual installation does not establish system trust. Use an empty destination, reopen the original library, and retain the old installation for rollback.
+
+## 2026-11-11 · Shared-service handoff after first library creation (source fix, unreleased)
+
+Fixes the first-use guide refreshing preferences through the embedded kernel immediately after creating a shared library, which triggered SERVICE_REQUIRED. Preserve successful creation, explain that DSH must fully exit and reopen, and stop the guide lease/refresh. Library settings also skip the old-runtime refresh and disable repeated setup/rebuild. Serialize initial setup and retain its successful receipt for this Host lifetime; repeated requests cannot fall back into the embedded writer. Other workspace calls during handoff receive an actionable restart message. Single-writer protection remains enforced; restart connects through the existing persisted binding.
+
+Validation covers the actual guide/settings callbacks, concurrent/repeated setup, retry after failure, and Windows plugin-first/client-first creation with independent and shared use. This entry describes unreleased source changes; published versions remain plugin 3.0.1 / client 2.0.1.
+
+
+Installer audit: the existing 2.0.1 installer has Authenticode status NotSigned. No matching historical Defender detection was found on this machine. Unsigned applications can trigger reputation or Smart App Control blocks; this alone does not establish a malware false positive or resolve Windows trust. The user described a possible Smart App Control or administrator-policy block; the exact category remains unconfirmed. A targeted Defender scan completed without related detections and the release hash matched. This trust blocker is unresolved: no code-signing certificate is available locally. Disabling protection or self-signing is not a substitute for a trusted release signature; organization policy may additionally require administrator approval.
+
 ## 2026-11-11 · Plugin 3.0.1 / client 2.0.1 · Update transaction recovery patch
 
 Fixes abandoned prepared receipts blocking later updates after a separate Host installation. Under the profile writer lock, archive the complete old receipt and abort only its preparation before staging a new update. Preserve the installed version, candidates and backups, and reject stale confirmations. Publishing/unknown phases, publication backups and active writer locks still require recovery or waiting. Update dialogs distinguish recovery from writer contention.

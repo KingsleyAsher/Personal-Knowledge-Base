@@ -1,11 +1,65 @@
 # Personal Knowledge Base · Unified Design and Evolution
 
-
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 3.0.1 -->
+<!-- project-record-version: 3.1.0 -->
 
-**Source covered: plugin 3.0.1 / Windows client 2.0.1 · Updated: 2026-11-11 · GitHub major release**
+**Plugin source 3.1.0; desktop public 2.0.1, local source 2.0.2 · 2026-11-14.**
+
+## 2026-11-14 · Plugin 3.1.0 · DeepSeek parsing and default-service selection
+
+Integrate the official standalone DeepSeek OCR / ASR APIs. Unconfigured libraries offer DeepSeek defaults; retain existing providers, selections and local-only policies. Submit documents directly to OCR and convert long audio with FFmpeg to mono 16 kHz PCM chunks. Preserve pages, truncation and failures without inventing word timestamps. Credentials use encrypted storage or DEEPSEEK_API_KEY; official endpoints are pinned.
+
+Expose separate OCR / ASR selectors in workbench and global settings, automatically save choices and refresh after provider changes. Show readable vendor names when no custom name exists. Fix blank settings caused by mismatched shared-service directory fields and include the previously unreleased first-library handoff fix. Package updates do not rebuild or migrate existing libraries.
+
+Focused parsing, selector, directory-contract, credential, external-policy and chunk-retry checks passed; the release workflow also checks transaction recovery, shared-library compatibility and retrieval. Synthetic files and simulated cloud responses were used, with real FFmpeg conversion. No paid cloud requests were made; live quota and recognition quality are not claimed. Publish plugin 3.1.0 only; public desktop remains 2.0.1. Local desktop 2.0.2 and signing preparation do not constitute a new installer release.
+
+## 2026-11-14 · Readable parsing-service selector names (local fix; unpublished)
+
+Fix default selectors and descriptions displaying internal ocr-/asr- IDs. The backend historically uses the ID as label when no name is entered, and the selector mistook it for a custom name. Preserve genuine custom labels; otherwise derive names such as DeepSeek OCR and DeepSeek ASR from vendor or protocol, alongside local/LAN/cloud location. Stored provider IDs and selected defaults remain unchanged.
+
+Expanded and passed the selector regression for labels equal to IDs, missing names inferred from protocol, custom-label preservation, saving selections, failed-save preservation and reloading. Source syntax checks passed. Source and local package only; unpublished on GitHub.
+
+## 2026-11-14 · Select configured default parsing services (local feature; unpublished)
+
+Both the workbench and DSH global parsing settings provide separate OCR and ASR default-service selectors. Options are filtered by kind, show local/LAN/cloud location, and disable inactive providers. Selection automatically saves through the existing parse.default API; subsequent imports, parsing and flows use the stored defaults without changing running jobs. Show save success or failure, retain the previous selection on failure, and preserve local-only policy with a warning for a selected cloud service.
+
+Synchronize provider management and selectors through a UI event and refresh after closing management, so additions, deletions and default changes remain visible. Seven targeted checks passed, including kind filtering, selected-ID persistence, failed-save preservation, reload persistence, directory contract and retrieval settings regressions. Source and local package only; no GitHub publication or live cloud recognition claim.
+
+## 2026-11-14 · Fix blank global settings panel (local fix; unpublished)
+
+The actual desktop console showed `Cannot read properties of undefined (reading 'trim')` in Section. The shared directory endpoint returns current/defaultCandidate/canWrite while the settings component expected bound/defaultKnowledgeBase/defaultWritable. An asynchronous undefined candidate triggered the host slot error boundary and left the panel blank.
+
+Accept both directory response shapes, populate candidates only for unbound libraries with a valid default, and normalize nullable paths during rendering and setup. The shared service also supplies the legacy field aliases. Preserve the bound library and existing parsing providers without rebuilding or switching libraries. Twelve targeted checks passed, covering both response contracts, status timing, missing fields and first-library handoff regressions. Source and local package only; no GitHub publication or live cloud recognition claim.
+
+## 2026-11-14 · Default DeepSeek OCR / ASR (source and local plugin package; unpublished)
+
+Unconfigured libraries default to DeepSeek OCR / ASR with allow-configured. Existing providers, default selections and explicit local-only policies remain authoritative. The settings form defaults to DeepSeek and supports an encrypted saved API key or a DEEPSEEK_API_KEY environment reference. Official API endpoints are pinned and credentials remain private. TTS is outside file parsing and is unchanged.
+
+Use the official standalone multipart protocols. OCR submits images, PDF, Word and PowerPoint directly without local PDF rendering, preserves pages and provider usage, and marks length-limited output as partial. ASR reuses FFmpeg mono 16 kHz PCM conversion, 50-second chunks and failed-chunk retries, within the official 120-second / 8 MiB request limits. No word timestamps are invented. Handle error objects inside HTTP 200 responses and retain external-transfer and binding checks.
+
+Validation: defaults, pinned endpoints, multipart fields, errors and truncation, simulated PDF tasks and real FFmpeg segmentation of 121-second audio, plus existing parsing/native-provider regressions (16 tests). No real user files were sent to cloud services; live account quota and recognition quality remain unverified. Source and local plugin package only: not installed in the running DSH and not published to GitHub.
+
+## 2026-11-11 · Windows signing preparation (source changes; no signed artifact)
+
+Add a trusted Authenticode signing entry point with chain, private-key, validity, publisher and timestamp verification. Sign mutated executables before payload hashes and sign the outer installer last. Production packaging requires signing by default; only explicit --allow-unsigned permits a local development build. Locate the payload trailer using the PE certificate table so an appended signature does not break extraction; retain ZIP SHA-256 validation.
+
+Validation: real C# compilation and three automated checks covering PE32/PE32+, all eight alignments, invalid certificate directories/trailers and rejection of production packaging without a certificate. Synthetic certificate tables do not establish trusted signing. No certificate is available and no signed installer was produced; the existing local 2.0.2 package is unchanged. The user clarified that blocking occurs on another computer, so local Smart App Control state or scan results cannot verify installation there. The exact remote warning and trusted-signing approval remain outstanding.
+
+## 2026-11-11 · Plugin 3.0.2 / client 2.0.2 · Local manual-install fix
+
+Includes the first-library shared-service handoff fix: retain successful creation, stop old embedded-runtime refresh, explain that DSH must fully exit and reopen, serialize concurrent setup and reuse its successful receipt. Single-writer protection remains enforced. No storage epoch change or existing-library rebuild.
+
+This is a local build, not yet published to GitHub. Isolated Windows validation covers plugin-first/client-first creation and independent/shared use, plus guide/settings callbacks and handoff API regression checks. The client installer remains unsigned; Smart App Control/administrator-policy blocking is unresolved. Choosing manual installation does not establish system trust. Use an empty destination, reopen the original library, and retain the old installation for rollback.
+
+## 2026-11-11 · Shared-service handoff after first library creation (source fix, unreleased)
+
+Fixes the first-use guide refreshing preferences through the embedded kernel immediately after creating a shared library, which triggered SERVICE_REQUIRED. Preserve successful creation, explain that DSH must fully exit and reopen, and stop the guide lease/refresh. Library settings also skip the old-runtime refresh and disable repeated setup/rebuild. Serialize initial setup and retain its successful receipt for this Host lifetime; repeated requests cannot fall back into the embedded writer. Other workspace calls during handoff receive an actionable restart message. Single-writer protection remains enforced; restart connects through the existing persisted binding.
+
+Validation covers the actual guide/settings callbacks, concurrent/repeated setup, retry after failure, and Windows plugin-first/client-first creation with independent and shared use. This entry describes unreleased source changes; published versions remain plugin 3.0.1 / client 2.0.1.
+
+
+Installer audit: the existing 2.0.1 installer has Authenticode status NotSigned. No matching historical Defender detection was found on this machine. Unsigned applications can trigger reputation or Smart App Control blocks; this alone does not establish a malware false positive or resolve Windows trust. The user described a possible Smart App Control or administrator-policy block; the exact category remains unconfirmed. A targeted Defender scan completed without related detections and the release hash matched. This trust blocker is unresolved: no code-signing certificate is available locally. Disabling protection or self-signing is not a substitute for a trusted release signature; organization policy may additionally require administrator approval.
 
 ## 2026-11-11 · Plugin 3.0.1 / client 2.0.1 · Update transaction recovery patch
 

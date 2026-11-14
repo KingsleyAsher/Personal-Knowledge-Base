@@ -387,14 +387,51 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
     }
     return e(R.Fragment, null, meta ? e('details', { className: 'kbw-meta' }, e('summary', null, '元数据'), e('pre', { className: 'kbw-preview' }, meta[1])) : null, ...nodes)
   }
+  function ParsingDefaults({ refreshKey = 0 }) {
+    const [info, setInfo] = R.useState(null), [busy, setBusy] = R.useState(false), [message, setMessage] = R.useState(''), [error, setError] = R.useState('')
+    const refresh = async () => { try { setInfo(await api({ op: 'parse.providers' })); setError('') } catch (err) { setError(err.message) } }
+    R.useEffect(() => {
+      void refresh()
+      const changed = () => { void refresh() }
+      window.addEventListener('kbw-parse-providers-changed', changed)
+      return () => window.removeEventListener('kbw-parse-providers-changed', changed)
+    }, [refreshKey])
+    const choose = async (kind, providerId) => {
+      if (!providerId || busy) return
+      setBusy(true); setMessage(''); setError('')
+      try {
+        const result = await api({ op: 'parse.default', kind, providerId })
+        setInfo(previous => ({ ...previous, [kind === 'ocr' ? 'defaultOcr' : 'defaultAsr']: result.defaults?.[kind] ?? providerId }))
+        setMessage((kind === 'ocr' ? 'OCR' : 'ASR') + ' 默认解析服务已保存，后续任务将使用此服务。')
+        event('kbw-parse-providers-changed')
+      } catch (err) { setError('保存默认解析服务失败：' + err.message) }
+      finally { setBusy(false) }
+    }
+    const providerName = p => {
+      const label = String(p.label || '').replace(/（待补齐）|待验证/g, '').trim()
+      if (label && label !== p.id) return label
+      const protocolVendor = { deepseek: 'DeepSeek', dashscope: 'Qwen / 阿里云百炼', baidu: '百度智能云', openai: 'OpenAI' }[String(p.protocol || '').split('-')[0]]
+      const vendor = ({ deepseek: 'DeepSeek', qwen: 'Qwen / 阿里云百炼', baidu: '百度智能云', openai: 'OpenAI', local: '本地' }[p.vendor]) || protocolVendor
+      return vendor ? vendor + ' ' + (p.kind === 'asr' ? 'ASR' : 'OCR') : p.model || (p.locality === 'local' ? '本地' : '自定义') + ' ' + (p.kind === 'asr' ? 'ASR' : 'OCR') + ' 服务'
+    }
+    return e('div', { 'aria-label': '默认解析服务' }, e('p', { className: 'kbw-meta' }, '分别选择图片文档和音频使用的默认服务。选择后自动保存，导入和后续解析任务会使用所选服务。'),
+      ['ocr', 'asr'].map(kind => {
+        const label = kind === 'ocr' ? '图片与文档 OCR 默认服务' : '音频转写 ASR 默认服务'
+        const providers = (info?.providers || []).filter(p => p.kind === kind)
+        const selected = kind === 'ocr' ? info?.defaultOcr : info?.defaultAsr
+        const current = providers.find(p => p.id === selected)
+        return e('div', { key: kind, className: 'kbw-service' }, e('label', { className: 'kbw-field' }, e('span', null, label),
+          e('select', { 'aria-label': label, value: selected || '', disabled: busy || !info || !providers.some(p => p.enabled !== false), onChange: ev => { void choose(kind, ev.target.value) } },
+            e('option', { value: '', disabled: true }, !info ? '正在读取服务…' : providers.length ? '请选择已配置的服务' : '尚未配置服务'),
+            providers.map(p => e('option', { key: p.id, value: p.id, disabled: p.enabled === false }, providerName(p) + ' · ' + (p.locale || ({ local: '本机', lan: '内网', cloud: '云端' }[p.locality]) || '未知位置') + (p.enabled === false ? '（已停用）' : ''))))),
+          current ? e('p', { className: 'kbw-meta' }, current.model || providerName(current), current.locality === 'cloud' && info.externalPolicy === 'local-only' ? '；当前仅允许本地解析，使用此云端服务前需在下方管理中允许已配置的外部服务。' : '') : null,
+          info && !providers.length ? e('p', { className: 'kbw-meta' }, '请在下方管理中添加对应的解析服务。') : null)
+      }), message ? e('p', { role: 'status' }, message) : null, error ? e('p', { role: 'alert' }, error) : null)
+  }
   function ParseSummary() {
-    const [info, setInfo] = R.useState(null), [error, setError] = R.useState(''), [edit, setEdit] = R.useState(false)
-    const refresh = () => api({ op: 'parse.providers' }).then(setInfo).catch(e => setError(e.message))
-    R.useEffect(() => { void refresh() }, [])
-    return e('div', null, e('p', { className: 'kbw-meta' }, '已保存的服务会在导入和流程中复用。环境检查与样本测试均为可选操作。'),
-      ['ocr','asr'].map(kind => { const id = kind === 'ocr' ? info?.defaultOcr : info?.defaultAsr, p = info?.providers.find(p => p.id === id) || info?.providers.find(p => p.kind === kind)
-        return e('div', { key: kind, className: 'kbw-service' }, e('strong', null, kind === 'ocr' ? '图片与文档 OCR' : '音频转写 ASR'), p ? e(R.Fragment, null, e('p', null, p.label?.replace(/（待补齐）|待验证/g, '') || p.model || '本地解析服务'), e('p', { className: 'kbw-meta' }, (p.locale || ({local:'本机',lan:'内网',cloud:'云端'}[p.locality])) + ' · ' + p.model + (id === p.id ? ' · 默认服务' : '')), p.activeJob ? e('p', { className: 'kbw-meta' }, p.activeJob.status === 'running' ? '另有任务执行中' : '另有任务排队中') : null) : e('p', { className: 'kbw-meta' }, info ? '尚未添加服务，可稍后在设置中添加。' : '读取服务…')) }),
-      e('details', { open: edit, onToggle: ev => { setEdit(ev.currentTarget.open); if (!ev.currentTarget.open) void refresh() } }, e('summary', null, '管理服务与可选测试'), edit ? e(Parsing) : null), error ? e('p', { role: 'alert' }, error) : null)
+    const [edit, setEdit] = R.useState(false), [refreshKey, setRefreshKey] = R.useState(0)
+    return e('div', null, e(ParsingDefaults, { refreshKey }),
+      e('details', { open: edit, onToggle: ev => { setEdit(ev.currentTarget.open); if (!ev.currentTarget.open) setRefreshKey(value => value + 1) } }, e('summary', null, '管理服务与可选测试'), edit ? e(Parsing) : null))
   }
   async function launchRepairChat(snapshot, ids, focus) {
     const ctx = getContext(), sessions = ctx?.get('sessions'), workspace = ctx?.get('uiWorkspace'), views = ctx?.get('uiConversation')
@@ -462,6 +499,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
     const [open, setOpen] = R.useState(false), [normal, setNormal] = R.useState(false), [step, setStep] = R.useState(0)
     const [prefs, setPrefs] = R.useState(defaults), [record, setRecord] = R.useState(null), [status, setStatus] = R.useState(null)
     const [error, setError] = R.useState(''), [busy, setBusy] = R.useState(false), [folder, setFolder] = R.useState('')
+    const [bindingRestart, setBindingRestart] = R.useState('')
     const deferred = R.useRef(false), active = R.useRef(false), root = R.useRef(null)
     const owns = () => { if (!guideInstance) guideInstance = owner.current; return guideInstance === owner.current }
     const refresh = R.useCallback(async () => {
@@ -531,10 +569,11 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
         e('h2', { id: 'kbw-guide-title' }, normal ? '知识库设置' : step === 0 ? '知识库插件已更新' : step === 1 ? '选择适合你的使用方式' : '确认设置'),
         step === 0 ? e('div', null, e('p', null, '当前版本 ' + version + '：目录地图、可控隐私、快速收集、阅读摘录和知识库提问。'),
           e('p', null, '接下来确认隐私展示和备份等选项。已有明确设置会保留，自动完整备份默认关闭。')) : null,
-        step === 1 ? e('div', null,
+        bindingRestart ? e('p', { role: 'status' }, bindingRestart) : null,
+        step === 1 && !bindingRestart ? e('div', null,
           e('p', { className: 'kbw-meta' }, '当前知识库：' + (status?.kbPath || '尚未绑定，可稍后设置')),
           !status?.kbPath ? e('div', null, field('知识库目录', folder, setFolder), btn('选择目录', async () => { const r = await api({ op: 'pick-dir' }); if (r.path) setFolder(r.path) }),
-            btn('接入或建立知识库', async () => { setBusy(true); try { await api({ op: 'setup', path: folder }); await refresh() } catch (err) { setError(err.message) } finally { setBusy(false) } }, busy || !folder)) : null,
+            btn('接入或建立知识库', async () => { setBusy(true); try { const result = await api({ op: 'setup', path: folder }); if (result.restartRequired) { active.current = false; deferred.current = true; setBindingRestart(result.note) } else await refresh() } catch (err) { setError(err.message) } finally { setBusy(false) } }, busy || !folder)) : null,
           e(PreferencesFields, { prefs, setPrefs }), e('details', null, e('summary', null, 'OCR / ASR 解析配置'), e(ParseSummary))) : null,
         step === 2 ? e('div', { className: 'kbw-summary' }, [
           '知识库：' + (status?.kbPath || '稍后绑定'), '隐私展示：' + (prefs.showPrivate ? '开启' : '关闭'),
@@ -542,6 +581,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
           '自动完整备份：' + (prefs.backup.enabled ? prefs.backup.directory + ' · ' + stateLabel(prefs.backup.frequency) : '关闭'),
           '自动解析：' + (prefs.autoParse ? '开启' : '关闭'), '回顾提醒：' + (prefs.reviewReminders ? '开启' : '关闭')].join('\n')) : null,
         error ? e('p', { className: 'kbw-error', role: 'alert' }, error) : null,
+        bindingRestart ? e('div', { className: 'kbw-actions' }, btn('知道了，稍后重启 DSH', close, busy)) :
         e('div', { className: 'kbw-actions' }, btn(normal ? '取消' : '稍后设置', close, busy),
           step > (normal ? 1 : 0) ? btn('上一步', () => setStep(step - 1), busy) : null,
           normal ? btn(busy ? '保存中…' : '保存设置', save, busy) : step < 2 ? btn('下一步', () => setStep(step + 1), busy) : btn(busy ? '保存中…' : '保存并开始使用', save, busy))))
@@ -1717,5 +1757,5 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
       data?.entries.length===0?e('p',{className:'kbw-meta'},'还没有记忆。'):null,
       (data?.entries??[]).map(item=>e('article',{key:item.id,className:'kbw-service','data-memory-id':item.id},e('strong',null,item.title),e('p',{style:{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}},item.text),e('div',{className:'kbw-actions'},e('span',{className:'kbw-meta'},item.origin==='knowledge'?'知识库原文 · '+item.metadata.path:'记忆插件 · 全局'),item.origin==='knowledge'?btn('打开原文',()=>navigate?.('reading',item.metadata.path)):removeId===item.id?e(R.Fragment,null,e('span',null,'删除这条记忆？'),btn('确认删除',()=>void mutate({op:'memory.remove',entry_id:item.id}),busy),btn('取消',()=>setRemoveId(''),busy)):btn('删除',()=>setRemoveId(item.id),busy)))));
   }
-  return { Workbench, Guide, PreferencesSettings, CaptureSettings, knowledgeReferenceRule, KnowledgeReference, UpgradeSettings:UpgradeSettingsEntry, RetrievalSettings: RetrievalSettingsEntry, formatSize: size, api, event, registerReferences, connectEvents, dispose: () => { eventSource?.close(); eventSource = null; eventsStarted = false; styleElement?.remove(); stylesInstalled = false; guideInstance = null } }
+  return { Workbench, Guide, PreferencesSettings, CaptureSettings, ParsingDefaults, knowledgeReferenceRule, KnowledgeReference, UpgradeSettings:UpgradeSettingsEntry, RetrievalSettings: RetrievalSettingsEntry, formatSize: size, api, event, registerReferences, connectEvents, dispose: () => { eventSource?.close(); eventSource = null; eventsStarted = false; styleElement?.remove(); stylesInstalled = false; guideInstance = null } }
 }

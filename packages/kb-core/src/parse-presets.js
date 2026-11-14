@@ -1,9 +1,20 @@
 // Presets are expanded by the host as well as the UI: native credentials never
 // travel to an address supplied alongside a native provider.
-export const NATIVE_PROTOCOLS = ['dashscope-ocr', 'dashscope-asr', 'baidu-ocr', 'baidu-asr']
+export const NATIVE_PROTOCOLS = ['deepseek-ocr', 'deepseek-asr', 'dashscope-ocr', 'dashscope-asr', 'baidu-ocr', 'baidu-asr']
 export function presetProvider(input) {
   const p = { ...input }
-  if (p.vendor === 'qwen' || p.protocol?.startsWith('dashscope-')) {
+  if (p.vendor === 'deepseek' || p.protocol?.startsWith('deepseek-')) {
+    p.vendor = 'deepseek'
+    p.protocol = p.kind === 'asr' ? 'deepseek-asr' : 'deepseek-ocr'
+    p.baseUrl = 'https://api.deepseek.com/v1'
+    p.locality = 'cloud'
+    p.authScheme = 'bearer'
+    p.model = '' // Standalone tool APIs do not accept a model field.
+    p.credentialRef = p.credentialRef ?? 'DEEPSEEK_API_KEY'
+    p.formats = p.kind === 'ocr' ? ['pdf', 'doc', 'docx', 'ppt', 'pptx', 'png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'tif', 'tiff'] : p.formats
+    p.maxBytes = Math.min(Number(p.maxBytes) || 100 * 1024 * 1024, 100 * 1024 * 1024)
+    p.maxPages = Math.min(Number(p.maxPages) || 1000, 1000)
+  } else if (p.vendor === 'qwen' || p.protocol?.startsWith('dashscope-')) {
     p.vendor = 'qwen'
     p.protocol = p.kind === 'asr' ? 'dashscope-asr' : 'dashscope-ocr'
     p.region = p.region || 'cn-beijing'

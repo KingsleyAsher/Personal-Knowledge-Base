@@ -6,6 +6,7 @@ import {mkdtemp,mkdir,readFile,rename,rm,writeFile} from 'node:fs/promises'
 import {createCore} from '../packages/kb-core/index.js'
 import {createWorkbench} from '../packages/kb-core/src/workbench.js'
 import {enrollPickedLibrary} from '../apps/desktop/main/library-enrollment.js'
+import {createFirstLibraryHandoff} from '../packages/kb-service/first-library-handoff.js'
 import {connectRuntime,selectFirstSharedLibrary} from '../packages/kb-service/runtime.js'
 import {fileURLToPath} from 'node:url'
 
@@ -42,7 +43,8 @@ for(const pluginFirst of [false,true])test((pluginFirst?'plugin':'client')+' fir
   try{
     const stateDir=path.join(profiles,'desktop','kb-state');await mkdir(stateDir,{recursive:true})
     const core=createCore({stateDir,excludeFromSearch:['private-test']},()=>{})
-    const select=()=>selectFirstSharedLibrary({core,library:root,home,python:'python',node})
+    const handoff=createFirstLibraryHandoff(library=>selectFirstSharedLibrary({core,library,home,python:'python',node}))
+    const select=()=>handoff.select(root)
     if(pluginFirst){
       const old=path.join(base,'old-library');await mkdir(old)
       await writeFile(path.join(old,'kept.md'),'# Existing note')
@@ -56,6 +58,9 @@ for(const pluginFirst of [false,true])test((pluginFirst?'plugin':'client')+' fir
       const embedded=createCore({stateDir:path.join(base,'other')},()=>{})
       await assert.rejects(embedded.bind(pending,{confirmInit:true}),{code:'SERVICE_REQUIRED'})
       const result=await select();assert.equal(result.restartRequired,true);assert.equal(result.action,'created')
+      assert.deepEqual(await select(),result) // Retry before Host restart reuses the completed receipt.
+      assert.equal(handoff.receipt.restartRequired,true)
+      await assert.rejects(core.createEntry({kind:'knowledge',title:'blocked'}),{code:'SERVICE_REQUIRED'})
       plugin=await connect('dsh-adapter')
       assert.equal((await plugin.client.call('service.health')).connections,1)
     }

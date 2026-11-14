@@ -463,6 +463,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
     const [open, setOpen] = R.useState(false), [normal, setNormal] = R.useState(false), [step, setStep] = R.useState(0)
     const [prefs, setPrefs] = R.useState(defaults), [record, setRecord] = R.useState(null), [status, setStatus] = R.useState(null)
     const [error, setError] = R.useState(''), [busy, setBusy] = R.useState(false), [folder, setFolder] = R.useState('')
+    const [bindingRestart, setBindingRestart] = R.useState('')
     const deferred = R.useRef(false), active = R.useRef(false), root = R.useRef(null)
     const owns = () => { if (!guideInstance) guideInstance = owner.current; return guideInstance === owner.current }
     const refresh = R.useCallback(async () => {
@@ -532,10 +533,11 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
         e('h2', { id: 'kbw-guide-title' }, normal ? '知识库设置' : step === 0 ? '知识库插件已更新' : step === 1 ? '选择适合你的使用方式' : '确认设置'),
         step === 0 ? e('div', null, e('p', null, '当前版本 ' + version + '：目录地图、可控隐私、快速收集、阅读摘录和知识库提问。'),
           e('p', null, '接下来确认隐私展示和备份等选项。已有明确设置会保留，自动完整备份默认关闭。')) : null,
-        step === 1 ? e('div', null,
+        bindingRestart ? e('p', { role: 'status' }, bindingRestart) : null,
+        step === 1 && !bindingRestart ? e('div', null,
           e('p', { className: 'kbw-meta' }, '当前知识库：' + (status?.kbPath || '尚未绑定，可稍后设置')),
           !status?.kbPath ? e('div', null, field('知识库目录', folder, setFolder), btn('选择目录', async () => { const r = await api({ op: 'pick-dir' }); if (r.path) setFolder(r.path) }),
-            btn('接入或建立知识库', async () => { setBusy(true); try { await api({ op: 'setup', path: folder }); await refresh() } catch (err) { setError(err.message) } finally { setBusy(false) } }, busy || !folder)) : null,
+            btn('接入或建立知识库', async () => { setBusy(true); try { const result = await api({ op: 'setup', path: folder }); if (result.restartRequired) { active.current = false; deferred.current = true; setBindingRestart(result.note) } else await refresh() } catch (err) { setError(err.message) } finally { setBusy(false) } }, busy || !folder)) : null,
           e(PreferencesFields, { prefs, setPrefs }), e('details', null, e('summary', null, 'OCR / ASR 解析配置'), e(ParseSummary))) : null,
         step === 2 ? e('div', { className: 'kbw-summary' }, [
           '知识库：' + (status?.kbPath || '稍后绑定'), '隐私展示：' + (prefs.showPrivate ? '开启' : '关闭'),
@@ -543,6 +545,7 @@ body[data-ds-dark-theme]{--kbw-bg:#151718;--kbw-surface:#1d2024;--kbw-fg:#eef1f4
           '自动完整备份：' + (prefs.backup.enabled ? prefs.backup.directory + ' · ' + stateLabel(prefs.backup.frequency) : '关闭'),
           '自动解析：' + (prefs.autoParse ? '开启' : '关闭'), '回顾提醒：' + (prefs.reviewReminders ? '开启' : '关闭')].join('\n')) : null,
         error ? e('p', { className: 'kbw-error', role: 'alert' }, error) : null,
+        bindingRestart ? e('div', { className: 'kbw-actions' }, btn('知道了，稍后重启 DSH', close, busy)) :
         e('div', { className: 'kbw-actions' }, btn(normal ? '取消' : '稍后设置', close, busy),
           step > (normal ? 1 : 0) ? btn('上一步', () => setStep(step - 1), busy) : null,
           normal ? btn(busy ? '保存中…' : '保存设置', save, busy) : step < 2 ? btn('下一步', () => setStep(step + 1), busy) : btn(busy ? '保存中…' : '保存并开始使用', save, busy))))
