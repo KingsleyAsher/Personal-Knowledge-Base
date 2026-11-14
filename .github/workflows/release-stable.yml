@@ -41,8 +41,13 @@ jobs:
         run: python -X utf8 tools/verify-release.py
       - name: Install pinned package manager for transaction checks
         run: npm.cmd install --global --prefix "$env:APPDATA\npm" pnpm@11.23.0 --ignore-scripts
+      - name: Ensure FFmpeg for parsing regressions
+        run: |
+          if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) { choco install ffmpeg --no-progress -y; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }
       - name: Focused release checks
         run: |
+          node --test --test-reporter=tap tests/deepseek-parsing.test.mjs tests/parsing-default-selector.test.mjs tests/settings-directory-contract.test.mjs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node --test --test-reporter=tap tests/library-framework.test.mjs tests/library-framework-ui.test.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python -X utf8 -m unittest discover -s tests -p test_legacy_bootstrap.py

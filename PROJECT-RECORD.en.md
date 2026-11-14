@@ -2,9 +2,43 @@
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 3.0.2 -->
+<!-- project-record-version: 3.1.0 -->
 
-**Source: plugin 3.0.2 / client 2.0.2 · Updated: 2026-11-11 · Local build and unreleased signing changes. GitHub stable: plugin 3.0.1 / client 2.0.1.**
+**Plugin source 3.1.0; desktop public 2.0.1, local source 2.0.2 · 2026-11-14.**
+
+## 2026-11-14 · Plugin 3.1.0 · DeepSeek parsing and default-service selection
+
+Integrate the official standalone DeepSeek OCR / ASR APIs. Unconfigured libraries offer DeepSeek defaults; retain existing providers, selections and local-only policies. Submit documents directly to OCR and convert long audio with FFmpeg to mono 16 kHz PCM chunks. Preserve pages, truncation and failures without inventing word timestamps. Credentials use encrypted storage or DEEPSEEK_API_KEY; official endpoints are pinned.
+
+Expose separate OCR / ASR selectors in workbench and global settings, automatically save choices and refresh after provider changes. Show readable vendor names when no custom name exists. Fix blank settings caused by mismatched shared-service directory fields and include the previously unreleased first-library handoff fix. Package updates do not rebuild or migrate existing libraries.
+
+Focused parsing, selector, directory-contract, credential, external-policy and chunk-retry checks passed; the release workflow also checks transaction recovery, shared-library compatibility and retrieval. Synthetic files and simulated cloud responses were used, with real FFmpeg conversion. No paid cloud requests were made; live quota and recognition quality are not claimed. Publish plugin 3.1.0 only; public desktop remains 2.0.1. Local desktop 2.0.2 and signing preparation do not constitute a new installer release.
+
+## 2026-11-14 · Readable parsing-service selector names (local fix; unpublished)
+
+Fix default selectors and descriptions displaying internal ocr-/asr- IDs. The backend historically uses the ID as label when no name is entered, and the selector mistook it for a custom name. Preserve genuine custom labels; otherwise derive names such as DeepSeek OCR and DeepSeek ASR from vendor or protocol, alongside local/LAN/cloud location. Stored provider IDs and selected defaults remain unchanged.
+
+Expanded and passed the selector regression for labels equal to IDs, missing names inferred from protocol, custom-label preservation, saving selections, failed-save preservation and reloading. Source syntax checks passed. Source and local package only; unpublished on GitHub.
+
+## 2026-11-14 · Select configured default parsing services (local feature; unpublished)
+
+Both the workbench and DSH global parsing settings provide separate OCR and ASR default-service selectors. Options are filtered by kind, show local/LAN/cloud location, and disable inactive providers. Selection automatically saves through the existing parse.default API; subsequent imports, parsing and flows use the stored defaults without changing running jobs. Show save success or failure, retain the previous selection on failure, and preserve local-only policy with a warning for a selected cloud service.
+
+Synchronize provider management and selectors through a UI event and refresh after closing management, so additions, deletions and default changes remain visible. Seven targeted checks passed, including kind filtering, selected-ID persistence, failed-save preservation, reload persistence, directory contract and retrieval settings regressions. Source and local package only; no GitHub publication or live cloud recognition claim.
+
+## 2026-11-14 · Fix blank global settings panel (local fix; unpublished)
+
+The actual desktop console showed `Cannot read properties of undefined (reading 'trim')` in Section. The shared directory endpoint returns current/defaultCandidate/canWrite while the settings component expected bound/defaultKnowledgeBase/defaultWritable. An asynchronous undefined candidate triggered the host slot error boundary and left the panel blank.
+
+Accept both directory response shapes, populate candidates only for unbound libraries with a valid default, and normalize nullable paths during rendering and setup. The shared service also supplies the legacy field aliases. Preserve the bound library and existing parsing providers without rebuilding or switching libraries. Twelve targeted checks passed, covering both response contracts, status timing, missing fields and first-library handoff regressions. Source and local package only; no GitHub publication or live cloud recognition claim.
+
+## 2026-11-14 · Default DeepSeek OCR / ASR (source and local plugin package; unpublished)
+
+Unconfigured libraries default to DeepSeek OCR / ASR with allow-configured. Existing providers, default selections and explicit local-only policies remain authoritative. The settings form defaults to DeepSeek and supports an encrypted saved API key or a DEEPSEEK_API_KEY environment reference. Official API endpoints are pinned and credentials remain private. TTS is outside file parsing and is unchanged.
+
+Use the official standalone multipart protocols. OCR submits images, PDF, Word and PowerPoint directly without local PDF rendering, preserves pages and provider usage, and marks length-limited output as partial. ASR reuses FFmpeg mono 16 kHz PCM conversion, 50-second chunks and failed-chunk retries, within the official 120-second / 8 MiB request limits. No word timestamps are invented. Handle error objects inside HTTP 200 responses and retain external-transfer and binding checks.
+
+Validation: defaults, pinned endpoints, multipart fields, errors and truncation, simulated PDF tasks and real FFmpeg segmentation of 121-second audio, plus existing parsing/native-provider regressions (16 tests). No real user files were sent to cloud services; live account quota and recognition quality remain unverified. Source and local plugin package only: not installed in the running DSH and not published to GitHub.
 
 ## 2026-11-11 · Windows signing preparation (source changes; no signed artifact)
 

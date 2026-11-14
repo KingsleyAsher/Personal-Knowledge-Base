@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
 
 const failure = (code, requestId) => {
   const messages = { BAIDU_AUTH: '百度鉴权失败，请检查 API Key 和 Secret Key', MISSING_CREDENTIAL: '缺少凭据，请在设置中填写', BAIDU_6: '当前应用未开通该接口权限', BAIDU_17: '每日调用额度已用尽', BAIDU_18: '请求过于频繁，请稍后手动重试', BAIDU_19: '调用额度已用尽', BAIDU_110: '凭据失效，请重新配置', BAIDU_111: '凭据过期，请重新配置', BAIDU_3302: '语音鉴权失败，请检查应用权限', InvalidApiKey: 'API Key 无效，请检查凭据和地域', QuotaExhausted: '额度已用尽，请检查服务商账户', Throttling: '请求受到限流，请稍后手动重试', EMPTY_TEXT: '服务返回空文字，请检查素材或识别模式' }
@@ -20,6 +21,22 @@ export function createNativeAdapter({ request, credentials }) {
     return { ok: true, token: r.json.access_token }
   }
   async function recognize(p, data, mime, context, retried = false) {
+    if (p.vendor === 'deepseek') {
+      const c = await credentials.read(p.credentialRef)
+      if (!c.apiKey) return failure('MISSING_CREDENTIAL')
+      if (p.kind === 'asr' && data.length > 8 * 1024 * 1024) return failure('FILE_TOO_LARGE')
+      const boundary = 'kb-deepseek-' + randomUUID()
+      const extension = mime === 'audio/wav' ? 'wav' : context.extension || 'png'
+      const fields = p.kind === 'ocr' ? `--${boundary}\r\nContent-Disposition: form-data; name="purpose"\r\n\r\ntext_recognition\r\n` : ''
+      const body = Buffer.concat([Buffer.from(`${fields}--${boundary}\r\nContent-Disposition: form-data; name="file"; filename="source.${extension}"\r\nContent-Type: ${mime}\r\n\r\n`), data, Buffer.from(`\r\n--${boundary}--\r\n`)])
+      const r = await request(p, `${p.baseUrl}/tools/${p.kind}`, { method: 'POST', headers: { Authorization: `Bearer ${c.apiKey}`, 'content-type': `multipart/form-data; boundary=${boundary}` }, body }, context)
+      if (!r.ok) return r
+      const j = r.json
+      if (j?.error) return failure('DEEPSEEK_TOOL_ERROR', j.id || j.request_id)
+      if (p.kind === 'asr') return typeof j?.text === 'string' && j.text.trim() ? { ok: true, text: j.text, durationMs: j.duration_ms, requestId: j.request_id } : failure('EMPTY_TEXT')
+      if (!Array.isArray(j?.pages) || !j.pages.length || j.page_count !== j.pages.length || j.pages.some((page, index) => page.index !== index || typeof page.text !== 'string' || !['stop', 'length'].includes(page.finish_reason))) return failure('DEEPSEEK_BAD_RESPONSE')
+      return { ok: true, text: j.pages.map(page => page.text).join('\n\n'), pages: j.pages, pageCount: j.page_count, usage: j.usage, requestId: j.id }
+    }
     if (p.protocol.startsWith('dashscope-')) {
       const c = await credentials.read(p.credentialRef)
       if (!c.apiKey) return failure('MISSING_CREDENTIAL')

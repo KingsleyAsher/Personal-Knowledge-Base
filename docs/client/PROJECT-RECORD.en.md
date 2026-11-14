@@ -6,6 +6,10 @@
 
 **Source: plugin 3.0.2 / client 2.0.2 · Updated: 2026-11-11 · Local build and unreleased signing changes. GitHub stable: plugin 3.0.1 / client 2.0.1.**
 
+## 2026-11-14 · Shared parsing kernel update (desktop installer unpublished)
+
+Shared source adds DeepSeek OCR / ASR, default-service selectors and settings fixes. Only plugin 3.1.0 is released in this change. Public desktop installer remains 2.0.1; local 2.0.2 source and signing preparation are not a new installer release.
+
 ## 2026-11-11 · Windows signing preparation (source changes; no signed artifact)
 
 Add a trusted Authenticode signing entry point with chain, private-key, validity, publisher and timestamp verification. Sign mutated executables before payload hashes and sign the outer installer last. Production packaging requires signing by default; only explicit --allow-unsigned permits a local development build. Locate the payload trailer using the PE certificate table so an appended signature does not break extraction; retain ZIP SHA-256 validation.

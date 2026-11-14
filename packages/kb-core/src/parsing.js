@@ -84,8 +84,8 @@ export function parseFailureSummary(job) {
 }
 
 export const PARSE_PROTOCOLS = {
-  ocr: ['openai-vision', 'dashscope-ocr', 'baidu-ocr', 'paddle-local', 'paddle-service', 'ppocr-local'],
-  asr: ['openai-audio-transcriptions', 'cli-transcribe', 'dashscope-asr', 'baidu-asr', 'qwen3-local'],
+  ocr: ['deepseek-ocr', 'openai-vision', 'dashscope-ocr', 'baidu-ocr', 'paddle-local', 'paddle-service', 'ppocr-local'],
+  asr: ['deepseek-asr', 'openai-audio-transcriptions', 'cli-transcribe', 'dashscope-asr', 'baidu-asr', 'qwen3-local'],
 }
 
 export const PARSE_KINDS = ['ocr', 'asr']
@@ -313,7 +313,7 @@ export function normalizeProvider(input, extra = {}) {
   const credentialRef = typeof src.credentialRef === 'string' ? src.credentialRef.trim() : ''
   if (!validCredentialRef(credentialRef)) errors.push({ field: 'credentialRef', code: 'BAD_CREDENTIAL_REF', message: 'credentialRef 只能填环境变量名（如 KB_OCR_TOKEN），不要粘贴密钥' })
   const value = {
-    vendor: ['openai', 'custom', 'qwen', 'baidu', 'local'].includes(src.vendor) ? src.vendor : 'custom',
+    vendor: ['deepseek', 'openai', 'custom', 'qwen', 'baidu', 'local'].includes(src.vendor) ? src.vendor : 'custom',
     region: src.region || '',
     workspaceId: src.workspaceId || '',
     modelPath: String(src.modelPath || ''),
@@ -336,7 +336,7 @@ export function normalizeProvider(input, extra = {}) {
     timeoutMs: clampInt(src.timeoutMs, 5_000, MAX_TIMEOUT_MS, DEFAULT_TIMEOUT_MS),
     formats,
     maxBytes: clampInt(src.maxBytes, 1_024, MAX_BYTES_LIMIT, 50 * 1024 * 1024),
-    maxPages: clampInt(src.maxPages, 1, 300, 40),
+    maxPages: clampInt(src.maxPages, 1, src.vendor === 'deepseek' ? 1000 : 300, src.vendor === 'deepseek' ? 1000 : 40),
     enabled: src.enabled !== false,
     notes: typeof src.notes === 'string' ? src.notes.slice(0, 300) : '',
     updatedAt: extra.now ?? nowIso(),
@@ -367,6 +367,14 @@ export function normalizeProvider(input, extra = {}) {
 /** 解析配置块（stateDir/config.json 的 parsing 字段）的总校验。 */
 export function normalizeParsingConfig(raw) {
   const src = raw && typeof raw === 'object' ? raw : {}
+  // Seed only unconfigured installations. Persisted provider lists/defaults and
+  // explicit local-only policies continue to be authoritative.
+  if (!Array.isArray(src.providers)) return normalizeParsingConfig({
+    ...src,
+    providers: ['ocr', 'asr'].map(kind => ({ id: `deepseek-${kind}`, kind, vendor: 'deepseek', label: `DeepSeek ${kind.toUpperCase()}` })),
+    defaultOcr: 'deepseek-ocr', defaultAsr: 'deepseek-asr',
+    externalPolicy: src.externalPolicy ?? 'allow-configured',
+  })
   const providers = []
   const seen = new Set()
   const errors = []
@@ -1647,6 +1655,22 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
   }
 
   async function runOcr(provider, conf, job, work, entry, diagnostics) {
+    if (provider.protocol === 'deepseek-ocr') {
+      const gate = await executionGate(provider, conf)
+      if (!gate.ok) return gate
+      job.stage = 'recognizing'
+      await writeJob(entry.binding, job)
+      const r = await native.image(provider, entry.sourcePath, mimeOf(job.source.format), { signal: entry.controller.signal, timeoutMs: provider.timeoutMs, conf, extension: job.source.format })
+      if (!r.ok) return r
+      const pages = r.pages.slice(0, provider.maxPages).map(p => ({ page: p.index + 1, text: p.text, chars: p.text.length, method: 'deepseek-ocr', status: p.finish_reason === 'stop' ? 'ok' : 'partial' }))
+      const partial = r.pages.filter(p => p.finish_reason === 'length' || p.index >= provider.maxPages).map(p => ({ unit: 'page', index: p.index + 1, code: p.finish_reason === 'length' ? 'OUTPUT_TRUNCATED' : 'PAGES_TRUNCATED' }))
+      job.progress.pagesTotal = r.pageCount
+      job.progress.pagesDone = pages.length
+      if (!r.text.trim()) return { ok: false, code: 'EMPTY_TEXT' }
+      const result = finalizeOcr(job, pages, 'deepseek-ocr', { pageCount: r.pageCount, diagnostics })
+      result.usage = r.usage ? { ...r.usage, source: 'provider' } : result.usage
+      return { ok: true, result, partial }
+    }
     const fmt = job.source.format
     const pages = []
     let pageCount = 0
@@ -1824,7 +1848,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     await writeJob(entry.binding, job)
     let out
     if (provider.protocol === 'cli-transcribe') out = await asrViaCli(provider, entry.sourcePath, work, { signal: entry.controller.signal, diagnostics, entry })
-    else if (['dashscope-asr', 'baidu-asr', 'qwen3-local'].includes(provider.protocol)) out = await chunkedAsr(provider, conf, job, work, entry, diagnostics)
+    else if (['deepseek-asr', 'dashscope-asr', 'baidu-asr', 'qwen3-local'].includes(provider.protocol)) out = await chunkedAsr(provider, conf, job, work, entry, diagnostics)
     else out = await asrViaHttp(provider, entry.sourcePath, { signal: entry.controller.signal, diagnostics, conf })
     if (!out.ok) return { ok: false, code: out.code, detail: out.detail, partial: out.partial }
     const segments = out.segments ?? null
