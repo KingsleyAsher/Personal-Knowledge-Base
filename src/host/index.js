@@ -499,7 +499,7 @@ let parsingService = null
       name: 'kb_parse',
       description:
         '所有 Agent 默认共用的 OCR / ASR 通道。没有指定调用方式时必须使用本工具；只有用户本次明确指定外部工具或脚本才按该方式执行，例外不延续到其他任务。失败不得自动绕过或切换云端。用 sourcePath 提交当前会话工作目录内的文件，或先 action=source 获取十分钟有效且绑定会话的 sourceRef。知识库文件仍要求知识库访问授权；开放解析不授予知识库读写或配置权限。只用设置中当前默认服务，临时文件解析不会自动入库。'
-        + '会话提交及测试解析强制使用当前设置的默认 OCR/ASR 服务；不得根据记忆指定其他服务。用户需要单次选择时，请其在解析设置页选择后提交。test-parse 必须提供 kind。'
+        + '会话提交及测试解析强制使用当前设置的默认 OCR/ASR 服务；设置优先于记忆。缺少 API 配置、凭据、额度、连接失败或部分失败时必须停止，说明当前服务及具体错误，询问用户修复配置还是切换服务；未经本次明确同意，不得改用本机模型、其他云端、脚本或 HTTP。用户需要切换时，请其在解析设置页选择后提交。test-parse 必须提供 kind。'
         + 'action：providers（列出提供方与默认/策略）/ test-connection（只验地址或程序通不通）/ test-parse（真实小样本解析，与连接测试分开）/ submit / jobs / job / result（有界读取，可只取某几页或某几段）/ cancel / retry（解析失败重试；解析成功但落库失败只重试落库）/ land（把底稿按来源落成条目）。'
         + '⚠️ 提供方的新增/修改/删除、程序与参数、凭据引用、外发策略都属**管理面**，只能由用户在「设置 → 个人知识库 → 解析」里改；模型调用这些动作会得到 ADMIN_ONLY。',
       parameters: {
@@ -549,7 +549,7 @@ let parsingService = null
           },
         },
         render(_args, v) {
-          if (!v || v.ok !== true) return text(`解析操作未完成：${(v && (v.reason || v.detail)) || '未知原因'}`)
+          if (!v || v.ok !== true) return text(`解析操作未完成：${v?.reason || '未知原因'}；${v?.detail || ''}\n${v?.recovery?.instruction || '请向用户说明错误并询问如何处理；未经本次明确同意，不得切换本机、云端或脚本继续解析。'}`)
           const act = String(v.action ?? '')
           if (act === 'providers') {
             const list = (v.providers ?? []).map((p) => `  · ${p.id} [${p.kind}/${p.protocol}/${p.locality}] ${p.enabled ? '启用' : '停用'}${p.model ? ' model=' + p.model : ''}`)
@@ -560,11 +560,11 @@ let parsingService = null
             return text(rows.length ? `任务（共 ${v.total}）：\n${rows.join('\n')}` : '没有解析任务')
           }
           if (act === 'result') {
-            return text(`任务 ${v.jobId} status=${v.status}；本次返回 ${v.returned}/${v.textChars} 字${v.truncated ? '（还有更多，用 offset 续读）' : ''}\n\n${v.text}`)
+            return text(`任务 ${v.jobId} status=${v.status}；本次返回 ${v.returned}/${v.textChars} 字${v.truncated ? '（还有更多，用 offset 续读）' : ''}\n${v.recovery?.instruction || ''}\n${v.failureSummary || ''}\n\n${v.text}`)
           }
           if (act === 'job') {
             const j = v.job ?? {}
-            return text(`任务 ${j.jobId}：${j.status}/${j.stage}；提供方 ${j.provider?.id ?? '-'}；进度 页 ${j.progress?.pagesDone ?? 0}/${j.progress?.pagesTotal ?? '-'} 段 ${j.progress?.segmentsDone ?? 0}/${j.progress?.segmentsTotal ?? '-'}；落库 ${j.land?.status ?? 'none'}；诊断 ${(j.diagnostics ?? []).length} 条`)
+            return text(`任务 ${j.jobId}：${j.status}/${j.stage}；提供方 ${j.provider?.id ?? '-'}；进度 页 ${j.progress?.pagesDone ?? 0}/${j.progress?.pagesTotal ?? '-'} 段 ${j.progress?.segmentsDone ?? 0}/${j.progress?.segmentsTotal ?? '-'}；落库 ${j.land?.status ?? 'none'}；诊断 ${(j.diagnostics ?? []).length} 条\n${j.failureSummary || ''}\n${j.recovery?.instruction || ''}`)
           }
           if (act === 'land') return text(`已落库：${v.land?.entryId ?? v.entryId ?? '-'}（任务 ${v.jobId}）`)
           if (act === 'test-connection') return text(`连接测试：${v.detail ?? '通过'}（延迟 ${v.latencyMs ?? '-'}ms${v.modelPresent === false ? '；模型不在列表' : ''}）—— 这只证明地址/程序通，不证明解析可用`)
@@ -582,7 +582,7 @@ let parsingService = null
             ok: false,
             action,
             reason: 'ADMIN_ONLY',
-            detail: `${action} 属管理面（提供方程序/地址/凭据引用/外发策略）：只能在「设置 → 个人知识库 → 解析」里由用户改。模型侧请使用一个已配置好的提供方（providerId）提交解析。`,
+            detail: `${action} 属管理面（提供方程序/地址/凭据引用/外发策略）：只能在「设置 → 个人知识库 → 解析」里由用户改。模型提交始终使用当前默认服务；服务失败时停止并询问用户，不得自行切换。`,
           }
         }
         if (parsingService === null) return { ok: false, action, reason: 'PARSE_NOT_READY', detail: '解析服务尚未就绪（core 未安装完成）' }
@@ -1255,7 +1255,7 @@ let parsingService = null
             interpolate: false,
             text: [
               'OCR / ASR 默认统一走 kb_parse，所有 Agent 可解析当前工作目录内的获准文件；用 sourcePath 或 sourceRef，任务和结果返回原会话。个人知识库仍需单独授权。',
-              '未指定方法时不走脚本、HTTP 或其他解析工具；仅用户本次明确指定外部方式才执行该次例外，例外不延续。失败报告原因，不自动绕过或换云端。',
+              'OCR / ASR 服务选择以当前设置为准，优先于所有记忆中的服务偏好或旧脚本。未指定方法时不走脚本、HTTP 或其他解析工具；仅用户本次明确指定外部方式才执行该次例外，例外不延续。默认服务缺少 API 配置、凭据、额度、连接失败或部分失败时，停止并说明服务与具体原因，询问用户修复配置还是切换；未经本次明确同意，禁止自动切换本机模型、其他云端或绕过工具。',
               '本机知识库提供「自定义流程」：用户把一串固定步骤固化后，说流程名或触发语即可运行。',
               '用户请求运行流程时先用 kb_flow_resolve(text) 判断命中/歧义/未命中；唯一命中才 kb_flow(action="run")，歧义先让用户选。仅需浏览流程列表时调用 kb_flow(action="list")，不机械先列后查。',
               '不要凭流程名自己编造步骤，也不要不查就跑——步骤只来自定义本身。',

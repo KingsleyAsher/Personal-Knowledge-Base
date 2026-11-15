@@ -1,11 +1,11 @@
 {
   "package": "@local/dsh-knowledge-base",
-  "version": "3.1.1",
-  "buildId": "8146ea302330820e",
-  "tgz": "local-dsh-knowledge-base-3.1.1.tgz",
-  "bytes": 15907968,
-  "sha256": "40245e5510113b3ac2a563f4c194a173123397b0dbf84c2765096fe054ab1830",
-  "integrity": "sha512-dNb8F6acoG85BTQABz5PORNzdxIZ2412yJHldshmbFA40WpQsnlVG2Ho85/CUnYiqJTczol8oRc19tR94Uy/nQ==",
+  "version": "3.1.2",
+  "buildId": "26c090a74d9c8be5",
+  "tgz": "local-dsh-knowledge-base-3.1.2.tgz",
+  "bytes": 15910943,
+  "sha256": "6c9b0a90e4815c3b9a15bed213e554df94d9d12d5c88d00fb9b00d4171b21704",
+  "integrity": "sha512-O1C3VKHwvqN29cAhiQlqQKFQ+ugsd7MQXs6AcVUbRRpyiY/Ys84JdlkKw1NTDdo13LsbFgshLXOcQPa42kvBTQ==",
   "packageFileCount": 511,
   "buildFileCount": 378,
   "files": [
@@ -86,18 +86,18 @@
     },
     {
       "path": "PROJECT-RECORD.en.md",
-      "bytes": 106180,
-      "sha256": "7985638033f000c170738888483b8a8cc30cbe9492f46600b7d2860f7daefd7b"
+      "bytes": 108840,
+      "sha256": "ac29930cfa4b73c458576b183df2c8b7e2384a1785629d794c96887fd24738ed"
     },
     {
       "path": "PROJECT-RECORD.md",
-      "bytes": 93240,
-      "sha256": "6c8fa2f14f70f150ae3a133e1899d96c9795edddec1452ecb5558583cd5b71fe"
+      "bytes": 95569,
+      "sha256": "03ffedda09d097ac32454e4d01dd3783b558f40d4d282ed2306991df87ff3f82"
     },
     {
       "path": "README.md",
-      "bytes": 10333,
-      "sha256": "b1691a6f1a72de83e51c5167f79e0db6c88ee601f3d53780368727094d8f031b"
+      "bytes": 10353,
+      "sha256": "1b65159557210cc00eeea2f4a7fdf868f6acef462e3aa22f86e2319a79585ff4"
     },
     {
       "path": "README.zh-CN.md",
@@ -106,13 +106,13 @@
     },
     {
       "path": "RELEASE.en.md",
-      "bytes": 66730,
-      "sha256": "64b40682b25b16f17fd87946928c8407be8545f22d1f5c22a023161ca5609bd0"
+      "bytes": 67967,
+      "sha256": "06ecc6e375ef1ae1477e1edf04d0f48dfbd93f483c138b74f2e810673aafe221"
     },
     {
       "path": "RELEASE.md",
-      "bytes": 60626,
-      "sha256": "1261d89ec8e74dc24e9c25f2bd2da523ca99f0bd5b95997eaba5b03ad761fbec"
+      "bytes": 61684,
+      "sha256": "f3ba15be4206ecde5ebd75d7926d54085fbece7d9c7b3e4a2c0b585a97e8e2f6"
     },
     {
       "path": "RETRIEVAL.md",
@@ -131,13 +131,13 @@
     },
     {
       "path": "VERSIONING.en.md",
-      "bytes": 6185,
-      "sha256": "68c41473949ebda860f88facf3ef35e3bcfb391c2a721379a48ce746adaf6ab1"
+      "bytes": 6207,
+      "sha256": "88ffa74b87a1d0679476b8a059c1e5f5119952235bd6e82e810929e01ca2cdbb"
     },
     {
       "path": "VERSIONING.md",
       "bytes": 6294,
-      "sha256": "04999a75dfe5c5cf4fc4ef06d09db826fba97696b1858606bf13c7c81a32ff59"
+      "sha256": "7f7ec2e940e932777bd9f158b2c2d3f86e33527ab51ef86630176db6ac29d31b"
     },
     {
       "path": "WORKBENCH.en.md",
@@ -562,7 +562,7 @@
     {
       "path": "package.json",
       "bytes": 1760,
-      "sha256": "89fa288066d9e564f786eef6cc887d6dcae2ef4572ceb712bd7653530a776a39"
+      "sha256": "c061ae6d1716e3fc099c1702601879ad9a8d0b4eb8f76980477290214276f856"
     },
     {
       "path": "packages/kb-contracts/desktop.js",
@@ -687,7 +687,7 @@
     {
       "path": "packages/kb-core/src/kbcore.js",
       "bytes": 135469,
-      "sha256": "5895171bce8bfde09245d8a3291ff6809b2cde7f4600f54619f113fee2e16880"
+      "sha256": "8032a9a80672a569bc7514b6f1357699c6e20ecbf5cd25c57e03d9a948f2932d"
     },
     {
       "path": "packages/kb-core/src/library-framework.js",
@@ -741,8 +741,8 @@
     },
     {
       "path": "packages/kb-core/src/parsing.js",
-      "bytes": 124960,
-      "sha256": "9ca0d25910569a296e6ad432a3aadb7402fcac287d7e8a087cd422dbbb017282"
+      "bytes": 125835,
+      "sha256": "b2d0dafd4037c3278667e85bf60142ce1587c622aa2824cadc37393421c9604b"
     },
     {
       "path": "packages/kb-core/src/relation-name-lookup.js",
@@ -931,8 +931,8 @@
     },
     {
       "path": "packages/kb-service/host-adapter.js",
-      "bytes": 15891,
-      "sha256": "c779d0bc6379fe085e1ce1fe5dd61d1c527faacc006def95a372572ab86aeb8b"
+      "bytes": 16921,
+      "sha256": "43132b534569afa05d84a54227cf4e4dd1938a49ce6b11f5e166bcf7b42a6bcd"
     },
     {
       "path": "packages/kb-service/host-assets.js",
@@ -1296,8 +1296,8 @@
     },
     {
       "path": "src/client/index.js",
-      "bytes": 503924,
-      "sha256": "437ac31a0249727ee5b2f7624e328f2453bc39c70a4908ab23fdaf8e9de2b59c"
+      "bytes": 504174,
+      "sha256": "169518242e336d5f556cae84c59a0f7ca9a8761db35d50cd5b5ca88d97df65c2"
     },
     {
       "path": "src/client/knowledge-ui.css",
@@ -2381,8 +2381,8 @@
     },
     {
       "path": "src/host/index.js",
-      "bytes": 166867,
-      "sha256": "61c15592e8bdf128a3fb3e07c3f20a11a20efedcaa60fcc5af0f99f853fb4a87"
+      "bytes": 167706,
+      "sha256": "aac36335ed96cbd94b88210abf81b48142bd76dad4dc0abe365392f1566c16d7"
     },
     {
       "path": "src/host/kbcore.js",
@@ -2569,8 +2569,6 @@
     "productionInstalled": false,
     "formalRuntimeVerified": false,
     "realModelAnswerVerified": false,
-    "realCloudApiTested": false,
-    "automatedChecksPassed": true,
-    "releaseNoticeTestsPassed": 18
+    "realCloudApiTested": false
   }
 }

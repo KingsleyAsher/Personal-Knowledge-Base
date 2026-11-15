@@ -2,9 +2,22 @@
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 3.1.1 -->
+<!-- project-record-version: 3.1.2 -->
 
-**Plugin source 3.1.1; desktop public 2.0.1, local source 2.0.2 · 2026-11-14.**
+**Plugin source 3.1.2; desktop public 2.0.1, local source 2.0.2 · 2026-11-15.**
+
+## 2026-11-15 · Plugin 3.1.2 · Stop and ask after parsing failure
+
+Restore the detailed kb_parse description and all-Agent parsing context in shared-library mode. Current OCR/ASR defaults take precedence over memory. Missing API configuration, credentials, quota, connectivity and partial failures require stopping, reporting the cause and asking whether to repair configuration or switch services. Local models, other cloud services, scripts and HTTP require explicit consent for this request; users still change defaults in settings. Rejected submissions and failed or partial public responses include no-fallback and ask-user recovery instructions, and tool rendering preserves actual errors.
+
+Twelve local focused checks passed, covering a working local ASR service, a cloud default missing credentials, a remembered local provider ID, retry, empty defaults and the real Windows shared service. Cloud failures made no additional local calls. Release artifacts contain the 3.1.2 plugin TGZ, checksums and update parts; the public desktop installer remains 2.0.1. Restart DSH to load the rules. No paid cloud API or real model conversation was tested; these rules do not provide host-level interception of general Shell/HTTP tools.
+
+## 2026-11-14 · Stop and ask after default ASR failure (local fix, unpublished)
+
+The shared Host had replaced the parsing tool instructions with its name alone and omitted parsing context. Restore the tool description and all-Agent parsing context in shared mode. Clarify the parsing rules for every Agent: current settings take precedence over memory. Missing API configuration, credentials, quota or connectivity must stop parsing and report the cause; local models, other cloud services, scripts and HTTP require explicit consent for this request. Users still change the default in settings. The shared service continues to enforce the configured default. Rejected submissions and failed or partial public jobs/results now include no-fallback and ask-user recovery instructions. Tool rendering preserves the actual error and recovery instruction; remove misleading admin-denial wording suggesting that models can choose another provider.
+
+Twelve focused checks passed, including a working local ASR service, a cloud default missing credentials, a remembered local provider ID, retry and an empty default: cloud failures made no additional local calls. This is a source and local installation fix, not a GitHub release. Restart DSH to load it. Plugin entry rules and responses do not provide host-level interception of general Shell/HTTP tools; the real model conversation and its ask-user behavior remain unverified.
+
 
 ## 2026-11-14 · Plugin 3.1.1 · Release notes follow the actual upgrade range
 

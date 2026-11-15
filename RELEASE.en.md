@@ -1,3 +1,9 @@
+## 2026-11-15 · Plugin 3.1.2 · Stop and ask after parsing failure
+
+Restore the detailed kb_parse description and all-Agent parsing context in shared-library mode. Current OCR/ASR defaults take precedence over memory. Missing API configuration, credentials, quota, connectivity and partial failures require stopping, reporting the cause and asking whether to repair configuration or switch services. Local models, other cloud services, scripts and HTTP require explicit consent for this request; users still change defaults in settings. Rejected submissions and failed or partial public responses include no-fallback and ask-user recovery instructions, and tool rendering preserves actual errors.
+
+Twelve local focused checks passed, covering a working local ASR service, a cloud default missing credentials, a remembered local provider ID, retry, empty defaults and the real Windows shared service. Cloud failures made no additional local calls. Release artifacts contain the 3.1.2 plugin TGZ, checksums and update parts; the public desktop installer remains 2.0.1. Restart DSH to load the rules. No paid cloud API or real model conversation was tested; these rules do not provide host-level interception of general Shell/HTTP tools.
+
 ## 2026-11-14 · Plugin 3.1.1 · Release notes follow the actual upgrade range
 
 Filter notes strictly after the previously installed version through the target version. The last dismissed version and older unread notes no longer widen the range. Reopening the same target preserves its range; another upgrade starts a new range. Retire legacy pending ranges without replay, display the version interval, and register the missing 3.1.0 DeepSeek parsing, default selectors and settings fixes. Patch-only installs remain quiet; fresh installs and downgrades do not show historical upgrade notes.
