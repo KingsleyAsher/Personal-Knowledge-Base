@@ -46,7 +46,7 @@ jobs:
           if (-not (Get-Command ffmpeg -ErrorAction SilentlyContinue)) { choco install ffmpeg --no-progress -y; if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE } }
       - name: Focused release checks
         run: |
-          node --test --test-reporter=tap tests/deepseek-parsing.test.mjs tests/parsing-default-selector.test.mjs tests/settings-directory-contract.test.mjs
+          node --test --test-reporter=tap tests/parsing-no-fallback.test.mjs tests/deepseek-parsing.test.mjs tests/parsing-default-selector.test.mjs tests/settings-directory-contract.test.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           node --test --test-reporter=tap tests/library-framework.test.mjs tests/library-framework-ui.test.mjs
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

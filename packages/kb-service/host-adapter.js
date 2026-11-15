@@ -83,8 +83,11 @@ export async function mountServiceHost(ctx, config, { isLiveKnowledgeGrant, gate
   }
   const tools = ctx.get('tools')
   if (!tools) throw Error('Host tools service is required')
+  const parseRule = 'OCR / ASR 必须使用 kb_parse，服务选择以当前设置为准，优先于所有记忆中的偏好或旧脚本。默认服务缺少 API 配置、凭据、额度、连接失败或部分失败时必须停止，向用户说明服务和具体错误并询问修复配置还是切换服务；未经用户本次明确同意，禁止自动切换本机模型、其他云端、脚本或 HTTP。默认值只能由用户在解析设置页修改。仅用户本次明确指定外部方式才执行该次例外，例外不延续。'
+  const systemPrompt = ctx.get('systemPrompt')
+  if (typeof systemPrompt?.context === 'function') ctx.effect(() => systemPrompt.context({ name:'kb:parse-policy', order:600, interpolate:false, text:parseRule }), 'kb-service: parse policy')
   for (const definition of definitions) {
-    const entry = { name:definition.name, description:'共享知识库服务：'+definition.name, parameters:definition.parameters,
+    const entry = { name:definition.name, description:definition.name === 'kb_parse' ? parseRule + '用 action=submit、kind=asr/ocr 和 sourcePath/sourceRef/sourceRel 提交；action=providers 查询当前设置，job/result 查看任务和结果。providerId 不能覆盖会话默认服务。' : '共享知识库服务：'+definition.name, parameters:definition.parameters,
       output:{schema:definition.outputSchema,render:(_args,value)=>[{type:'text',text:JSON.stringify(value)}]},
       isConcurrencySafe:()=>false,
       async execute(input,exec) {const invoke=async()=>{const target=desktopLinks?.clientForAgent(exec?.agent);if(target===null)return {ok:false,reason:'HOST_UNAVAILABLE'};return routing.run(target??primaryClient,async()=>{

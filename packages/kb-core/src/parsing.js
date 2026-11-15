@@ -14,7 +14,7 @@
  *    全公网解析一律拒绝，且拒绝发生在**发送正文之前**；跨源重定向逐跳复核。
  *  · 管理面与使用面分离（2026-10-18 定向审查缺口 2）：提供方增删改、可执行程序/参数、
  *    credentialRef、renderCommand、externalPolicy **只允许宿主认可的用户管理入口**改
- *    （saveProvider 等要求 viaAdmin），knowledge 模型只能在**预先固定**的提供方里挑一个。
+ *    （saveProvider 等要求 viaAdmin），模型提交始终使用设置中的默认提供方。
  *  · 不伪造：引擎没给的字段（词级时间戳、置信度、说话人）一律标 unavailable，不生成。
  *
  * 任务状态机：queued → running → succeeded | partial | failed | canceled
@@ -1270,6 +1270,13 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     }
   }
 
+  const failureRecovery = () => ({
+    automaticFallbackAllowed: false,
+    requiresUserConfirmation: true,
+    nextAction: 'ask-user',
+    instruction: '解析已停止。向用户说明当前服务与具体错误，询问修复配置还是切换服务；得到本次明确同意前，不得使用本机模型、其他云端、脚本、HTTP 或记忆中的旧方案继续解析。切换默认服务须由用户在设置页操作。',
+  })
+
   function publicJob(job) {
     return {
       jobId: job.jobId,
@@ -1303,6 +1310,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
       partial: job.partial,
       failureDetails: parseFailureDetails(job),
       failureSummary: ['partial', 'failed'].includes(job.status) ? parseFailureSummary(job) : null,
+      ...(['partial', 'failed'].includes(job.status) ? { recovery: failureRecovery() } : {}),
       land: job.land,
       diagnostics: job.diagnostics,
       requestedBy: job.requestedBy,
@@ -1367,7 +1375,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     try { await atomicWriteJson(recordPath, record) }
     catch (error) { out = { ...out, warning: '任务状态已返回，但提交记录更新失败；请凭任务编号查看任务。' }; log('warn', '解析提交记录更新失败：' + (error.code || 'write-error')) }
     onEvent({ type: 'parse-jobs-changed', kbId: binding.kbId })
-    return { ...out, requestId }
+    return { ...out, requestId, ...(!out.ok ? { recovery: failureRecovery() } : {}) }
   }
 
   async function recordRejection({ kind, requestedBy, failure }) {
@@ -1935,7 +1943,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
     const binding = await getBinding()
     const job = await readJob(jobId, binding)
     if (!job) return { ok: false, reason: 'not-found' }
-    if (!job.result) return { ok: false, reason: 'no-result', status: job.status, detail: '任务还没有结果' }
+    if (!job.result) return { ok: false, reason: 'no-result', status: job.status, detail: job.status === 'failed' ? parseFailureSummary(job) : '任务还没有结果', provider: job.provider, ...(['failed', 'partial'].includes(job.status) ? { recovery: failureRecovery() } : {}) }
     const full = String(job.result.text ?? '')
     const start = clampInt(offset, 0, full.length, 0)
     const take = clampInt(limit, 1, 20000, 4000)
@@ -1958,6 +1966,7 @@ export function createParsingService({ stateDir, log = () => {}, getCore, getBin
       jobId,
       status: job.status,
       textChars: full.length,
+      ...(['partial', 'failed'].includes(job.status) ? { recovery: failureRecovery(), failureSummary: parseFailureSummary(job) } : {}),
       offset: start,
       returned: body.length,
       truncated: start + take < full.length,
