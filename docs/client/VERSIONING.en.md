@@ -6,4 +6,4 @@
 
 客户端和插件独立版本、标签、清单与摘要。客户端支持检查更新和校验下载，自动覆盖安装与激活尚未接入。Client and plugin retain separate versions, tags, manifests and digests. Client checks and verified downloads are implemented; automatic in-place installation and activation remain unfinished.
 
-[Current release](../releases/client-2.0.0.en.md).
+[Current release](../releases/client-2.0.3.en.md).
