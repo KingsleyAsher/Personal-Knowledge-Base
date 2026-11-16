@@ -4644,11 +4644,12 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     // END GENERATED TODO LIFECYCLE UI
 
-    const RELEASE_VERSION = '3.1.2'
+    const RELEASE_VERSION = '3.1.3'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep shipped releases for summaries of versions skipped during this upgrade.
     // Patch-only installs stay quiet; unread older notes do not widen the range.
     const RELEASE_NOTICES = [
+      {version:'3.1.3',items:['文件树与目录读取改用缓存：未变化的资料库不再每次重读目录和排除策略，客户端展开目录只请求新增项。','索引巡检在内容未变化时复用已有目录，减少周期性卡顿；资料内容变化仍会重新核对。']},
       {version:'3.1.2',items:['共享模式补回解析工具说明和全体 Agent 规则：当前服务设置优先于记忆。','默认 OCR/ASR 失败时说明原因并询问，未经本次明确同意不切换本机、其他云端或脚本。']},
       {version:'3.1.1',items:['更新说明只列出本次升级前版本到目标版本之间的内容，不再累计更早的未读记录。','弹窗显示起止版本，补齐 3.1.0 的更新条目。']},
       {version:'3.1.0',items:['新增 DeepSeek 官方 OCR / ASR，文档直接识别，长音频转换后分段转写。','新增 OCR 与 ASR 默认服务选择，自动保存并显示可读名称；保留已有配置和外发限制。','修复全局设置页空白与首次建库交接问题。']},

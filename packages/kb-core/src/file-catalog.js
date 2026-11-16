@@ -1,6 +1,6 @@
 import path from 'node:path'
 import {createReadStream,readFileSync,statSync} from 'node:fs'
-import {readFile,lstat} from 'node:fs/promises'
+import {readFile,lstat,stat} from 'node:fs/promises'
 import {createHash} from 'node:crypto'
 import {walkTree,privateRootOf} from './fsindex.js'
 import {safePath,readJson,atomicJson,locked,digest,fail,relativePath} from './workbench-state.js'
@@ -19,19 +19,34 @@ export function catalogActive(root){
     if(activeCache.size>=16)activeCache.delete(activeCache.keys().next().value);activeCache.set(root,key);return true
   }catch(e){activeCache.delete(root);if(e.code==='ENOENT')return false;throw fail('STATE_CORRUPT','索引架构记录无法读取，未退回旧模式')}
 }
+// Every desktop request binds the library, and binding reads this catalog. The
+// parsed copy is reused while the file identity is unchanged; any write, replace
+// or rename invalidates it. Callers that edit a catalog must clone it first.
+const catalogCache=new Map()
+const fileStatKey=st=>[String(st.dev),String(st.ino),String(st.size),String(st.mtimeNs),String(st.ctimeNs)].join(':')
 export async function readCatalog(root,kbId){
-  const c=await readJson(await safePath(root,CATALOG_PATH,{missing:true}),null)
+  const file=await safePath(root,CATALOG_PATH,{missing:true})
+  let st
+  try{st=await stat(file,{bigint:true})}
+  catch(e){if(e.code==='ENOENT'){catalogCache.delete(path.resolve(root).toLowerCase());return null}throw e}
+  const cacheKey=path.resolve(root).toLowerCase(),key=fileStatKey(st)+'|'+String(kbId??'')
+  const hit=catalogCache.get(cacheKey)
+  if(hit?.key===key)return hit.value
+  const c=await readJson(file,null)
   if(!c)return null
   if(c.format!==CATALOG_FORMAT||!Array.isArray(c.files)||!Array.isArray(c.references)||kbId&&c.kbId!==kbId||c.files.some(f=>!f||typeof f.path!=='string'||relativePath(f.path)!==f.path||f.path.startsWith('索引层/')))throw fail('STATE_CORRUPT','文件目录身份或格式不符，已保留现场')
-  return c.classificationVersion===CLASSIFICATION_VERSION?c:{...c,files:c.files.map(presentClassifiedFile),classificationPending:true}
+  const value=c.classificationVersion===CLASSIFICATION_VERSION?c:{...c,files:c.files.map(presentClassifiedFile),classificationPending:true}
+  if(catalogCache.size>=4)catalogCache.delete(catalogCache.keys().next().value)
+  catalogCache.set(cacheKey,{key,value})
+  return value
 }
 const identity=st=>String(st.dev)+':'+String(st.ino)
 async function fileHash(file){const hash=createHash('sha256');for await(const chunk of createReadStream(file))hash.update(chunk);return hash.digest('hex')}
 const system=file=>/(^|\/)(_模板|_手册)(\/|$)/.test(file)||/^(AGENTS|INDEX|README|知识库清单)\.md$/i.test(file)
 
 // No body is stored here. Every catalog record addresses an ordinary original.
-export async function inspectOriginals(b,{previous=null,paths=[]}={}){
-  const walk=await walkTree(b.root,b.root,{maxFiles:Number.MAX_SAFE_INTEGER,maxDepth:128,followLinks:false})
+export async function inspectOriginals(b,{previous=null,paths=[],walk=null}={}){
+  walk=walk??await walkTree(b.root,b.root,{maxFiles:Number.MAX_SAFE_INTEGER,maxDepth:128,followLinks:false})
   if(walk.truncated||walk.errors.some(e=>!String(e.reason??e.code??'').includes('link')&&!String(e.reason??e.code??'').includes('LINK')))throw fail('SCAN_INCOMPLETE','文件枚举不完整，未发布迁移；请检查不可访问目录或链接')
   const old=new Map((previous?.files??[]).map(f=>[f.path,f])),byIdentity=new Map()
   for(const f of old.values()){const list=byIdentity.get(f.identity)??[];list.push(f);byIdentity.set(f.identity,list)}
@@ -80,16 +95,33 @@ export async function inspectOriginals(b,{previous=null,paths=[]}={}){
   return {classificationVersion:CLASSIFICATION_VERSION,files:candidates.map(presentClassifiedFile).sort((a,b)=>a.path.localeCompare(b.path)),references:[...refs].map(([path,r])=>({path,source:r.source})),coverage:{files:walk.files.length,originals:candidates.filter(f=>f.status==='available').length,references:refs.size,errors:walk.errors}}
 }
 
+async function fileContentKey(file){try{return digest(await readFile(file))}catch(e){if(e.code==='ENOENT')return 'none';throw e}}
+// A full original scan takes seconds on a large library. The patrol runs it even
+// when nothing changed, so compare cheap stat/content hints first and reuse the
+// persisted catalog when every input of the scan is identical.
+async function catalogHints(b){
+  const walk=await walkTree(b.root,b.root,{maxFiles:Number.MAX_SAFE_INTEGER,maxDepth:128,followLinks:false})
+  const complete=!walk.truncated&&!walk.errors.some(e=>!String(e.reason??e.code??'').includes('link')&&!String(e.reason??e.code??'').includes('LINK'))
+  return {walk,hints:{complete,walk:digest(JSON.stringify(walk.files.map(f=>[f.path,f.bytes,f.mtimeMs,f.ctimeMs]))),requests:await fileContentKey(path.join(b.root,'.kbmeta/requests.json')),imports:await fileContentKey(path.join(b.root,'.kbmeta/import-sources.json')),privateDirs:JSON.stringify([...(b.privateDirs??[])])}}
+}
 export async function refreshCatalog(b,options={}){
   if(!catalogActive(b.root))return null
   const file=await safePath(b.root,CATALOG_PATH)
-  return locked(file,async()=>{const old=await readCatalog(b.root,b.st.kbId),scan=await inspectOriginals(b,{previous:old,...options})
+  return locked(file,async()=>{
+    const old=await readCatalog(b.root,b.st.kbId)
+    const {walk,hints}=await catalogHints(b)
+    const prior=old?.scanHints,unchanged=!options.force&&!(options.paths??[]).length&&old&&!old.classificationPending&&old.classificationVersion===CLASSIFICATION_VERSION&&hints.complete&&prior?.complete===true&&prior.walk===hints.walk&&prior.requests===hints.requests&&prior.imports===hints.imports&&prior.privateDirs===hints.privateDirs
+    if(unchanged)return old
+    const scan=await inspectOriginals(b,{previous:old,...options,walk})
     const privatePaths=files=>files.filter(f=>f.private&&f.status==='available').map(f=>f.path).sort();
     const privacyChanged=JSON.stringify(privatePaths(old.files))!==JSON.stringify(privatePaths(scan.files));
-    const next={...old,...scan,classificationPending:false};if(old.classificationPending||digest(JSON.stringify(scan.files))!==digest(JSON.stringify(old.files))||digest(JSON.stringify(scan.references))!==digest(JSON.stringify(old.references))){
+    const next={...old,...scan,classificationPending:false,scanHints:hints};if(old.classificationPending||digest(JSON.stringify(scan.files))!==digest(JSON.stringify(old.files))||digest(JSON.stringify(scan.references))!==digest(JSON.stringify(old.references))){
       if(old.classificationPending){const raw=await readJson(file,null);await atomicJson(await safePath(b.root,'索引层/分类历史/'+Date.now()+'-'+old.revision+'.json',{missing:true}),raw);}
       if(old.classificationPending||privacyChanged)next.policyRevision=(old.policyRevision??0)+1
       next.revision++;next.updatedAt=Date.now();await atomicJson(file,next)
+    }else if(!old.scanHints||JSON.stringify(old.scanHints)!==JSON.stringify(hints)){
+      // Persist the hints once so later patrols can reuse this catalog without a scan.
+      await atomicJson(file,{...old,scanHints:hints})
     }return next})
 }
 
@@ -107,7 +139,7 @@ export async function repairClassifications(b){
 
 export async function classifyOriginal(b,args){
   const file=await safePath(b.root,CATALOG_PATH)
-  return locked(file,async()=>{const c=await readCatalog(b.root,b.st.kbId);if(!c)throw fail('ARCHITECTURE_REQUIRED','请先迁移到索引架构');if(args.revision!==undefined&&args.revision!==c.revision)throw fail('CONFLICT','分类已改变，请刷新')
+  return locked(file,async()=>{const c=structuredClone(await readCatalog(b.root,b.st.kbId));if(!c)throw fail('ARCHITECTURE_REQUIRED','请先迁移到索引架构');if(args.revision!==undefined&&args.revision!==c.revision)throw fail('CONFLICT','分类已改变，请刷新')
     const rel=relativePath(args.path),f=c.files.find(f=>f.path===rel&&f.status==='available');if(!f)throw fail('NOT_FOUND','没有可分类的真实文件')
     await safePath(b.root,rel)
     for(const key of ['kind','category'])if(args[key]!==undefined&&(typeof args[key]!=='string'||!args[key].trim()||args[key].length>200))throw fail('BAD_SETTINGS','分类名称无效')
