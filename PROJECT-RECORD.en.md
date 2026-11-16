@@ -2,9 +2,19 @@
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 3.1.2 -->
+<!-- project-record-version: 3.1.3 -->
 
-**Plugin source 3.1.2; desktop public 2.0.1, local source 2.0.2 · 2026-11-15.**
+**Plugin source 3.1.3; desktop public 2.0.1, local source 2.0.3 · 2026-11-16.**
+
+## 2026-11-16 · Plugin 3.1.3 / client 2.0.3 · File tree and patrol performance
+
+Every desktop request re-read and validated the roughly 3.9 MB file catalog, and each directory listing re-read the exclusion policy, resolved every path segment through realpath and probed access twice per entry. A real 687-entry directory took 376 ms on first read (about 3.3 ms per entry) and grew with larger exclusion policies. Independently, index patrol rescanned every original on a fixed five-minute timer, holding the single service queue for about 1.9 seconds and making the tree appear to reload after the client had been open for a while.
+
+The catalog and exclusion policy are now cached by file identity; a listing reads the policy once and precompiles it into prefix lookups, and entries use the already-validated parent directory for one lstat each. Directory responses are reused for 15 seconds behind directory, policy, catalog and privacy signatures. Patrol compares file stat digests plus content digests of requests/import-sources and reuses the persisted catalog when nothing changed instead of hashing the library. The client requests only newly expanded directories, reuses loaded rows when a directory is collapsed and reopened, and refreshes everything only when the sort order changes; initial expanded items still load fully.
+
+On the 687-entry real directory: 376 ms → 32 ms first read and 0.8 ms on repeat; a synthetic directory with 400 exclusion groups: 819 ms → 49 ms; catalog parsing 16.5 ms → 0.4 ms; unchanged patrol about 1.9 s → 0.1 s. Index policy, architecture, maintenance, classification, workbench, large-library and service integration checks pass, including new policy-matcher equivalence, listing-cache invalidation and unchanged-patrol reuse checks.
+
+This release provides plugin 3.1.3 and client 2.0.3: the plugin package is the local `知识库产品-3.1.3` delivery and the client is an unsigned local installer. The GitHub stable feed and client update manifest still point at the published plugin 3.1.2 / client 2.0.1 and are not rewritten before new Release assets are uploaded. Running clients and DSH need the matching new package installed and a restart to receive the change.
 
 ## 2026-11-15 · Plugin 3.1.2 · Stop and ask after parsing failure
 

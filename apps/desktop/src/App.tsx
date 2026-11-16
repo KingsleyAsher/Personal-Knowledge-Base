@@ -57,8 +57,8 @@ export default function App(){
  const [rows,setRows]=useState<any[]>([]),[graph,setGraph]=useState<any>({}),[quickQuery,setQuickQuery]=useState(''),[quickResults,setQuickResults]=useState<FileInfo[]>([]),[quickIndex,setQuickIndex]=useState(0),[chatDraft,setChatDraft]=useState(()=>localStorage.getItem('kb-dsh-draft')??''),[drafts,setDrafts]=useState<Record<string,any>>({});
  const [dropActive,setDropActive]=useState(false),[treeNext,setTreeNext]=useState<Record<string,number|undefined>>({});
  useEffect(()=>{localStorage.setItem('kb-dsh-draft',chatDraft);},[chatDraft]);
- const docsRef=useRef(docs),panesRef=useRef(panes),connectionRef=useRef(connection),activeRef=useRef(activePane),loaded=useRef(false),toastTimer=useRef<ReturnType<typeof setTimeout>|null>(null),seq=useRef(0),refreshTimer=useRef<ReturnType<typeof setTimeout>|null>(null),chatInput=useRef<HTMLTextAreaElement>(null);
- docsRef.current=docs;panesRef.current=panes;connectionRef.current=connection;activeRef.current=activePane;
+ const docsRef=useRef(docs),panesRef=useRef(panes),connectionRef=useRef(connection),activeRef=useRef(activePane),loaded=useRef(false),toastTimer=useRef<ReturnType<typeof setTimeout>|null>(null),seq=useRef(0),refreshTimer=useRef<ReturnType<typeof setTimeout>|null>(null),chatInput=useRef<HTMLTextAreaElement>(null),treeRef=useRef(tree),expandedRef=useRef<Set<string>>(new Set(expanded)),sortRef=useRef(fileSort),treeBooted=useRef(false);
+ docsRef.current=docs;panesRef.current=panes;connectionRef.current=connection;activeRef.current=activePane;treeRef.current=tree;
  const inspectorBody=useRef<HTMLDivElement>(null);useContentMotion(inspectorBody,rightTab);
  const [palette,setPalette]=useState(()=>{const value=window.kbDesktop?.startupPalette??document.documentElement.dataset.palette;return normalizePalette(value);});
  useEffect(()=>{document.documentElement.dataset.palette=palette;localStorage.setItem('kb-palette',palette);},[palette]);
@@ -148,7 +148,7 @@ export default function App(){
  useEffect(()=>{const q=matchMedia('(prefers-color-scheme: dark)');const handler=()=>setSystemDark(q.matches);q.addEventListener('change',handler);return()=>q.removeEventListener('change',handler);},[]);
  useEffect(()=>{document.documentElement.dataset.theme=effectiveTheme;localStorage.setItem('kb-preview-theme',JSON.stringify(theme));},[theme,effectiveTheme]);
  useEffect(()=>{if(!loaded.current)return;const t=setTimeout(()=>void api('workspace',{panes,activePane,leftWidth,rightWidth,rightOpen,rightTab,layoutVersion:WORKSPACE_LAYOUT_VERSION}).catch(fail),250);return()=>clearTimeout(t);},[panes,activePane,leftWidth,rightWidth,rightOpen,rightTab]);
- useEffect(()=>{if(loaded.current&&connection.state==='ready'){void refreshTree();void api('preferences',{fileSort}).catch(fail);}},[expanded,fileSort]);
+ useEffect(()=>{if(!loaded.current||connection.state!=='ready'){expandedRef.current=new Set(expanded);treeBooted.current=false;return;}const previous=expandedRef.current,next=new Set(expanded);expandedRef.current=next;if(sortRef.current!==fileSort){sortRef.current=fileSort;void refreshTree(fileSort,[...next]);void api('preferences',{fileSort}).catch(fail);return;}if(!treeBooted.current){treeBooted.current=true;void refreshTree(fileSort,[...next]);return;}const added=[...next].filter(p=>!previous.has(p));if(added.length)void refreshTree(fileSort,added);},[expanded,fileSort]);
  useEffect(()=>{
   if(!loaded.current||!keepDrafts)return;const dirty=Object.values(docs).filter(d=>d.dirty);
   const t=setTimeout(()=>{if(discarding.current)return;for(const d of dirty)void api('drafts',{path:d.path,text:d.text,revision:d.revision,originalKey:d.preview.originalKey,bom:d.preview.bom}).catch(fail);},400);return()=>clearTimeout(t);

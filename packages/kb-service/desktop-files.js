@@ -7,7 +7,7 @@ import {TextDecoder} from 'node:util';
 import {safePath,relativePath,inside,locked} from '../kb-core/src/workbench-state.js';
 import {fileRole} from '../kb-core/src/workbench-files.js';
 import {DEFAULT_PRIVATE_DIRS} from '../kb-core/src/fsindex.js';
-import {readIndexPolicy,policyExcluded,savePolicy,policyFile} from '../kb-core/src/index-policy.js';
+import {readIndexPolicy,policyExcluded,createPolicyMatcher,indexPolicySignature,savePolicy,policyFile} from '../kb-core/src/index-policy.js';
 import {readCatalog,CATALOG_PATH} from '../kb-core/src/file-catalog.js';
 import {createEmbeddedKernel} from '../kb-core/index.js';
 import {atomic,readJson,hash,error} from './io.js';
@@ -39,6 +39,12 @@ export async function createDesktopFiles({root,privateDir,desktopRoot,core,withL
   }
 
  const privatePath=p=>getPrivateDirs().some(v=>{const a=p.toLowerCase(),b=v.replaceAll('\\','/').toLowerCase();return a===b||a.startsWith(b+'/');});
+ let matcherCache={signature:null,matcher:null};
+ function policyMatcher(){
+  const signature=indexPolicySignature(base);
+  if(matcherCache.signature!==signature)matcherCache={signature,matcher:createPolicyMatcher(readIndexPolicy(base))};
+  return matcherCache.matcher;
+ }
  async function checked(p,{missing=false,write=false}={}){
   p=relativePath(p);
   if(p.split('/').some(s=>s.startsWith('.')||['node_modules','索引层'].includes(s))||privatePath(p))throw error('FORBIDDEN','资料路径不在当前浏览授权范围内');
@@ -46,27 +52,41 @@ export async function createDesktopFiles({root,privateDir,desktopRoot,core,withL
   if(write&&(fileRole(p)!=='document'||/^(_模板|_手册)\//.test(p)))throw error('READ_ONLY','系统资料受保护');
   return safePath(base,p,{missing});
  }
- async function info(p){
-  const absolute=await checked(p),s=await lstat(absolute,{bigint:true});
+ async function info(p,matcher,absoluteOverride){
+  const absolute=absoluteOverride??await checked(p),s=await lstat(absolute,{bigint:true});
+  if(s.isSymbolicLink())throw error('LINK_DENIED','不允许通过目录链接访问资料');
   if(!s.isFile()&&!s.isDirectory())throw error('READ_ONLY','仅支持普通文件和目录');
+  if(absoluteOverride&&!showPrivate()&&records().get(p)?.private)throw error('FORBIDDEN','资料路径不在当前浏览授权范围内');
   let writable=Boolean(s.mode&0o222n);
-  try{await access(absolute,constants.W_OK);await access(path.dirname(absolute),constants.W_OK);}catch{writable=false;}
+  // Windows reports the read-only attribute through the mode bits; the extra
+  // access() probes only repeat that check for every entry in a directory.
+  if(process.platform!=='win32')try{await access(absolute,constants.W_OK);await access(path.dirname(absolute),constants.W_OK);}catch{writable=false;}
   const system=fileRole(p)!=='document'||/^(_模板|_手册)(\/|$)/.test(p);
   const accessInfo={canBrowse:true,canEdit:s.isFile()&&(OFFICE.test(p)?s.size<=BigInt(MAX_OFFICE):TEXT.test(p)&&s.size<=BigInt(MAX_TEXT))&&writable&&!system,
    canRename:writable&&!system,canMove:writable&&!system,canTrash:writable&&!system,canSendToModel:false,
-   indexExcluded:policyExcluded(readIndexPolicy(base),p),reasons:system?['系统资料受保护']:!writable?['文件或目录只读']:s.size>BigInt(OFFICE.test(p)?MAX_OFFICE:MAX_TEXT)?['文件超过完整编辑上限']:[]};
+   indexExcluded:matcher?matcher.excluded(p):policyMatcher().excluded(p),reasons:system?['系统资料受保护']:!writable?['文件或目录只读']:s.size>BigInt(OFFICE.test(p)?MAX_OFFICE:MAX_TEXT)?['文件超过完整编辑上限']:[]};
   const record=records().get(p),original=record?.status==='available'?record:null;
   return {id:p,path:p,name:path.posix.basename(p),type:s.isDirectory()?'directory':'file',mime:s.isFile()?mimeOf(p):undefined,size:Number(s.size),modifiedAt:Number(s.mtimeMs),revision:version(s),access:accessInfo,protected:system,hasChildren:s.isDirectory(),...(original?{category:original.category,kind:original.kind,original:true}:{})};
  }
+ const listCache=new Map(),LIST_CACHE_MS=15000,LIST_CACHE_MAX=64;
+ const dirSignature=async folder=>{const s=await lstat(folder,{bigint:true});return [String(s.dev),String(s.ino),String(s.mtimeNs),String(s.ctimeNs)].join(':')};
  async function list(parent='',offset=0,limit=500,sort='name-asc'){
-  const folder=parent?await checked(parent):base,rows=[];
+  const folder=parent?await checked(parent):base,signature=await dirSignature(folder);
+  const cacheKey=parent+'|'+sort,catalog=getCatalog(),hint=[signature,indexPolicySignature(base),catalog?`${catalog.revision??0}:${catalog.policyRevision??0}`:'-',showPrivate()?'1':'0',getPrivateDirs().join('|')].join('#');
+  const cached=listCache.get(cacheKey);
+  if(cached?.hint===hint&&Date.now()-cached.at<LIST_CACHE_MS){
+   cached.at=Date.now();listCache.delete(cacheKey);listCache.set(cacheKey,cached);
+   return {items:cached.items.slice(offset,offset+limit),nextOffset:offset+limit<cached.items.length?offset+limit:undefined,total:cached.items.length};
+  }
+  const matcher=policyMatcher(),rows=[];
   for(const e of await readdir(folder,{withFileTypes:true})){
    const p=parent?parent+'/'+e.name:e.name;
    if(e.name.startsWith('.')||e.isSymbolicLink()||privatePath(p)||['node_modules','索引层'].includes(e.name))continue;
-   try{rows.push(await info(p));}catch(e){if(!['FORBIDDEN','LINK_DENIED','EACCES','ENOENT'].includes(e.code))throw e;}
+   try{rows.push(await info(p,matcher,path.join(folder,e.name)));}catch(e){if(!['FORBIDDEN','LINK_DENIED','EACCES','ENOENT'].includes(e.code))throw e;}
   }
   const nameOrder=(a,b)=>a.name.localeCompare(b.name,'zh-CN',{numeric:true});
   rows.sort((a,b)=>(a.type===b.type?0:a.type==='directory'?-1:1)||(sort==='modified-desc'?b.modifiedAt-a.modifiedAt:sort==='modified-asc'?a.modifiedAt-b.modifiedAt:sort==='name-desc'?-nameOrder(a,b):nameOrder(a,b))||nameOrder(a,b));
+  if(rows.length<=3000){if(listCache.size>=LIST_CACHE_MAX)listCache.delete(listCache.keys().next().value);listCache.set(cacheKey,{hint,at:Date.now(),items:rows});}
   return {items:rows.slice(offset,offset+limit),nextOffset:offset+limit<rows.length?offset+limit:undefined,total:rows.length};
  }
  async function walk(parent='',out=[],depth=0){

@@ -36,7 +36,7 @@ export function createIndexArchitecture({binding,now=Date.now}){
       return {architecture:{planId:args.planId,revision:p.revision,files:p.files}}
     }
     if(args.op==='architecture.apply')return {architecture:await apply(b,args)}
-    if(args.op==='architecture.refresh'){await check(b);if(!await readCatalog(b.root,b.st.kbId))throw fail('ARCHITECTURE_REQUIRED','请先预览并确认迁移');await refreshCatalog(b);const result=await b.core.maintainIndex({expectedKbId:b.st.kbId,full:true});return {architecture:{active:true,phase:result.ok?'completed':'index-pending',index:result}}}
+    if(args.op==='architecture.refresh'){await check(b);if(!await readCatalog(b.root,b.st.kbId))throw fail('ARCHITECTURE_REQUIRED','请先预览并确认迁移');await refreshCatalog(b,{force:true});const result=await b.core.maintainIndex({expectedKbId:b.st.kbId,full:true});return {architecture:{active:true,phase:result.ok?'completed':'index-pending',index:result}}}
     if(args.op==='architecture.classify'){await check(b);return classifyOriginal(b,args)}
     if(args.op==='architecture.reclassify'){await check(b);return {classification:await repairClassifications(b)}}
     const catalog=await readCatalog(b.root,b.st.kbId)

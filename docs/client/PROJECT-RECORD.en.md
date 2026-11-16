@@ -2,9 +2,15 @@
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 3.0.2 -->
+<!-- project-record-version: 3.1.3 -->
 
-**Source: plugin 3.0.2 / client 2.0.2 · Updated: 2026-11-11 · Local build and unreleased signing changes. GitHub stable: plugin 3.0.1 / client 2.0.1.**
+**Source: plugin 3.1.3 / client 2.0.3 · Updated: 2026-11-16 · Local plugin package and unsigned client installer. GitHub stable: plugin 3.1.2 / client 2.0.1.**
+
+## 2026-11-16 · Client 2.0.3 · File tree and patrol performance
+
+The file tree no longer reparses the roughly 3.9 MB catalog on every request, and directory entries no longer re-read the exclusion policy or resolve every path segment individually. Catalog and policy are cached by file identity, and listings are reused for 15 seconds behind directory, policy, catalog and privacy signatures. Index patrol reuses the persisted catalog when file stat digests and requests/import-sources content digests are unchanged instead of hashing the library. The client requests only newly expanded directories, reuses loaded rows when a directory is reopened, and refreshes everything only when the sort order changes.
+
+The 687-entry real directory went from 376 ms to 32 ms first read and 0.8 ms on repeat; a 250-entry directory with 400 exclusion groups from 819 ms to 49 ms; catalog parsing from 16.5 ms to 0.4 ms; unchanged patrol from about 1.9 s to 0.1 s. Index policy, architecture, maintenance, classification, workbench, large-library and service integration checks pass, with new policy-matcher equivalence, listing-cache invalidation and patrol-reuse checks. Client 2.0.3 is an unsigned local installer; no GitHub Release was uploaded and the public update manifest remains 2.0.1.
 
 ## 2026-11-14 · Shared parsing kernel update (desktop installer unpublished)
 

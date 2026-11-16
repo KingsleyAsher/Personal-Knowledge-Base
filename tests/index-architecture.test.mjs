@@ -221,3 +221,41 @@ test('browse snapshots reuse the scan until an external change or manual refresh
   assert.notEqual(updated.policyVersion,changed.policyVersion)
  }finally{try{await runtime.prepareUpgrade()}finally{await runtime.close()}}
 })
+
+test('policy matcher agrees with policyExcluded for pending, included and archived groups',async()=>{
+ const {createPolicyMatcher,policyExcluded}=await import('../packages/kb-core/src/index-policy.js')
+ const policy={format:1,revision:1,groups:{
+  a:{id:'a',state:'excluded',excluded:true,pending:true,files:[{normal:'排除索引分区/x.md',current:'排除索引分区/x.md'}]},
+  b:{id:'b',state:'excluding',excluded:false,pending:true,files:[{normal:'20-知识笔记/bro.md',current:'90-收件箱/bro.md',target:'排除索引分区/bro.md',aliases:['20-知识笔记/bro-old.md']}]},
+  c:{id:'c',state:'included',excluded:false,pending:false,files:[{normal:'20-知识笔记/ok.md',current:'20-知识笔记/ok.md'}]},
+  d:{id:'d',state:'included',excluded:false,pending:true,files:[{normal:'20-知识笔记/pending.md',current:'20-知识笔记/pending.md'}]}
+ }}
+ const matcher=createPolicyMatcher(policy)
+ const paths=['','20-知识笔记/ok.md','20-知识笔记/bro.md','20-知识笔记/bro-old.md','20-知识笔记/bro/child.md','90-收件箱/新.md','90-收件箱/bro.md','90-收件箱/原件归档/old.md','排除索引分区/x.md','排除索引分区/x/child.md','20-知识笔记/pending.md','20-知识笔记/other.md']
+ for(const p of paths)for(const pending of [true,false])assert.equal(matcher.excluded(p,pending),policyExcluded(policy,p,pending),JSON.stringify([p,pending]))
+ assert.equal(matcher.groupFor('20-知识笔记/BRO-OLD.md').id,'b')
+})
+
+test('unchanged catalog patrol reuses hints; content changes still refresh the catalog',async t=>{
+ const f=await fixture(t)
+ await mkdir(path.join(f.root,'课程'))
+ await writeFile(path.join(f.root,'课程','a.md'),'# A\n'),await writeFile(path.join(f.root,'课程','b.md'),'# B\n')
+ await f.migrate()
+ const {refreshCatalog}=await import('../packages/kb-core/src/file-catalog.js')
+ const conf=await f.core.getConfig()
+ const b={root:f.root,st:{kbId:f.kbId},privateDirs:[],core:f.core,conf}
+ const file=path.join(f.root,CATALOG_PATH)
+ const hints=async()=>JSON.parse(await readFile(file,'utf8')).scanHints
+ const first=await refreshCatalog(b)
+ assert(hints(),'first pass persists scan hints')
+ const revision=first.revision
+ const second=await refreshCatalog(b)
+ assert.equal(second.revision,revision)
+ assert.deepEqual(await hints(),await hints())
+ await writeFile(path.join(f.root,'课程','a.md'),'# A changed\n')
+ const third=await refreshCatalog(b)
+ assert.equal(third.revision,revision+1)
+ assert(third.files.find(x=>x.path==='课程/a.md').sha256)
+ const fourth=await refreshCatalog(b,{force:true})
+ assert.equal(fourth.revision,revision+1,'forced rescan with unchanged bytes keeps the revision')
+})

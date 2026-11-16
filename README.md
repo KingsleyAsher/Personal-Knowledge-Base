@@ -1,6 +1,6 @@
 # Personal Knowledge Base · Plugin and Desktop Client
 
-> **Plugin 3.1.2:** Shared-mode parsing now receives the full tool instructions and all-Agent rules. Current defaults take precedence over memory; failures must stop and ask before switching to local models, another cloud service or scripts. Desktop public release remains 2.0.1; local 2.0.2 remains unreleased.
+> **Plugin 3.1.3:** File-tree reads now cache the parsed catalog and exclusion policy by file identity, reuse directory listings behind directory/policy/catalog signatures, and skip the periodic full-library rescan when nothing changed. Large directories load much faster and periodic stalls are greatly reduced. Desktop local source is 2.0.3 (unsigned local installer); the public release remains 2.0.1 and the published update feed remains plugin 3.1.2 / client 2.0.1.
 
 > **Update recovery patch:** fixes abandoned prepared receipts. An already blocked older updater needs the [one-time safe recovery](docs/UPDATE-RECOVERY.en.md) before a normal update.
 

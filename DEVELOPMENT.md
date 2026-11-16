@@ -2,7 +2,7 @@
 
 [English](DEVELOPMENT.en.md) · 中文
 
-从本仓库根目录开始。客户端依赖、生产构建、隔离检查和安装器命令见 [客户端构建指南](docs/client/DEVELOPMENT.md)。插件使用根 package.json 与 src 适配入口，当前源码版本为插件 3.0.2 / 客户端 2.0.2；正式更新源仍为插件 3.0.1 / 客户端 2.0.1，需另行发布后才更新。
+从本仓库根目录开始。客户端依赖、生产构建、隔离检查和安装器命令见 [客户端构建指南](docs/client/DEVELOPMENT.md)。插件使用根 package.json 与 src 适配入口，当前源码版本为插件 3.1.3 / 客户端 2.0.3；正式更新源仍为插件 3.1.2 / 客户端 2.0.1，需另行发布后才更新。
 
 共享代码修改放在 packages，检查两端调用，不复制到第二仓库。修改插件界面源后运行 python -X utf8 tools/sync-workbench-client.py；更新装载文件集合时运行 tools/sync-workbench-build.py。生成桌面管理界面由客户端 build 命令处理。
 
