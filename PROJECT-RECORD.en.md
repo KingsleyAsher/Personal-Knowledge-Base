@@ -4,7 +4,7 @@
 
 <!-- project-record-version: 3.1.3 -->
 
-**Plugin source 3.1.3; desktop public 2.0.1, local source 2.0.3 · 2026-11-16.**
+**Plugin 3.1.3; desktop client 2.0.3 · 2026-11-16.**
 
 ## 2026-11-16 · Plugin 3.1.3 / client 2.0.3 · File tree and patrol performance
 
@@ -14,7 +14,7 @@ The catalog and exclusion policy are now cached by file identity; a listing read
 
 On the 687-entry real directory: 376 ms → 32 ms first read and 0.8 ms on repeat; a synthetic directory with 400 exclusion groups: 819 ms → 49 ms; catalog parsing 16.5 ms → 0.4 ms; unchanged patrol about 1.9 s → 0.1 s. Index policy, architecture, maintenance, classification, workbench, large-library and service integration checks pass, including new policy-matcher equivalence, listing-cache invalidation and unchanged-patrol reuse checks.
 
-This release provides plugin 3.1.3 and client 2.0.3: the plugin package is the local `知识库产品-3.1.3` delivery and the client is an unsigned local installer. The GitHub stable feed and client update manifest still point at the published plugin 3.1.2 / client 2.0.1 and are not rewritten before new Release assets are uploaded. Running clients and DSH need the matching new package installed and a restart to receive the change.
+GitHub Releases `v3.1.3` and `client-v2.0.3` are published, and the stable update feed and website downloads now point at plugin 3.1.3 / client 2.0.3. The client installer is unsigned and still requires an empty destination. Running clients and DSH need the matching new package installed and a restart to receive the change.
 
 ## 2026-11-15 · Plugin 3.1.2 · Stop and ask after parsing failure
 

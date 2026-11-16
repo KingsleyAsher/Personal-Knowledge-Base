@@ -2,7 +2,7 @@
 
 [中文](DEVELOPMENT.md) · English
 
-Start at the repository root. Follow the [client build guide](docs/client/DEVELOPMENT.en.md) for dependencies, production build, isolated checks and installer commands. Current source versions are plugin 3.1.3 and client 2.0.3; the public stable feeds remain plugin 3.1.2 and client 2.0.1 until a new release is published.
+Start at the repository root. Follow the [client build guide](docs/client/DEVELOPMENT.en.md) for dependencies, production build, isolated checks and installer commands. Current versions are plugin 3.1.3 and client 2.0.3; the public stable feeds match the source.
 
 Edit shared logic in packages and inspect both consumers. Do not duplicate it in another repository. After plugin UI changes, run tools/sync-workbench-client.py; refresh loaded-file inventory with tools/sync-workbench-build.py. Client build regenerates desktop management views.
 

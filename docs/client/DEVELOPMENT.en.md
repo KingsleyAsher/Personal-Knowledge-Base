@@ -1,4 +1,4 @@
-> Release / 当前发布：plugin **3.1.2**, client **2.0.1**. Current source: plugin **3.1.3**, client **2.0.3** (local build, not yet published). [Release notes](../releases/plugin-3.1.2.en.md).
+> Release / 当前发布：plugin **3.1.3**, client **2.0.3**. [Release notes](../releases/plugin-3.1.3.en.md).
 
 > Unified project: [main README](../../README.md) · [shared architecture](../../ARCHITECTURE.en.md).
 
@@ -30,4 +30,4 @@ Preparation downloads public runtimes and builds the paired plugin without inspe
 
 Build timestamps/tool versions may prevent byte-identical reproduction. A local build check does not prove download availability in every region. Do not bypass checksum verification to work around network failures.
 
-Current source: plugin 3.0.2 / client 2.0.2; not publicly released. For local unsigned development only, replace the signing step with `python -X utf8 installer-design-b/installer/build.py --allow-unsigned`. This does not resolve Smart App Control. See [Windows signing](../WINDOWS-SIGNING.md) for prerequisites and validation limits.
+Current release: plugin 3.1.3 / client 2.0.3; the client installer is unsigned. For local unsigned development only, replace the signing step with `python -X utf8 installer-design-b/installer/build.py --allow-unsigned`. This does not resolve Smart App Control. See [Windows signing](../WINDOWS-SIGNING.md) for prerequisites and validation limits.

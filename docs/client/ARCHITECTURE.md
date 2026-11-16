@@ -1,4 +1,4 @@
-> Release / 当前发布：plugin **3.0.1**, client **2.0.1**. [Release notes](../releases/plugin-3.0.1.md).
+> Release / 当前发布：plugin **3.1.3**, client **2.0.3**. [Release notes](../releases/plugin-3.1.3.md).
 
 > 统一项目入口：[主 README](../../README.zh-CN.md) · [架构与共库](../../ARCHITECTURE.md)。
 

@@ -1,4 +1,4 @@
-> Release / 当前发布：plugin **3.0.1**, client **2.0.1**. [Release notes](../releases/plugin-3.0.1.en.md).
+> Release / 当前发布：plugin **3.1.3**, client **2.0.3**. [Release notes](../releases/plugin-3.1.3.en.md).
 
 > Unified project: [main README](../../README.md) · [shared architecture](../../ARCHITECTURE.en.md).
 

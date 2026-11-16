@@ -1,4 +1,4 @@
-> Release / 当前发布：plugin **3.1.2**, client **2.0.1**。当前源码：plugin **3.1.3**, client **2.0.3**（本地构建，尚未发布）。 [Release notes](../releases/plugin-3.1.2.md).
+> Release / 当前发布：plugin **3.1.3**, client **2.0.3**。 [Release notes](../releases/plugin-3.1.3.md).
 
 > 统一项目入口：[主 README](../../README.zh-CN.md) · [架构与共库](../../ARCHITECTURE.md)。
 
@@ -30,4 +30,4 @@ python -X utf8 installer-design-b/installer/build.py
 
 构建结果不保证字节级可重复：时间戳和工具版本可能影响产物。源码检出构建检查不等于所有网络环境下载成功；网络失败时应重试原始可信源，不跳过摘要验证。
 
-当前源码为插件 3.0.2 / 客户端 2.0.2，尚未正式发布。仅本地开发可将签名步骤替换为 `python -X utf8 installer-design-b/installer/build.py --allow-unsigned`；此选项不解决智能应用控制。证书前提和验证边界见[Windows 签名说明](../WINDOWS-SIGNING.md)。
+当前版本为插件 3.1.3 / 客户端 2.0.3；客户端安装器未签名。仅本地开发可将签名步骤替换为 `python -X utf8 installer-design-b/installer/build.py --allow-unsigned`；此选项不解决智能应用控制。证书前提和验证边界见[Windows 签名说明](../WINDOWS-SIGNING.md)。
