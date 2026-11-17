@@ -1,0 +1,774 @@
+# Personal Knowledge Base · Unified Design and Evolution
+
+[English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
+
+<!-- project-record-version: 3.1.3 -->
+
+**Plugin 3.1.3; desktop client 2.0.3 · 2026-11-16.**
+
+## 2026-11-17 · Lean plugin source for marketplace review (candidate)
+
+Prepared a pinned Git source from the released 3.1.3 plugin package, added repository metadata, and omitted bundled Windows Python. A system Python is needed for related features, with PyMuPDF for PDF page rendering. This candidate does not replace the official release; marketplace installation and actual host operation remain unverified.
+
+## 2026-11-16 · Plugin 3.1.3 / client 2.0.3 · File tree and patrol performance
+
+Every desktop request re-read and validated the roughly 3.9 MB file catalog, and each directory listing re-read the exclusion policy, resolved every path segment through realpath and probed access twice per entry. A real 687-entry directory took 376 ms on first read (about 3.3 ms per entry) and grew with larger exclusion policies. Independently, index patrol rescanned every original on a fixed five-minute timer, holding the single service queue for about 1.9 seconds and making the tree appear to reload after the client had been open for a while.
+
+The catalog and exclusion policy are now cached by file identity; a listing reads the policy once and precompiles it into prefix lookups, and entries use the already-validated parent directory for one lstat each. Directory responses are reused for 15 seconds behind directory, policy, catalog and privacy signatures. Patrol compares file stat digests plus content digests of requests/import-sources and reuses the persisted catalog when nothing changed instead of hashing the library. The client requests only newly expanded directories, reuses loaded rows when a directory is collapsed and reopened, and refreshes everything only when the sort order changes; initial expanded items still load fully.
+
+On the 687-entry real directory: 376 ms → 32 ms first read and 0.8 ms on repeat; a synthetic directory with 400 exclusion groups: 819 ms → 49 ms; catalog parsing 16.5 ms → 0.4 ms; unchanged patrol about 1.9 s → 0.1 s. Index policy, architecture, maintenance, classification, workbench, large-library and service integration checks pass, including new policy-matcher equivalence, listing-cache invalidation and unchanged-patrol reuse checks.
+
+GitHub Releases `v3.1.3` and `client-v2.0.3` are published, and the stable update feed and website downloads now point at plugin 3.1.3 / client 2.0.3. The client installer is unsigned and still requires an empty destination. Running clients and DSH need the matching new package installed and a restart to receive the change.
+
+## 2026-11-15 · Plugin 3.1.2 · Stop and ask after parsing failure
+
+Restore the detailed kb_parse description and all-Agent parsing context in shared-library mode. Current OCR/ASR defaults take precedence over memory. Missing API configuration, credentials, quota, connectivity and partial failures require stopping, reporting the cause and asking whether to repair configuration or switch services. Local models, other cloud services, scripts and HTTP require explicit consent for this request; users still change defaults in settings. Rejected submissions and failed or partial public responses include no-fallback and ask-user recovery instructions, and tool rendering preserves actual errors.
+
+Twelve local focused checks passed, covering a working local ASR service, a cloud default missing credentials, a remembered local provider ID, retry, empty defaults and the real Windows shared service. Cloud failures made no additional local calls. Release artifacts contain the 3.1.2 plugin TGZ, checksums and update parts; the public desktop installer remains 2.0.1. Restart DSH to load the rules. No paid cloud API or real model conversation was tested; these rules do not provide host-level interception of general Shell/HTTP tools.
+
+## 2026-11-14 · Stop and ask after default ASR failure (local fix, unpublished)
+
+The shared Host had replaced the parsing tool instructions with its name alone and omitted parsing context. Restore the tool description and all-Agent parsing context in shared mode. Clarify the parsing rules for every Agent: current settings take precedence over memory. Missing API configuration, credentials, quota or connectivity must stop parsing and report the cause; local models, other cloud services, scripts and HTTP require explicit consent for this request. Users still change the default in settings. The shared service continues to enforce the configured default. Rejected submissions and failed or partial public jobs/results now include no-fallback and ask-user recovery instructions. Tool rendering preserves the actual error and recovery instruction; remove misleading admin-denial wording suggesting that models can choose another provider.
+
+Twelve focused checks passed, including a working local ASR service, a cloud default missing credentials, a remembered local provider ID, retry and an empty default: cloud failures made no additional local calls. This is a source and local installation fix, not a GitHub release. Restart DSH to load it. Plugin entry rules and responses do not provide host-level interception of general Shell/HTTP tools; the real model conversation and its ask-user behavior remain unverified.
+
+
+## 2026-11-14 · Plugin 3.1.1 · Release notes follow the actual upgrade range
+
+Filter notes strictly after the previously installed version through the target version. The last dismissed version and older unread notes no longer widen the range. Reopening the same target preserves its range; another upgrade starts a new range. Retire legacy pending ranges without replay, display the version interval, and register the missing 3.1.0 DeepSeek parsing, default selectors and settings fixes. Patch-only installs remain quiet; fresh installs and downgrades do not show historical upgrade notes.
+
+Validation covers patch-to-minor upgrades, skipped versions, upgrades with unclosed notes, same-version reopening, legacy state, hot-load previous-version evidence and four dismissal paths; 18 focused checks and release source/archive checksum verification passed. Plugin 3.1.1 only; public desktop installer remains 2.0.1. Libraries, parsing configuration and external-transfer policy are unchanged.
+
+## 2026-11-14 · Release notes cover only the current upgrade range (source fix; unpublished)
+
+Fix notes being filtered from explainedVersion (last dismissed notes) instead of the previously installed version. New upgrades start at the installed version; only reopening the same target reuses a pending range. Legacy pending records without target markers are retired. Show the version range and register the missing 3.1.0 parsing/settings notes. Patch-only upgrades remain quiet; skipped-version summaries include only the actual installation interval. Seventeen release-note and automatic-update notification checks passed. Source only: the public 3.1.0 archive has not been replaced.
+
+## 2026-11-14 · Plugin 3.1.0 · DeepSeek parsing and default-service selection
+
+Integrate the official standalone DeepSeek OCR / ASR APIs. Unconfigured libraries offer DeepSeek defaults; retain existing providers, selections and local-only policies. Submit documents directly to OCR and convert long audio with FFmpeg to mono 16 kHz PCM chunks. Preserve pages, truncation and failures without inventing word timestamps. Credentials use encrypted storage or DEEPSEEK_API_KEY; official endpoints are pinned.
+
+Expose separate OCR / ASR selectors in workbench and global settings, automatically save choices and refresh after provider changes. Show readable vendor names when no custom name exists. Fix blank settings caused by mismatched shared-service directory fields and include the previously unreleased first-library handoff fix. Package updates do not rebuild or migrate existing libraries.
+
+Focused parsing, selector, directory-contract, credential, external-policy and chunk-retry checks passed; the release workflow also checks transaction recovery, shared-library compatibility and retrieval. Synthetic files and simulated cloud responses were used, with real FFmpeg conversion. No paid cloud requests were made; live quota and recognition quality are not claimed. Publish plugin 3.1.0 only; public desktop remains 2.0.1. Local desktop 2.0.2 and signing preparation do not constitute a new installer release.
+
+## 2026-11-14 · Readable parsing-service selector names (local fix; unpublished)
+
+Fix default selectors and descriptions displaying internal ocr-/asr- IDs. The backend historically uses the ID as label when no name is entered, and the selector mistook it for a custom name. Preserve genuine custom labels; otherwise derive names such as DeepSeek OCR and DeepSeek ASR from vendor or protocol, alongside local/LAN/cloud location. Stored provider IDs and selected defaults remain unchanged.
+
+Expanded and passed the selector regression for labels equal to IDs, missing names inferred from protocol, custom-label preservation, saving selections, failed-save preservation and reloading. Source syntax checks passed. Source and local package only; unpublished on GitHub.
+
+## 2026-11-14 · Select configured default parsing services (local feature; unpublished)
+
+Both the workbench and DSH global parsing settings provide separate OCR and ASR default-service selectors. Options are filtered by kind, show local/LAN/cloud location, and disable inactive providers. Selection automatically saves through the existing parse.default API; subsequent imports, parsing and flows use the stored defaults without changing running jobs. Show save success or failure, retain the previous selection on failure, and preserve local-only policy with a warning for a selected cloud service.
+
+Synchronize provider management and selectors through a UI event and refresh after closing management, so additions, deletions and default changes remain visible. Seven targeted checks passed, including kind filtering, selected-ID persistence, failed-save preservation, reload persistence, directory contract and retrieval settings regressions. Source and local package only; no GitHub publication or live cloud recognition claim.
+
+## 2026-11-14 · Fix blank global settings panel (local fix; unpublished)
+
+The actual desktop console showed `Cannot read properties of undefined (reading 'trim')` in Section. The shared directory endpoint returns current/defaultCandidate/canWrite while the settings component expected bound/defaultKnowledgeBase/defaultWritable. An asynchronous undefined candidate triggered the host slot error boundary and left the panel blank.
+
+Accept both directory response shapes, populate candidates only for unbound libraries with a valid default, and normalize nullable paths during rendering and setup. The shared service also supplies the legacy field aliases. Preserve the bound library and existing parsing providers without rebuilding or switching libraries. Twelve targeted checks passed, covering both response contracts, status timing, missing fields and first-library handoff regressions. Source and local package only; no GitHub publication or live cloud recognition claim.
+
+## 2026-11-14 · Default DeepSeek OCR / ASR (source and local plugin package; unpublished)
+
+Unconfigured libraries default to DeepSeek OCR / ASR with allow-configured. Existing providers, default selections and explicit local-only policies remain authoritative. The settings form defaults to DeepSeek and supports an encrypted saved API key or a DEEPSEEK_API_KEY environment reference. Official API endpoints are pinned and credentials remain private. TTS is outside file parsing and is unchanged.
+
+Use the official standalone multipart protocols. OCR submits images, PDF, Word and PowerPoint directly without local PDF rendering, preserves pages and provider usage, and marks length-limited output as partial. ASR reuses FFmpeg mono 16 kHz PCM conversion, 50-second chunks and failed-chunk retries, within the official 120-second / 8 MiB request limits. No word timestamps are invented. Handle error objects inside HTTP 200 responses and retain external-transfer and binding checks.
+
+Validation: defaults, pinned endpoints, multipart fields, errors and truncation, simulated PDF tasks and real FFmpeg segmentation of 121-second audio, plus existing parsing/native-provider regressions (16 tests). No real user files were sent to cloud services; live account quota and recognition quality remain unverified. Source and local plugin package only: not installed in the running DSH and not published to GitHub.
+
+## 2026-11-11 · Windows signing preparation (source changes; no signed artifact)
+
+Add a trusted Authenticode signing entry point with chain, private-key, validity, publisher and timestamp verification. Sign mutated executables before payload hashes and sign the outer installer last. Production packaging requires signing by default; only explicit --allow-unsigned permits a local development build. Locate the payload trailer using the PE certificate table so an appended signature does not break extraction; retain ZIP SHA-256 validation.
+
+Validation: real C# compilation and three automated checks covering PE32/PE32+, all eight alignments, invalid certificate directories/trailers and rejection of production packaging without a certificate. Synthetic certificate tables do not establish trusted signing. No certificate is available and no signed installer was produced; the existing local 2.0.2 package is unchanged. The user clarified that blocking occurs on another computer, so local Smart App Control state or scan results cannot verify installation there. The exact remote warning and trusted-signing approval remain outstanding.
+
+## 2026-11-11 · Plugin 3.0.2 / client 2.0.2 · Local manual-install fix
+
+Includes the first-library shared-service handoff fix: retain successful creation, stop old embedded-runtime refresh, explain that DSH must fully exit and reopen, serialize concurrent setup and reuse its successful receipt. Single-writer protection remains enforced. No storage epoch change or existing-library rebuild.
+
+This is a local build, not yet published to GitHub. Isolated Windows validation covers plugin-first/client-first creation and independent/shared use, plus guide/settings callbacks and handoff API regression checks. The client installer remains unsigned; Smart App Control/administrator-policy blocking is unresolved. Choosing manual installation does not establish system trust. Use an empty destination, reopen the original library, and retain the old installation for rollback.
+
+## 2026-11-11 · Shared-service handoff after first library creation (source fix, unreleased)
+
+Fixes the first-use guide refreshing preferences through the embedded kernel immediately after creating a shared library, which triggered SERVICE_REQUIRED. Preserve successful creation, explain that DSH must fully exit and reopen, and stop the guide lease/refresh. Library settings also skip the old-runtime refresh and disable repeated setup/rebuild. Serialize initial setup and retain its successful receipt for this Host lifetime; repeated requests cannot fall back into the embedded writer. Other workspace calls during handoff receive an actionable restart message. Single-writer protection remains enforced; restart connects through the existing persisted binding.
+
+Validation covers the actual guide/settings callbacks, concurrent/repeated setup, retry after failure, and Windows plugin-first/client-first creation with independent and shared use. This entry describes unreleased source changes; published versions remain plugin 3.0.1 / client 2.0.1.
+
+
+Installer audit: the existing 2.0.1 installer has Authenticode status NotSigned. No matching historical Defender detection was found on this machine. Unsigned applications can trigger reputation or Smart App Control blocks; this alone does not establish a malware false positive or resolve Windows trust. The user described a possible Smart App Control or administrator-policy block; the exact category remains unconfirmed. A targeted Defender scan completed without related detections and the release hash matched. This trust blocker is unresolved: no code-signing certificate is available locally. Disabling protection or self-signing is not a substitute for a trusted release signature; organization policy may additionally require administrator approval.
+
+## 2026-11-11 · Plugin 3.0.1 / client 2.0.1 · Update transaction recovery patch
+
+Fixes abandoned prepared receipts blocking later updates after a separate Host installation. Under the profile writer lock, archive the complete old receipt and abort only its preparation before staging a new update. Preserve the installed version, candidates and backups, and reject stale confirmations. Publishing/unknown phases, publication backups and active writer locks still require recovery or waiting. Update dialogs distinguish recovery from writer contention.
+
+Adds a preparation-only `cancel-prepared` recovery command and bilingual instructions. Archive before cancellation; never roll back a publishing transaction through this command.
+
+An installed older version still runs its older updater. An already blocked installation needs one-time safe cancellation of the preparation-only receipt before the normal update to 3.0.1; the not-yet-installed patch cannot repair that updater in advance. This machine's historical receipt was backed up and cancelled. Client 2.0.1 includes the matching repaired backend and plugin.
+
+Validation covers real pnpm archive/restage/commit, stale confirmation rejection, writer/publication guards, real Windows service drain and reconnection, and an isolated copy of the installed profile. Synchronizes bilingual records, product feeds and download links. No protocol/storage epoch change or library rebuild. The unsigned client installer still requires an empty destination.
+
+## 2026-11-11 · Recover abandoned prepared updates (source fix, not yet released)
+
+A historical prepared receipt no longer permanently blocks a new update after a separate Host installation. Under the profile writer lock, archive the full old receipt and mark it aborted before staging again. Preserve candidates and backups, and reject stale confirmations. Publishing/unknown phases and live writer locks still require recovery or waiting. Show distinct messages for unresolved publication and an occupied writer. Real pnpm regressions cover supersession, stale confirmations, active locks and publication guards. Published 3.0.0 assets remain unchanged.
+
+## 2026-11-11 · Publish plugin 3.0.0 and client 2.0.0
+
+Merges release-review fixes, mixed-version interoperability, startup/scoped-update improvements and visual corrections into the unified main repository, with separate v3.0.0 and client-v2.0.0 releases. Synchronizes both languages of the READMEs, client guides, version notes, evolution records, website and product feeds. Independent versions and installations retain protocol/storage/capability-based sharing; a product major bump does not force an index rebuild.
+
+Final local regression: 362 of 364 Node checks passed, zero failures and two real-host environment skips; all 24 Python checks passed. Actual installer validation confirmed that client 2.0.0 installed in a new directory resumes the 1.1.4 profile and library, preserves originals and renders without page errors. Nonempty targets remain protected. Source/package, embedded plugin and installer digests are verified before publication; GitHub Actions validates the merge and release tags.
+
+Fixes concurrent first activation across old/new clients: an authenticated active owner satisfies duplicate fresh activation without another migration. Conflicts from older services require an active matching library identity before proceeding. Concurrent interoperability tests now retain and close successful connections even when the peer fails, preventing a leaked test process.
+
+GitHub Windows checks now await complete service exit before removing test directories. The historical 2.4.3 upgrade fixture adapts only SID/ACL display-alias normalization for the runner built-in Administrator account, without changing legacy protocols, permissions or upgrade behavior.
+
+The installer is unsigned and requires an empty destination; silent in-place installation is not implemented. Library migration still requires preview and confirmation. No production library or paid model call was used; real DSH tool-dispatch and ASAR-host checks remain environment-dependent.
+
+## 2026-11-11 · Plugin 3.0.0 / Client 2.0.0 · Local major-version delivery
+
+Consolidates release, cross-round and visual review fixes. Both products work independently or share one library. Compatibility continues to use the shared protocol, storage generation and negotiated capabilities; changing the product major version does not force migration or rebuilding.
+
+- Fixes first-run creation, interrupted initialization, migration, backup restoration, grant renewal, concurrent ingestion and update handoff.
+- External edits within the library trigger scoped maintenance with retryable continuous saves. Startup reads coalesce, healthy indexes are reused, and permission changes hide stale content.
+- Restores shared management control styling, aligned switches, light/dark themes, readable badges, modal scrolling and visible keyboard focus.
+- Checks build/package fingerprints and regenerates real-library launcher pairing metadata for the exact companion plugin.
+
+Existing originals stay in place. A version upgrade alone does not migrate or rebuild the entire library. Copy imports watch the library copy, not the external source. The client checks and verifies downloads; installation still uses the installer. Historical host installation constraints and the 2.4.6 recovery boundary remain unchanged.
+
+This is a local delivery, not a public Release, signed distribution or production installation. See the delivery report for final verification and checksums.
+
+## 2026-11-11 · Layout and shared control fixes (unpublished candidate)
+
+Inspected the workspace, quick/full settings, management tabs and service settings at 1440×1024 and 1040×720. The desktop management factory now receives the plugin's shared UI stylesheet, restoring separate preference rows, label alignment, field grouping and control styling. Native management controls and scrollbars follow the desktop light/dark theme. Selected tabs and primary actions use the palette's foreground color instead of white on pale backgrounds. Status badges also inherit the palette soft accent background, avoiding pale green text on a pale green fill. Added modal boundaries and keyboard focus indicators for selects, and kept a single management content scroll area in smaller windows.
+
+TypeScript/Vite builds passed. Actual Electron screenshots and geometry checks confirmed horizontally centered dialogs, no horizontal content overflow, and 34×20 switches with at most 0.5px vertical misalignment. Selected management button text passed 4.5:1 contrast in all 14 combinations of seven palettes and light/dark modes. The shared stylesheet is included in build proof inputs to reject stale builds after stylesheet changes. Regenerated candidates without public release or production library changes.
+
+## 2026-11-11 · Cross-round review and release consistency fixes (unpublished)
+
+Reproduced and fixed standalone desktop vector reconciliation checking the plugin directory, which could incorrectly rebuild a healthy index. File changes and atomic replacements during scans remain retryable, including preservation of dirty paths when work throws. Continuous file notifications now have a maximum flush delay. Automatic visibility changes advance the policy version; the desktop rechecks open documents, hides content, outlines and actions after access is revoked, preserves unsaved edits, and resumes after access is restored.
+
+Initial document loads still merge, but a refresh arriving during a load schedules a fresh read instead of disappearing into the old request. Windows event paths match consistently across case and separator differences. Both workbench guides and scheduler test settings now match the current timing. Ordinary content changes remain scoped; permission changes intentionally recheck visibility.
+
+Added build proofs: a successful TypeScript/Vite build records source and output fingerprints, and desktop packaging rejects missing proofs, changed source or modified output. The installer also verifies the desktop build manifest and paired plugin against current inputs, preventing reuse of stale dist or package directories. New regressions cover healthy independent indexes, transient scans, policy changes, continuous events, overlapping refreshes and stale-build rejection. Electron verified permission revocation/restoration and scoped refresh. The candidate is regenerated without public release or production installation changes.
+
+## 2026-11-11 · External changes and incremental chunk updates (unpublished 2.5.13 / 1.1.4 candidate)
+
+File maintenance now uses a 750 ms debounce, a one-second minimum interval and a five-second maximum event batch, retaining patrol recovery for missed events. Changed paths reach the desktop so local saves check only affected documents and directories. Index progress and catalog metadata changes no longer reload all open files. Non-admin live events and replay omit paths, and older clients retain compatibility with unscoped events.
+
+The original-file catalog reuses hashes when identity, size, mtime and ctime are unchanged; fulltext records also verify ctime. Normal vector maintenance reuses unchanged source text, chunks and vectors, while explicitly forced verification still rereads originals. External saves schedule work after debounce, changes during a build receive a follow-up pass, and pending work for the second retrieval profile is retained. Legacy references no longer block unrelated maintenance after an external source rename or deletion. Metadata enumeration and atomic index publication remain; this is not a claim of zero directory scans.
+
+Real filesystem tests cover attached roots, imported local copies, rename, deletion, preserved-mtime rewrites, binary catalog records and saves during a build. A 13-chunk fixture requested only one changed embedding after about 0.86 seconds; the local mock service does not establish remote API completion latency. Electron checked/reloaded only the externally edited document, without rereading the adjacent PDF. Mixed-version, event-permission and recovery regressions passed. Copy import does not synchronize the original outside the library; binary metadata updates do not imply automatic OCR or parsing.
+
+Also fixed the preview-handle type declaration omitted in the preceding change. The prior final-compilation success claim was incorrect and is corrected here. This candidate is regenerated only after an explicitly successful TypeScript/Vite build, without changing production installations or publishing a release.
+
+## 2026-11-10 · Startup deduplication and index maintenance stability (unpublished 2.5.13 / 1.1.4 candidate)
+
+Opening an existing library no longer creates the sample library or submits a restore write when no restore is pending. Startup tree loads and concurrent loads of the same document are deduplicated. Identical configuration is validated under the lock without rewriting the file or advancing its revision, avoiding unnecessary watcher resets. Reconnection checks file revisions and preserves unsaved edits; service-bound PDF/Office resource handles are still renewed. Restored copies retain complete recovery, and actual policy changes still trigger maintenance.
+
+An isolated Electron comparison reduced default-workspace startup directory requests from 18 to 9. Unchanged Markdown was not reread on reconnect, externally changed content still refreshed, and no renderer script errors occurred. Validation covered concurrent configuration/index maintenance, upgrade handoff and failed-update resume, backup recovery, mixed versions and startup paths. Normal updates do not force a full rebuild: service startup retains incremental verification and reuses unchanged index entries; damaged or legacy indexes retain their existing repair rules. Fewer requests are not presented as an equivalent reduction in whole-library latency. Production libraries were not used for tests. This regenerates the unpublished candidate rather than claiming a public release or installation in the user environment.
+
+## 2026-11-10 · Mixed-version interoperability tests and fixes
+
+Reproduced and fixed two mixed-version failures: an optional new method changed the aggregate contract hash and blocked old peers from joining a new service, while the new desktop required the reconciliation feature and rejected a running older plugin service. The established base contract now remains stable, with optional features negotiated separately. Older services without reconciliation show an upgrade notice while file management stays available. Changes to existing interfaces, unknown protocols, incompatible storage/engine epochs and missing mandatory capabilities still fail closed without starting a second writer.
+
+Tests use original historical TGZs for 2.5.5, 2.5.10, 2.5.12 and the preceding 2.5.13 candidate, covering old/new service owners, plugin/desktop connection order, cross-peer reads and writes, stale revision conflicts and simultaneous startup. The tests are included in desktop and release CI. This updates the unpublished 2.5.13 / 1.1.4 candidate build without replacing an existing public release or changing production data.
+
+## Plugin 2.5.13 / Client 1.1.4 · Release audit fixes (unpublished)
+
+Fix fail-open privacy on corrupt source maps and lost mappings during concurrent imports. Original-file backups retain classification catalogs and index policy, and restored libraries undergo a health check. Desktop restore copies receive their own identity and grant, can be reopened, and share one service with the plugin adapter.
+
+Interrupted first-time initialization can resume. Launch locks from dead processes are reclaimed only after identity checks; live or unverifiable owners remain protected. Offline migration preserves interrupted staging before rebuilding it, validates the source before completing an unfinished journal, and retains grants for other libraries. Unknown inbox launches now have an explicit reconciliation action that rejects late receipts and avoids blind resending. Local bootstrap credentials renew before expiry without reviving revoked grants.
+
+Clarify sample-library creation and real-folder enrollment. Fix mirror release-note extraction and standalone UI module syntax. Extend CI coverage for first-time setup, index migration, service lifecycle and Windows live updates. Upgrade PDF.js and packaging dependencies and resolve the math renderer dependency advisory. Add fault regressions for source maps, concurrent imports, backup restore, interrupted setup, launch locks, task reconciliation, credential renewal and offline migration.
+
+Validation uses isolated synthetic libraries and covers standalone plugin setup, standalone desktop access and a single shared writer. Real user data was not modified. These are unpublished source changes and local candidate packages, not evidence of publication, installation or real cloud-model acceptance. Final validation results are recorded in the release audit report.
+
+Local validation: 325 of 327 Node tests passed, with two environment-dependent skips. The packaged Electron ASAR test subsequently passed, followed by 28 passing targeted restore-policy checks. All 23 Python tests passed; both dependency audits reported zero vulnerabilities. The actual desktop rendered PDF pages. Isolated installation, launch and uninstallation passed while preserving an extra user file. The installer remains unsigned; no real DSH profile installation or cloud-model call was performed.
+
+## Plugin 2.5.12 · First shared library and inbox workflow refresh
+
+On Windows, a new shared library created in an empty folder enables original-file indexing by default. The plugin and desktop client can operate independently or connect to one library. Fully exit and reopen DSH after its first shared-library binding. Existing embedded libraries still require explicit migration.
+
+The workflow view refreshes after an update or service reconnect. Inbox organization reads the current workflow revision before starting. A same-library revision conflict retries preparation once, before a session or prompt is created. A library change stops the old request and displays a notice.
+
+Windows tests covered creating a library from either side, independent use, one writer for a shared library, and stopping requests when the selected library changes. The Windows 1.1.3 installer was built locally and checked against the packaged plugin.
+
+## Plugin 2.5.10 · Unified memory integration
+
+The workbench uses the versioned interface to read and modify DSH global memory. Linked entries follow their source documents. The Memory panel refreshes on change notifications while connected and returns to library-only entries if the DSH host disconnects.
+
+This release includes the safe service handoff from 2.5.9. Pair it with DSH Memory 1.0.14.
+
+## Plugin 2.5.9 · Safe service handoff
+
+The updater reuses its verified package while knowledge-base work is active. When idle, it drains the old service, applies the package and uses DSH hot reload where available. Completion requires the new Host and worker to be active.
+
+## Plugin 2.5.8 · Faster library reopening
+
+Reopening the same library reuses the current view. File changes and manual refresh update it, and permission changes discard the old view.
+
+## Plugin 2.5.7 · ASAR indexing fix
+
+The knowledge-base service treats Electron ASAR archives as physical files. Virtual entries no longer cause repeated file-change errors during index maintenance. Desktop client 1.1.2 remains compatible.
+
+This long-term record is for users, maintainers, and future contributors. It explains why the product is built this way, what it can currently do, how its features fit together, where data is stored, and what may come next. “Implemented” refers to source code in this repository. Roadmap items are future directions, not features already delivered. The installed version and build ID must be checked in the client and the corresponding release manifest.
+
+See the [workbench guide](WORKBENCH.en.md) for usage, [release notes](RELEASE.en.md) for changes in each release, and [versioning policy](VERSIONING.en.md) for version comparisons. This record explains the product as a whole; release notes are not an architecture document.
+
+## Plugin 2.5.6 · Historical-session memory linking
+
+Memory management uses persisted ownership to select the primary or an authorized connected secondary library.
+
+## Plugin 2.5.5 / client 1.1.2: compatible shared services and manual updates (2026-11-07)
+
+Compatible patches no longer require identical runtime fingerprints. Both entry points check the protocol major, full method-contract hash, storage and engine epochs, and required capabilities before reusing one shared service. Verified public 2.5.3/2.5.4 runtimes can remain online while the repaired client joins them. Unknown legacy runtimes or incompatible contracts retain fail-closed handoff behavior. Breaking storage or engine semantics require an epoch change.
+
+Help → Updates and manual installation now offers explicit verified download, installer launch and official download-page actions. Cached installers are checked again before launch, with no renderer-supplied executable path. Automatic in-place replacement remains unfinished; save work and close the client before completing the installer. Existing automatic checks/downloads remain available.
+
+Thirty focused checks passed, including real Windows services, reproduction using the old connector, different-build joins in both orders, single-writer/original preservation, safe resume and corrupted manual installers. Synthetic libraries are used; no private document body, library migration or paid model is involved. Actual installation/loading evidence is recorded separately.
+
+## Plugin 2.5.4: update delivery and failure dialogs (2026-11-07)
+
+A readable version manifest no longer leaves the downloader dependent solely on large raw binary files. Domestic mirrors can serve small base64 parts at fixed digest-addressed paths, with at most three concurrent requests. The assembled archive must pass the existing size, SHA-256 and plugin-format checks. Fixed maintainer-owned GitHub Pages and Release endpoints provide additional fallbacks; arbitrary manifest download URLs are not accepted.
+
+Progressing large downloads use an idle timeout with a separate five-minute ceiling. Dismissing an update failure survives navigation and remounts in the page session; an explicit retry can report a new failure. Thirty-six focused tests passed, including integrity failures, redirects, bounded concurrency, slow streams and dismissal recovery. No real private library or paid model was used. Desktop client remains 1.1.1; library migration is not automatic. Legacy downloaders need a verified local TGZ or prefilled verified cache to obtain this first repair.
+
+## Plugin 2.5.3 / desktop client 1.1.1 (2026-11-07)
+
+This paired release publishes the previously local original-file index architecture and subsequent fixes. The products share a core and service while retaining independent versions and installations.
+
+- Originals stay in place. The index records identity, path, classification, tags and fingerprints. Both products offer migration preview and confirmation; installing an update does not migrate a library automatically.
+- The client adds the original-file classification tree and classification actions, with shared-service visibility checks.
+- Flow cards save model and reasoning settings. Run uses that saved route; the builtin inbox still requires High. Custom-flow preparation no longer enters the builtin inbox-only gate.
+- The task-plan panel fixes width and upward disclosure. Bounded progress reminders ask the model to reconcile actual results during long runs; the observer does not complete tasks itself.
+- Deliverable instructions support existing series folders: task is the folder name, title identifies the issue, and path is library-relative. No per-date folder is required; path and privacy checks remain enforced.
+
+Validation uses synthetic libraries and focused checks, with source/archive, build and digest verification. No private library or paid model is used. Historical evidence retains its original scope. Packaging does not establish production installation, running DSH activation, real report generation or external delivery. Client automatic in-place installation and activation remain unfinished.
+
+Install the TGZ from v2.5.3 and the unsigned Windows x64 Setup.exe from client-v1.1.1, checking their separate manifests and SHA-256 digests. The client installer requires an empty application directory; save work and exit the old client first. Reload the plugin as directed by DSH or exit including its tray process and reopen, then verify version and build. Existing recovery instructions still apply to blocked legacy 2.4.6 updaters.
+
+## 2.5.2: Upward task-plan disclosure (2026-11-07)
+
+Correct the disclosure direction for the task plan above the composer: collapsed points up to expand; expanded points down to collapse.
+
+## 2.5.1: Flow cards and saved execution settings (local update)
+
+Flow text and actions now wrap in separate sections. Each card saves its model and reasoning selection with revision checks; Run uses the saved route and only asks for missing required parameters. Builtin inbox instructions remain protected, with High required. No real report generation or external delivery was performed.
+
+## 2.5.0: original-file index architecture (local delivery, 2026-11-06)
+
+Plugin 2.5.0 and client 1.1.0 share migration preview, explicit confirmation, original-file identities and classification. Originals remain in place. Classification and fulltext/vector data use the index layer; existing identity and authorization journals remain compatible. Local synthetic checks cover independent and linked service connections and the Electron migration UI. No real private library migration or real model call was performed. This local build is not published to the remote update feed.
+
+## 2.4.14: existing-library framework migration (2026-11-05)
+
+Implement the user-selected additive migration: preview, per-path decisions, bundled reference text, confirmation and failure recovery. Add missing standard folders, templates, guidance and absent rule/navigation files. Preserve document locations and custom contents. Changed bindings or snapshots stop execution; recovery only removes verified additions and preserves follow-up user edits.
+
+The shared service enforces management access and library identity. Mechanism status now reports the core program version instead of a fixed 0.5.0. Seven new focused checks and two related regression checks passed, including a real Windows service. No real private library was migrated or complete Electron UI verified. The feature ships in the 2.4.14 stable package and update manifest. [Details](docs/LIBRARY-FRAMEWORK-MIGRATION.md#english)
+
+## 2.4.13: preserve unrelated Host dependency locks (2026-11-05)
+
+Resolve only the dependency-free knowledge package in an isolated resolver, then merge its importer, package and snapshot entries into the original pnpm v9 lockfile. Other source specifiers, pinned versions and records remain byte-for-byte intact. Host-internal packages are not looked up, copied or reinstalled. Unsupported or ambiguous locks and cross-package references fail closed.
+
+Nineteen update-confirmation checks and eight real-pnpm/transaction checks passed. An isolated copy of the actual profile metadata also prepared successfully while the live manifest and lock remained unchanged. Rollback and crash recovery remain in place. Live installation and activation results are recorded separately from staging success.
+
+## 2.4.12: local dependencies during automatic update staging (2026-11-05)
+
+Retain the shared-build and legacy confirmation fixes from 2.4.11. Profile-local relative package dependencies are now copied into isolated shadow staging so pnpm can resolve them without changing their live source specifiers or files. Escapes, links, metadata collisions and relative packages over 64 MiB are rejected. Knowledge libraries and credentials are not staged.
+
+Nineteen confirmation checks and seven real-pnpm/transaction checks passed, including dependency preservation, escape rejection, rollback and crash recovery. Live-device automatic upgrade results are recorded separately; downloads, synthetic checks and disk package versions alone do not establish activation of the new running build.
+
+## 2.4.11: shared build status and automatic update confirmation (2026-11-05)
+
+Shared POST status omitted the build required for update confirmation, so an already loaded update could remain uncertain indefinitely. Shared status now includes the Host build. The client can read the legacy GET status for compatibility and still requires an exact version/build match.
+
+Nineteen focused checks passed, including the original missing-build regression and legacy status confirmation. Existing writer-lock, prepared-transaction and failure safeguards remain. A client already locked by old code needs a controlled compatibility recovery before its automatic flow can resume; publishing a feed cannot change running old code. Verify the pending request against the installed build before recovery. Live upgrade results are recorded separately from synthetic checks.
+
+## 2.4.10: installation confirmation recovery (2026-11-05)
+
+Fix an old missing installation receipt keeping the UI indefinitely uncertain with installation disabled. Reconciliation now checks the installed disk build, active safe operation and profile writer lock. A legacy record clears only after the Host confirms its request is absent and authoritative quiet-writer/build checks pass. Elapsed time and failed requests alone never authorize retry.
+
+A prepared but unstarted safe transaction can resume the same transaction without another preparation. Target files already installed under an old running Host require a restart. Active, unverifiable and damaged states continue to block blind installation.
+
+Seventeen focused checks passed across legacy recovery, locks, active operations, missing journals, installed-but-unloaded files, transaction continuation and completion state. No live user installation, client-cache deletion or forced restart was performed.
+
+An old UI already locked by a pending record cannot load this fix through its disabled button. Use the Host's own Settings → Plugins entry once with this official release, then reload when requested. See the recovery instructions.
+
+## 2.4.9: kb_flow output contract (2026-11-05)
+
+Fix shared-mode kb_flow results missing the required action field. Both the service router and Host tool boundary retain the requested action on success, domain errors, disconnection and caller-verification failures. Existing validation, error details and success state remain intact; calls are not replayed.
+
+Three focused tests passed across all eight actions, the registered Host tool's success/error returns and an isolated real Windows shared service. Synthetic data only; no live user workflow was replayed.
+
+A separate memory-plugin 1.0.4 issue was identified: tool-only continuation could replace recalled preferences with an empty snapshot. Its 1.0.5 local fix is delivered separately, is not included here and has not been publicly released or installed automatically. Synthetic classroom-audio checks cover persisted recall and continuation context, not real-user note creation.
+
+## 2.4.8: parsing records in shared-service settings (2026-11-05)
+
+Fix management reads being treated as ordinary session reads. OCR/ASR job and submission visibility now follows the authenticated connection's admin grant instead of whether the request mutates state. Settings can see Agent-initiated tasks across sessions while library visibility filtering remains active. Ordinary model tools and read-only grants retain their existing restrictions; management writes still require authorization.
+
+Three focused tests passed. An isolated real Windows shared service uses synthetic local OCR/ASR endpoints and a separate Agent session; both settings read paths see running jobs, submissions and completed history. Ordinary sessions, read-only grants and forged input fields do not gain management access. The regression fails before the fix and passes afterward. No live personal library, paid API or full user-UI verification is claimed.
+
+## 2.4.7: service preparation during update handoff (2026-11-05)
+
+Keep the workbench API registered during handoff. The client shows a neutral preparation message and continues after readiness. Only requests explicitly rejected before execution may be retried; genuine HTTP 405, lost responses and unknown write outcomes remain errors. Preparation failures and timeouts retain recovery guidance.
+
+Nineteen focused checks passed, including a real local HTTP server, exactly one mutation after readiness, failure/timeout boundaries and service lifecycle checks. No additional full regression or live user-instance/UI verification is claimed.
+
+## 2.4.6 migration boundary (2026-11-05)
+
+The pristine 2.4.6 updater can block on a missing legacy receipt before downloading any new or transition payload. Its old preparation worker may also resolve unrelated Host dependencies. Publishing 2.4.13 cannot repair that already-running code. Success after a one-time local recovery does not prove zero-intervention upgrades for other users.
+
+A separate [2.4.6 migration recovery entry](docs/LEGACY-246-BOOTSTRAP.md) verifies the public old package and transactionally installs the unchanged official 2.4.13 package. It discovers one profile or requires an explicit choice. This is one-time external recovery, not silent automatic migration. Four Windows entry/real-pnpm checks and two client-boundary checks cover dependency preservation, EPERM rollback, busy processes, profile selection and bundled Python. Mismatched historical safe transactions remain a limitation. Universal zero-intervention migration requires an independent Host recovery channel and is not claimed complete.
+
+## 2.4.5: direct 2.4.3 updates and legacy service handoff (2026-11-05)
+
+Restore the stable feed for direct updates from normal 2.4.3 installations. Identify the published legacy runtime by its exact fingerprint, release the probe connection and wait for its existing idle lifecycle to finish. Require matching process identity and a clean receipt before starting the new service. Never send legacy shutdown or terminate other clients/tasks; timeout offers recovery guidance.
+
+The new client shows recovery help only after an installation or handoff error. A 2.4.3 pnpm failure before new code loads retains the old error UI; its existing release-notes link leads to recovery instructions. Do not claim the new popup exists in that old client. The recovery bundle can reconstruct damaged 2.4.3 code from the pinned public archive, preserving residual files and profile metadata before a transactional upgrade.
+
+Windows evidence uses the actual public 2.4.3 archive, a live service and real pnpm. Initial legacy installation still runs through the old Host installer and cannot retroactively acquire transaction protection. Recovery is the fallback on failure. No live user profile installation or complete Electron UI automation is claimed; other legacy versions are outside this targeted verification.
+
+## 2.4.4: safe Windows updates and rollback (2026-11-05)
+
+- Run pnpm only against an isolated profile-metadata copy. Verify the archive, build inventory and staged files before touching the live package.
+- An admin-authorized drain protocol refuses other connections and queued/running parsing, import or flow work. Require a clean shutdown receipt and process exit before switching complete directories.
+- Retain the previous package and metadata in a private transaction directory. Failed publication restores and verifies the old files. Durable receipts support recovery after installer interruption and prevent unknown outcomes from being reported as success or retried blindly.
+- The safe feed is release-manifest-v2.json. Legacy release-manifest.json distribution is disabled so old updaters cannot execute the unsafe in-place path. Versions through 2.4.3 need the transition installer once, after exiting the Host and connected clients. A legacy service without the drain protocol is refused.
+- Successful installation requires a Host restart. Embedded mode, missing drain capability, unsupported dependency layouts and incomplete previous installations fail closed.
+
+Evidence: 35 focused Node checks, 5 real-filesystem/real-pnpm transaction tests and 1 composite live-service scenario on Windows passed. The scenario covers legacy 2.4.3 refusal, busy connections/tasks, a protocol-capable service using the old package Python, exact restoration after a real 2.4.3 package switch fails, successful upgrade/restart and preserved synthetic originals. Forward safe-protocol upgrades and the unmodified legacy transition are distinct paths. No live user profile installation, real-model evaluation or complete UI regression was performed.
+
+## 2.4.3: source synchronization and Windows parsing jobs (2026-11-05)
+
+- Merge text-original retrieval and citation synchronization. Archived text is searchable; edits refresh source records and ranges. Legacy generated mirrors resolve to current originals while independently authored summaries remain searchable.
+- Preserve exclusions across related originals and derived records, reuse unchanged embeddings, and support PDF rendering with non-ASCII paths and versioned Python executables.
+- Serialize parsing-record reads and atomic replacements in one process, including separate service instances. External locks receive bounded retries; exhausted writes preserve the old record and clean up temporary files.
+- Catch background failures during submission, retry and startup recovery. Persist failure diagnostics where possible, report persistence failures, and release heartbeats and running registrations.
+
+Windows focused verification passed 73/73 tests: 68 existing checks and 5 injected-failure regressions. Synthetic inputs and transport stubs do not establish real OCR/ASR quality, automatic PDF/Office re-indexing, native source-position mapping or complete desktop compatibility. The independently released client remains 1.0.3; its installer is not rebuilt for this release.
+
+## 2026-11-05: plugin 2.4.2 / desktop client 1.0.3
+
+Desktop feedback now creates public GitHub Issues through Cloudflare Workers and D1 without requiring users to log in. Users explicitly confirm publication of entered text plus version/build information. Library files, logs and device paths are not attached automatically. Credentials remain server-side Secrets. Receipts prevent duplicate creation; uncertain outcomes are reconciled. Submission limits apply.
+
+New trash archives stay in library metadata on the library volume. Legacy archives remain readable, cross-volume restoration copies and verifies before publication, and failure recovery requires evidence that the source was unchanged and never moved. Reconnection refreshes retain the existing snapshot.
+
+Plugin 2.4.2 enables stable update checking/preparation in shared-service Hosts, accepts verified manifests up to 1 MiB, and distinguishes offline/local/preview/ahead states. Bundled Python helpers are verified and copied to a persistent content-addressed location outside the replaceable plugin directory. Existing bindings, configuration, parsing records and service identity are retained. The optional offline installer refuses active clients, backs up and compares state, and invokes the existing package manager. Actual installation and Host activation remain user-operated.
+
+Evidence includes feedback tests, live deployment Issues #46/#47 with duplicate receipts, isolated two distinct volumes trash/restore checks, the service file lifecycle, Windows package-directory renaming while a copied helper remains alive, and reopening synthetic 2.4.1 state. Offline installer package-manager calls are mocked. These checks do not establish live-model quality, real-library load performance, full Office fidelity or availability on every network.
+
+The products retain independent versions, manifests and digests. Client update checks and verified downloads work; automatic in-place installation/activation remain unfinished. Mirror attachments become available after successful synchronization and verification.
+
+
+## Client 1.0.2 · 2026-11-04
+
+Isolate the installer launch environment, remove synchronous first-paint IPC, prepare the library service in the background, focus the existing window on repeated launches, and recover retries after an initial connection failure.
+
+Splitters preview widths once per frame and commit on release. PDF, image and floating-window size observers settle before expensive rendering. Cancellation, blur and splitter unmount release drag state.
+
+Feedback copies entered text plus version/build information to the system clipboard. No feedback server, upload endpoint or automatic Issue creation is connected; submit copied feedback manually to repository Issues.
+
+Validation used isolated sample libraries: production build, 22 focused tests, nine UI checks, install-to-first-launch, failed-connection recovery and final installed-build startup/unmount checks. The old intermittent white screen was not consistently reproduced; these checks do not establish a unique root cause or real-library performance. No private data or live-model evaluation is included.
+
+Update checks and verified downloads are available; automatic in-place installation and activation remain unfinished. Plugin version stays 2.4.1.
+
+
+## 2026-11-04: one repository, two products
+
+This repository is the sole maintenance home for the client and plugin. The former separate client repository has been removed. Shared code lives in packages; the desktop app is under apps/desktop. Plugin entry paths stay compatible. Both Git histories were preserved in merge commit 174fc8b.
+
+Client 1.0.0 and plugin 2.4.0 remain independently versioned and installed. The existing plugin public manifest still describes 2.3.1. Source consolidation does not publish binaries or enable automatic updates.
+
+The merged source passed a client production build and 11 focused checks; one installed-DSH-dependent check was skipped. New-source privacy scanning found no pattern matches. This is not a full regression or real-model evaluation. See [client evolution](docs/client/PROJECT-RECORD.en.md), [architecture](ARCHITECTURE.en.md) and [repository rules](MONOREPO.md).
+
+
+## 2.3.1: inbox requests and honest task progress
+
+This patch keeps the inbox request to one sentence, refreshes OCR/ASR records without moving the page, and supplies a missing display label on authorized knowledge-base shell calls. The original command validator and permission policy remain in charge.
+
+Conversation todo handling now pairs recorded progress with the host's live execution status. A bounded final reconciliation asks the model to update the list from actual results. Stopping a session does not imply completion: unfinished steps lose their running animation and remain unconfirmed. Synthetic browser checks cover step changes, stopping, and completion; they do not establish that a real model will finish every task correctly.
+
+## 2.3.0 stable: inbox, index privacy, and unified desktop workbench
+
+### Local Inbox moves and organization-session repair (2026-10-31)
+
+Inbox membership comes from actual files in `90-收件箱/`. Selection and drag-and-drop move external originals there without the quick-capture Base64 transport, size cap, or duplicate records. `workbench-inbox.js` uses a link followed by source removal on the same volume, without overwriting an existing destination. Other volumes use a verified copy before source removal. Collisions receive numbered names, failures preserve the source, and this entry point rejects existing knowledge entries and plugin state files.
+
+Workflow launch now has a dedicated injection scope for sessions, UI services, model directories, and `remote.session`. A thrown or returned model-selection failure prevents submission. One-click organization sends only “整理并归档收件箱内的文件。”; the knowledge Agent and plugin supply the remaining rules. Eight targeted tests used synthetic files and service substitutes. Production installation, desktop drag-and-drop, and real model organization remain unverified.
+
+This maintenance change retains version 2.3.0 and refreshes the repository installer and checksum manifest. The existing `v2.3.0` tag and Release attachments are retained. Use build IDs to distinguish the repository build from previously published attachments.
+
+### Unified desktop UI (2026-10-30)
+
+The [Figma design](https://www.figma.com/design/9O89rqsKJ8ufkiPQGhqGTn) uses editable components and text, and covers the inbox, host settings, and dark theme. `src/client/knowledge-ui.css` is the source of shared styles. `sync-workbench-client.py` embeds it into `index.js`, while `sync-workbench-build.py` includes it in the build fingerprint. After editing the style source or `workbench-ui.js`, run the synchronization steps; do not change only generated fragments.
+
+Inbox cards and archived-item details share a keyboard-operable **Exclude from index** switch. Related actions remain disabled until the service confirms success; on failure, the backend state is retained. After an archived item is moved, the view refreshes at its new path and keeps the details open. A selected item is restored only when the library is the same and view permissions have not changed. Host settings reuse the existing service form through category navigation. Preference saves still validate `kbId` and `revision`, and switching retrieval categories does not discard unsaved fields. This work covers desktop design only; it adds no mobile adaptation.
+
+Interaction checks in Edge used a fictional library and host-service substitutes. No personal materials were accessed. A formal DSH installation and real model-based filing were not verified. This UI shipped in the stable 2.3.0 release; later changes should go into a new version rather than replace the existing release package.
+
+### Inbox organization, index exclusion, and parsing records (2026-10-29)
+
+Added `index-policy.js` and `index-policy-service.js` to unify material ownership, exclusion policy, and file-move progress. They are connected to the core full-text index, hybrid retrieval, relationship index, map, parsing, and archive entry points. Exclusion and restoration both update relationship links. Excluded materials and their registered derivatives are stored in a separate **Excluded from index** section. The old vector manifest lacks complete source ownership, so changing state clears the old generation and then rebuilds vectors for allowed materials. `kb_inbox` supplies the organization queue without depending on search indexes. The source field on `kb_record` determines how archived items inherit rules; completion explicitly registers the archive result.
+
+Validation used fictional materials and simulated local Embedding and OCR responses. It covered clearing and restoring full-text/vector indexes and two-way relationships, source inheritance, parsed-file visibility, batch changes, refusing conflicting overwrites, and retry after failure. Browser checks covered individual and batch operations. No personal-library migration, production-host installation, or real model-based organization was performed.
+
+The same stable release also fixed OCR/ASR submissions being incorrectly rejected for knowledge-base Agents in standard desktop hosts. Without H1, authorization checks a live knowledge-base root session or current grant; explicit isolation requirements still require H1, and an enabled but unready H1 never falls back. A knowledge flow running in a separate workspace can parse originals in the currently bound library. Submission details preserve the actual rejection code and reason and link to related task details and result previews. Six targeted authorization checks passed, including submission and result retrieval for fictional materials through simulated OCR/ASR services; no real model or production DSH installation was used.
+
+The inbox now saves files immediately after multi-file selection or drag-and-drop, and independently scans inbox contents, including files added manually. Existing identity, permission, upload-size, and duplicate checks remain. The backend provides a permanent `builtin-inbox-organize` workflow that cannot be changed, disabled, or deleted. The inbox and workflow page reuse the new-session execution entry point. Users select a model; reasoning is fixed at High. The inbox saves the model choice locally in the browser per `kbId`. The model must still be available and support High, and model selection must succeed before the organization prompt is sent. This workflow uses session execution so a background route cannot bypass the High requirement. Backend and browser interaction checks used a fictional library; no model was called in a real host.
+
+### Session-directory sidebar entry (2026-10-28)
+
+Added a **Knowledge Base** row in the left session directory, alongside plugins and scheduled tasks (order 20). Clicking it opens the same workbench. The top tab remains; both entries use the same UI, data, and settings, without registering a second copy.
+
+The pairing rule comes from the host: `sidebar.panellist` row `id` must match the `main` keyed-slot `key`, and `key` is required. The host renders the row; the plugin supplies only an icon component that receives `{ size, active }`. Rows are sorted by `order` (plugins 0, scheduled tasks 10), and labels use `resolveSlotLabel(label) ?? id`. An unpaired row throws without changing the current selection, so this change registers the row and panel together. Host-internal icons are not used; the plugin supplies an SVG whose stroke uses `currentColor` and follows the theme.
+
+Targeted checks and a same-layer mirror probe verified row/panel pairing, label, order, and icon attributes. A browser tool was unavailable, so actual rendering inside the host was not observed. The probe could mirror only the rules read from the host; the definition of `resolveSlotLabel` is outside the host package and was modeled from the row semantics.
+
+## 2.2.0–2.2.1: foundational stability and workflow model selection (2026-10-27)
+
+### Execution model for custom workflows
+
+Workflow definitions gained an optional `execution` field containing `provider`, `model`, and `reasoningEffort`. Older workflows leave it empty and continue to use the previous default route. The editor reads configured models and their exact reasoning levels from the host LLM service; changing the model clears the old reasoning level. **Run now** opens an options panel, and a one-run override does not change the saved definition. A new session is routed through the host's `modelDirectories` before the task is sent; on failure, the error is retained and nothing is sent. Background step-by-step delegation uses the complete saved route too, without mixing reasoning or output parameters from another model.
+
+Synthetic materials and session checks covered saving, reloading, a one-run override, routing order, and blocking after failure. The change was not installed in a production DSH host and no real model was called. The 2.2.1 stable package, manifest, and download entry were updated for the release.
+
+### Less repeated work and foundational stability
+
+Retains 2.1.5 exact retrieval, chunking, Float32 shards, directory format, and question-answer protocol. The base JSON index uses a budgeted cache keyed by a high-precision file fingerprint. Repeated requests reuse parsing and integrity checks; external rewrites invalidate the cache. Original text and line positions are reused within a request, with chunked decoding and streaming summaries. Forensic text is not reused across requests.
+
+Consumers share a watcher for the same root directory. Foreground queries and background maintenance share resource scheduling; background tasks yield at batch boundaries. Unchanged relationship scans after restart do not rewrite the snapshot. Large derived JSON is written in segments to a temporary file, synced, and rechecked before publication. A failure preserves the previous valid file. Later commits remove this module's temporary files only after confirming that the writing process has exited. Temporary disk-space and permission errors use backoff and automatic rechecks. Identity mismatches and abnormal deletions remain protected. Fixed omissions in source folding caused by differences between Windows short paths and real paths.
+
+No runtime dependencies, settings, or manual index migrations were added. This does not introduce SQLite, ANN, a predictor, or a new model. Existing JSON parsing and exact vector scans still have scale limits. The package, update manifest, and download entry were synchronized to 2.2.0. See the [optimization record](EXISTING-FRAMEWORK-OPTIMIZATION.en.md) for benchmarks, validation, and limits.
+
+## 2.1.1–2.1.5: workbench, updates, and retrieval improvements (2026-10-23–2026-10-26)
+
+### Exact retrieval in the existing framework for large libraries (2.1.5)
+
+- Reuses line positions for long documents and retains every candidate needed for the original exact ranking. Large vector working sets are scanned in windows, with full scoring and checksum validation.
+- Adds retention budgets for body, chunk, and manifest caches; reuses unchanged manifests; improves scope filtering, batch generation of index inputs, concurrency limits, and cancellation of active queries.
+- Accelerates existing name-substring suggestions and fixes relationship refreshes returning a stale file list after waiting on an earlier scan.
+- Settings show the version only; the build ID remains in internal update and integrity checks.
+- Keeps the model, chunk version, disk index, and question-answer protocol. No compatible index rebuild is required. SQLite / USearch and the new evidence protocol were deferred and are not in this release.
+
+Synthetic comparison: for 20,000 1,024-dimensional vectors, warm-query median fell from about 553 ms to 180 ms, and peak RSS in separate processes fell from about 418 MB to 201 MB. Ranking and coverage were identical. All 71 related checks passed. Full vector reads remain 81.92 MB per query, and the question-answer context budget is unchanged. See the [optimization and validation record](EXISTING-FRAMEWORK-OPTIMIZATION.en.md).
+
+### Background updates and completion state (2.1.4)
+
+Stable releases eligible for automatic installation within the same major version no longer appear in a pre-update choice dialog. Manual entry points remain for major-version changes, preview channels, and hosts without a client installation interface. After the host build and client version both match, shared version state is refreshed, old requests are invalidated, and a new check starts. This prevents a late result from restoring an outdated available-update notice. Stable patch releases do not show release notes; minor and major upgrades continue to combine unread content.
+
+All 26 targeted checks passed for installation recovery, silent notices, completion state, late checks, and read-state persistence. Version, package, release manifest, and website entry were synchronized to 2.1.4.
+
+### Responsiveness and retrieval performance (2.1.3)
+
+The workbench continues to use SSE, coalescing material-change refreshes over 200 ms. Visible pages refresh every 60 seconds as a fallback, pause while hidden, and refresh on return to visibility or focus. The file watcher can notify the workbench even when retrieval is disabled. The server invalidates snapshots before broadcasting, preventing an older concurrent scan from restoring stale data. Relationship indexing reports completion/failure events; progress is polled only while an update is active.
+
+The main thread reuses chunks and input hashes. The worker retains a material index per library, permission, configuration, and directory version, and receives only additions, modifications, and removals when materials change. Term frequency, length, document frequency, and postings are reused. Short terms, quoted phrases, and cross-chunk matches remain supported. Estimated budgets are 128 MiB for the main-thread directory and 128 MiB for the worker lexical directory; the vector-buffer LRU is capped at 64 MiB. Actual object-heap use can be higher. Exceeding the budget falls back to full computation rather than reducing coverage.
+
+Each query checks shard file identity, size, and mtime/ctime, then continues per-vector checksum, bounds, and finite-value checks. A build opens and syncs each shard per batch; it atomically commits the manifest only after every sync and cancellation/configuration check succeeds. Old generations and retry after failure are retained. Traces add phase timings, cache counts, and byte counts without adding query text, document bodies, paths, or keys.
+
+For 20,000 synthetic single-chunk materials, worker warm-query p50 fell from about 109 ms to 17 ms and p95 from about 129 ms to 40 ms; cold queries became slightly slower. This does not predict real libraries or whole-interface speed. Targeted regressions and a browser refresh spot check passed. Parallel scanning remained a later, measurement-driven option. Source, client version, release notes, guide, website entry, package, and release digest were synchronized to 2.1.3. See the [performance record](PERFORMANCE.en.md) for conditions and limits.
+
+### Full-screen relationship canvas (2.1.2)
+
+The graph gained **Full-screen canvas / Exit full screen**, filling the application window with the graph and relationship list. The canvas adjusts to its actual aspect ratio to reduce unused horizontal space. Zoom, drag, fit, and node details remain available. Esc exits full screen first; switching tabs or opening link checks closes it automatically. Full-screen state is not persisted.
+
+The source is `workbench-ui.js`, which the synchronization script embeds into `index.js`. `workbench-relations.js`, `workbench-features.js`, and `workbench-theme.css` are historical split copies, not current UI build inputs. New same-version builds in the delivery directory were unified as 2.1.2 for this stable release. Source, package documentation, website, package, and digest manifest were updated together. The source build passed a synthetic-host browser check; the repackaged build received targeted regressions and release-consistency checks. Full-screen positioning can still be affected by styles on host ancestor elements. Public commits exclude local runtime logs, screenshots, and knowledge-base materials.
+
+### Inbox and release-entry maintenance (2.1.1)
+
+The current entry recommends stable 2.1.1. Preview packages superseded by stable and their download copies were removed. The preview manifest uses `active:false` to indicate that no preview is available. The updater accepts an empty preview channel and filters old mirror previews behind the stable version while retaining the ability to publish a new preview later. Website version, installation guide, and links were synchronized to 2.1.1. Historical release notes remain as development records.
+
+#### Inbox and scrolling maintenance (2026-10-23)
+
+The inbox reuses the existing DeleteFile and `trash.move` two-step confirmation flow; after the original is moved to Trash, the list refreshes and restore remains available. Workbench height is computed from remaining window space to avoid a blank view when the host mounts a parent at zero height. Ancestor scroll-position resets were removed, natural scroll chaining was retained, and space for the host composer is reserved at the bottom of details while observing composer mount and size changes. Fictional-library checks covered deleting a capture original after deleting its note, zero-height parents, desktop and narrow screens, and a short preview at the boundary. No real knowledge-base material, device screenshot, or runtime log was added to release artifacts.
+
+## 2.1.0: hybrid retrieval and reliability maintenance (2026-10-22)
+
+User search and citation-based Q&A now use unified full-text/vector retrieval, with structural chunking, one round of bidirectional local supplementation, RRF, optional general-purpose reranking, and source-context expansion. Settings include SiliconFlow BGE-M3 and generic Embedding/Rerank APIs; saving and enabling starts incremental indexing. Space is estimated but no total quota is enforced. Vectors are stored in Float32 binary shards. Sections and chunks retain source locations without storing another copy of chunk text. Implementation entry points are `retrieval.js`, `retrieval-chunks.js`, `retrieval-api.js`, and `retrieval-worker.js`. See the [retrieval guide](RETRIEVAL.en.md). The rest of this record retains earlier core-index and compatibility-interface notes; current user-facing retrieval is described here and in the guide.
+
+### Reliability and upgrade maintenance
+
+The persistent retrieval worker, content-fingerprint tokenization cache, and merging of simultaneous in-flight vector queries do not cache final answers. Candidate sets, evidence ranges, permissions, and version checks remain. The new Q&A protocol does not resend a full answer by default; at turn end it checks citations and may request one targeted correction. `.kbmeta` records mechanism versions and fingerprints for managed files. Custom files are preserved and differences are exposed. Dynamic-memory reinjection fixes are provided as a separate `memory-evolve` patch and do not modify the host core.
+
+### Stable release record (2026-10-22)
+
+The stable release was first merged to `main` in [PR #25](https://github.com/KingsleyAsher/Personal-Knowledge-Base/pull/25) and published as a GitHub Release: [`v2.1.0`](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v2.1.0). Initial release commit: `bf41c52c088495596c619af30b38a4a4bc43a3e1`. [PR #26](https://github.com/KingsleyAsher/Personal-Knowledge-Base/pull/26) then synchronized release notes, package documentation, installer, website download copy, and digest manifest to `main`, merged as `5abc0bbfd37162e91343906aa761a37ea590639f`. The build ID stayed `37b7ff660806754d` because the synchronization changed no executable build files. The current package byte count, SHA-256, and per-file inventory are authoritative in [`release-manifest-v2.json`](release-manifest-v2.json). The maintainer did not install the stable package locally and no real cloud model API was called. Stable-release validation and the showcase deployment passed; the Gitee mirror succeeded and the GitCode mirror workflow failed. Mirror status is tracked separately from the GitHub Release.
+
+## Contents
+
+- [1. Product goals and direction](#1-product-goals-and-direction)
+- [2. Core capabilities and user workflow](#2-core-capabilities-and-user-workflow)
+- [3. Architecture, framework, and host relationship](#3-architecture-framework-and-host-relationship)
+- [4. Data organization and state ownership](#4-data-organization-and-state-ownership)
+- [5. Core implementation](#5-core-implementation)
+- [6. Permissions and reliability](#6-permissions-and-reliability)
+- [7. UI and interaction conventions](#7-ui-and-interaction-conventions)
+- [8. Build, release, and documentation maintenance](#8-build-release-and-documentation-maintenance)
+- [9. Source map](#9-source-map)
+- [10. Development history and trade-offs](#10-development-history-and-trade-offs)
+- [11. Future directions](#11-future-directions)
+- [12. Current boundaries and verification](#12-current-boundaries-and-verification)
+
+## 1. Product goals and direction
+
+The product runs inside DeepSeek Harness (DSH), connecting local materials, reading history, relationship browsing, and Agent work. Users can bind an existing folder and organize it gradually; files and notes remain under their ownership.
+
+The project follows these principles:
+
+1. **Local materials can stand on their own.** Ordinary content uses files and Markdown; runtime state uses inspectable JSON. The plugin adds management, browsing, and collaboration features.
+2. **Each operation should be understandable.** Retrieval, parsing, writing, repair, deletion, restore, and update installation should identify their target, state, and result.
+3. **Permissions apply throughout execution.** Display, Q&A, parsing-source, and configuration-management permissions are evaluated separately. Hiding a UI action does not replace backend checks.
+4. **Reuse first; process incrementally.** File indexes, relationship indexes, and parsing results should not be reread or recomputed just because a view changes.
+5. **Extend through the host.** Reuse DSH sessions, Agents, React, tools, presets, and plugin-management services; report clearly when a capability is unavailable.
+
+## 2. Core capabilities and user workflow
+
+| Area | What users can do | How it supports later work |
+|---|---|---|
+| Overview | Continue reading, see recent materials and tasks, open sections | Resume current work |
+| Library | Search by folder, name, path, or body; switch cards/list; open details | Find and work with materials |
+| Relationships | Browse library sections, select a center, drill down, filter, highlight nodes and links | Understand sources, citations, and manual relationships |
+| Link checks and repair | Review issues, locations, context, and candidate targets; preview before repair | Keep changes evidence-based and surface unresolved ambiguity |
+| Inbox | Capture text, web pages, and files; organize imports and pending items | Turn scattered inputs into trackable materials |
+| Reading and excerpts | Save status and position, excerpts, and annotations; return to sources; create notes or exports | Turn reading into reusable knowledge |
+| Review | See scheduled reviews, ordinary recent content, and collapsed system changes | Reuse accumulated knowledge with less system noise |
+| Workflows and tasks | Define and run workflows; inspect workflows and deliverables; collaborate through sessions | Retain the process and results of repeated work |
+| OCR/ASR | Use configured services and inspect submissions and execution records | Make hard-to-search inputs available as text |
+| Trash | Restore ordinary files, delete permanently, and inspect remaining retention time | Provide a recovery window for everyday deletion |
+| Settings and backups | Manage privacy, services, capture connections, backups, and runtime diagnostics | Control data scope and execution |
+
+A common loop is **capture → recognize/organize → retrieve and read → excerpt or note → link → review and workflow**. Each step can also be used independently. A parse result can return only to its originating session without being added to the library.
+
+## 3. Architecture, framework, and host relationship
+
+### 3.1 Layers
+
+```mermaid
+flowchart TD
+    U[User] --> C[Knowledge-base workbench and settings]
+    A[DSH Agent and workflows] --> T[Model tools and authorization entry points]
+    C --> H[Host API and event services]
+    T --> H
+    H --> K[Knowledge-base core and binding]
+    H --> W[Workbench domain services]
+    H --> P[Unified parsing service]
+    H --> F[Workflow and import services]
+    H --> Q[Full-text and vector retrieval]
+    H --> R[Version checks and installation coordination]
+    K --> D[Library files and metadata]
+    Q --> D
+    W --> D
+    W --> S[Profile-isolated state and indexes]
+    P --> S
+    F --> S
+    P --> E[Configured local or cloud engines]
+```
+
+### 3.2 Technology choices
+
+| Layer | Current implementation | Why |
+|---|---|---|
+| Host plugin | JavaScript ES modules, Node.js standard library, DSH `ctx` services | Use host capabilities and avoid another runtime |
+| Desktop client | Host React/ReactDOM, `createElement`, CSS, slot registration | Coexist with sessions and settings without loading a second React copy |
+| Page organization | Workbench page state, navigation history, shared theme, resizable panes | Keep navigation, details, and actions consistent |
+| Files and persistence | Original files, Markdown, JSON, hashes, atomic writes | Keep local data inspectable and support version checks |
+| Relationship computation | Reference extraction, target resolution, persistent per-file graph index, adjacency queries | Reuse results during repeated graph browsing |
+| PDF | Bundled PDF.js resources and reader UI | Support pages, text, and region excerpts |
+| Browser capture | Separate browser extension, web capture, and PWA-related resources | Route external content through a managed capture entry point |
+| Release | npm package, Python build/validation tools, GitHub Actions, and Pages | Cross-check source, package, manifest, and download page |
+
+The host entry point registers tools, HTTP routes, events, and UI through injected services. Registration and subscriptions use `ctx.effect` for lifecycle management. The client workbench source is embedded into the main client factory before packaging. When editing the workbench, modify its source module and run the synchronization scripts; changing generated regions directly can be overwritten by the next build.
+
+## 4. Data organization and state ownership
+
+| Data | Location and ownership | Maintenance rule |
+|---|---|---|
+| Bodies, attachments, notes | User-selected library directory | Keep original files directly accessible |
+| Library identity and library metadata | Protected paths such as `.kbmeta/` | Check library identity before reading or writing |
+| Full-text and vector indexes | `索引层/` at the library root | Maintain by library identity, document version, and active model; can pause, resume, or rebuild |
+| Plugin configuration and state | `kb-state` for the active DSH profile, with explicit state-directory overrides supported | Isolate profiles; use the saved binding as authority |
+| Workbench preferences and user data | `workbench/` in the state directory, scoped to the bound library | Isolate reading, excerpts, reviews, and manual links per library |
+| Relationship cache | `workbench/relations/` in the state directory | Rebuildable; stores references, anchors, versions, and limited context—not a second full-text library |
+| Parse requests, tasks, and results | `parse/` in the state directory, isolated by library and task | Match source and permissions when reading, reusing, or importing results |
+| Trash files | `.kbmeta/trash/` inside the library | Retain original path, hash, time, operation state, and item-specific metadata |
+| Workflow definitions and results | Workflow state and managed deliverable files | Identify the originating task, library, and output |
+| Local UI preferences | Browser local storage | Save pane width by device, library, and page; persist read state for update notes |
+
+System files are classified by responsibility: `INDEX.md` and `AGENTS.md` at any level; root `README.md` and `知识库清单.md`; and protected internal paths. The backend owns the matching rules. Ordinary files in manuals, templates, and request channels do not all lose deletion permission just because of their directory. See [`workbench-files.js`](src/host/workbench-files.js).
+
+## 5. Core implementation
+
+### 5.1 Library setup, binding, import, and indexing
+
+Selecting a directory records a candidate first. Only after the user explicitly chooses **Initialize/recognize** does the plugin classify it as empty, already initialized, or an ordinary material folder. Import freezes the source inventory and hashes before linking or copying. Progress, skipped and failed entries, and items awaiting parsing remain trackable. Full-text and vector retrieval share document identity and source positions. Index maintenance uses snapshots and protects against incomplete scans or abnormal decreases; a failed scan must not be interpreted as every material having been deleted.
+
+### 5.2 Relationship graph and repair
+
+The relationship pipeline is **check file changes → extract references per file → resolve heading/path targets → graph query**. References come from source fields, in-document links, and user-saved manual relationships. AI suggestions require preview and confirmation before they are saved.
+
+Relationship indexes are isolated by library identity, normalized path, and format version. Unchanged files reuse extraction results; changed candidates are read and checked against their content version; a full rescan forces verification. Concurrent requests share an update task, and the visible UI performs lightweight checks for external edits. Reading progress and review status should not rebuild relationship bodies. The UI receives index-sync state and time; updates should preserve zoom, selection, and canvas position where possible.
+
+Heading or path changes affect link resolution; they cannot be handled by changing only a node label. Deletion and restore affect nodes, edges, and issue status. Before a repair is applied, the source version is checked again to avoid writing a suggestion based on stale cached text. Users choose the target when names collide or evidence is insufficient.
+
+### 5.3 Reading, excerpts, retrieval, and Q&A
+
+Reading records are linked to a material path and save status, scroll position, or PDF page number. Excerpts retain source text, annotations, and source location. If positioning fails, the source entry remains available and the limitation is reported. A region excerpt from a scanned page does not mean OCR has been completed. Multiple excerpts can be assembled into a sourced note.
+
+Q&A reuses full-text/vector retrieval and controlled source reading. It supports exact matching, BM25, dense-vector recall, one round of bidirectional local supplementation, RRF fusion, optional general-purpose reranking, and restoration of source context. The `@` knowledge reference enters the session as a native host tag. Answer citations are checked against the document version and current permission. A missing citation or skipped check may trigger one targeted correction, but similarity or citation checks do not prove answer accuracy. Privacy display and permission to use private content in Q&A are separate settings; being visible in the UI does not mean an arbitrary Agent can read it.
+
+### 5.4 Unified parsing channel
+
+Managed Agents, imports, and workflows submit OCR/ASR requests through one service before the configured engine runs. An Agent may submit workspace files or attachments it is allowed to access. The service issues and checks file references, real paths, session identity, and current permissions. Access to the personal knowledge base retains its own authorization rules.
+
+Submissions and execution tasks are recorded separately. Configuration, format, or permission rejection should have an explainable request result. Once execution begins, the task records queued, running, success, failure, cancellation, or partial-result states. Tasks are filtered by permission and type before pagination; events and visible-page refreshes update their status. Reuse is labeled as reuse and is not presented as a new execution.
+
+The service supports configured local methods, CLI, compatible APIs, and some native interfaces. Users manage configuration and credentials. A failed default route reports an error; it does not silently switch to an external script or upload to a cloud service. A user may explicitly request an outside tool for that particular task. The plugin retains the host's ordinary terminal and network permissions, so it cannot technically block every bypass through another script, HTTP call, or plugin. See [parsing and index maintenance](PARSING-PREVIEW.en.md).
+
+### 5.5 Deletion, restore, and backups
+
+Ordinary visible, writable files can be moved to Trash from a file row or a details action. Confirmation describes the original path, retention period, and relationship impact. The current action is per-file; in-document links remain, and relationship/link checks show the target state.
+
+Trash retention is `30 × 24` hours from deletion. Periodic cleanup at host startup and during runtime processes expired items. Restore stops if the original path already contains a same-named item. It also restores that file's own reading, excerpt, review, and manual-link state. Permanent deletion removes the Trash object and its dedicated state. Operation state and locks are used to detect interrupted moves, restores, and cleanup and retry safely.
+
+Full backups are off by default. Backups include a manifest and per-file validation; restore checks identity and changes. Trash is excluded from ordinary export and full backups. Permanently deleting from Trash does not retroactively erase separate backups created earlier; users must manage those backup copies separately.
+
+### 5.6 Updates and release notes
+
+Stable versions use `x.x.x`; previews use `x.x-betaN`. Stable/preview manifests are checked against package identity, size, digest, and build ID. Update sources are checked concurrently; when a mirror lags, the newest version from an available source is used. A digest conflict for the same version blocks installation. Downloads can switch sources according to policy. The host plugin manager performs installation; success is reported only when the running build and installation result match.
+
+Stable updates eligible for automatic installation within a major line run in the background without an **Update available** dialog. Major-version and preview-channel changes prompt manual selection based on the installed channel. After the host build and client version both match, shared version state is refreshed, older check requests are invalidated, and a new check is made so an installed version is not still shown as available. Post-install release notes are maintained separately. Stable major/minor changes show notes; patch-only changes do not; every preview update does. When several versions were skipped, one deduplicated list is shown rather than separate historical headings. Dismiss, Esc, and backdrop close all record that the notes were read.
+
+## 6. Permissions and reliability
+
+- File operations normalize relative paths, check real paths and directory boundaries, and reject path escape and disallowed directory links.
+- Writes validate library identity and expected version. Multiple processes coordinate through locks; state is written to a temporary file before replacement, preserving abnormal originals.
+- Parse-source tokens are bound to an active Agent, session, and authorization scope. Configuration management is not exposed to the model. Knowledge-base authorization and host isolation state are rechecked for the relevant entry point.
+- Display, search, Trash, Q&A, and task lists apply their own permissions before pagination and item limits.
+- Cloud processing follows explicit configuration. Failure does not silently weaken privacy policy. Credentials use managed references and are not written to public documentation or ordinary task bodies.
+- Knowledge content, rebuildable indexes, user state, and build artifacts are maintained separately. Upgrade and index rebuild should not rewrite user-authored source text.
+
+These are implementation principles, not a claim that the plugin provides a complete operating-system sandbox in place of the host. File and network isolation still depend on host capabilities and deployment.
+
+## 7. UI and interaction conventions
+
+Workbench pages share top-level search, Quick Capture, Trash, Settings, version entry, and back navigation. Text wraps to available space. Details and lists use draggable dividers with keyboard resizing and reset; narrow windows switch to one column.
+
+The relationship canvas supports dragging, zooming, fit-to-view, and hierarchy exploration. Selecting a node or edge highlights related cards and links so users can inspect evidence or open a material. File deletion uses a clearly labeled action separate from the click target for opening a file. Loading, empty results, errors, successful saves, and in-progress operations receive distinct feedback.
+
+This record is linked near the top of the README, in workbench settings, and in DSH's **Personal Knowledge Base** settings. Online links point to the latest record on the main branch. The installation package also carries a versioned documentation snapshot for offline access.
+
+## 8. Build, release, and documentation maintenance
+
+Build sequence: edit source modules → synchronize the embedded client region → synchronize the build file list → create the npm package → validate each file and the build ID → update the release manifest and website download → merge to the main branch → create the stable tag → publish assets and website.
+
+`buildId` is computed from the entry point's declared load-file inventory and per-file SHA-256. The list grows with modules, so an early fixed file count is not a permanent rule. The package also records its size, SHA-256, SRI, and file inventory. Release digests are computed from actual bytes. Do not hard-code build IDs in prose when they may change; use the corresponding `release-manifest-v2.json`.
+
+Main tools: [`package-workbench.py`](tools/package-workbench.py), [`sync-workbench-client.py`](tools/sync-workbench-client.py), [`sync-workbench-build.py`](tools/sync-workbench-build.py), [`verify-release.py`](tools/verify-release.py), and [`stage-stable-candidate.py`](tools/stage-stable-candidate.py). The site is under [`website/`](website/) and deploys through GitHub Pages. Mirror-repository permissions, behavior, and delays must be checked against actual platform results.
+
+### Public-material privacy boundary
+
+Public repositories, websites, release notes, sample configuration, and packages must not include maintainer device paths, account directories, personal material, real file names, device IPs, LAN addresses, or personal service ports. Use explicit placeholders such as `WORKSPACE_ROOT`, `DSH_HOST`, and `PORT` when explaining configuration, and tell users to fill in values from their own host settings. Keep generic product protocols, documentation-only addresses, and dynamic test ports distinct from real environment configuration.
+
+Before each release, the validation script scans package documentation for absolute paths, IP addresses, and localhost addresses with fixed ports. Maintainers must also review knowledge-base content, account names, and service addresses that regular expressions cannot identify reliably. When correcting public material, check the main branch, historical tags, website copies, and release assets.
+
+**Maintain this record with every release:**
+
+1. Update the implementation version, date, and `project-record-version` marker at the top.
+2. Update capabilities, data, architecture, or limitations according to actual changes. Record the release even when architecture does not change.
+3. Add the version and key decisions to the development history. Do not describe future work as already implemented.
+4. Synchronize the README, Settings entry, versioning policy, and release notes. This record ships with the package.
+5. Release validation checks that this record's version matches the package and scans documentation for private information; failures block release.
+
+The main-branch record describes current source. Historical states can be retrieved from their Git tags. If a released implementation changes, publish a new patch package rather than replacing the package under an existing tag.
+
+## 9. Source map
+
+| Module | Responsibility |
+|---|---|
+| [`src/host/index.js`](src/host/index.js), [`cordis.patch.yml`](cordis.patch.yml) | Service assembly, tool/route/event registration, host configuration |
+| [`kbcore.js`](src/host/kbcore.js), [`fsindex.js`](src/host/fsindex.js) | Binding, library identity, entries, file scans, retrieval foundations |
+| [`index-maintenance.js`](src/host/index-maintenance.js) | Index maintenance, snapshots, anomaly protection |
+| [`workbench.js`](src/host/workbench.js), [`workbench-state.js`](src/host/workbench-state.js) | Workbench logic and state, paths, locks |
+| [`workbench-files.js`](src/host/workbench-files.js), [`workbench-trash.js`](src/host/workbench-trash.js) | File classification and operations, Trash, retention cleanup |
+| [`workbench-relation-index.js`](src/host/workbench-relation-index.js), [`workbench-links.js`](src/host/workbench-links.js) | Incremental relationship extraction, target resolution, repair, evidence |
+| [`workbench-question.js`](src/host/workbench-question.js), [`gateway.js`](src/host/gateway.js) | Controlled Q&A, citation checks, knowledge-base authorization |
+| [`parsing.js`](src/host/parsing.js), [`parse-source-authority.js`](src/host/parse-source-authority.js) | Requests, execution, results, file-source authorization |
+| [`parse-native.js`](src/host/parse-native.js), [`parse-discovery.js`](src/host/parse-discovery.js), [`parse-credentials.js`](src/host/parse-credentials.js) | Native service adapters, local discovery, credential management |
+| [`importer.js`](src/host/importer.js), [`import-service.js`](src/host/import-service.js) | Material recognition, import plans, execution |
+| [`flows.js`](src/host/flows.js), [`flow-workspace.js`](src/host/flow-workspace.js), [`workbench-deliverables.js`](src/host/workbench-deliverables.js) | Workflows, session association, deliverable management |
+| [`workbench-backup.js`](src/host/workbench-backup.js), [`capture-surface.js`](src/host/capture-surface.js) | Backup/restore, external capture page and connections |
+| [`updates.js`](src/host/updates.js), [`versioning.js`](src/host/versioning.js) | Update sources, downloads, package validation, version comparison |
+| [`src/client/index.js`](src/client/index.js) | Client assembly, settings, update notices, release notes |
+| [`workbench-ui.js`](src/client/workbench-ui.js), [`workbench-theme.css`](src/client/workbench-theme.css) | Source workbench UI and shared styles |
+| [`workbench-features.js`](src/client/workbench-features.js), [`workbench-relations.js`](src/client/workbench-relations.js) | Reading and pane interactions, relationship canvas |
+| [`browser-extension/`](browser-extension/), [`presets/`](presets/), [`skills/`](skills/) | Browser capture, presets, bundled skills |
+
+## 10. Development history and trade-offs
+
+| Stage | Capabilities and decisions |
+|---|---|
+| Early versions | Local binding, standard directories, item retrieval, and knowledge-base presets established a controlled knowledge entry point |
+| 1.1.x | Added parsing services, imports, index maintenance, settings; improved authorization, credentials, update downloads, and multi-source checks |
+| 2.0.0–2.0.3 | Released the material-management workbench and refined navigation, relationships, capture and Trash, parsing tasks, update behavior, and release-document privacy checks |
+| 2.1.0–2.1.5 | Released hybrid full-text/vector retrieval, incremental indexing, citation checks, and user-file protection; then refined the relationship canvas, background updates, refresh responsiveness, exact retrieval for large libraries, and cache budgets while preserving index and Q&A compatibility |
+| 2.2.0–2.2.1 | Improved repeated reads, relationship scans, background scheduling, and safe writes; added saved and per-run execution model and reasoning choices for custom workflows |
+| 2.3.1 | Single-sentence inbox requests, quiet OCR/ASR refresh, shell display-label fallback, and conversation todo reconciliation with stopped-session status |
+| 2.3.0 | Added a knowledge-base sidebar entry, inbox drop/select and High-effort one-click organization, index-exclusion storage with full-text/vector/relationship cleanup and restoration, unified desktop UI, and fixes for knowledge-agent parsing authorization and task details |
+
+The central trade-off is to preserve portable files, make deterministic local flows reliable first, and then add AI assistance. Relationship caches support existing file relationships; AI suggestions are distinguished from confirmed relationships. Parsing-task registration is separate from final import, and update checking is separate from installation. This gives every automated step an explainable target and result.
+
+## 11. Future directions
+
+The following are directions to evaluate, not release commitments:
+
+| Priority | Problem to solve | Evidence needed before broadening scope |
+|---|---|---|
+| Stability and observability | Users cannot distinguish read failures, synchronization delays, unsubmitted tasks, and execution failures | Explainable state, actionable errors, and diagnostics that expose no sensitive content |
+| Large-library performance | Costs of external edits, bulk renames, large graphs, and long lists | Measure real reads, latency, and memory; prove incremental updates are correct |
+| Reading and source positioning | Positioning precision across formats and restoring anchors after source changes | Verifiable sources and a clear fallback when positioning fails |
+| Relationship quality | Duplicate names, ambiguous citations, complex links, and hard-to-explain AI suggestions | Each relationship has a source or confirmation record; repairs are previewable |
+| Parsing coverage | Unified records across models, file types, and callers | Extend adapters only after the same permission, request, task, and result contract passes |
+| Retrieval quality and scale | Multilingual quality, very large index latency, and corpus-dependent candidate quality | Evaluate recall, evidence completeness, and latency on shareable samples; do not narrow source evidence for superficial speed |
+| Data migration and collaboration | Multi-device, export, and multi-user work may introduce conflicts | Define identity, version, and conflict rules before considering synchronization |
+| Documentation and compatibility governance | Features, host contracts, and packages can drift as the product grows | Update this record each release and keep capabilities and limits traceable |
+
+The long-term aim is to keep materials findable, preserve understanding, verify sources, and reuse work. Future semantic retrieval, more formats, or collaboration must retain local files, explicit authorization, explainable relationships, and recoverable operations.
+
+## 12. Current boundaries and verification
+
+This plugin depends on DSH tools, sessions, UI, and installation capabilities. Host version and deployment affect availability. Local models, Python environments, FFmpeg, and third-party cloud services must be prepared according to their adapters. Discovering a model does not prove it can start; a parse result does not prove that every character was recognized correctly.
+
+Static checks, synthetic-material tests, desktop-host acceptance, and real model execution are tracked separately. Before 2.1.0 release, 25 targeted automated checks passed, as did the GitHub release workflow and Pages deployment. Version 2.1.0 was not installed on the maintainer's machine, and no real cloud Embedding/Rerank API was called. The 2.3.0 authorization and interaction checks used fictional materials and local service substitutes; a production DSH installation and real model filing were not verified. The release manifest records only checks that actually ran; simulated services are not treated as evidence for real models, complete long-document recognition, multi-device sync, or all host versions.
+
+**Maintenance record:** the first complete record was created on 2026-10-22; the 2.1.0 release and retrieval implementation were added that day. Continue updating it with later commits as specified in Section 8.
+
+### 2026-10-22: retrieval settings and storage fixes
+
+- Combined configuration and index-operation buttons. Index notifications now refresh status only; pausing does not reset Settings, and task actions preserve unsaved input.
+- Moved indexes to the library's `索引层` directory. Old data is removed only after copy validation. Excluded body enumeration, backups, and build watchers; storage is measured on the containing disk.
+- API credentials remain Windows-encrypted and live in the profile state directory, independent of plugin version. References are retained per endpoint and saved-state is shown, so updates do not require entering credentials again.
+- Ran only targeted automated checks and one fictional-data page-interaction check. No real cloud API or scale stress test was used.
+
+Supplement, 2026-10-22: indexes are stored directly under the library's `索引层`, not a nested `向量检索` directory; an old subdirectory is migrated on first load. Knowledge-base settings gained **Show retrieval details after answers**, on by default. Tools append a summary based on actual execution records, covering full-text, vector models, cross-supplementation, fusion, reranking, and context reads. Nothing is appended if no retrieval ran or the option is off.
+
+Citation-display fix, 2026-10-22: sending `@基于知识库回答` now uses a short-form knowledge reference (`dsh-kb:` plus this question's identity); retrieval and citation-validation guidance is in the tool definition. The host's `uiConversation.userText` and `conversation.user.text.node` render a native blue reference tag. A complete matching legacy prompt also appears as a tag; raw chat history is not rewritten. The tag preserves the distinction between including and excluding private material. Server-side session, version, and permission checks are unchanged.
+
+### 2026-10-22 / retrieval and Q&A mechanism decisions
+
+Compared with `03bcde504978f416`, deferred optimization drafts were archived rather than shipped. Lossy truncation, automatic evidence omission, and hard timeouts for a shared worker were removed. Delivered computation caching and request isolation while retaining previous recall and source ranges. Q&A protocol 2 remains compatible with the older protocol and supports structured evidence review. Upgrade coordination reuses data by format/algorithm, and protects managed files using actual application fingerprints. User `AGENTS`, manual navigation, and custom presets are treated conservatively. Independent state shows checks, failures, index building/pausing, and changes that take effect in a new session. These mechanisms were included in stable 2.1.0.
+
+### 2026-10-22 / 2.1.0 stable release
+
+Version 2.1.0 first released through PR #25. PR #26 synchronized the release record, bundled documentation, package, website download copy, and digest manifest. The package identity is in `release-manifest-v2.json`; the build ID remains `37b7ff660806754d` because PR #26 changed documentation and release metadata only, not executable build files. All 25 targeted automated checks passed; the initial stable-release and Pages workflows passed. Gitee mirroring succeeded; the GitCode mirror workflow failed. Any later correction to release history must be synchronized across the source record, bundled copy, manifest, and relevant downloadable attachment; the manifest digest is authoritative.
+
+In-client download entry: **Knowledge Base → Inbox → Browser Extension Guide → First Use: Install and Connect**, then click **Download browser extension**. It selects among Gitee, GitCode, and GitHub, validates the downloaded file, and switches sources after failure. If every source fails, it shows the reasons and fallback links.
+
+## 2026-11-04: shared versions and fully automatic update policy
+
+Shared naming, ordering and packaging validation. Plugin major/preview candidates are automatically eligible, retaining channel preference, payload checks and busy/uncertain-operation guards. No update-confirmation modal; post-install notes retain their existing rules. The client online executor remains unfinished. Source policy change only; no new binary publication.
+
+2026-11-04 正式发布版本调整 / Publication versions: 插件 plugin 2.4.1，客户端 client 1.0.1。
+
+
+### 2.5.1 task plan follow-up (2026-11-07)
+
+Task plan disclosure and list symbols now use vectors/CSS rather than font-dependent characters. During long knowledge tasks, bounded pre-step checkpoints request truthful todo_write progress updates instead of waiting until the final response. No step is automatically marked complete from tool count or elapsed time. Install the local update package and fully restart DSH to load host changes; real long-task behavior remains an installed-host verification step.
