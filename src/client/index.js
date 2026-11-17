@@ -2087,6 +2087,9 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           // Retry only the guard's explicit rejection before execution. Never
           // replay a mutation after HTTP errors, dropped replies or unknown results.
           if(response.status===503&&data.code==='SERVICE_STARTING'&&data.requestNotExecuted===true){await waitReady(deadline);continue}
+          // Provider validation returns structured field errors with HTTP 400.
+          // Let the settings form display them instead of replacing them with HTTP 400.
+          if(response.status===400&&payload?.op==='parse.provider.save'&&data?.reason==='invalid-provider'&&Array.isArray(data.errors))return data
           if(!response.ok)throw Object.assign(Error(data?.error||('HTTP '+response.status)),{code:data?.code})
           return data
         }
@@ -4644,11 +4647,12 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     // END GENERATED TODO LIFECYCLE UI
 
-    const RELEASE_VERSION = '3.1.3'
+    const RELEASE_VERSION = '3.1.4'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep shipped releases for summaries of versions skipped during this upgrade.
     // Patch-only installs stay quiet; unread older notes do not widen the range.
     const RELEASE_NOTICES = [
+      {version:'3.1.4',items:['修复 OCR 服务保存失败时只显示 HTTP 400，显示具体的配置校验原因。']},
       {version:'3.1.3',items:['文件树与目录读取改用缓存：未变化的资料库不再每次重读目录和排除策略，客户端展开目录只请求新增项。','索引巡检在内容未变化时复用已有目录，减少周期性卡顿；资料内容变化仍会重新核对。']},
       {version:'3.1.2',items:['共享模式补回解析工具说明和全体 Agent 规则：当前服务设置优先于记忆。','默认 OCR/ASR 失败时说明原因并询问，未经本次明确同意不切换本机、其他云端或脚本。']},
       {version:'3.1.1',items:['更新说明只列出本次升级前版本到目标版本之间的内容，不再累计更早的未读记录。','弹窗显示起止版本，补齐 3.1.0 的更新条目。']},

@@ -1,12 +1,12 @@
 # Personal Knowledge Base · Plugin and Desktop Client
 
-> **Plugin 3.1.3:** File-tree reads now cache the parsed catalog and exclusion policy by file identity, reuse directory listings behind directory/policy/catalog signatures, and skip the periodic full-library rescan when nothing changed. Large directories load much faster and periodic stalls are greatly reduced. Desktop client 2.0.3 is published as an unsigned installer; the stable update feed points at plugin 3.1.3 / client 2.0.3.
+> **Plugin 3.1.4:** File-tree reads now cache the parsed catalog and exclusion policy by file identity, reuse directory listings behind directory/policy/catalog signatures, and skip the periodic full-library rescan when nothing changed. Large directories load much faster and periodic stalls are greatly reduced. Desktop client 2.0.3 is published as an unsigned installer; the stable update feed points at plugin 3.1.4 / client 2.0.3.
 
 > **Update recovery patch:** fixes abandoned prepared receipts. An already blocked older updater needs the [one-time safe recovery](docs/UPDATE-RECOVERY.en.md) before a normal update.
 
 
 
-> **Plugin 3.1.3 / client 2.0.3.** Independent/shared-library operation, scoped updates and release/visual review fixes. [Release notes](RELEASE.en.md).
+> **Plugin 3.1.4 / client 2.0.3.** Independent/shared-library operation, scoped updates and release/visual review fixes. [Release notes](RELEASE.en.md).
 
 > **2.4.6 updater limitation:** a pristine installation stuck on a pending receipt cannot self-repair from the feed alone. The [general recovery entry](docs/LEGACY-246-BOOTSTRAP.md) is a one-time external migration, not a zero-intervention update.
 
@@ -21,9 +21,9 @@
 | Product | Published version | Direct download | Release notes |
 |---|---|---|---|
 | **Desktop client · Windows x64** | **2.0.3** | **[⬇ Download client installer (EXE)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/client-v2.0.3/KnowledgeWorkbench-2.0.3-Setup.exe)** | [Client Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v2.0.3) |
-| **DSH knowledge-base plugin** | **3.1.3** | **[⬇ Download plugin (TGZ)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v3.1.3/local-dsh-knowledge-base-3.1.3.tgz)** | [Plugin Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v3.1.3) |
+| **DSH knowledge-base plugin** | **3.1.4** | **[⬇ Download plugin (TGZ)](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v3.1.4/local-dsh-knowledge-base-3.1.4.tgz)** | [Plugin Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v3.1.4) |
 
-Release entries: [client 2.0.3](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v2.0.3) · [plugin 3.1.3](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v3.1.3). Choose the correct installer/TGZ and verify its product-specific manifest and digest.
+Release entries: [client 2.0.3](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/client-v2.0.3) · [plugin 3.1.4](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v3.1.4). Choose the correct installer/TGZ and verify its product-specific manifest and digest.
 
 ## One library, two entry points
 
@@ -41,15 +41,15 @@ Release entries: [client 2.0.3](https://github.com/KingsleyAsher/Personal-Knowle
 
 Run the EXE to install. The bundled-runtime package includes its runtime. This is the standalone client installer, not a DSH plugin bundle.
 
-### DSH plugin 3.1.3
+### DSH plugin 3.1.4
 
-**[Download local-dsh-knowledge-base-3.1.3.tgz](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v3.1.3/local-dsh-knowledge-base-3.1.3.tgz)** · [Release notes and assets](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v3.1.3)
+**[Download local-dsh-knowledge-base-3.1.4.tgz](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v3.1.4/local-dsh-knowledge-base-3.1.4.tgz)** · [Release notes and assets](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v3.1.4)
 
 Install the TGZ through DSH plugin management. GitHub highlights only one Latest release, but both products have independent releases. Use the product links above or browse [all Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases).
 
 Source, issues and future releases are maintained here. In [Releases](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases), choose the correct product: Windows Setup.exe for the client, TGZ for the plugin.
 
-Published plugin 3.1.3: [Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v3.1.3) · [TGZ](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v3.1.3/local-dsh-knowledge-base-3.1.3.tgz). See [plugin usage](WORKBENCH.en.md) and [mirror information](MIRROR-RELEASES.md) for extensions and regional sources. Mirror availability can vary.
+Published plugin 3.1.4: [Release](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/tag/v3.1.4) · [TGZ](https://github.com/KingsleyAsher/Personal-Knowledge-Base/releases/download/v3.1.4/local-dsh-knowledge-base-3.1.4.tgz). See [plugin usage](WORKBENCH.en.md) and [mirror information](MIRROR-RELEASES.md) for extensions and regional sources. Mirror availability can vary.
 
 The existing client installer retains its paper-green interface and animations, requires an empty application directory and preserves personal data on uninstall. Client online checks and verified downloads are implemented; automatic in-place installation and activation remain unfinished. The plugin keeps its existing update manifests and installation flow.
 

@@ -9,6 +9,16 @@ const source=readFileSync(new URL('../src/client/index.js',import.meta.url),'utf
 const start=source.indexOf('    function createApiTransport(')
 const factory=vm.runInNewContext(source.slice(start,source.indexOf('    const apiTransport=',start))+'\ncreateApiTransport')
 
+test('OCR provider validation preserves field errors without changing other HTTP errors',async()=>{
+  const invalid={ok:false,reason:'invalid-provider',errors:[{field:'id',message:'id 需为 3..40 位小写字母/数字/-/_'}]}
+  const call=factory({fetch:async()=>new Response(JSON.stringify(invalid),{status:400})})
+  const result=await call({op:'parse.provider.save',provider:{kind:'ocr'}})
+  assert.equal(result.errors[0].message,invalid.errors[0].message)
+  await assert.rejects(call({op:'document.save'}),/HTTP 400/)
+  const generic=factory({fetch:async()=>new Response('{}',{status:400})})
+  await assert.rejects(generic({op:'parse.provider.save'}),/HTTP 400/)
+})
+
 test('live HTTP route remains present during handoff; queued mutation executes once after ready',async t=>{
   const gate=createHandoffApi();let writes=0,polls=0
   const handler=(req,res)=>{writes++;res.setHeader('content-type','application/json');res.end(JSON.stringify({ok:true,saved:true}))}
