@@ -6,6 +6,10 @@ Catalog and policy reads are now cached by file identity; listings read the poli
 
 Measured: the 687-entry real directory went from 376 ms to 32 ms first read and 0.8 ms on repeat; a 250-entry directory with 400 exclusion groups went from 819 ms to 49 ms; catalog parsing from 16.5 ms to 0.4 ms; unchanged patrol from about 1.9 s to 0.1 s. Index policy, architecture, maintenance, classification, workbench, large-library and service integration checks pass, with new policy-matcher equivalence, listing-cache invalidation and patrol-reuse checks. GitHub Releases v3.1.3 and client-v2.0.3 are published, and the stable update feed and website downloads now point at plugin 3.1.3 / client 2.0.3. The client installer is unsigned and still requires an empty destination.
 
+## Plugin 3.1.4 · OCR configuration errors
+
+Display specific validation errors when saving OCR providers instead of only HTTP 400. Browser acceptance used a synthetic host, not a real third-party service; desktop remains 2.0.3.
+
 ## 2026-11-15 · Plugin 3.1.2 · Stop and ask after parsing failure
 
 Restore the detailed kb_parse description and all-Agent parsing context in shared-library mode. Current OCR/ASR defaults take precedence over memory. Missing API configuration, credentials, quota, connectivity and partial failures require stopping, reporting the cause and asking whether to repair configuration or switch services. Local models, other cloud services, scripts and HTTP require explicit consent for this request; users still change defaults in settings. Rejected submissions and failed or partial public responses include no-fallback and ask-user recovery instructions, and tool rendering preserves actual errors.

@@ -2,9 +2,13 @@
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 3.1.3 -->
+<!-- project-record-version: 3.1.4 -->
 
-**Plugin 3.1.3; desktop client 2.0.3 · 2026-11-16.**
+**Plugin 3.1.4; desktop client 2.0.3 · 2026-11-16.**
+
+## 2026-11-17 · OCR provider save validation
+
+Show field validation errors when saving OCR providers instead of a generic HTTP 400. Synthetic browser acceptance covers the error and successful correction; no real third-party service was tested.
 
 ## 2026-11-16 · Plugin 3.1.3 / client 2.0.3 · File tree and patrol performance
 
