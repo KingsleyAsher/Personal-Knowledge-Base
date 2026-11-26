@@ -1,11 +1,11 @@
 {
   "package": "@local/dsh-knowledge-base",
   "version": "3.1.6",
-  "buildId": "0d1bed5dbcf3defd",
+  "buildId": "f2ed8a8a17dfcac1",
   "tgz": "local-dsh-knowledge-base-3.1.6.tgz",
-  "bytes": 15919426,
-  "sha256": "234ac18fcabb33b58f3f30ca56f2203e28e2fa46757c897054c4eaa87affbe76",
-  "integrity": "sha512-ydM5soiXEBWCDW4n6NfH+dJ51BTDijKlspH0zz9rjue9aS99w0Dg5jdl6sT1RTbjGlRZk7P5jzi1gcWm7DCG6w==",
+  "bytes": 15919589,
+  "sha256": "aff225b199ca3abde614db50fc9a2049904942f926a240839c913c7b77931fda",
+  "integrity": "sha512-IFw2x1fJY3yC5JfxLGNsyxkiVioYfXn4xh5HITbSlOqnTsADRbekCxafDW3UQjifrLfwtpWh7czkb+cbe61dxA==",
   "packageFileCount": 515,
   "buildFileCount": 378,
   "files": [
@@ -1316,8 +1316,8 @@
     },
     {
       "path": "src/client/index.js",
-      "bytes": 504915,
-      "sha256": "830b186ebf04e20a6cde866b07de977e4d340dbb819736ddd437b44185aaac24"
+      "bytes": 505143,
+      "sha256": "e19642497db02aa3c35b5b429fe8008b713bdddfa8a351d4ecc0c5841254c481"
     },
     {
       "path": "src/client/knowledge-ui.css",
