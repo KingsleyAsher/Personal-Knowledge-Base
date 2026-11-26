@@ -7,7 +7,7 @@ from pathlib import Path
 from contextlib import contextmanager
 import argparse, base64, hashlib, json, os, re, shutil, subprocess, sys, tarfile, uuid
 
-PACKAGE = '@local/dsh-knowledge-base'
+PACKAGE = '@kingsleyasher/dsh-knowledge-base'
 METADATA = ('package.json', 'pnpm-lock.yaml')
 
 def sha(data): return hashlib.sha256(data).hexdigest()
@@ -65,13 +65,15 @@ def profile_lock(profile):
 
 def locations(profile):
     profile = profile.resolve(strict=True)
-    plugin = profile / 'node_modules/@local/dsh-knowledge-base'
+    plugin = profile / 'node_modules' / PACKAGE
     if plugin.is_symlink() or plugin.is_junction(): raise RuntimeError('Linked installations require a Host-managed migration')
-    return profile, plugin, profile / '.kb-safe-updates/transaction.json'
+    return profile, plugin, profile / '.kb-npm-updates/transaction.json'
 
 def validate_archive(archive, expected, destination):
     raw = archive.read_bytes()
-    if len(raw) != expected['bytes'] or sha(raw) != expected['sha256']: raise RuntimeError('Archive digest mismatch')
+    integrity = 'sha512-' + base64.b64encode(hashlib.sha512(raw).digest()).decode('ascii')
+    if len(raw) != expected['bytes'] or sha(raw) != expected['sha256'] or integrity != expected['integrity']:
+        raise RuntimeError('Archive digest mismatch')
     seen = set(); total = 0
     with tarfile.open(archive, 'r:gz') as stream:
         for entry in stream:
@@ -100,8 +102,7 @@ def validate_archive(archive, expected, destination):
     for name in files:
         if name not in extracted: raise RuntimeError('Build inventory path missing')
         digest.update((name + '\0' + sha((destination / name).read_bytes()) + '\n').encode())
-    if digest.hexdigest()[:16] != expected['buildId']: raise RuntimeError('Build ID mismatch')
-    return pkg
+    return pkg, digest.hexdigest()[:16]
 
 def lock_entries(lines, start, end, indent):
     rows = []
@@ -174,13 +175,16 @@ def prepare(profile, archive, expected, pnpm=None):
         if not (plugin / 'package.json').is_file(): raise RuntimeError('Existing plugin is incomplete; use the recovery installer with a trusted old package')
         work = journal.parent / ('transaction-' + uuid.uuid4().hex); work.mkdir(parents=True)
         candidate = work / 'candidate'; candidate.mkdir()
-        pkg = validate_archive(archive, expected, candidate)
+        current = json.loads((plugin / 'package.json').read_text(encoding='utf-8'))
+        if current.get('name') != PACKAGE or current.get('version') != expected['currentVersion']:
+            raise RuntimeError('The installed npm package changed; restart and check again')
+        pkg, build_id = validate_archive(archive, expected, candidate)
         old = {name: base64.b64encode(data).decode() if (data := read(profile / name)) is not None else None for name in METADATA}
         shadow = work / 'profile'; shadow.mkdir()
         for name in (*METADATA, '.npmrc', 'pnpm-workspace.yaml'):
             if (profile / name).is_file(): shutil.copyfile(profile / name, shadow / name)
         staged_config = json.loads(json.dumps(config))
-        staged_config['dependencies'][PACKAGE] = 'file:' + archive.resolve().as_posix()
+        staged_config['dependencies'][PACKAGE] = pkg['version']
         save(shadow / 'package.json', staged_config)
         pnpm = pnpm or Path(os.environ.get('APPDATA', str(Path.home() / 'AppData/Roaming'))) / 'npm/node_modules/pnpm/bin/pnpm.mjs'
         node = shutil.which('node.exe') or shutil.which('node')
@@ -188,11 +192,15 @@ def prepare(profile, archive, expected, pnpm=None):
         resolver = work / 'resolver'; resolver.mkdir()
         save(resolver / 'package.json', {'private': True, 'dependencies': {PACKAGE: staged_config['dependencies'][PACKAGE]}})
         (resolver / 'pnpm-workspace.yaml').write_text('packages:\n  - .\n', encoding='utf-8')
-        command = [node, str(pnpm), 'install', '--ignore-workspace', '--lockfile-only', '--offline', '--ignore-scripts', '--no-frozen-lockfile']
+        command = [node, str(pnpm), 'install', '--ignore-workspace', '--lockfile-only', '--registry=https://registry.npmjs.org/', '--ignore-scripts', '--no-frozen-lockfile']
         with (work / 'prepare.log').open('wb') as log:
             result = subprocess.run(command, cwd=resolver, stdout=log, stderr=subprocess.STDOUT, timeout=120)
         if result.returncode: raise RuntimeError('Staging failed; live profile unchanged. ' + (work / 'prepare.log').read_text(encoding='utf-8', errors='replace')[-2000:])
         resolved_lock = (resolver / 'pnpm-lock.yaml').read_text(encoding='utf-8')
+        lines, blocks = managed_lock_blocks(resolved_lock)
+        start, end = blocks[1]
+        if not re.search(r'\bintegrity:\s*' + re.escape(expected['integrity']) + r'(?=[,}\s])', ''.join(lines[start:end])):
+            raise RuntimeError('Registry lock integrity does not match the verified archive')
         original_lock = read(profile / 'pnpm-lock.yaml')
         if original_lock is None:
             if any(name != PACKAGE for group in ('dependencies', 'devDependencies', 'optionalDependencies') for name in config.get(group, {})): raise RuntimeError('Existing lockfile required to preserve unrelated dependencies')
@@ -203,9 +211,9 @@ def prepare(profile, archive, expected, pnpm=None):
         next_config = json.loads(base64.b64decode(new['package.json']))
         check = json.loads(json.dumps(next_config)); check['dependencies'][PACKAGE] = config['dependencies'][PACKAGE]
         if check != config: raise RuntimeError('Staged package manager changed unrelated profile configuration')
-        plan = {'phase': 'prepared', 'work': work.name, 'version': pkg['version'], 'buildId': expected['buildId'], 'old': old, 'new': new, 'oldTree': tree(plugin), 'newTree': tree(candidate)}
+        plan = {'phase': 'prepared', 'work': work.name, 'version': pkg['version'], 'buildId': build_id, 'old': old, 'new': new, 'oldTree': tree(plugin), 'newTree': tree(candidate)}
         save(journal, plan)
-        return {'ok': True, 'phase': 'prepared', 'transactionId': work.name, 'version': pkg['version']}
+        return {'ok': True, 'phase': 'prepared', 'transactionId': work.name, 'version': pkg['version'], 'buildId': build_id}
 
 def restore(profile, plugin, journal, plan):
     for name in METADATA:

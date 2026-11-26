@@ -12,6 +12,18 @@ The shared library stores inbox completions in `.kbmeta/shared-state.json`. Once
 
 Windows shared-service regression coverage includes completion, same-request retry, index drop protection, and recovery-queue retention. Host error responses were checked for required fields. Repeating a request after validation fails returns the same invalid-argument error.
 
+## 2026-11-26 · Plugin npm 3.1.5 candidate · Update discovery and installation
+
+The npm edition checks the registry for stable versions of its own package. With the knowledge base UI open, shared service installs that support safe handoff can update automatically or retry manually from the version badge. The updater checks npm SHA-512, package identity, version, and build, then uses the transaction installer and retains the recovery record. Embedded mode detects updates and leaves installation to DSH. The legacy GitHub edition retains its separate package identity. In an isolated profile on Windows DSH Desktop 0.2.2-rc.5, a 3.1.3 test fixture running the candidate updater automatically installed the public npm 3.1.4 package. The transaction committed and the plugin UI and shared service both loaded the new version. npm 3.1.5 publication is pending.
+
+<!-- project-record-version: 3.1.4 -->
+
+**Plugin 3.1.4; desktop client 2.0.3 · 2026-11-16.**
+
+## 2026-11-20 · npm distribution candidate
+
+Prepared a separate npm candidate from the released plugin 3.1.4: use @kingsleyasher/dsh-knowledge-base, adjust host and client registration, and disable the built-in installer that targets the legacy package path. Update the npm package via the host manager. The official GitHub package and legacy update feed remain unchanged. Entry import, update guards and pack inventory checks passed; real host loading, upgrades and coexistence remain unverified.
+
 ## 2026-11-17 · OCR provider save validation
 
 Show field validation errors when saving OCR providers instead of a generic HTTP 400. Synthetic browser acceptance covers the error and successful correction; no real third-party service was tested.

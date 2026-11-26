@@ -8,9 +8,9 @@ import { readCandidateBuild } from './build.js'
 
 // The worker and Python live outside the replaceable package. The receipt is
 // durable, so losing the HTTP/HMR reply never means installation is repeated.
-export function createSafeUpdate({ profileDir, packageRoot, quiesce, resume, withUpdateLock = task => task(), activate, activeBuild }) {
+export function createSafeUpdate({ profileDir, packageRoot, quiesce, resume, withUpdateLock = task => task(), activate, activeBuild, installedRoot = path.join(profileDir, 'node_modules/@local/dsh-knowledge-base'), journalName = '.kb-safe-updates' }) {
   let operation
-  const home = path.join(profileDir, '.kb-safe-updates')
+  const home = path.join(profileDir, journalName)
   async function ensureHome(){const python=await resolveHostPython(packageRoot,{home:path.join(profileDir,'.kb-update-python')});await native(python,'private-dir',{path:home});return python}
   async function invoke(action, args = []) {
     const source = await readFile(path.join(packageRoot, 'tools/kb-transactional-update.py'))
@@ -56,10 +56,10 @@ export function createSafeUpdate({ profileDir, packageRoot, quiesce, resume, wit
   return {
     async prepare(prepared) {
       if (operation) throw Error('另一个安全更新正在进行')
-      const expected = path.join(home, 'expected-' + prepared.buildId + '.json')
+      const expected = path.join(home, 'expected-' + (prepared.buildId || prepared.sha256) + '.json')
       await ensureHome(); await writeFile(expected, JSON.stringify(prepared), { mode: 0o600 })
       const plan = await invoke('prepare', ['--archive', prepared.spec, '--expected', expected])
-      return { ...prepared, safeInstall: true, hotActivation: Boolean(activate), transactionId: plan.transactionId }
+      return { ...prepared, ok: true, buildId: plan.buildId || prepared.buildId, safeInstall: true, hotActivation: Boolean(activate), transactionId: plan.transactionId }
     },
     install({ transactionId, expectedVersion }) {
       if (operation) return operation
@@ -95,7 +95,7 @@ export function createSafeUpdate({ profileDir, packageRoot, quiesce, resume, wit
       let writerBusy
       try{await stat(path.join(profileDir,'package.json.lock'));writerBusy=true}catch(error){if(error.code!=='ENOENT')throw error;writerBusy=false}
       let installedBuild
-      try{const build=await readCandidateBuild(path.join(profileDir,'node_modules/@local/dsh-knowledge-base'));installedBuild={version:build.version,buildId:build.buildId}}catch{/* incomplete package is never proof that retry is safe */}
+      try{const build=await readCandidateBuild(installedRoot);installedBuild={version:build.version,buildId:build.buildId}}catch{/* incomplete package is never proof that retry is safe */}
       return { phase: plan.phase, version: plan.version, buildId: plan.buildId, transactionId: plan.work, restartRequired: plan.phase === 'committed',
         confirmationProtocol:1,operationActive:Boolean(operation),writerBusy,installedBuild,
         canRetryLegacy:Boolean(installedBuild&&!operation&&!writerBusy&&['none','committed','aborted','rolled-back'].includes(plan.phase)) }

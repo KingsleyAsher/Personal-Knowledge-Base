@@ -9,7 +9,7 @@
 //               + ctx.slots.register({ name:'sidebar.panellist', id:同一个面板 id, order, label }, Icon)
 //   行上的 id 必须指向已登记的主区面板；主区键位缺失时宿主会抛错、当前选择不变。
 window.__ModuleLoader__.load({
-  id: '@local/dsh-knowledge-base',
+  id: '@kingsleyasher/dsh-knowledge-base',
   factory: (require) => {
     const module = { exports: {} }
     const exports = module.exports
@@ -3342,7 +3342,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     // A host-owned installation can outlive this module during HMR. Persist its
     // request ID, then reconcile via the native manager and the active build.
     function createClientUpdateFlow({ api, manager, storage, notify, clientVersion = () => null, retryLater, delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms)) }) {
-      const key = 'dsh-kb-update-operation'
+      const key = 'dsh-kb-npm-update-operation'
       let running = null, retryQueued = false
       const read = () => { try { return JSON.parse(storage.getItem(key)) } catch { return null } }
       const save = (record) => { try { storage.setItem(key, JSON.stringify(record)) } catch { throw Error('无法保存更新状态，请检查客户端存储后重试') } }
@@ -3482,8 +3482,6 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
             }
             return
           }
-          const remote = manager()
-          if (typeof remote?.installBundle !== 'function' || typeof remote?.waitForInstall !== 'function') throw Error('当前宿主未提供客户端安装接口，请使用宿主插件管理器')
           show('正在下载并校验安装包…', { busy: true })
           const prepared = await api({ op: 'updates.prepare', expectedVersion })
           if (!prepared?.ok || prepared.latestVersion !== expectedVersion || !/^[a-f0-9]{16}$/.test(prepared.buildId || '') || typeof prepared.spec !== 'string') throw Error(prepared?.error || '下载结果无效')
@@ -3547,17 +3545,14 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     function isAutomaticUpdate(update) {
       return update?.ok && update.updateAvailable === true && update.autoInstallEligible === true && update.installSupported !== false &&
-        /^[a-f0-9]{16}$/.test(update.buildId || '') && Boolean(update.latestVersion)
+        Boolean(update.integrity && update.latestVersion)
     }
     function maybeAutoInstallUpdate(update = buildBadgeState.update) {
       const candidates = availableUpdates({ ...buildBadgeState, update }).map(release => ({ ...release, installSupported: update?.installSupported })).filter(isAutomaticUpdate).sort((a,b) => compareReleaseVersions(b.latestVersion,a.latestVersion))
       update = candidates[0]
       if (!update) return
-      const manager = updateManager
-      if (typeof manager?.installBundle !== 'function' || typeof manager?.waitForInstall !== 'function') return
       if (updateViewState.busy || updateViewState.uncertain || updateViewState.restartRequired || updateViewState.refreshRequired) return
-      if (!/^[a-f0-9]{16}$/.test(update.buildId || '') || !update.latestVersion) return
-      const attempt = update.latestVersion + ':' + update.buildId
+      const attempt = update.latestVersion + ':' + update.integrity
       if (automaticUpdateAttempts.has(attempt)) return
       automaticUpdateAttempts.add(attempt)
       void updateFlow.install(update.latestVersion)
@@ -3611,17 +3606,16 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       if (update.channel === 'local' || update.status === 'candidate' || update.checkSkipped) return update.message || '本机试用版尚未进行在线更新检查'
       if (update.migrationRequired) return update.updateAvailable ? '发现正式版 ' + update.latestVersion + '；本机试用版需手动迁移' : '本机试用版；正式发布版本 ' + update.latestVersion
       if (!update.onlineChecked && !update.sourceStatus?.some(source => source.ok)) return update.message || '尚未完成在线更新检查'
-      if (update.updateAvailable) return '发现新版本 ' + update.latestVersion
+      if (update.updateAvailable) return '发现新版本 ' + update.latestVersion + (update.installSupported === false ? '，请通过 DSH 插件管理器更新' : '')
       if (update.ahead) return '当前版本高于更新源；最新发布版本 ' + update.latestVersion
       return update.currentChannel === 'preview' ? '已是最新预览版' : '已是最新正式版'
     }
     function BuildBadge({ passive = false } = {}) {
       const { version, update, checking } = react.useSyncExternalStore(subscribeBuildBadge, getBuildBadge, getBuildBadge)
       const [updating, setUpdating] = react.useState(updateViewState)
-      const [canInstall, setCanInstall] = react.useState(Boolean(updateManager))
       react.useEffect(() => {
         const changed = (event) => { if (event.detail) setUpdating(event.detail) }
-        const capability = () => { setCanInstall(Boolean(updateManager)); void updateFlow.recover() }
+        const capability = () => { void updateFlow.recover() }
         window.addEventListener('kb-plugin-update', changed)
         window.addEventListener('kb-update-capability', capability)
         capability()
@@ -3645,7 +3639,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
           ...(update.preview?.downloadSources || []).map(s => e('a', { key: 'preview-' + s.id, href: s.url, target: '_blank', rel: 'noopener noreferrer', style: { marginRight: 12 } }, s.name + ' 预览版下载'))) : null,
         !checking && update?.preview?.updateAvailable ? e(react.Fragment, null,
           e('span', { role: 'status' }, '发现可选预览版 ' + update.preview.latestVersion + '（测试版本，按需选择）'),
-          e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: !canInstall || update.installSupported === false || updating.busy || updating.uncertain || updating.restartRequired || updating.refreshRequired,
+          e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: update.installSupported === false || updating.busy || updating.uncertain || updating.restartRequired || updating.refreshRequired,
             onClick: () => { void updateFlow.install(update.preview.latestVersion) } }, '安装预览版'),
           e('a', { href: update.preview.notesUrl, target: '_blank', rel: 'noopener noreferrer' }, '预览版说明')) : null,
         !checking && update?.preview?.available === false ? e('span', { role: 'status' }, '暂无预览版') : null,
@@ -3654,8 +3648,8 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
         updating.uncertain ? e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: updating.busy, onClick: () => { void updateFlow.recover() } }, '核对更新状态') : null,
         updating.refreshRequired ? e('button', { className: 'kbc-btn kbc-btn-ghost', onClick: () => window.location.reload() }, '刷新界面') : null,
         !checking && update && update.ok && update.updateAvailable
-          ? e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: !canInstall || update.installSupported === false || updating.busy || updating.uncertain || updating.restartRequired || updating.refreshRequired,
-            title: canInstall && update.installSupported !== false ? '自动下载、校验并由 DSH 安装；支持时直接热加载' : '当前宿主未提供客户端安装接口，请使用宿主插件管理器',
+          ? e('button', { className: 'kbc-btn kbc-btn-ghost', disabled: update.installSupported === false || updating.busy || updating.uncertain || updating.restartRequired || updating.refreshRequired,
+            title: update.installSupported !== false ? '自动下载、校验并由 DSH 安装；支持时直接热加载' : '当前模式请通过 DSH 插件管理器更新',
             onClick: () => { void updateFlow.install(update.latestVersion) } }, updating.busy ? '更新中…' : '安装新版本') : null)
     }
 
@@ -3733,7 +3727,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
       if((updating.manualHelp||handoffError)&&!helpClosed)return reactDom.createPortal(e('div',{className:'kb-release-backdrop'},e('section',{className:'kb-release-card',role:'alertdialog','aria-modal':'true','aria-label':'更新未完成'},
         e('h2',null,'自动更新未完成'),e('p',null,handoffError?'旧服务交接暂未完成，请等待现有任务结束或按恢复说明处理。':updating.message),
         e('p',null,'请勿反复安装或清空知识库与解析记录。保存工作后，可按说明核对状态并恢复安装。'),
-        e('a',{href:'https://github.com/KingsleyAsher/Personal-Knowledge-Base/blob/main/docs/UPDATE-RECOVERY.md',target:'_blank',rel:'noopener noreferrer'},'打开手动更新与恢复说明'),
+        e('a',{href:'https://www.npmjs.com/package/@kingsleyasher/dsh-knowledge-base',target:'_blank',rel:'noopener noreferrer'},'查看 npm 安装与更新说明'),
         e('button',{className:'kb-update-install',onClick:()=>{updateFailureMemory.dismiss(failureKey);setHelpClosed(true);window.dispatchEvent(new CustomEvent('kb-update-failure-dismissed'))}},'关闭'))),document.body)
       if (updating.restartRequired && !restartDeferred) return reactDom.createPortal(e('div', { className: 'kb-release-backdrop', role: 'presentation' },
         e('section', { className: 'kb-release-card', role: 'alertdialog', 'aria-modal': 'true', 'aria-labelledby': 'kb-restart-title', 'aria-describedby': 'kb-restart-intro' },
@@ -4652,6 +4646,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     // Keep shipped releases for summaries of versions skipped during this upgrade.
     // Patch-only installs stay quiet; unread older notes do not widen the range.
     const RELEASE_NOTICES = [
+      {version:'3.1.5',items:['npm 版插件可检查正式版更新，并在支持安全交接的 DSH 安装中自动升级。']},
       {version:'3.1.4',items:['修复 OCR 服务保存失败时只显示 HTTP 400，显示具体的配置校验原因。']},
       {version:'3.1.3',items:['文件树与目录读取改用缓存：未变化的资料库不再每次重读目录和排除策略，客户端展开目录只请求新增项。','索引巡检在内容未变化时复用已有目录，减少周期性卡顿；资料内容变化仍会重新核对。']},
       {version:'3.1.2',items:['共享模式补回解析工具说明和全体 Agent 规则：当前服务设置优先于记忆。','默认 OCR/ASR 失败时说明原因并询问，未经本次明确同意不切换本机、其他云端或脚本。']},

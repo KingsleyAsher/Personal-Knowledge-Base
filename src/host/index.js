@@ -31,7 +31,8 @@ import { installCommandDescriptionFallback } from './command-description.js'
 import { apply as applyTodoLifecycle } from './todo-lifecycle.js'
 import { createFlowEngine } from './flows.js'
 import { createFlowWorkspaceManager, prepareFlowConversation } from './flow-workspace.js'
-import { createUpdateChecker, createUpdateDownloader, startAutomaticChecks, downloadBrowserExtension } from './updates.js'
+import { startAutomaticChecks, downloadBrowserExtension } from './updates.js'
+import { createNpmUpdateChecker } from '../../packages/kb-service/host-updates.js'
 import { runSelftest } from './selftest.js'
 import { walkTree, privateRootOf, normSegs, toPosix as toPosixFile, DEFAULT_PRIVATE_DIRS, readImportSources, derivedPrivatePartitions, effectivePrivateDirs, knowledgeCount } from './fsindex.js'
 import { createImportService } from './import-service.js'
@@ -280,10 +281,7 @@ export function apply(ctx, config) {
     return () => { clearInterval(timer); embeddedKernel.dispose() }
   }, 'kb-workbench: opt-in background maintenance')
   const flowWorkspaceManager = createFlowWorkspaceManager({ getRegistry: () => ctx.get('workspaceRegistry') })
-  const updateChecker = createUpdateChecker({ currentVersion: PLUGIN_VERSION })
-  const updateProfile = ctx.get('profileContext')
-  const updateDownloader = createUpdateDownloader({ checker: updateChecker,
-    cacheDir: typeof updateProfile?.dir === 'string' ? path.join(updateProfile.dir, '.kb-plugin-updates') : null })
+  const updateChecker = createNpmUpdateChecker({ currentVersion: PLUGIN_VERSION })
   // 自动检查属于宿主后台机制，页面关闭后仍继续按周期检查。
   ctx.effect(() => startAutomaticChecks(updateChecker), 'kb-core: automatic update checks')
   // R1：UI 与工具共用的导入服务。在 install() 里创建（要等 core 就绪后才拿得到配置）。
@@ -1841,9 +1839,7 @@ let parsingService = null
                   (origin && (() => { try { return new URL(origin).host !== req.headers.host } catch { return true } })())) {
                   return kbSendJson(res, 403, { ok: false, error: '更新请求必须来自当前客户端' })
                 }
-                return kbSendJson(res,409,{ok:false,error:'嵌入模式尚无可证明的安全停服协议，自动安装已延后，请使用过渡安装入口。'})
-                try { return kbSendJson(res, 200, await updateDownloader.prepare({ expectedVersion: body.expectedVersion })) }
-                catch (error) { return kbSendJson(res, 400, { ok: false, error: String(error.message || error) }) }
+                return kbSendJson(res,409,{ok:false,error:'嵌入模式暂不支持安全停服，请通过 DSH 插件管理器更新 npm 版。'})
               }
               if (body.op === 'index-maintenance.status') {
                 const status = await current.status()

@@ -1,3 +1,5 @@
+> npm 发行版：请先阅读 [npm 版身份、更新与限制](NPM-EDITION.md)。
+
 # Personal Knowledge Base · Plugin and Desktop Client
 
 > **Plugin 3.1.6:** File-tree reads now cache the parsed catalog and exclusion policy by file identity, reuse directory listings behind directory/policy/catalog signatures, and skip the periodic full-library rescan when nothing changed. Large directories load much faster and periodic stalls are greatly reduced. Desktop client 2.0.3 is published as an unsigned installer; the stable update feed points at plugin 3.1.6 / client 2.0.3.

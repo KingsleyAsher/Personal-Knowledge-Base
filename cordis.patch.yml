@@ -14,7 +14,7 @@
 # 之后要改 kbPath / excludeFromSearch 请用设置页 / kb_bind / kb_check，或改 config.json 后重启。
 - insert:
     - id: kb-core
-      name: '@local/dsh-knowledge-base'
+      name: '@kingsleyasher/dsh-knowledge-base'
       config:
         # Auto joins an already shared library; unmanaged existing libraries keep
         # their complete embedded mode until an explicit migration is approved.

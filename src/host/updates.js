@@ -48,7 +48,7 @@ function selectedSources(ids) {
 
 // Follow only a bounded set of HTTPS redirects belonging to the selected service.
 // No cookies, authorization, mirror-provided download URLs or user paths are sent.
-async function sourceBytes(fetchFn, source, rel, limit, timeoutMs) {
+export async function readUpdateSourceBytes(fetchFn, source, rel, limit, timeoutMs) {
   const controller = new AbortController()
   let timer = setTimeout(() => controller.abort(), timeoutMs)
   // Large archives may take longer than a metadata request. Bound idle time
@@ -102,7 +102,7 @@ export function createUpdateChecker({ currentVersion, fetch: fetchFn = globalThi
   async function channel(preview) {
     const results = await Promise.all(sources.map(async source => {
       try {
-        const raw = await sourceBytes(fetchFn, source, preview ? 'preview-manifest.json' : 'release-manifest-v2.json', 1024 * 1024, timeoutMs)
+        const raw = await readUpdateSourceBytes(fetchFn, source, preview ? 'preview-manifest.json' : 'release-manifest-v2.json', 1024 * 1024, timeoutMs)
         const m = JSON.parse(raw.toString('utf8'))
         if (preview && m.package === '@local/dsh-knowledge-base' && m.channel === 'preview' && m.active === false) return { source, ok: true, inactive: true }
         const parsedVersion = parseKnowledgeVersion(m.version, { allowLegacyPreview: preview })
@@ -231,7 +231,7 @@ export function createUpdateDownloader({ checker, cacheDir, fetch: fetchFn = glo
               while (!failed && next < count) {
                 const index = next++, bytes = Math.min(UPDATE_PART_BYTES, release.bytes - index * UPDATE_PART_BYTES)
                 const rel = 'dist/update-parts/' + release.sha256 + '/' + String(index).padStart(4, '0') + '.b64'
-                const encoded = await sourceBytes(fetchFn, source, rel, Math.ceil(bytes / 3) * 4 + 1, timeoutMs)
+                const encoded = await readUpdateSourceBytes(fetchFn, source, rel, Math.ceil(bytes / 3) * 4 + 1, timeoutMs)
                 const text = encoded.toString('utf8').trim()
                 if (text.length % 4 || !/^[A-Za-z0-9+/]*={0,2}$/.test(text)) throw Error('更新分片编码无效')
                 const part = Buffer.from(text, 'base64')
@@ -242,7 +242,7 @@ export function createUpdateDownloader({ checker, cacheDir, fetch: fetchFn = glo
             const failure = results.find(r => r.status === 'rejected')
             if (failure) throw failure.reason
             raw = Buffer.concat(parts)
-          } else raw = await sourceBytes(fetchFn, source, 'dist/' + encodeURIComponent(release.tgz), release.bytes, timeoutMs)
+          } else raw = await readUpdateSourceBytes(fetchFn, source, 'dist/' + encodeURIComponent(release.tgz), release.bytes, timeoutMs)
           verifyUpdateArchive(raw, release)
           await writeFile(temporary, raw, { flag: 'wx', mode: 0o600 })
           try { await unlink(target) } catch (error) { if (error.code !== 'ENOENT') throw error }
@@ -272,7 +272,7 @@ export async function downloadBrowserExtension({ fetch: fetchFn = globalThis.fet
   const errors = []
   for (const source of UPDATE_SOURCES) {
     try {
-      const raw = await sourceBytes(fetchFn, source, 'dist/knowledge-base-browser-extension.zip', 4 * 1024 * 1024, timeoutMs)
+      const raw = await readUpdateSourceBytes(fetchFn, source, 'dist/knowledge-base-browser-extension.zip', 4 * 1024 * 1024, timeoutMs)
       if (createHash('sha256').update(raw).digest('hex') !== EXTENSION_ARCHIVE_SHA256) throw Error('扩展文件校验失败')
       return { ok: true, filename: 'knowledge-base-browser-extension.zip', base64: raw.toString('base64') }
     } catch (error) { errors.push(source.name + '：' + String(error.message || error)) }

@@ -1,5 +1,5 @@
 {
-  "name": "@local/dsh-knowledge-base",
+  "name": "@kingsleyasher/dsh-knowledge-base",
   "version": "3.1.6",
   "description": "个人知识工作台：可控隐私、首次设置、目录地图、快速收集、阅读摘录、引用问答与按需备份。",
   "icon": "./src/client/capture-icon.svg",
@@ -52,7 +52,8 @@
     "PRIVACY.md",
     "SECURITY.md",
     "THIRD-PARTY-NOTICES.md",
-    "CONTRIBUTING.md"
+    "CONTRIBUTING.md",
+    "NPM-EDITION.md"
   ],
   "dsh": {
     "bundle": {
@@ -69,5 +70,9 @@
     }
   },
   "license": "MIT",
-  "private": true
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/KingsleyAsher/Personal-Knowledge-Base.git"
+  },
+  "homepage": "https://github.com/KingsleyAsher/Personal-Knowledge-Base"
 }
