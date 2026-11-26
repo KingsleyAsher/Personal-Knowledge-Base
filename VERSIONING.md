@@ -2,7 +2,7 @@
 
 [English](VERSIONING.en.md) · 简体中文
 
-插件与客户端共用本规则，独立版本：插件 3.1.4，客户端 2.0.3。共享实现位于 packages/kb-contracts/version-policy.js；插件 src/host/versioning.js 保留兼容入口。
+插件与客户端共用本规则，独立版本：插件 3.1.6，客户端 2.0.3。共享实现位于 packages/kb-contracts/version-policy.js；插件 src/host/versioning.js 保留兼容入口。
 
 ## 版本格式与顺序
 

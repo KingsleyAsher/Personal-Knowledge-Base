@@ -4647,7 +4647,7 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     // END GENERATED TODO LIFECYCLE UI
 
-    const RELEASE_VERSION = '3.1.4'
+    const RELEASE_VERSION = '3.1.6'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep shipped releases for summaries of versions skipped during this upgrade.
     // Patch-only installs stay quiet; unread older notes do not widen the range.

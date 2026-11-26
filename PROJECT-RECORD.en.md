@@ -2,9 +2,15 @@
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 3.1.4 -->
+<!-- project-record-version: 3.1.6 -->
 
-**Plugin 3.1.4; desktop client 2.0.3 · 2026-11-16.**
+**Plugin 3.1.6 and desktop client 2.0.3 · 2026-11-26.**
+
+## 2026-11-26 · Inbox completion receipts and knowledge-base checks
+
+The shared library stores inbox completions in `.kbmeta/shared-state.json`. Once the record is saved, `kb_inbox complete` returns the completed record and reports index synchronization in `indexSync`. When a large drop triggers index protection, `kb_check` returns scan differences, `execution`, `quality`, and the reason the index was kept. The previous index and recovery queue remain available. Shared-service checks honor `recover:true`. Host disconnects and authorization failures return errors that satisfy the tool output contract.
+
+Windows shared-service regression coverage includes completion, same-request retry, index drop protection, and recovery-queue retention. Host error responses were checked for required fields. Repeating a request after validation fails returns the same invalid-argument error.
 
 ## 2026-11-17 · OCR provider save validation
 

@@ -30,18 +30,31 @@ test('all kb_flow actions preserve their output contract and requested action',a
 test('registered shared Host tool retains action on disconnect, unverified caller and service errors',async()=>{
   const source=await readFile(new URL('../packages/kb-service/host-adapter.js',import.meta.url),'utf8')
   const loop=source.slice(source.indexOf('  for (const definition of definitions)'),source.indexOf('  if (gatewayApply'))
-  let tool,response={ok:true,flows:[]},verified=true,target,connected=true
+  const registered=new Map()
+  let response={ok:true,flows:[]},verified=true,target,connected=true
   const client={call:async()=>{if(response instanceof Error)throw response;return response}}
-  const context={definitions:[definition],normalizeToolResult,tools:{register:value=>{tool=value}},ctx:{effect:fn=>fn()},
+  const checkDefinition=definitions.find(d=>d.name==='kb_check')
+  const context={definitions:[definition,checkDefinition],normalizeToolResult,tools:{register:value=>registered.set(value.name,value)},ctx:{effect:fn=>fn()},
     desktopLinks:{clientForAgent:()=>target},routing:{run:(_client,run)=>run()},primaryClient:client,client,randomUUID:()=> 'request-fixture',
     trusted:()=>verified,knowledge:()=>false,get connected(){return connected}}
   vm.runInNewContext(loop,context)
+  const tool=registered.get('kb_flow'),check=registered.get('kb_check')
   validate(await tool.execute({action:'list'},{}),'list')
   target=null;validate(await tool.execute({action:'list'},{}),'list');assert.equal((await tool.execute({action:'list'},{})).reason,'HOST_UNAVAILABLE')
   target=undefined;verified=false;validate(await tool.execute({action:'get'},{}),'get');assert.equal((await tool.execute({action:'get'},{})).reason,'CALLER_UNVERIFIED')
   verified=true;connected=false;validate(await tool.execute({action:'runs'},{}),'runs')
   connected=true;response=Object.assign(Error('synthetic unavailable'),{code:'HOST_UNAVAILABLE'})
   const failed=await tool.execute({action:'run'},{});validate(failed,'run');assert.equal(failed.ok,false);assert.equal(failed.error,'synthetic unavailable')
+  for(const state of [
+    {target:null,verified:true,reason:'HOST_UNAVAILABLE'},
+    {target:undefined,verified:false,reason:'CALLER_UNVERIFIED'},
+    {target:undefined,verified:true,reason:'HOST_UNAVAILABLE'},
+  ]){
+    ({target,verified}=state)
+    const value=await check.execute({},{})
+    for(const key of checkDefinition.outputSchema.required)assert.equal(typeof value[key],'string')
+    assert.equal(value.execution,'error');assert.equal(value.quality,'unknown');assert.equal(value.reason,state.reason)
+  }
 })
 
 test('real Windows shared service kb_flow reads and failures satisfy the shipped schema', {skip:process.platform!=='win32',timeout:30000},async()=>{

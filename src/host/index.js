@@ -1061,7 +1061,11 @@ let parsingService = null
         isConcurrencySafe: () => false,
         async execute(args) {
           // 与自检共用同一条路径：recover 的前置闸门在 drainRecoverTodo 里
-          return core.checkEntry(args ?? {})
+          try {
+            return await core.checkEntry(args ?? {})
+          } catch (error) {
+            return { ok: false, execution: 'error', quality: 'unknown', defects: [], reason: error.code || 'CHECK_FAILED', detail: error.message }
+          }
         },
       },
       {

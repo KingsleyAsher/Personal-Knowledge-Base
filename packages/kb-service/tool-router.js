@@ -1,9 +1,9 @@
 import path from 'node:path';import {error} from './io.js';
 import {toolWrites} from './operations.js';
-// The shared engine returns domain data; the Host tool contract also requires
-// the requested action on kb_flow successes and structured failures.
 export function normalizeToolResult(name,input,value){
- return name==='kb_flow'?{...value,action:String(input?.action??'')}:value;
+ if(name==='kb_flow')return {...value,action:String(input?.action??'')};
+ if(name==='kb_check'&&value?.ok===false)return {execution:'error',quality:'unknown',defects:[],...value};
+ return value;
 }
 export function createToolRouter({kernel,engines,wb,write,online,root,kbId,sourceFromStage}){
  return async function route({name,input,hostSession,hostAuthority,sourceStage},caller){
@@ -12,10 +12,14 @@ export function createToolRouter({kernel,engines,wb,write,online,root,kbId,sourc
   if(name==='kb_bind'){if(path.resolve(a.path??'').toLowerCase()!==root.toLowerCase())throw error('BINDING_CHANGED','一个共库连接只能绑定一个库；请从库切换入口重新连接');return {ok:true,kbPath:root,kbId,initialized:true,alreadyInitialized:true,needsConfirm:false,willCreate:[],willModify:[]};}
   if(name==='kb_init')return {ok:true,kbPath:root,kbId,alreadyInitialized:true,installState:'complete',steps:[]};
   if(name==='kb_search'){const found=await wb({op:'search.list',mode:'body',q:a.query,retrievalMode:a.retrievalMode,limit:Math.max(1,Math.min(20,a.limit||5))});return {...found,ok:true,hits:found.items.map(h=>({...h,revision:h.revision?.slice(0,12)||null}))};}
-  if(name==='kb_check'){write(caller);return kernel.core.check(a);}
+  if(name==='kb_check'){write(caller);return kernel.core.checkEntry(a);}
   if(name==='kb_inbox'){
    if(a.action==='list')return wb({op:'inbox.list',limit:a.limit,offset:a.offset});write(caller);
-   if(a.action==='complete')return wb({op:'inbox.complete',path:a.path,entryPath:a.entryPath});throw error('BAD_REQUEST');
+   if(a.action==='complete'){
+    try{return await wb({op:'inbox.complete',path:a.path,entryPath:a.entryPath});}
+    catch(e){if(['BAD_PATH','SOURCE_MISMATCH'].includes(e.code))throw error('BAD_REQUEST',e.message);throw e;}
+   }
+   throw error('BAD_REQUEST');
   }
   if(name==='kb_record'){
    write(caller);if(a.action==='create'&&['知识','项目','素材','人物','画像'].includes(a.kind))return kernel.core.createEntry({...a,requestId:a.requestId??caller.operationId});
