@@ -4647,11 +4647,12 @@ body:not([data-ds-dark-theme]) .kbm option{background:#fff;color:#0f1115}
     }
     // END GENERATED TODO LIFECYCLE UI
 
-    const RELEASE_VERSION = '3.1.4'
+    const RELEASE_VERSION = '3.1.6'
     const RELEASE_NOTICE_STATE_KEY = 'dsh-kb-release-state'
     // Keep shipped releases for summaries of versions skipped during this upgrade.
     // Patch-only installs stay quiet; unread older notes do not widen the range.
     const RELEASE_NOTICES = [
+      {version:'3.1.6',items:['修复收件箱归档已完成却返回结果未知的问题，回执同时显示索引同步状态。','自检在索引降幅触发保护时报告扫描差异与原因，并保留旧索引。']},
       {version:'3.1.4',items:['修复 OCR 服务保存失败时只显示 HTTP 400，显示具体的配置校验原因。']},
       {version:'3.1.3',items:['文件树与目录读取改用缓存：未变化的资料库不再每次重读目录和排除策略，客户端展开目录只请求新增项。','索引巡检在内容未变化时复用已有目录，减少周期性卡顿；资料内容变化仍会重新核对。']},
       {version:'3.1.2',items:['共享模式补回解析工具说明和全体 Agent 规则：当前服务设置优先于记忆。','默认 OCR/ASR 失败时说明原因并询问，未经本次明确同意不切换本机、其他云端或脚本。']},

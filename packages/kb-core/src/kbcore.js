@@ -26,7 +26,7 @@ import {catalogActive,readCatalog,refreshCatalog,classifyOriginal} from './file-
 import { CLASSIFICATION_VERSION } from './file-classification.js'
 
 // 版本单一来源：package.json 的 version 必须与此一致（详见 INSTALL 说明）
-export const VERSION = '3.1.4'
+export const VERSION = '3.1.6'
 
 export const REQUIRED_FIELDS = ['title', 'type', 'tags', 'status', 'updated']
 export const SCHEMA_VERSION = 1
@@ -2292,11 +2292,20 @@ export function createCore(cfg, logger) {
     }
 
     // R4：扫描不完整（scanErrors>0）时**不得**用不完整结果覆盖索引 —— 保留旧索引并标 partial
-    const indexWritten = fresh.scanErrors.length === 0
-    if (indexWritten) await writeIndex(conf, fresh.entries)
-    else defects.push({ kind: 'index-not-written', path: '-.kbmeta/index', detail: `扫描不完整（${fresh.scanErrors.length} 处错误），已保留旧索引、未覆盖；恢复记录不删除` })
+    let indexWritten = false
+    let indexWriteBlocked
+    if (fresh.scanErrors.length === 0) {
+      try {
+        await writeIndex(conf, fresh.entries)
+        indexWritten = true
+      } catch (error) {
+        if (error.code !== 'index-drop-confirmation') throw error
+        indexWriteBlocked = { reason: error.code, oldCount: error.oldCount, newCount: error.newCount }
+        defects.push({ kind: error.code, path: toPosix(path.relative(root, indexPath(root))), detail: error.message })
+      }
+    } else defects.push({ kind: 'index-not-written', path: '-.kbmeta/index', detail: `扫描不完整（${fresh.scanErrors.length} 处错误），已保留旧索引、未覆盖；恢复记录不删除` })
     if (!indexWritten && existsSync(path.join(root, '.kbmeta', 'recover-todo.log'))) {
-      await writeLog('warn', '扫描不完整：recover-todo 保留待下次消费')
+      await writeLog('warn', '索引未写入：recover-todo 保留待下次消费')
     }
 
     const result = {
@@ -2309,8 +2318,9 @@ export function createCore(cfg, logger) {
       links: { skipped: fresh.skippedLinks ?? [], policy: conf.followLinks ? 'follow-inside' : 'deny' },
       diff: { added, removed, changed },
       defects,
-      rebuiltAt: nowIso(),
+      ...(indexWritten ? { rebuiltAt: nowIso() } : {}),
       indexWritten,
+      ...(indexWriteBlocked ? { indexWriteBlocked } : {}),
       // 语义保持 P1 原样：index.fresh 反映**本次检查开始时**的新鲜度；
       // 本次是否已重建看 indexWritten / rebuiltAt（不要用"重建后状态"掩盖过期事实）
       index: { fresh: freshness.fresh, reason: freshness.reason, detail: freshness.detail ?? '' },
@@ -2346,7 +2356,13 @@ export function createCore(cfg, logger) {
     const file = path.join(root, '.kbmeta', 'recover-todo.log')
     if (!existsSync(file)) return { ok: true, consumed: 0 }
     const lines = (await readFile(file, 'utf8')).split('\n').filter(Boolean)
-    const rebuilt = await reindexLocked(conf)
+    let rebuilt
+    try {
+      rebuilt = await reindexLocked(conf)
+    } catch (error) {
+      if (error.code !== 'index-drop-confirmation') throw error
+      return { ok: false, consumed: 0, kept: true, reason: error.code }
+    }
     if (rebuilt.ok === false) {
       // 扫描不完整：保留旧索引与恢复记录，等下次再消费（不假装恢复成功）
       await writeLog('warn', `恢复未完成：扫描不完整（${(rebuilt.scanErrors ?? []).length} 处错误），索引与恢复记录均保留`)

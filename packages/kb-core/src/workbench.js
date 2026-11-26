@@ -91,7 +91,7 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
   const indexCompletedArchive = async b => {
     invalidatePolicyCaches()
     const result = await b.core.maintainIndex({ expectedKbId: b.st.kbId })
-    if (!result.ok) throw fail('INDEX_REBUILD_FAILED', result.detail || result.reason)
+    if (!result.ok) throw fail(result.reason || 'INDEX_REBUILD_FAILED', result.detail || result.reason)
     await relations(await binding(b.st.kbId), { force: true }); await retrieval.automatic()
   }
   const upgrades=createSystemUpgrades({binding,catalog:async()=>Object.entries(TEMPLATES).map(([name,content])=>({path:'_模板/'+name,content,version:VERSION})),runtime:getUpgradeContext,retrieval,now})
@@ -493,7 +493,18 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
       return policyService.set(b, args)
     }
     if (args.op === 'inbox.list') return { ok: true, ...await capture(b, { ...args, op: 'capture.inbox-files' }) }
-    if (args.op === 'inbox.complete') { const result = await capture(b, { ...args, op: 'capture.complete', expectedRevision: (await userData(b)).revision }); await indexCompletedArchive(b); return { ok: true, ...result } }
+    if (args.op === 'inbox.complete') {
+      const result = await capture(b, { ...args, op: 'capture.complete', expectedRevision: (await userData(b)).revision })
+      let indexSync
+      try {
+        await indexCompletedArchive(b)
+        indexSync = { ok: true }
+      } catch (error) {
+        indexSync = { ok: false, reason: error.code || 'INDEX_SYNC_FAILED', detail: error.message }
+        log('warn', '收件箱已登记，索引同步未完成：' + indexSync.reason)
+      }
+      return { ok: true, ...result, indexSync }
+    }
     if (args.op.startsWith('retrieval.')) return { ok:true, ...await retrieval.dispatch(b,args,caller) }
     if (args.op === 'search.expand') {const out=await retrieval.expand(b,args);return {ok:true,...out,text:redactReferences(b,args.path,out.text)}}
     if (args.op === 'atlas.relations.status') return { ok: true, sync: relationIndex.status(b) }

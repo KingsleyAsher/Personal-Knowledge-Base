@@ -1,3 +1,8 @@
+## 2026-11-26 · Plugin 3.1.6 · Inbox receipts and library checks
+
+- `kb_inbox complete` returns the saved completion and reports index synchronization in `indexSync`.
+- `kb_check` reports scan differences and the reason for a blocked index replacement. The previous index and recovery queue are preserved. Host errors include `execution` and `quality`.
+
 ## 2026-11-16 · Plugin 3.1.3 / client 2.0.3 · File tree and patrol performance
 
 Every desktop request re-read and validated the roughly 3.9 MB file catalog, and every directory listing re-read the exclusion policy, resolved each path segment through realpath and probed access twice per entry; a real 687-entry directory took 376 ms on first read. Index patrol also rescanned every original on a fixed five-minute timer, holding the single service queue for about 1.9 seconds and making the tree appear to reload after the client had been open for a while.

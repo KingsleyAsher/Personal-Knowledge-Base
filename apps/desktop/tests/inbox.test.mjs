@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import path from 'node:path';import {fileURLToPath} from 'node:url';import {mkdir,mkdtemp,readFile,writeFile} from 'node:fs/promises';import {randomUUID} from 'node:crypto';import vm from 'node:vm';
+import path from 'node:path';import {fileURLToPath} from 'node:url';import {mkdir,mkdtemp,readFile,unlink,writeFile} from 'node:fs/promises';import {randomUUID} from 'node:crypto';import vm from 'node:vm';
 import {createFixture} from '../main/fixture.js';import {startService} from '../../../packages/kb-service/service.js';import {connectService} from '../../../packages/kb-service/client.js';import {createInboxJobs} from '../../../packages/kb-service/inbox-jobs.js';import {createInboxHost} from '../../../packages/kb-service/inbox-host.js';import {INBOX_FLOW} from '../../../packages/kb-core/src/inbox-flow.js';
 import {METHODS,validate} from '../../../packages/kb-contracts/index.js';
 const appDir=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..'),repo=path.resolve(appDir,'../..'),python=process.env.KB_DESKTOP_PYTHON??'python';
@@ -37,8 +37,37 @@ test('inbox shared source, policy and DSH conversation bridge',async()=>{
    await wait(async()=>(await call('inbox.organizeStatus')).ready);const req=randomUUID(),a=await call('inbox.organize',{}, {requestId:req}),again=await call('inbox.organize',{}, {requestId:req});assert.deepEqual(a,again);await wait(async()=>(await call('inbox.organizeStatus')).task?.state==='launched');assert.equal(launches.length,1);assert.equal(launches[0].flow.id,INBOX_FLOW.id);assert.equal(launches[0].execution.reasoningEffort,'high');assert.equal((await list()).total,3);assert.equal((await call('inbox.organize')).id,a.id);
   });
   await check('Host completion validates source provenance, inherits exclusions and removes the same item from both pending lists',async()=>{
-   const source=excluded['90-收件箱/测试甲.md'];await assert.rejects(hcall('host.tool',{name:'kb_inbox',input:{action:'complete',path:source,entryPath:'20-知识笔记/阅读方法.md'}}),{code:'BAD_REQUEST'});
+   const source=excluded['90-收件箱/测试甲.md'];
+   const invalid={name:'kb_inbox',input:{action:'complete',path:source,entryPath:'20-知识笔记/阅读方法.md'}}, requestId=randomUUID();
+   await assert.rejects(hcall('host.tool',invalid,{requestId}),{code:'BAD_REQUEST'});
+   await assert.rejects(hcall('host.tool',invalid,{requestId}),{code:'BAD_REQUEST'});
    const entry=await hcall('host.tool',{name:'kb_record',input:{action:'create',kind:'知识',title:'虚构归档结果',body:'从虚构原件整理。',source}});assert(entry.ok);assert(entry.path.startsWith('排除索引分区/'));await hcall('host.tool',{name:'kb_inbox',input:{action:'complete',path:source,entryPath:entry.path}});assert(!(await list()).items.some(f=>f.path===source));assert(!(await hcall('host.tool',{name:'kb_inbox',input:{action:'list'}})).items.some(f=>f.path===source));
+  });
+  await check('an index drop keeps the old index and recovery queue while inbox completion commits',async()=>{
+   const source='90-收件箱/原件归档/已归档.txt', entryPath='20-知识笔记/回归测试归档.md';
+   await writeFile(path.join(library,source),'Synthetic archive');
+   await writeFile(path.join(library,entryPath),`---\nsource: ["${source}"]\n---\n# Synthetic archive note\n`);
+   const seeds=Array.from({length:25},(_,i)=>path.join(library,'20-知识笔记',`drop-fixture-${i}.md`));
+   await Promise.all(seeds.map(file=>writeFile(file,'# Synthetic index entry\n')));
+   const selfCheck=input=>hcall('host.tool',{name:'kb_check',input});
+   assert.equal((await selfCheck({rebuild:true})).indexWritten,true);
+   const index=path.join(library,'.kbmeta/index/entries.json'),before=await readFile(index);
+   await Promise.all(seeds.map(file=>unlink(file)));
+   const requestId=randomUUID(), input={name:'kb_inbox',input:{action:'complete',path:source,entryPath}};
+   const completed=await hcall('host.tool',input,{requestId});
+   assert.equal(completed.ok,true);assert.equal(completed.capture.status,'done');
+   assert.equal(completed.indexSync.ok,false);assert.equal(completed.indexSync.reason,'index-drop-confirmation');
+   assert.deepEqual(await hcall('host.tool',input,{requestId}),completed);
+   const state=JSON.parse(await readFile(path.join(library,'.kbmeta/shared-state.json'),'utf8'));
+   assert.equal(state.captures.find(row=>row.path===source)?.entryPath,entryPath);
+   const queue=path.join(library,'.kbmeta/recover-todo.log');
+   await writeFile(queue,'{}\n');
+   const report=await selfCheck({recover:true});
+   assert.equal(report.execution,'ok');assert.equal(report.quality,'fail');assert.equal(report.indexWritten,false);
+   assert.equal(report.indexWriteBlocked.reason,'index-drop-confirmation');
+   assert.equal(report.diff.removed.filter(file=>file.includes('drop-fixture-')).length,seeds.length);
+   assert.equal(report.recover.kept,true);assert.equal(await readFile(queue,'utf8'),'{}\n');
+   assert.deepEqual(await readFile(index),before);
   });
   await writeFile(path.join(run,'result.json'),JSON.stringify({passed:true,checks,syntheticOnly:true,dsh:'mock Host UI and mock model catalog; no real model or installed Host run'},null,2));console.log('EVIDENCE',path.join(run,'result.json'));
  }finally{stop?.();reader?.close();host?.close();desktop?.close();await service?.close();}
