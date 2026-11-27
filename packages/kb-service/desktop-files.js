@@ -69,8 +69,19 @@ export async function createDesktopFiles({root,privateDir,desktopRoot,core,withL
   return {id:p,path:p,name:path.posix.basename(p),type:s.isDirectory()?'directory':'file',mime:s.isFile()?mimeOf(p):undefined,size:Number(s.size),modifiedAt:Number(s.mtimeMs),revision:version(s),access:accessInfo,protected:system,hasChildren:s.isDirectory(),...(original?{category:original.category,kind:original.kind,original:true}:{})};
  }
  const listCache=new Map(),LIST_CACHE_MS=15000,LIST_CACHE_MAX=64;
+ let listCacheRevision=0;
+ function invalidate(paths){
+  listCacheRevision++;
+  if(!Array.isArray(paths)){listCache.clear();return;}
+  const scopes=paths.map(p=>String(p).replaceAll('\\','/').toLowerCase());
+  for(const key of listCache.keys()){
+   const parent=key.slice(0,key.lastIndexOf('|')).toLowerCase();
+   if(scopes.some(p=>!p||parent===p||parent.startsWith(p+'/')||path.posix.dirname(p)===(parent||'.')))listCache.delete(key);
+  }
+ }
  const dirSignature=async folder=>{const s=await lstat(folder,{bigint:true});return [String(s.dev),String(s.ino),String(s.mtimeNs),String(s.ctimeNs)].join(':')};
  async function list(parent='',offset=0,limit=500,sort='name-asc'){
+  const revision=listCacheRevision;
   const folder=parent?await checked(parent):base,signature=await dirSignature(folder);
   const cacheKey=parent+'|'+sort,catalog=getCatalog(),hint=[signature,indexPolicySignature(base),catalog?`${catalog.revision??0}:${catalog.policyRevision??0}`:'-',showPrivate()?'1':'0',getPrivateDirs().join('|')].join('#');
   const cached=listCache.get(cacheKey);
@@ -79,14 +90,20 @@ export async function createDesktopFiles({root,privateDir,desktopRoot,core,withL
    return {items:cached.items.slice(offset,offset+limit),nextOffset:offset+limit<cached.items.length?offset+limit:undefined,total:cached.items.length};
   }
   const matcher=policyMatcher(),rows=[];
-  for(const e of await readdir(folder,{withFileTypes:true})){
-   const p=parent?parent+'/'+e.name:e.name;
-   if(e.name.startsWith('.')||e.isSymbolicLink()||privatePath(p)||['node_modules','索引层'].includes(e.name))continue;
-   try{rows.push(await info(p,matcher,path.join(folder,e.name)));}catch(e){if(!['FORBIDDEN','LINK_DENIED','EACCES','ENOENT'].includes(e.code))throw e;}
+  const entries=await readdir(folder,{withFileTypes:true});
+  async function readEntry(entry){
+   const p=parent?parent+'/'+entry.name:entry.name;
+   if(entry.name.startsWith('.')||entry.isSymbolicLink()||privatePath(p)||['node_modules','索引层'].includes(entry.name))return;
+   try{return await info(p,matcher,path.join(folder,entry.name));}
+   catch(error){if(!['FORBIDDEN','LINK_DENIED','EACCES','ENOENT'].includes(error.code))throw error;}
+  }
+  for(let i=0;i<entries.length;i+=16){
+   const batch=await Promise.all(entries.slice(i,i+16).map(readEntry));
+   rows.push(...batch.filter(Boolean));
   }
   const nameOrder=(a,b)=>a.name.localeCompare(b.name,'zh-CN',{numeric:true});
   rows.sort((a,b)=>(a.type===b.type?0:a.type==='directory'?-1:1)||(sort==='modified-desc'?b.modifiedAt-a.modifiedAt:sort==='modified-asc'?a.modifiedAt-b.modifiedAt:sort==='name-desc'?-nameOrder(a,b):nameOrder(a,b))||nameOrder(a,b));
-  if(rows.length<=3000){if(listCache.size>=LIST_CACHE_MAX)listCache.delete(listCache.keys().next().value);listCache.set(cacheKey,{hint,at:Date.now(),items:rows});}
+  if(revision===listCacheRevision&&rows.length<=3000){if(listCache.size>=LIST_CACHE_MAX)listCache.delete(listCache.keys().next().value);listCache.set(cacheKey,{hint,at:Date.now(),items:rows});}
   return {items:rows.slice(offset,offset+limit),nextOffset:offset+limit<rows.length?offset+limit:undefined,total:rows.length};
  }
  async function walk(parent='',out=[],depth=0){
@@ -460,6 +477,7 @@ export async function createDesktopFiles({root,privateDir,desktopRoot,core,withL
   if(intent?.operation==='backupDelete')await finishBackupDelete(match[1],intent);
  }
  return {
+  invalidate,
   async sourceFromStage(id,caller){const s=stages.get(id);if(!s||s.caller!==caller||!s.final)throw error('FORBIDDEN');const data=await readFile(s.file);if(hash(data)!==s.hash)throw error('CONFLICT','暂存原件已变化');return {data,name:s.name,bytes:data.length,external:true};},
   async recoverReceipt(operationId){const intent=await readJson(path.join(storage,'operations',operationId,'intent.json'),null);if(intent?.operation==='backupDelete')return finishBackupDelete(operationId,intent);const receipt=await readJson(path.join(storage,'operations',operationId,'committed.json'),null);if(receipt)return receipt;if(intent?.operation==='trash'){
    const dir=await trashDir(operationId),item=await readJson(path.join(dir,'manifest.json'),null);
