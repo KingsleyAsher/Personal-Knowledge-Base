@@ -1,3 +1,9 @@
+## 2026-11-27 · Plugin 3.1.6 / client 2.0.3 · Local file tree build
+
+- The desktop client reuses loaded folders, original-file categories and pages within the current session. Loaded rows remain available when reopening branches, switching views or reopening the sidebar.
+- File changes refresh affected branches and keep rows visible while loading. Library, sort, search and permission changes discard the relevant cache and outdated responses.
+- The paired shared service bounds concurrent directory metadata reads, refreshes file properties after external edits and reuses the private path set for original-file categories. The installer and paired TGZ come from the same source. The filenames identify the local builds.
+
 ## 2026-11-26 · Plugin 3.1.6 · Inbox receipts and library checks
 
 - `kb_inbox complete` returns the saved completion and reports index synchronization in `indexSync`.

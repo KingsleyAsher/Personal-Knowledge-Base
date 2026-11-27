@@ -2,9 +2,13 @@
 
 [English](PROJECT-RECORD.en.md) · [简体中文](PROJECT-RECORD.md)
 
-<!-- project-record-version: 3.1.3 -->
+<!-- project-record-version: 3.1.6 -->
 
-**Source: plugin 3.1.3 / client 2.0.3 · Updated: 2026-11-16 · Published GitHub Releases; client installer unsigned.**
+**Source versions: plugin 3.1.6 / client 2.0.3 · Updated 2026-11-27.**
+
+## 2026-11-27 · Client 2.0.3 · File tree session cache
+
+Folders and original-file categories reuse loaded branches and pages and keep rows visible during refresh. File changes refresh the affected branch. Library, sort, query and permission changes discard outdated responses. The local client build is paired with plugin 3.1.6. See the [unified project record](../../PROJECT-RECORD.en.md) for implementation and verification details.
 
 ## 2026-11-16 · Client 2.0.3 · File tree and patrol performance
 
