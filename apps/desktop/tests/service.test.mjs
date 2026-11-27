@@ -23,6 +23,19 @@ test('candidate shared service and file lifecycle',async()=>{
   let created;
   await check('create plan, duplicate receipt and no clobber',async()=>{const plan=await call('desktop.plan',{operation:'create',destination:'10-项目/桌面客户端/新笔记.md'});const req=randomUUID(),args={planId:plan.id,text:'# 新笔记\nSYNTHETIC_NEW\n'};const a=await call('desktop.commit',args,{requestId:req}),b=await call('desktop.commit',args,{requestId:req});assert.deepEqual(a,b);assert.equal((await call('operation.status',{requestId:req})).state,'committed');await assert.rejects(call('desktop.plan',{operation:'create',destination:a.path}),{code:'CONFLICT'});created=a.path;});
   await check('directory listing cache follows entries added outside the service',async()=>{const parent='10-项目/桌面客户端',before=await call('desktop.listSorted',{parent,sort:'name-asc'});await writeFile(path.join(library,parent,'缓存新增.md'),'# cache\n');const after=await call('desktop.listSorted',{parent,sort:'name-asc'});assert(after.items.some(f=>f.name==='缓存新增.md'));assert.equal(after.total,before.total+1);});
+  await check('file watcher invalidates cached metadata when directory membership stays unchanged',async()=>{
+   const parent='10-项目/桌面客户端',file=parent+'/缓存新增.md';
+   const readCached=async()=>(await call('desktop.listSorted',{parent})).items.find(f=>f.path===file);
+   const before=await readCached();
+   await writeFile(path.join(library,file),'# changed content and size\n');
+   const deadline=Date.now()+2000;
+   let after=await readCached();
+   while(after.revision===before.revision&&Date.now()<deadline){
+    await new Promise(resolve=>setTimeout(resolve,50));
+    after=await readCached();
+   }
+   assert.notEqual(after.revision,before.revision);assert.notEqual(after.size,before.size);
+  });
   await check('move updates explicit references',async()=>{const f=await call('desktop.stat',{path:requirementPath}),plan=await call('desktop.plan',{operation:'move',path:requirementPath,destination:'10-项目/桌面客户端/需求更名.md',revision:f.revision});assert(plan.linkUpdates>=1);await call('desktop.commit',{planId:plan.id});const ref=(await call('document.readForEdit',{path:'10-项目/桌面客户端/交互记录.md'})).text;assert(ref.includes('需求更名'));assert(!ref.includes('需求梳理'));});
   await check('filename search sees excluded inbox, fulltext does not',async()=>{const named=await call('desktop.search',{query:'待整理',mode:'name'});assert(named.items.length);const full=await call('desktop.search',{query:'虚构待整理资料',mode:'fulltext'});assert.equal(full.items.length,0);});
   await check('move preserves inbox exclusion',async()=>{const p='90-收件箱/待整理.docx',f=await call('desktop.stat',{path:p}),plan=await call('desktop.plan',{operation:'move',path:p,destination:'40-素材资源/待整理.docx',revision:f.revision});await call('desktop.commit',{planId:plan.id});assert((await call('desktop.stat',{path:'40-素材资源/待整理.docx'})).access.indexExcluded);});

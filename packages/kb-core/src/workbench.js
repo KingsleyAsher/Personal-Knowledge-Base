@@ -95,7 +95,14 @@ export function createWorkbench({ stateDir, getCore, getParsing = () => null, ge
     await relations(await binding(b.st.kbId), { force: true }); await retrieval.automatic()
   }
   const upgrades=createSystemUpgrades({binding,catalog:async()=>Object.entries(TEMPLATES).map(([name,content])=>({path:'_模板/'+name,content,version:VERSION})),runtime:getUpgradeContext,retrieval,now})
-  const isPrivate = (b, file) => b.fileCatalog?.files.some(f=>f.path===file&&f.private) || privateRootOf(file, b.privateDirs) !== null || deliverablePrivate(b.deliverables, file) || Boolean(groupFor(b.indexPolicy, file)?.files.some(f => privateRootOf(f.normal, b.privateDirs) !== null))
+  const catalogPrivatePaths=new WeakMap()
+  const catalogPrivate = (catalog,file) => {
+    if(!catalog)return false
+    let paths=catalogPrivatePaths.get(catalog)
+    if(!paths){paths=new Set(catalog.files.filter(f=>f.private).map(f=>f.path));catalogPrivatePaths.set(catalog,paths)}
+    return paths.has(file)
+  }
+  const isPrivate = (b, file) => catalogPrivate(b.fileCatalog,file) || privateRootOf(file, b.privateDirs) !== null || deliverablePrivate(b.deliverables, file) || Boolean(groupFor(b.indexPolicy, file)?.files.some(f => privateRootOf(f.normal, b.privateDirs) !== null))
   const visible = (b, file, question = false, includePrivate = false) => (!question || !policyExcluded(b.indexPolicy, file)) && (!isPrivate(b, file) || (question ? b.preferences.showPrivate && b.preferences.allowPrivateQuestions && includePrivate : b.preferences.showPrivate))
   const indexable = (b, file) => !policyExcluded(b.indexPolicy, file)
   function redactReferences(b, file, text, allowPrivate = b.preferences.showPrivate) {

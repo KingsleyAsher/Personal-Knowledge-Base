@@ -79,6 +79,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
     if (!filePolicyPaths.has(relative) && relative.split('/').some(part => part.startsWith('.') || part === '索引层' || part === 'node_modules')) return
     if(relative==='索引层/文件目录.json')catalogChanged=true;else if(!relative||filePolicyPaths.has(relative))fileGlobal=true;else fileChanges.add(relative)
     if(fileChanges.size>1024){fileGlobal=true;fileChanges.clear()}
+    desktopFiles?.invalidate(relative==='索引层/文件目录.json'||fileGlobal?undefined:[relative])
     kernel.workbench.invalidateBrowse()
     firstFileEvent??=Date.now();clearTimeout(fileEventTimer)
     fileEventTimer = setTimeout(() => { firstFileEvent=null;const data=fileGlobal?{}:{paths:[...fileChanges],catalogChanged};fileGlobal=false;catalogChanged=false;fileChanges.clear();void queue(()=>event(data)).catch(() => {}) }, Math.max(0,Math.min(150,1000-(Date.now()-firstFileEvent))))
@@ -350,6 +351,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
     try {
       const result = await route({ ...call, operationId }, connection)
       const paths=['document.save','document.create'].includes(call.method)?[call.args.path]:undefined
+      desktopFiles?.invalidate(paths)
       kernel.workbench.invalidate();kernel.workbench.notify({type:'snapshot-dirty',kbId,paths})
       await fault('operation:published')
       journal.state = 'committed'; journal.result = result
@@ -398,7 +400,7 @@ export async function startService({ library, privateDir, python, sources = {}, 
   }
   function startMaintenance() {
     if (!maintenance) maintenance = createIndexMaintenance({ getCore: () => ({ ...kernel.core, maintainIndex: args => queue(async () => closing || !await active() ? { ok: false, reason: 'service-inactive' } : kernel.core.maintainIndex(args)) }), onChange: result => {if(result.indexWritten)kernel.workbench.invalidateBrowse();void queue(()=>event({indexOnly:true}))}, resources: kernel.workbench.resources })
-    if(!automaticTimer){automaticTimer=setInterval(()=>{void queue(async()=>{if(closing||!await active())return;const before=hash(await bytes(path.join(root,'.kbmeta/shared-state.json')));await kernel.workbench.runAutomatic();if(before!==hash(await bytes(path.join(root,'.kbmeta/shared-state.json')))){writeSequence++;await atomic(path.join(privateDir,'sequence.json'),{value:writeSequence});await event();}}).catch(e=>console.warn('[kb-service] automatic maintenance: '+String(e.code??'failed')));},60000);automaticTimer.unref?.()}
+    if(!automaticTimer){automaticTimer=setInterval(()=>{void queue(async()=>{if(closing||!await active())return;const before=hash(await bytes(path.join(root,'.kbmeta/shared-state.json')));await kernel.workbench.runAutomatic();if(before!==hash(await bytes(path.join(root,'.kbmeta/shared-state.json')))){writeSequence++;await atomic(path.join(privateDir,'sequence.json'),{value:writeSequence});await event(fileWatcher?{stateOnly:true}:{});}}).catch(e=>console.warn('[kb-service] automatic maintenance: '+String(e.code??'failed')));},60000);automaticTimer.unref?.()}
   }
   try {
     // Service state is wholly separate from all existing DSH profile directories.
