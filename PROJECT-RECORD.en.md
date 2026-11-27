@@ -10,7 +10,7 @@
 
 The desktop client reuses loaded folders, original-file categories and pages within the current session, and combines concurrent requests for the same branch. Loaded rows remain available across view changes and sidebar collapse. File changes refresh affected branches while keeping the current rows visible. Changes to the library, sort order, query or permissions invalidate the relevant cache and discard outdated responses.
 
-The shared service bounds concurrent directory metadata reads and invalidates affected listings when a file changes. Original-file categories reuse the private path set for each catalog snapshot. Focused Windows regression checks cover branch caching, file changes, permissions and inbox behavior. This entry describes source changes. The published desktop installer remains 2.0.3.
+The shared service bounds concurrent directory metadata reads and invalidates affected listings when a file changes. Original-file categories reuse the private path set for each catalog snapshot. Focused Windows regression checks cover branch caching, file changes, permissions and inbox behavior. Client 2.0.3 and its paired plugin 3.1.6 were rebuilt from the merged source for local delivery. The filenames include their build IDs.
 
 ## 2026-11-26 · Inbox completion receipts and knowledge-base checks
 
